@@ -54,6 +54,15 @@ function resolveColor(
   return "var(--ted-style-accent)";
 }
 
+/** Resolve a CSS color from a `ui_color` value (hex string or theme color name). */
+function cssColor(value?: string): string | undefined {
+  if (!value) return undefined;
+  if (value.startsWith("#") || value.startsWith("rgb") || value.startsWith("hsl") || value.startsWith("var")) {
+    return value;
+  }
+  return `var(--${value}-color, ${value})`;
+}
+
 /** Subset of Home Assistant's LovelaceGridOptions for the Sections grid layout. */
 interface GridOptions {
   columns?: number | "full";
@@ -185,11 +194,8 @@ export class TedLightCard extends LitElement implements LovelaceCard {
           this._config.icon_color_custom,
         )
       : "rgba(255, 255, 255, 0.5)";
-    const bgOn = this._config.background_on;
-    const cardStyle =
-      isOn && Array.isArray(bgOn) && bgOn.length === 3
-        ? { backgroundColor: `rgb(${bgOn[0]}, ${bgOn[1]}, ${bgOn[2]})` }
-        : {};
+    const bgOn = cssColor(this._config.background_on);
+    const cardStyle = isOn && bgOn ? { backgroundColor: bgOn } : {};
     const showName = this._config.show_name !== false;
     const showIcon = this._config.show_icon !== false;
     const showState = this._config.show_state !== false;

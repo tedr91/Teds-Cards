@@ -85,7 +85,7 @@ The icon is centered in the card and lights up when the light is on. `icon_color
 - `light` (default): the light's current color (its `rgb_color`), falling back to a warm tone.
 - `other`: a custom color — set `icon_color_custom` to an `[r, g, b]` array.
 
-`background_on` (optional, in the **Visual** section): override the card's background color while the light is **on**. Pick a color with the editor's color picker (stored as an `[r, g, b]` array). When unset, the theme background is used.
+`background_on` (optional, in the **Visual** section): override the card's background color while the light is **on**. Pick a color with the editor's color picker (stored as a `#RRGGBB` hex string). When unset, the theme background is used.
 
 Also in the **Visual** section: `show_name`, `show_icon`, and `show_state` (all default **on**) toggle the name, centered icon, and the state/brightness label; `name_scale` and `icon_scale` (percent, default `100`) scale the name text and icon size.
 
@@ -168,7 +168,7 @@ editor's **Visual** section). `position_color` (`theme` default / `other` custom
 position bar when open; `show_hint` (**on by default**) shows a right-edge stripe with **up/down
 chevron** hints. The position bar fills from the bottom up with the cover's current position.
 
-`background_open` (optional, in the **Visual** section): override the card's background color while the cover is **open**. Pick a color with the editor's color picker (stored as an `[r, g, b]` array). When unset, the theme background is used.
+`background_open` (optional, in the **Visual** section): override the card's background color while the cover is **open**. Pick a color with the editor's color picker (stored as a `#RRGGBB` hex string). When unset, the theme background is used.
 
 Also in the **Visual** section: `show_name`, `show_icon`, and `show_state` (all default **on**) toggle the name, centered icon, and the state/position label; `name_scale` and `icon_scale` (percent, default `100`) scale the name text and icon size.
 

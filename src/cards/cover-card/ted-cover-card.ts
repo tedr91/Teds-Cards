@@ -71,6 +71,15 @@ function defaultCoverIcon(deviceClass: string | undefined, isOpen: boolean): str
   }
 }
 
+/** Resolve a CSS color from a `ui_color` value (hex string or theme color name). */
+function cssColor(value?: string): string | undefined {
+  if (!value) return undefined;
+  if (value.startsWith("#") || value.startsWith("rgb") || value.startsWith("hsl") || value.startsWith("var")) {
+    return value;
+  }
+  return `var(--${value}-color, ${value})`;
+}
+
 /** Subset of Home Assistant's LovelaceGridOptions for the Sections grid layout. */
 interface GridOptions {
   columns?: number | "full";
@@ -196,11 +205,8 @@ export class TedCoverCard extends LitElement implements LovelaceCard {
       ? resolveColor(this._config.icon_color, this._config.icon_color_custom)
       : "rgba(255, 255, 255, 0.5)";
     const showHint = this._config.show_hint !== false;
-    const bgOpen = this._config.background_open;
-    const cardStyle =
-      isOpen && Array.isArray(bgOpen) && bgOpen.length === 3
-        ? { backgroundColor: `rgb(${bgOpen[0]}, ${bgOpen[1]}, ${bgOpen[2]})` }
-        : {};
+    const bgOpen = cssColor(this._config.background_open);
+    const cardStyle = isOpen && bgOpen ? { backgroundColor: bgOpen } : {};
     const showName = this._config.show_name !== false;
     const showIcon = this._config.show_icon !== false;
     const showState = this._config.show_state !== false;

@@ -51,6 +51,7 @@ export class TedLightCardEditor extends LitElement implements LovelaceCardEditor
         .data=${data}
         .schema=${this._schema()}
         .computeLabel=${this._computeLabel}
+        .computeHelper=${this._computeHelper}
         @value-changed=${this._valueChanged}
       ></ha-form>
     `;
@@ -147,15 +148,23 @@ export class TedLightCardEditor extends LitElement implements LovelaceCardEditor
     if (this._config?.icon_color === "other") {
       visual.push({ name: "icon_color_custom", selector: { color_rgb: {} } });
     }
-    visual.push({ name: "background_on", selector: { color_rgb: {} } });
-    visual.push({ name: "show_name", selector: { boolean: {} } });
-    if (this._config?.show_name !== false) {
-      visual.push({ name: "name_scale", selector: { number: { min: 10, max: 300, step: 5, mode: "box", unit_of_measurement: "%" } } });
-    }
-    visual.push({ name: "show_icon", selector: { boolean: {} } });
-    if (this._config?.show_icon !== false) {
-      visual.push({ name: "icon_scale", selector: { number: { min: 10, max: 300, step: 5, mode: "box", unit_of_measurement: "%" } } });
-    }
+    visual.push({ name: "background_on", selector: { ui_color: {} } });
+    visual.push({
+      type: "grid",
+      name: "",
+      schema: [
+        { name: "show_name", selector: { boolean: {} } },
+        { name: "name_scale", selector: { number: { min: 10, max: 300, step: 5, mode: "box", unit_of_measurement: "%" } } },
+      ],
+    });
+    visual.push({
+      type: "grid",
+      name: "",
+      schema: [
+        { name: "show_icon", selector: { boolean: {} } },
+        { name: "icon_scale", selector: { number: { min: 10, max: 300, step: 5, mode: "box", unit_of_measurement: "%" } } },
+      ],
+    });
     visual.push({ name: "show_state", selector: { boolean: {} } });
     visual.push({ name: "show_hint", selector: { boolean: {} } });
 
@@ -327,6 +336,17 @@ export class TedLightCardEditor extends LitElement implements LovelaceCardEditor
         return "Memory helper (input_number / number)";
       default:
         return schema.name;
+    }
+  };
+
+  private _computeHelper = (schema: { name: string }): string | undefined => {
+    switch (schema.name) {
+      case "name_scale":
+        return "Make the name larger or smaller (100% = default).";
+      case "icon_scale":
+        return "Make the icon larger or smaller (100% = default).";
+      default:
+        return undefined;
     }
   };
 
