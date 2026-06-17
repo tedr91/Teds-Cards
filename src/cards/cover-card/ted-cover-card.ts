@@ -222,7 +222,7 @@ export class TedCoverCard extends LitElement implements LovelaceCard {
     const showIcon = this._config.show_icon !== false;
     const showState = this._config.show_state !== false;
     const nameScale = typeof this._config.name_scale === "number" ? this._config.name_scale : 100;
-    const iconScale = typeof this._config.icon_scale === "number" ? this._config.icon_scale : 100;
+    const iconScale = typeof this._config.icon_scale === "number" ? this._config.icon_scale : 150;
 
     return html`
       <ha-card

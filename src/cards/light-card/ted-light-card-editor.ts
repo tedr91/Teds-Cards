@@ -85,7 +85,7 @@ export class TedLightCardEditor extends LitElement implements LovelaceCardEditor
       show_name: true,
       name_scale: 100,
       show_icon: true,
-      icon_scale: 100,
+      icon_scale: 150,
       show_state: true,
       width: 100,
       height: 120,
