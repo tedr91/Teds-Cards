@@ -185,6 +185,16 @@ export class TedLightCard extends LitElement implements LovelaceCard {
           this._config.icon_color_custom,
         )
       : "rgba(255, 255, 255, 0.5)";
+    const bgOn = this._config.background_on;
+    const cardStyle =
+      isOn && Array.isArray(bgOn) && bgOn.length === 3
+        ? { backgroundColor: `rgb(${bgOn[0]}, ${bgOn[1]}, ${bgOn[2]})` }
+        : {};
+    const showName = this._config.show_name !== false;
+    const showIcon = this._config.show_icon !== false;
+    const showState = this._config.show_state !== false;
+    const nameScale = typeof this._config.name_scale === "number" ? this._config.name_scale : 100;
+    const iconScale = typeof this._config.icon_scale === "number" ? this._config.icon_scale : 100;
 
     return html`
       <ha-card
@@ -194,6 +204,7 @@ export class TedLightCard extends LitElement implements LovelaceCard {
           "layout-static": this.layout !== "grid",
           ...themeClasses,
         })}
+        style=${styleMap(cardStyle)}
         @pointerdown=${this._onCardPointerDown}
         @pointerup=${this._onCardPointerUp}
         @pointercancel=${this._onCardPointerUp}
@@ -212,24 +223,30 @@ export class TedLightCard extends LitElement implements LovelaceCard {
               <span class="stripe-symbol stripe-minus" aria-hidden="true">−</span>
             `
           : nothing}
-        <button
-          type="button"
-          class="icon-shape"
-          style=${styleMap({ color: iconColor })}
-          aria-label=${name}
-          ?disabled=${isUnavailable}
-          @click=${this._onIconClick}
-        >
-          <ha-icon .icon=${icon}></ha-icon>
-        </button>
+        ${showIcon
+          ? html`
+              <button
+                type="button"
+                class="icon-shape"
+                style=${styleMap({ color: iconColor, "--mdc-icon-size": `${(24 * iconScale) / 100}px` })}
+                aria-label=${name}
+                ?disabled=${isUnavailable}
+                @click=${this._onIconClick}
+              >
+                <ha-icon .icon=${icon}></ha-icon>
+              </button>
+            `
+          : nothing}
         <div class="zone zone-top">
-          <span class="primary">${name}</span>
+          ${showName
+            ? html`<span class="primary" style=${styleMap({ fontSize: `${(14 * nameScale) / 100}px` })}>${name}</span>`
+            : nothing}
         </div>
         <div class="divider" aria-hidden="true"></div>
         <div class="zone zone-bottom">
-          <div class="info">
-            <span class="secondary">${stateLabel}</span>
-          </div>
+          ${showState
+            ? html`<div class="info"><span class="secondary">${stateLabel}</span></div>`
+            : nothing}
         </div>
         <button
           type="button"

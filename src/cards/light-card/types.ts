@@ -29,6 +29,12 @@ export interface LightCardConfig extends LovelaceCardConfig {
   brightness_color_custom?: number[];
   icon_color?: BrightnessColorMode;
   icon_color_custom?: number[];
+  background_on?: number[];
+  show_name?: boolean;
+  name_scale?: number;
+  show_icon?: boolean;
+  icon_scale?: number;
+  show_state?: boolean;
   show_hint?: boolean;
   // Switch behavior: action bound to each region × gesture.
   up_tap?: LightAction;

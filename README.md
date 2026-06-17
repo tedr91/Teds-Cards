@@ -85,6 +85,10 @@ The icon is centered in the card and lights up when the light is on. `icon_color
 - `light` (default): the light's current color (its `rgb_color`), falling back to a warm tone.
 - `other`: a custom color — set `icon_color_custom` to an `[r, g, b]` array.
 
+`background_on` (optional, in the **Visual** section): override the card's background color while the light is **on**. Pick a color with the editor's color picker (stored as an `[r, g, b]` array). When unset, the theme background is used.
+
+Also in the **Visual** section: `show_name`, `show_icon`, and `show_state` (all default **on**) toggle the name, centered icon, and the state/brightness label; `name_scale` and `icon_scale` (percent, default `100`) scale the name text and icon size.
+
 ### Switch Behavior
 
 The editor's **Switch Behavior** section lets you reassign the action for every region × gesture. It contains three groups — **UP behavior**, **DOWN behavior**, and **Icon behavior** — each exposing a **Single tap**, **Double tap**, and **Long press** action picker. The config keys are `up_tap` / `up_double_tap` / `up_hold`, `down_tap` / `down_double_tap` / `down_hold`, and `icon_tap` / `icon_double_tap` / `icon_hold`. Any option left at its default is omitted from the saved YAML.
@@ -163,6 +167,10 @@ with `icon_open: mdi:garage-open`. When unset, `icon` (or a device-class default
 editor's **Visual** section). `position_color` (`theme` default / `other` custom) colors the
 position bar when open; `show_hint` (**on by default**) shows a right-edge stripe with **up/down
 chevron** hints. The position bar fills from the bottom up with the cover's current position.
+
+`background_open` (optional, in the **Visual** section): override the card's background color while the cover is **open**. Pick a color with the editor's color picker (stored as an `[r, g, b]` array). When unset, the theme background is used.
+
+Also in the **Visual** section: `show_name`, `show_icon`, and `show_state` (all default **on**) toggle the name, centered icon, and the state/position label; `name_scale` and `icon_scale` (percent, default `100`) scale the name text and icon size.
 
 ### Switch Behavior (cover)
 

@@ -100,6 +100,11 @@ export class TedCoverCardEditor extends LitElement implements LovelaceCardEditor
       icon_tap: "toggle",
       icon_double_tap: "more_info",
       icon_hold: "more_info",
+      show_name: true,
+      name_scale: 100,
+      show_icon: true,
+      icon_scale: 100,
+      show_state: true,
       memory_mode: "off",
       memory_value: 100,
     };
@@ -167,6 +172,16 @@ export class TedCoverCardEditor extends LitElement implements LovelaceCardEditor
     if (this._config?.icon_color === "other") {
       visual.push({ name: "icon_color_custom", selector: { color_rgb: {} } });
     }
+    visual.push({ name: "background_open", selector: { color_rgb: {} } });
+    visual.push({ name: "show_name", selector: { boolean: {} } });
+    if (this._config?.show_name !== false) {
+      visual.push({ name: "name_scale", selector: { number: { min: 10, max: 300, step: 5, mode: "box", unit_of_measurement: "%" } } });
+    }
+    visual.push({ name: "show_icon", selector: { boolean: {} } });
+    if (this._config?.show_icon !== false) {
+      visual.push({ name: "icon_scale", selector: { number: { min: 10, max: 300, step: 5, mode: "box", unit_of_measurement: "%" } } });
+    }
+    visual.push({ name: "show_state", selector: { boolean: {} } });
     visual.push({ name: "show_hint", selector: { boolean: {} } });
 
     const switchBehavior = {
@@ -306,6 +321,18 @@ export class TedCoverCardEditor extends LitElement implements LovelaceCardEditor
         return "Icon color";
       case "icon_color_custom":
         return "Custom icon color";
+      case "background_open":
+        return "Background color when open";
+      case "show_name":
+        return "Show name";
+      case "name_scale":
+        return "Name size";
+      case "show_icon":
+        return "Show icon";
+      case "icon_scale":
+        return "Icon size";
+      case "show_state":
+        return "Show entity state";
       case "show_hint":
         return "Show chevron hint";
       case "up_tap":
