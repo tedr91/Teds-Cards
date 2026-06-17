@@ -24,6 +24,8 @@ export interface LightCardConfig extends LovelaceCardConfig {
   entity: string;
   name?: string;
   icon?: string;
+  width?: number;
+  height?: number;
   theme?: LightCardTheme;
   brightness_color?: BrightnessColorMode;
   brightness_color_custom?: number[];

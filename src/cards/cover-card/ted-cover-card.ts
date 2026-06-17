@@ -206,7 +206,14 @@ export class TedCoverCard extends LitElement implements LovelaceCard {
       : "rgba(255, 255, 255, 0.5)";
     const showHint = this._config.show_hint !== false;
     const bgOpen = cssColor(this._config.background_open);
-    const cardStyle = isOpen && bgOpen ? { backgroundColor: bgOpen } : {};
+    const cardWidth = typeof this._config.width === "number" ? this._config.width : 100;
+    const cardHeight = typeof this._config.height === "number" ? this._config.height : 120;
+    const cardStyle: Record<string, string> = {
+      width: `${cardWidth}px`,
+      height: `${cardHeight}px`,
+      margin: "0 auto",
+    };
+    if (isOpen && bgOpen) cardStyle.backgroundColor = bgOpen;
     const showName = this._config.show_name !== false;
     const showIcon = this._config.show_icon !== false;
     const showState = this._config.show_state !== false;
@@ -218,7 +225,6 @@ export class TedCoverCard extends LitElement implements LovelaceCard {
         class=${classMap({
           open: isOpen,
           unavailable: isUnavailable,
-          "layout-static": this.layout !== "grid",
           ...themeClasses,
         })}
         style=${styleMap(cardStyle)}
@@ -656,13 +662,6 @@ export class TedCoverCard extends LitElement implements LovelaceCard {
     }
     ha-card.unavailable {
       opacity: 0.6;
-    }
-    /* getGridOptions only applies in the Sections (grid) view. In masonry / panel
-       views, give the card a fixed height (200px-wide tile as a starting point). */
-    ha-card.layout-static {
-      width: 200px;
-      height: 120px;
-      margin: 0 auto;
     }
     .zone {
       position: relative;

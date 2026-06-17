@@ -30,6 +30,8 @@ export interface CoverCardConfig extends LovelaceCardConfig {
   name?: string;
   icon?: string;
   icon_open?: string;
+  width?: number;
+  height?: number;
   theme?: CoverCardTheme;
   position_color?: CoverColorMode;
   position_color_custom?: number[];

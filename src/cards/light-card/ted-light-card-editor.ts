@@ -86,6 +86,8 @@ export class TedLightCardEditor extends LitElement implements LovelaceCardEditor
       show_icon: true,
       icon_scale: 100,
       show_state: true,
+      width: 100,
+      height: 120,
       memory_mode: "off",
       memory_value: 100,
     };
@@ -170,6 +172,14 @@ export class TedLightCardEditor extends LitElement implements LovelaceCardEditor
       schema: [
         { name: "show_state", selector: { boolean: {} } },
         { name: "show_hint", selector: { boolean: {} } },
+      ],
+    });
+    visual.push({
+      type: "grid",
+      name: "",
+      schema: [
+        { name: "width", selector: { number: { min: 80, max: 600, step: 10, mode: "box", unit_of_measurement: "px" } } },
+        { name: "height", selector: { number: { min: 60, max: 600, step: 10, mode: "box", unit_of_measurement: "px" } } },
       ],
     });
 
@@ -315,6 +325,10 @@ export class TedLightCardEditor extends LitElement implements LovelaceCardEditor
         return "Show entity state";
       case "show_hint":
         return "Show +/- hint";
+      case "width":
+        return "Width (px)";
+      case "height":
+        return "Height (px)";
       case "up_tap":
       case "down_tap":
       case "icon_tap":
