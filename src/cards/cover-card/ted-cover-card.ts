@@ -206,14 +206,18 @@ export class TedCoverCard extends LitElement implements LovelaceCard {
       : "rgba(255, 255, 255, 0.5)";
     const showHint = this._config.show_hint !== false;
     const bgOpen = cssColor(this._config.background_open);
+    // In a grid (Sections) view, honor the grid cell sizing. Everywhere else
+    // (stacks, masonry, panel), render at the configured fixed size.
+    const isGrid = this.layout === "grid";
     const cardWidth = typeof this._config.width === "number" ? this._config.width : 100;
     const cardHeight = typeof this._config.height === "number" ? this._config.height : 120;
-    const cardStyle: Record<string, string> = {
-      width: `${cardWidth}px`,
-      height: `${cardHeight}px`,
-      margin: "0 auto",
-    };
+    const cardStyle: Record<string, string> = {};
     if (isOpen && bgOpen) cardStyle.backgroundColor = bgOpen;
+    if (!isGrid) {
+      cardStyle.width = `${cardWidth}px`;
+      cardStyle.height = `${cardHeight}px`;
+      cardStyle.margin = "0 auto";
+    }
     const showName = this._config.show_name !== false;
     const showIcon = this._config.show_icon !== false;
     const showState = this._config.show_state !== false;
