@@ -2,6 +2,8 @@
 
 A collection of custom Lovelace cards for [Home Assistant](https://www.home-assistant.io/), inspired by [Mushroom Cards](https://github.com/piitaya/lovelace-mushroom).
 
+![Ted's Cards — light and cover cards](images/showcase.png)
+
 > **Status:** early development. Includes `ted-light-card` and `ted-cover-card`; more are planned.
 
 ## Cards

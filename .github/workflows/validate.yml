@@ -27,6 +27,3 @@ jobs:
         uses: hacs/action@main
         with:
           category: plugin
-          # Skip the "images in README" check (only required for the default
-          # HACS store; this repo is installed as a custom repository).
-          ignore: images
