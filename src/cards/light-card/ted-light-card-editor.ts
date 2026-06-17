@@ -51,7 +51,6 @@ export class TedLightCardEditor extends LitElement implements LovelaceCardEditor
         .data=${data}
         .schema=${this._schema()}
         .computeLabel=${this._computeLabel}
-        .computeHelper=${this._computeHelper}
         @value-changed=${this._valueChanged}
       ></ha-form>
     `;
@@ -109,7 +108,7 @@ export class TedLightCardEditor extends LitElement implements LovelaceCardEditor
           select: {
             mode: "dropdown",
             options: [
-              { value: "ted-style", label: "Ted's Home Theater (default)" },
+              { value: "ted-style", label: "Ted's Style (default)" },
               { value: "ha", label: "Home Assistant theme" },
             ],
           },
@@ -336,17 +335,6 @@ export class TedLightCardEditor extends LitElement implements LovelaceCardEditor
         return "Memory helper (input_number / number)";
       default:
         return schema.name;
-    }
-  };
-
-  private _computeHelper = (schema: { name: string }): string | undefined => {
-    switch (schema.name) {
-      case "name_scale":
-        return "Make the name larger or smaller (100% = default).";
-      case "icon_scale":
-        return "Make the icon larger or smaller (100% = default).";
-      default:
-        return undefined;
     }
   };
 
