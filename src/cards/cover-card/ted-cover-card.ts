@@ -181,6 +181,7 @@ export class TedCoverCard extends LitElement implements LovelaceCard {
     const isOpen = this._isOpen();
     const name = this._config.name || stateObj.attributes.friendly_name || this._config.entity;
     const icon =
+      (isOpen && this._config.icon_open) ||
       this._config.icon ||
       (stateObj.attributes.icon as string | undefined) ||
       defaultCoverIcon(stateObj.attributes.device_class as string | undefined, isOpen);

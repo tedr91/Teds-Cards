@@ -29,6 +29,7 @@ export interface CoverCardConfig extends LovelaceCardConfig {
   entity: string;
   name?: string;
   icon?: string;
+  icon_open?: string;
   theme?: CoverCardTheme;
   position_color?: CoverColorMode;
   position_color_custom?: number[];

@@ -227,6 +227,7 @@ export class TedCoverCardEditor extends LitElement implements LovelaceCardEditor
         schema: [
           { name: "name", selector: { text: {} } },
           { name: "icon", selector: { icon: {} } },
+          { name: "icon_open", selector: { icon: {} } },
         ],
       },
       {
@@ -293,6 +294,8 @@ export class TedCoverCardEditor extends LitElement implements LovelaceCardEditor
         return "Name (optional)";
       case "icon":
         return "Icon (optional)";
+      case "icon_open":
+        return "Open icon (optional)";
       case "theme":
         return "Visual styling";
       case "position_color":

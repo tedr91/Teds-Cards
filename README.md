@@ -152,8 +152,12 @@ type: custom:ted-cover-card
 entity: cover.living_room_blinds
 name: Living Room Blinds   # optional, defaults to entity friendly name
 icon: mdi:blinds           # optional, defaults to a device-class icon
+icon_open: mdi:blinds-open # optional, shown while the cover is open
 theme: ted-style           # optional, visual styling: ted-style (default) | ha
 ```
+
+`icon_open` (optional) sets a different icon to show while the cover is open — e.g. `icon: mdi:garage`
+with `icon_open: mdi:garage-open`. When unset, `icon` (or a device-class default) is used in all states.
 
 `theme`, `position_color`, `icon_color`, and `show_hint` work as in the Light Card (all in the
 editor's **Visual** section). `position_color` (`theme` default / `other` custom) colors the
