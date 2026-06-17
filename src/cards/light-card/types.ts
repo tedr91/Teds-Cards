@@ -6,6 +6,19 @@ export type LightCardTheme = "ted-style" | "ha";
 /** Source for the brightness hint-bar and icon colors when the light is on. */
 export type BrightnessColorMode = "theme" | "light" | "other";
 
+/** An action that can be bound to a tap / double-tap / long-press on a region. */
+export type LightAction =
+  | "increase"
+  | "decrease"
+  | "full_on"
+  | "full_off"
+  | "toggle"
+  | "more_info"
+  | "none";
+
+/** Brightness "memory" source used when the card turns a dimmable light on. */
+export type MemoryMode = "off" | "static" | "helper";
+
 export interface LightCardConfig extends LovelaceCardConfig {
   type: string;
   entity: string;
@@ -17,4 +30,18 @@ export interface LightCardConfig extends LovelaceCardConfig {
   icon_color?: BrightnessColorMode;
   icon_color_custom?: number[];
   show_hint?: boolean;
+  // Switch behavior: action bound to each region × gesture.
+  up_tap?: LightAction;
+  up_double_tap?: LightAction;
+  up_hold?: LightAction;
+  down_tap?: LightAction;
+  down_double_tap?: LightAction;
+  down_hold?: LightAction;
+  icon_tap?: LightAction;
+  icon_double_tap?: LightAction;
+  icon_hold?: LightAction;
+  // Brightness memory (dimmable lights).
+  memory_mode?: MemoryMode;
+  memory_value?: number;
+  memory_entity?: string;
 }

@@ -16,7 +16,7 @@ import {
   LIGHT_CARD_NAME,
   LIGHT_CARD_TYPE,
 } from "./const";
-import type { LightCardConfig } from "./types";
+import type { LightCardConfig, LightAction } from "./types";
 
 const DOUBLE_CLICK_MS = 250;
 const LONG_PRESS_MS = 500;
@@ -214,33 +214,35 @@ export class TedLightCard extends LitElement implements LovelaceCard {
           type="button"
           class="icon-shape"
           style=${styleMap({ color: iconColor })}
-          aria-label=${`Toggle ${name}`}
+          aria-label=${name}
           ?disabled=${isUnavailable}
           @click=${this._onIconClick}
         >
           <ha-icon .icon=${icon}></ha-icon>
         </button>
-        <button
-          type="button"
-          class="zone zone-top"
-          aria-label=${`${name} — turn on / increase brightness`}
-          ?disabled=${isUnavailable}
-          @click=${this._onTopClick}
-        >
+        <div class="zone zone-top">
           <span class="primary">${name}</span>
-        </button>
+        </div>
         <div class="divider" aria-hidden="true"></div>
-        <button
-          type="button"
-          class="zone zone-bottom"
-          aria-label="Decrease brightness / turn off"
-          ?disabled=${isUnavailable}
-          @click=${this._onBottomClick}
-        >
+        <div class="zone zone-bottom">
           <div class="info">
             <span class="secondary">${stateLabel}</span>
           </div>
-        </button>
+        </div>
+        <button
+          type="button"
+          class="region region-top"
+          aria-label=${`${name} — top half`}
+          ?disabled=${isUnavailable}
+          @click=${this._onTopClick}
+        ></button>
+        <button
+          type="button"
+          class="region region-bottom"
+          aria-label=${`${name} — bottom half`}
+          ?disabled=${isUnavailable}
+          @click=${this._onBottomClick}
+        ></button>
       </ha-card>
     `;
   }
@@ -296,27 +298,71 @@ export class TedLightCard extends LitElement implements LovelaceCard {
     return !!stateObj && lightSupportsBrightness(stateObj);
   }
 
-  /** Top half, single click: off → on; on → step brightness up (toggle-only lights just turn on). */
+  /** Configured action for a region + gesture, falling back to a sensible default. */
+  private _action(
+    key: keyof LightCardConfig,
+    dimmableDefault: LightAction,
+    fallback: LightAction = dimmableDefault,
+  ): LightAction {
+    const configured = this._config?.[key] as LightAction | undefined;
+    if (configured) return configured;
+    return this._supportsBrightness() ? dimmableDefault : fallback;
+  }
+
   private _topSingleClick(): void {
+    this._execAction(this._action("up_tap", "increase", "full_on"));
+  }
+
+  private _topDoubleClick(): void {
+    this._execAction(this._action("up_double_tap", "full_on"));
+  }
+
+  private _bottomSingleClick(): void {
+    this._execAction(this._action("down_tap", "decrease", "full_off"));
+  }
+
+  private _bottomDoubleClick(): void {
+    this._execAction(this._action("down_double_tap", "full_off"));
+  }
+
+  /** Run one of the configurable actions. */
+  private _execAction(action: LightAction): void {
+    switch (action) {
+      case "increase":
+        this._stepUp();
+        break;
+      case "decrease":
+        this._stepDown();
+        break;
+      case "full_on":
+        this._fullOn();
+        break;
+      case "full_off":
+        this._callLight("turn_off", {});
+        break;
+      case "toggle":
+        this._toggle();
+        break;
+      case "more_info":
+        this._moreInfo();
+        break;
+      case "none":
+        break;
+    }
+  }
+
+  /** Increase brightness to the next 5% (off → on at the memory brightness). */
+  private _stepUp(): void {
     if (!this._supportsBrightness() || !this._isOn()) {
-      this._callLight("turn_on", {});
+      this._turnOn();
       return;
     }
     const next = Math.min(100, (Math.floor(this._currentPct() / BRIGHTNESS_STEP) + 1) * BRIGHTNESS_STEP);
     this._setBrightness(next);
   }
 
-  /** Top half, double click: full brightness (toggle-only lights just turn on). */
-  private _topDoubleClick(): void {
-    if (!this._supportsBrightness()) {
-      this._callLight("turn_on", {});
-      return;
-    }
-    this._setBrightness(100);
-  }
-
-  /** Bottom half, single click: step brightness down to the next 5% (toggle-only lights turn off). */
-  private _bottomSingleClick(): void {
+  /** Decrease brightness to the next 5% (toggle-only lights turn off). */
+  private _stepDown(): void {
     if (!this._supportsBrightness()) {
       this._callLight("turn_off", {});
       return;
@@ -326,9 +372,52 @@ export class TedLightCard extends LitElement implements LovelaceCard {
     this._setBrightness(next);
   }
 
-  /** Bottom half, double click: turn off. */
-  private _bottomDoubleClick(): void {
-    this._callLight("turn_off", {});
+  /** Full brightness (toggle-only lights just turn on). */
+  private _fullOn(): void {
+    if (this._supportsBrightness()) {
+      this._setBrightness(100);
+    } else {
+      this._callLight("turn_on", {});
+    }
+  }
+
+  private _toggle(): void {
+    if (this._isOn()) {
+      this._callLight("turn_off", {});
+    } else {
+      this._turnOn();
+    }
+  }
+
+  /** Turn the light on, applying the configured brightness "memory" when set. */
+  private _turnOn(): void {
+    const mem = this._memoryPct();
+    if (mem != null) {
+      this._callLight("turn_on", { brightness_pct: mem });
+    } else {
+      this._callLight("turn_on", {});
+    }
+  }
+
+  /** Resolve the memory brightness (1–100) for dimmable lights, or null when unset. */
+  private _memoryPct(): number | null {
+    if (!this._supportsBrightness()) return null;
+    const mode = this._config?.memory_mode;
+    if (mode === "static") {
+      const value = this._config?.memory_value;
+      return typeof value === "number" ? this._clampPct(value) : 100;
+    }
+    if (mode === "helper") {
+      const entity = this._config?.memory_entity;
+      const stateObj = entity ? this.hass?.states[entity] : undefined;
+      const value = stateObj ? Number(stateObj.state) : NaN;
+      return Number.isFinite(value) ? this._clampPct(value) : null;
+    }
+    return null;
+  }
+
+  private _clampPct(value: number): number {
+    return Math.min(100, Math.max(1, Math.round(value)));
   }
 
   private _setBrightness(pct: number): void {
@@ -344,17 +433,38 @@ export class TedLightCard extends LitElement implements LovelaceCard {
     this.hass.callService("light", service, { entity_id: this._config.entity, ...data });
   }
 
-  // Long-press anywhere on the card opens more-info. We arm a timer on pointer
-  // down and cancel it on release; the resulting click is suppressed.
-  private _onCardPointerDown = (): void => {
+  // Long-press on a region runs that region's configured hold action. We arm a
+  // timer on pointer down and cancel it on release; the resulting click is suppressed.
+  private _onCardPointerDown = (ev: PointerEvent): void => {
     this._longPressFired = false;
+    const region = this._regionFromEvent(ev);
+    if (!region) return;
+    const action = this._holdActionFor(region);
+    if (action === "none") return;
     if (this._longPressTimer !== undefined) window.clearTimeout(this._longPressTimer);
     this._longPressTimer = window.setTimeout(() => {
       this._longPressTimer = undefined;
       this._longPressFired = true;
-      this._moreInfo();
+      this._execAction(action);
     }, LONG_PRESS_MS);
   };
+
+  private _regionFromEvent(ev: Event): "up" | "down" | "icon" | undefined {
+    for (const el of ev.composedPath()) {
+      if (!(el instanceof HTMLElement)) continue;
+      if (el.classList.contains("icon-shape")) return "icon";
+      if (el.classList.contains("region-top")) return "up";
+      if (el.classList.contains("region-bottom")) return "down";
+      if (el === this) return undefined;
+    }
+    return undefined;
+  }
+
+  private _holdActionFor(region: "up" | "down" | "icon"): LightAction {
+    if (region === "up") return this._action("up_hold", "more_info");
+    if (region === "down") return this._action("down_hold", "more_info");
+    return this._action("icon_hold", "more_info");
+  }
 
   private _onCardPointerUp = (): void => {
     if (this._longPressTimer !== undefined) {
@@ -371,25 +481,21 @@ export class TedLightCard extends LitElement implements LovelaceCard {
     return false;
   }
 
-  /** Icon: single click toggles; double click opens more-info. */
+  /** Icon: single click and double click run configurable actions. */
   private _onIconClick = (ev: Event): void => {
     ev.stopPropagation();
     if (this._consumeLongPress()) return;
     if (this._iconClickTimer !== undefined) {
       window.clearTimeout(this._iconClickTimer);
       this._iconClickTimer = undefined;
-      this._moreInfo();
+      this._execAction(this._action("icon_double_tap", "more_info"));
       return;
     }
     this._iconClickTimer = window.setTimeout(() => {
       this._iconClickTimer = undefined;
-      this._toggle();
+      this._execAction(this._action("icon_tap", "toggle"));
     }, DOUBLE_CLICK_MS);
   };
-
-  private _toggle(): void {
-    this._callLight(this._isOn() ? "turn_off" : "turn_on", {});
-  }
 
   private _moreInfo(): void {
     if (!this._config) return;
@@ -465,15 +571,7 @@ export class TedLightCard extends LitElement implements LovelaceCard {
       box-sizing: border-box;
       display: flex;
       justify-content: center;
-      margin: 0;
-      padding: 0;
-      border: none;
-      background: none;
-      color: inherit;
-      font: inherit;
-      cursor: pointer;
-      outline: none;
-      -webkit-tap-highlight-color: transparent;
+      pointer-events: none;
     }
     .zone-top {
       align-items: flex-start;
@@ -483,14 +581,34 @@ export class TedLightCard extends LitElement implements LovelaceCard {
     .zone-bottom {
       align-items: flex-end;
     }
-    .zone:focus-visible {
-      box-shadow: inset 0 0 0 2px var(--tlc-accent);
-      border-radius: 6px;
+    /* The three interactive regions overlay the whole card (padding + hint bars). */
+    .region {
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: 50%;
+      z-index: 3;
+      margin: 0;
+      padding: 0;
+      border: none;
+      background: none;
+      cursor: pointer;
+      outline: none;
+      -webkit-tap-highlight-color: transparent;
     }
-    .zone:active {
+    .region-top {
+      top: 0;
+    }
+    .region-bottom {
+      bottom: 0;
+    }
+    .region:focus-visible {
+      box-shadow: inset 0 0 0 2px var(--tlc-accent);
+    }
+    .region:active {
       background-color: rgba(127, 127, 127, 0.1);
     }
-    ha-card.unavailable .zone {
+    ha-card.unavailable .region {
       cursor: not-allowed;
     }
     .divider {
@@ -506,7 +624,7 @@ export class TedLightCard extends LitElement implements LovelaceCard {
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      z-index: 2;
+      z-index: 4;
       display: inline-flex;
       line-height: 0;
       background: none;

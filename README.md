@@ -39,12 +39,17 @@ entities only. Brightness is shown as a thin vertical hint bar on the card's lef
 
 **Interactions**
 
-| Action | Top half | Bottom half |
-| --- | --- | --- |
-| Single click | If off, turn on; if on, increase brightness to the next 5% | Decrease brightness to the next 5% (off below the lowest step) |
-| Double click | Set to 100% brightness | Turn off |
+The card has **three interactive regions** — the **upper half**, the **lower half**, and the **centered icon** — each of which spans the full card area (padding and hint bars included). Every region responds to **single tap**, **double tap**, and **long press**, and each gesture can be reassigned in the editor's **Switch Behavior** section.
 
-For **toggle-only** lights (no brightness support), the top half turns the light **on** and the bottom half turns it **off**; the left hint bar shows full when on and empty when off. The icon (single click toggles, double click opens more-info) and long-press (more-info) work for all lights.
+| Region | Single tap (default) | Double tap (default) | Long press (default) |
+| --- | --- | --- | --- |
+| Upper half | Increase brightness to the next 5% | Full on (100%) | More info |
+| Lower half | Decrease brightness to the next 5% | Turn off | More info |
+| Icon | Toggle | More info | More info |
+
+Available actions: **Increase brightness**, **Decrease brightness**, **Full on (100%)**, **Turn off**, **Toggle**, **More info**, and **Nothing**.
+
+For **toggle-only** lights (no brightness support), the upper-half single tap defaults to **Full on** and the lower-half single tap to **Turn off**; the left hint bar shows full when on and empty when off.
 
 Minimal config:
 
@@ -78,6 +83,32 @@ The icon is centered in the card and lights up when the light is on. `icon_color
 - `theme`: the theme accent color.
 - `light` (default): the light's current color (its `rgb_color`), falling back to a warm tone.
 - `other`: a custom color — set `icon_color_custom` to an `[r, g, b]` array.
+
+### Switch Behavior
+
+The editor's **Switch Behavior** section lets you reassign the action for every region × gesture. It contains three groups — **UP behavior**, **DOWN behavior**, and **Icon behavior** — each exposing a **Single tap**, **Double tap**, and **Long press** action picker. The config keys are `up_tap` / `up_double_tap` / `up_hold`, `down_tap` / `down_double_tap` / `down_hold`, and `icon_tap` / `icon_double_tap` / `icon_hold`. Any option left at its default is omitted from the saved YAML.
+
+```yaml
+up_tap: increase           # increase | decrease | full_on | full_off | toggle | more_info | none
+down_double_tap: toggle
+icon_hold: none
+```
+
+### Memory (dimmable lights)
+
+For dimmable lights you can choose the brightness the light turns **on** to. The editor shows a **Memory** section (only for brightness-capable lights) with three modes:
+- `off` (default): turn on at the light's last brightness (standard Home Assistant behavior).
+- `static`: always turn on to a fixed brightness — set `memory_value` (1–100 %, default 100).
+- `helper`: turn on to the value of an `input_number` / `number` helper — set `memory_entity`. The helper's value is read as a **percentage** (1–100).
+
+```yaml
+memory_mode: static        # off | static | helper
+memory_value: 60           # static mode, 1–100 %
+# or
+memory_mode: helper
+memory_entity: input_number.living_room_brightness
+```
+
 
 ## Development
 

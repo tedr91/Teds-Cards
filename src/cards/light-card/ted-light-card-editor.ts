@@ -3,10 +3,32 @@ import { customElement, property, state } from "lit/decorators.js";
 import { type HomeAssistant, type LovelaceCardEditor, fireEvent } from "custom-card-helpers";
 
 import { LIGHT_CARD_EDITOR_TYPE } from "./const";
-import type { LightCardConfig } from "./types";
+import type { LightCardConfig, LightAction } from "./types";
 
 const VISUAL_ICON_PATH =
   "M17.5,12A1.5,1.5 0 0,1 16,10.5A1.5,1.5 0 0,1 17.5,9A1.5,1.5 0 0,1 19,10.5A1.5,1.5 0 0,1 17.5,12M14.5,8A1.5,1.5 0 0,1 13,6.5A1.5,1.5 0 0,1 14.5,5A1.5,1.5 0 0,1 16,6.5A1.5,1.5 0 0,1 14.5,8M9.5,8A1.5,1.5 0 0,1 8,6.5A1.5,1.5 0 0,1 9.5,5A1.5,1.5 0 0,1 11,6.5A1.5,1.5 0 0,1 9.5,8M6.5,12A1.5,1.5 0 0,1 5,10.5A1.5,1.5 0 0,1 6.5,9A1.5,1.5 0 0,1 8,10.5A1.5,1.5 0 0,1 6.5,12M12,3A9,9 0 0,0 3,12A9,9 0 0,0 12,21A1.5,1.5 0 0,0 13.5,19.5C13.5,19.11 13.35,18.76 13.11,18.5C12.88,18.23 12.73,17.88 12.73,17.5A1.5,1.5 0 0,1 14.23,16H16A5,5 0 0,0 21,11C21,6.58 16.97,3 12,3Z";
+// mdi:flash — Switch Behavior section
+const SWITCH_ICON_PATH = "M7,2V13H10V22L17,10H13L17,2H7Z";
+// mdi:arrow-up-bold — UP behavior
+const UP_ICON_PATH = "M13,20H11V8L5.5,13.5L4.08,12.08L12,4.16L19.92,12.08L18.5,13.5L13,8V20Z";
+// mdi:arrow-down-bold — DOWN behavior
+const DOWN_ICON_PATH = "M11,4H13V16L18.5,10.5L19.92,11.92L12,19.84L4.08,11.92L5.5,10.5L11,16V4Z";
+// mdi:lightbulb — Icon behavior
+const ICON_BEHAVIOR_ICON_PATH =
+  "M12,2A7,7 0 0,1 19,9C19,11.38 17.81,13.47 16,14.74V17A1,1 0 0,1 15,18H9A1,1 0 0,1 8,17V14.74C6.19,13.47 5,11.38 5,9A7,7 0 0,1 12,2M9,21V20H15V21A1,1 0 0,1 14,22H10A1,1 0 0,1 9,21M12,4A5,5 0 0,0 7,9C7,11.05 8.23,12.81 10,13.58V16H14V13.58C15.77,12.81 17,11.05 17,9A5,5 0 0,0 12,4Z";
+// mdi:memory — Memory section
+const MEMORY_ICON_PATH =
+  "M17,17H7V7H17M21,11V9H19V7C19,5.89 18.1,5 17,5H15V3H13V5H11V3H9V5H7C5.89,5 5,5.89 5,7V9H3V11H5V13H3V15H5V17A2,2 0 0,0 7,19H9V21H11V19H13V21H15V19H17A2,2 0 0,0 19,17V15H21V13H19V11M13,13H11V11H13M15,9H9V15H15V9Z";
+
+const ACTION_LABELS: Record<LightAction, string> = {
+  increase: "Increase brightness",
+  decrease: "Decrease brightness",
+  full_on: "Full on (100%)",
+  full_off: "Turn off",
+  toggle: "Toggle",
+  more_info: "More info",
+  none: "Nothing",
+};
 
 @customElement(LIGHT_CARD_EDITOR_TYPE)
 export class TedLightCardEditor extends LitElement implements LovelaceCardEditor {
@@ -21,7 +43,7 @@ export class TedLightCardEditor extends LitElement implements LovelaceCardEditor
     if (!this.hass || !this._config) return nothing;
 
     // Apply defaults so the dropdowns show the current selection.
-    const data = { theme: "ted-style", brightness_color: "theme", icon_color: "light", ...this._config };
+    const data = { ...this._defaults(), ...this._config };
 
     return html`
       <ha-form
@@ -32,6 +54,45 @@ export class TedLightCardEditor extends LitElement implements LovelaceCardEditor
         @value-changed=${this._valueChanged}
       ></ha-form>
     `;
+  }
+
+  /** True when the selected light reports a brightness-capable color mode. */
+  private _entitySupportsBrightness(): boolean {
+    const entityId = this._config?.entity;
+    const stateObj = entityId ? this.hass?.states[entityId] : undefined;
+    const modes = stateObj?.attributes?.supported_color_modes as string[] | undefined;
+    if (!Array.isArray(modes)) return false;
+    return modes.some((m) => m !== "onoff" && m !== "unknown");
+  }
+
+  /** Default values shown in the editor (some depend on brightness support). */
+  private _defaults(): Partial<LightCardConfig> {
+    const dimmable = this._entitySupportsBrightness();
+    return {
+      theme: "ted-style",
+      brightness_color: "theme",
+      icon_color: "light",
+      up_tap: dimmable ? "increase" : "full_on",
+      up_double_tap: "full_on",
+      up_hold: "more_info",
+      down_tap: dimmable ? "decrease" : "full_off",
+      down_double_tap: "full_off",
+      down_hold: "more_info",
+      icon_tap: "toggle",
+      icon_double_tap: "more_info",
+      icon_hold: "more_info",
+      memory_mode: "off",
+      memory_value: 100,
+    };
+  }
+
+  private _actionSelect(values: LightAction[]) {
+    return {
+      select: {
+        mode: "dropdown",
+        options: values.map((value) => ({ value, label: ACTION_LABELS[value] })),
+      },
+    };
   }
 
   private _schema() {
@@ -82,7 +143,54 @@ export class TedLightCardEditor extends LitElement implements LovelaceCardEditor
       visual.push({ name: "icon_color_custom", selector: { color_rgb: {} } });
     }
     visual.push({ name: "show_hint", selector: { boolean: {} } });
-    return [
+
+    const switchBehavior = {
+      name: "",
+      type: "expandable",
+      title: "Switch Behavior",
+      iconPath: SWITCH_ICON_PATH,
+      flatten: true,
+      schema: [
+        {
+          name: "",
+          type: "expandable",
+          title: "UP behavior",
+          iconPath: UP_ICON_PATH,
+          flatten: true,
+          schema: [
+            { name: "up_tap", required: true, selector: this._actionSelect(["increase", "full_on", "toggle", "more_info"]) },
+            { name: "up_double_tap", required: true, selector: this._actionSelect(["full_on", "toggle", "more_info", "none"]) },
+            { name: "up_hold", required: true, selector: this._actionSelect(["more_info", "full_on", "none"]) },
+          ],
+        },
+        {
+          name: "",
+          type: "expandable",
+          title: "DOWN behavior",
+          iconPath: DOWN_ICON_PATH,
+          flatten: true,
+          schema: [
+            { name: "down_tap", required: true, selector: this._actionSelect(["decrease", "full_off", "toggle", "more_info"]) },
+            { name: "down_double_tap", required: true, selector: this._actionSelect(["full_off", "toggle", "more_info", "none"]) },
+            { name: "down_hold", required: true, selector: this._actionSelect(["more_info", "full_off", "none"]) },
+          ],
+        },
+        {
+          name: "",
+          type: "expandable",
+          title: "Icon behavior",
+          iconPath: ICON_BEHAVIOR_ICON_PATH,
+          flatten: true,
+          schema: [
+            { name: "icon_tap", required: true, selector: this._actionSelect(["toggle", "full_on", "full_off", "more_info"]) },
+            { name: "icon_double_tap", required: true, selector: this._actionSelect(["more_info", "toggle", "full_on", "full_off", "none"]) },
+            { name: "icon_hold", required: true, selector: this._actionSelect(["more_info", "toggle", "none"]) },
+          ],
+        },
+      ],
+    };
+
+    const sections: Array<Record<string, unknown>> = [
       {
         name: "entity",
         required: true,
@@ -104,7 +212,52 @@ export class TedLightCardEditor extends LitElement implements LovelaceCardEditor
         flatten: true,
         schema: visual,
       },
+      switchBehavior,
     ];
+
+    // Brightness "memory" only applies to dimmable lights.
+    if (this._entitySupportsBrightness()) {
+      const memory: Array<Record<string, unknown>> = [
+        {
+          name: "memory_mode",
+          required: true,
+          selector: {
+            select: {
+              mode: "dropdown",
+              options: [
+                { value: "off", label: "Off (default)" },
+                { value: "static", label: "Static value" },
+                { value: "helper", label: "Memory helper" },
+              ],
+            },
+          },
+        },
+      ];
+      if (this._config?.memory_mode === "static") {
+        memory.push({
+          name: "memory_value",
+          required: true,
+          selector: { number: { min: 1, max: 100, mode: "slider", unit_of_measurement: "%" } },
+        });
+      }
+      if (this._config?.memory_mode === "helper") {
+        memory.push({
+          name: "memory_entity",
+          required: true,
+          selector: { entity: { domain: ["input_number", "number"] } },
+        });
+      }
+      sections.push({
+        name: "",
+        type: "expandable",
+        title: "Memory",
+        iconPath: MEMORY_ICON_PATH,
+        flatten: true,
+        schema: memory,
+      });
+    }
+
+    return sections;
   }
 
   private _computeLabel = (schema: { name: string }): string => {
@@ -127,6 +280,24 @@ export class TedLightCardEditor extends LitElement implements LovelaceCardEditor
         return "Custom icon color";
       case "show_hint":
         return "Show +/- hint";
+      case "up_tap":
+      case "down_tap":
+      case "icon_tap":
+        return "Single tap";
+      case "up_double_tap":
+      case "down_double_tap":
+      case "icon_double_tap":
+        return "Double tap";
+      case "up_hold":
+      case "down_hold":
+      case "icon_hold":
+        return "Long press";
+      case "memory_mode":
+        return "Turn on to";
+      case "memory_value":
+        return "Brightness";
+      case "memory_entity":
+        return "Memory helper (input_number / number)";
       default:
         return schema.name;
     }
@@ -134,24 +305,27 @@ export class TedLightCardEditor extends LitElement implements LovelaceCardEditor
 
   private _valueChanged = (ev: CustomEvent): void => {
     const config = { ...ev.detail.value } as LightCardConfig;
-    // Strip defaults so the saved YAML stays minimal.
-    if (config.theme === "ted-style") {
-      delete config.theme;
-    }
-    if (config.brightness_color === "theme") {
-      delete config.brightness_color;
+    const defaults = this._defaults();
+    // Strip values equal to their default so the saved YAML stays minimal.
+    for (const key of Object.keys(defaults) as Array<keyof LightCardConfig>) {
+      if (config[key] === defaults[key]) {
+        delete config[key];
+      }
     }
     if (config.brightness_color !== "other") {
       delete config.brightness_color_custom;
-    }
-    if (config.icon_color === "light") {
-      delete config.icon_color;
     }
     if (config.icon_color !== "other") {
       delete config.icon_color_custom;
     }
     if (!config.show_hint) {
       delete config.show_hint;
+    }
+    if (config.memory_mode !== "static") {
+      delete config.memory_value;
+    }
+    if (config.memory_mode !== "helper") {
+      delete config.memory_entity;
     }
     fireEvent(this, "config-changed", { config });
   };
