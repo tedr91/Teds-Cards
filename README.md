@@ -8,7 +8,7 @@ A collection of custom Lovelace cards for [Home Assistant](https://www.home-assi
 
 | Card | Type | Description |
 | --- | --- | --- |
-| Light Card | `custom:ted-light-card` | Tap-to-toggle card for a light (or any toggleable entity). |
+| Light Card | `custom:ted-light-card` | Light tile with click-to-dim halves and a brightness hint bar. |
 
 ## Installation
 
@@ -34,6 +34,16 @@ A collection of custom Lovelace cards for [Home Assistant](https://www.home-assi
 
 ### Light Card
 
+A compact light tile split into two clickable halves by a subtle divider. Supports `light`
+entities only. Brightness is shown as a thin vertical hint bar on the card's left edge.
+
+**Interactions**
+
+| Action | Top half | Bottom half |
+| --- | --- | --- |
+| Single click | If off, turn on; if on, increase brightness to the next 5% | Decrease brightness to the next 5% (off below the lowest step) |
+| Double click | Set to 100% brightness | Turn off |
+
 Minimal config:
 
 ```yaml
@@ -48,13 +58,17 @@ type: custom:ted-light-card
 entity: light.living_room
 name: Living Room          # optional, defaults to entity friendly name
 icon: mdi:floor-lamp       # optional, defaults to entity icon
-tap_action:                # optional, defaults to toggle
-  action: toggle
-hold_action:               # optional
-  action: more-info
-double_tap_action:         # optional
-  action: none
+theme: ted-style           # optional, visual styling: ted-style (default) | ha
 ```
+
+`theme` (optional) — **Visual styling**, selectable in the editor's **Visual** section:
+- `ted-style` (default): a self-contained "Ted's Home Theater" look (Windows 11 Fluent / Mica-dark) that looks the same regardless of your Home Assistant theme.
+- `ha`: follow the active Home Assistant theme (surfaces, text, and accent color).
+
+Brightness is shown as a thin vertical hint bar pinned to the card's left edge (it fills bottom→up with the light's brightness; it is not interactive). `brightness_color` (optional, in the **Visual** section) sets its color when the light is on:
+- `theme` (default): the theme accent color.
+- `light`: the light's current color (its `rgb_color`), falling back to a warm tone.
+- `other`: a custom color — set `brightness_color_custom` to an `[r, g, b]` array (chosen via the editor's color picker).
 
 ## Development
 
