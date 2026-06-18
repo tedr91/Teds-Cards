@@ -209,6 +209,8 @@ export class TedRemoteCard extends LitElement implements LovelaceCard {
       "ted-card--theme-mfr": theme === "manufacturer",
       "mfr--apple-tv": theme === "manufacturer" && family === "apple-tv",
       "mfr--kaleidescape": theme === "manufacturer" && family === "kaleidescape",
+      "rc--apple-tv": family === "apple-tv",
+      "rc--kaleidescape": family === "kaleidescape",
     };
 
     const stateObj = this.hass.states[this._config.remote_entity];
@@ -285,7 +287,10 @@ export class TedRemoteCard extends LitElement implements LovelaceCard {
               ${this._renderButton("left", { cls: "dpad-q dpad-left" })}
               ${this._renderButton("down", { cls: "dpad-q dpad-down" })}
             </div>
-            ${this._renderButton("select", { cls: "dpad-center", text: "OK" })}
+            ${this._renderButton("select", {
+              cls: "dpad-center",
+              text: isAppleTv ? undefined : "OK",
+            })}
           </div>
 
           <div class="row nav">
@@ -294,22 +299,15 @@ export class TedRemoteCard extends LitElement implements LovelaceCard {
           </div>
 
           <div class="row transport">
-            ${this._renderButton(
-              "rewind",
-              isKaleidescape ? { doubleClick: "skip_previous" } : {},
-            )}
+            ${isKaleidescape
+              ? this._renderButton("rewind", { doubleClick: "skip_previous" })
+              : nothing}
             ${this._renderButton("play_pause", { lit: isPlaying })}
-            ${this._renderButton(
-              "fast_forward",
-              isKaleidescape ? { doubleClick: "skip_next" } : {},
-            )}
+            ${isKaleidescape
+              ? this._renderButton("fast_forward", { doubleClick: "skip_next" })
+              : nothing}
           </div>
 
-          ${isAppleTv
-            ? html`<div class="row volume">
-                ${this._renderButton("volume_down")} ${this._renderButton("volume_up")}
-              </div>`
-            : nothing}
           ${launchers.length
             ? html`<div class="app-grid">
                 ${launchers.map(
@@ -804,6 +802,32 @@ export class TedRemoteCard extends LitElement implements LovelaceCard {
       }
       .dpad-center:active {
         transform: translate(-50%, -50%) scale(0.95);
+      }
+      /* ---- Apple TV family overrides (apply in every theme) ---- */
+      /* D-pad directions are dots rather than chevrons. */
+      .rc--apple-tv .dpad-ring .rbtn::after {
+        width: calc(0.45rem * var(--rc-scale));
+        height: calc(0.45rem * var(--rc-scale));
+        border: none;
+        border-radius: 50%;
+        background: currentColor;
+        opacity: 0.82;
+      }
+      /* Center button has no label/icon. */
+      .rc--apple-tv .dpad-center ha-icon,
+      .rc--apple-tv .dpad-center .rbtn-text {
+        display: none;
+      }
+      /* Back, Home and Play/Pause are 25% larger. */
+      .rc--apple-tv .row .rbtn {
+        width: calc(var(--rc-btn) * 1.25);
+        height: calc(var(--rc-btn) * 1.25);
+        --mdc-icon-size: calc(27.5px * var(--rc-scale));
+      }
+      /* Play/Pause spans the combined width of Back + Home (plus the gap). */
+      .rc--apple-tv .row.transport .rbtn {
+        width: calc(var(--rc-btn) * 2.5 + var(--rc-gap));
+        border-radius: calc(var(--rc-btn) * 0.625);
       }
       .app-grid {
         display: grid;
