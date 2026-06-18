@@ -281,11 +281,13 @@ export class TedRemoteCard extends LitElement implements LovelaceCard {
         </div>
         <div class="remote-body">
           <div class="dpad" aria-label="Directional pad">
-            ${this._renderButton("up", { cls: "dpad-up" })}
-            ${this._renderButton("left", { cls: "dpad-left" })}
-            ${this._renderButton("select", { cls: "dpad-select", text: "OK" })}
-            ${this._renderButton("right", { cls: "dpad-right" })}
-            ${this._renderButton("down", { cls: "dpad-down" })}
+            <div class="dpad-ring">
+              ${this._renderButton("up", { cls: "dpad-q dpad-up" })}
+              ${this._renderButton("right", { cls: "dpad-q dpad-right" })}
+              ${this._renderButton("left", { cls: "dpad-q dpad-left" })}
+              ${this._renderButton("down", { cls: "dpad-q dpad-down" })}
+            </div>
+            ${this._renderButton("select", { cls: "dpad-center", text: "OK" })}
           </div>
 
           <div class="row nav">
@@ -709,50 +711,86 @@ export class TedRemoteCard extends LitElement implements LovelaceCard {
         font-weight: 600;
         line-height: 1;
       }
-      /* Directional pad arranged on a 3×3 grid inside a circular pad. */
+      /* Directional pad: a rotated 2×2 diamond (matches Firemote) — quadrant
+         buttons with filled-triangle arrows, plus an absolutely-centered button. */
       .dpad {
+        position: relative;
+        width: calc(var(--rc-btn) * 2.7);
+        height: calc(var(--rc-btn) * 2.7);
+        margin-bottom: calc(var(--rc-gap) * 0.7);
         display: grid;
-        grid-template-columns: repeat(3, var(--rc-btn));
-        grid-template-rows: repeat(3, var(--rc-btn));
-        gap: calc(var(--rc-gap) * 0.4);
         place-items: center;
-        padding: calc(var(--rc-gap) * 0.6);
-        border-radius: var(--ted-style-pill);
+      }
+      .dpad-ring {
+        width: 100%;
+        height: 100%;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        grid-template-rows: 1fr 1fr;
+        transform: rotate(45deg);
+        border-radius: 50%;
+        overflow: hidden;
+        border: 1px solid var(--ted-style-divider);
         background: radial-gradient(
           circle at 50% 40%,
           color-mix(in srgb, var(--ted-style-surface-2) 88%, var(--ted-style-text) 12%),
           var(--ted-style-surface)
         );
-        border: 1px solid var(--ted-style-divider);
       }
-      .dpad .rbtn {
-        background-color: transparent;
-        border-color: transparent;
+      .dpad-ring .rbtn {
+        width: 100%;
+        height: 100%;
+        border-radius: 0;
+        background: transparent;
+        border: none;
+        color: var(--ted-style-text);
       }
-      .dpad .rbtn:hover {
-        background-color: rgba(127, 127, 127, 0.16);
+      .dpad-ring .rbtn ha-icon {
+        display: none;
       }
-      .dpad-up {
-        grid-column: 2;
-        grid-row: 1;
+      /* Each arrow is a triangle, counter-rotated to point outward from the disc. */
+      .dpad-ring .rbtn::after {
+        content: "";
+        width: 0;
+        height: 0;
+        border-left: calc(6.5px * var(--rc-scale)) solid transparent;
+        border-right: calc(6.5px * var(--rc-scale)) solid transparent;
+        border-bottom: calc(10px * var(--rc-scale)) solid currentColor;
+        opacity: 0.82;
       }
-      .dpad-left {
-        grid-column: 1;
-        grid-row: 2;
+      .dpad-up::after {
+        transform: rotate(-45deg);
       }
-      .dpad-select {
-        grid-column: 2;
-        grid-row: 2;
+      .dpad-right::after {
+        transform: rotate(45deg);
+      }
+      .dpad-left::after {
+        transform: rotate(-135deg);
+      }
+      .dpad-down::after {
+        transform: rotate(135deg);
+      }
+      .dpad-ring .rbtn:hover {
+        background: rgba(127, 127, 127, 0.16);
+      }
+      .dpad-ring .rbtn:active {
+        background: rgba(0, 0, 0, 0.18);
+      }
+      .dpad-center {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 2;
+        width: calc(var(--rc-btn) * 1.1);
+        height: calc(var(--rc-btn) * 1.1);
+        border-radius: 50%;
         background-color: var(--ted-style-surface) !important;
         border: 1px solid var(--ted-style-divider) !important;
+        color: var(--ted-style-text);
       }
-      .dpad-right {
-        grid-column: 3;
-        grid-row: 2;
-      }
-      .dpad-down {
-        grid-column: 2;
-        grid-row: 3;
+      .dpad-center:active {
+        transform: translate(-50%, -50%) scale(0.95);
       }
       .app-grid {
         display: grid;
@@ -803,17 +841,17 @@ export class TedRemoteCard extends LitElement implements LovelaceCard {
       .mfr--apple-tv .rbtn:hover {
         background-color: #2c2c2c;
       }
-      .mfr--apple-tv .dpad {
-        background: #050505;
+      .mfr--apple-tv .dpad-ring {
+        background: radial-gradient(circle at 50% 38%, #1b1b1b 0%, #050505 100%);
         border-color: #000000;
       }
-      .mfr--apple-tv .dpad .rbtn {
+      .mfr--apple-tv .dpad-ring .rbtn {
         color: #c6c6c6;
       }
-      .mfr--apple-tv .dpad .rbtn:hover {
+      .mfr--apple-tv .dpad-ring .rbtn:hover {
         background-color: rgba(255, 255, 255, 0.08);
       }
-      .mfr--apple-tv .dpad-select {
+      .mfr--apple-tv .dpad-center {
         background: linear-gradient(180deg, #000000 0%, #303030 100%) !important;
         border-color: #2e2e2e !important;
         color: #c6c6c6;
@@ -849,8 +887,8 @@ export class TedRemoteCard extends LitElement implements LovelaceCard {
         background: linear-gradient(180deg, #2a2a2f 0%, #232327 100%);
         box-shadow: inset 0 calc(2px * var(--rc-scale)) calc(4px * var(--rc-scale)) rgb(0 0 0 / 55%);
       }
-      .mfr--kaleidescape .dpad {
-        /* Blue brushed disc with a conic sheen over a radial highlight (Firemote KA1). */
+      /* Blue brushed disc with a conic sheen over a radial highlight (Firemote KA1). */
+      .mfr--kaleidescape .dpad-ring {
         background: conic-gradient(
             from 0deg at 50% 50%,
             rgba(255, 255, 255, 0.1),
@@ -867,50 +905,25 @@ export class TedRemoteCard extends LitElement implements LovelaceCard {
           inset 0 calc(5px * var(--rc-scale)) calc(7px * var(--rc-scale)) rgb(0 0 0 / 55%),
           inset 0 calc(-3px * var(--rc-scale)) calc(5px * var(--rc-scale)) rgb(255 255 255 / 12%);
       }
-      /* Arrows drawn as filled triangles (hide the chevron icons), pointing outward. */
-      .mfr--kaleidescape .dpad .rbtn:not(.dpad-select) ha-icon {
-        display: none;
+      /* Dark translucent triangles (Firemote KA1). */
+      .mfr--kaleidescape .dpad-ring .rbtn::after {
+        border-bottom-color: rgba(0, 0, 0, 0.4);
+        opacity: 1;
       }
-      .mfr--kaleidescape .dpad .rbtn:not(.dpad-select)::after {
-        content: "";
-        width: 0;
-        height: 0;
-        border-left: calc(6px * var(--rc-scale)) solid transparent;
-        border-right: calc(6px * var(--rc-scale)) solid transparent;
-        border-bottom: calc(9px * var(--rc-scale)) solid rgba(0, 0, 0, 0.5);
-      }
-      .mfr--kaleidescape .dpad-up::after {
-        transform: rotate(0deg);
-      }
-      .mfr--kaleidescape .dpad-right::after {
-        transform: rotate(90deg);
-      }
-      .mfr--kaleidescape .dpad-down::after {
-        transform: rotate(180deg);
-      }
-      .mfr--kaleidescape .dpad-left::after {
-        transform: rotate(270deg);
-      }
-      .mfr--kaleidescape .dpad .rbtn:not(.dpad-select),
-      .mfr--kaleidescape .dpad .rbtn:not(.dpad-select):hover,
-      .mfr--kaleidescape .dpad .rbtn:not(.dpad-select):active {
-        background: transparent;
-      }
-      .mfr--kaleidescape .dpad .rbtn:not(.dpad-select):active::after {
-        filter: brightness(1.7);
+      .mfr--kaleidescape .dpad-ring .rbtn:active {
+        background: rgba(0, 0, 0, 0.18);
       }
       /* Large dark recessed center button. */
-      .mfr--kaleidescape .dpad-select {
-        width: calc(var(--rc-btn) * 1.55);
-        height: calc(var(--rc-btn) * 1.55);
-        z-index: 2;
+      .mfr--kaleidescape .dpad-center {
+        width: calc(var(--rc-btn) * 1.15);
+        height: calc(var(--rc-btn) * 1.15);
         background: radial-gradient(circle at 50% 38%, #2c2c31 0%, #1b1b1f 70%, #131316 100%) !important;
         border: calc(1px * var(--rc-scale)) solid #0e0e12 !important;
         box-shadow: inset 0 calc(4px * var(--rc-scale)) calc(8px * var(--rc-scale)) rgb(0 0 0 / 75%),
           0 calc(1px * var(--rc-scale)) calc(3px * var(--rc-scale)) rgb(255 255 255 / 8%);
         color: #f4f5f7;
       }
-      .mfr--kaleidescape .dpad-select .rbtn-text {
+      .mfr--kaleidescape .dpad-center .rbtn-text {
         display: none;
       }
       .not-found {
