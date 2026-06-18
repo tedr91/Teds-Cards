@@ -90,7 +90,7 @@ export class TedCoverCardEditor extends LitElement implements LovelaceCardEditor
       theme: "ted-style",
       position_color: "theme",
       icon_color: "theme",
-      brushed: true,
+      brushed: false,
       rocker: true,
       show_hint: true,
       up_tap: primary ? "open_step" : "open",

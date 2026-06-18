@@ -72,7 +72,7 @@ export class TedLightCardEditor extends LitElement implements LovelaceCardEditor
       theme: "ted-style",
       brightness_color: "theme",
       icon_color: "light",
-      brushed: true,
+      brushed: false,
       rocker: true,
       up_tap: dimmable ? "increase" : "full_on",
       up_double_tap: "full_on",

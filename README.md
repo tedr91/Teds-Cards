@@ -89,7 +89,7 @@ The icon is centered in the card and lights up when the light is on. `icon_color
 
 `background_on` (optional, in the **Visual** section): override the card's background color while the light is **on**. Pick a color with the editor's color picker (stored as a `#RRGGBB` hex string). When unset, the theme background is used.
 
-`brushed` (optional, default on, in the **Visual** section): overlay a brushed-metal sheen just above the background. Pair it with a metallic `background_on` color (e.g. silver `#c0c0c0`) for a brushed-aluminum look.
+`brushed` (optional, default off, in the **Visual** section): overlay a brushed-metal sheen just above the background. Pair it with a metallic `background_on` color (e.g. silver `#c0c0c0`) for a brushed-aluminum look.
 
 `rocker` (optional, default on, in the **Visual** section): a Decora-style rocker bevel that makes one half of the card appear raised, pivoting at the center. The raised half follows the state — **top** half raised when off, **bottom** half raised when on.
 
@@ -176,7 +176,7 @@ chevron** hints. The position bar fills from the bottom up with the cover's curr
 
 `background_open` (optional, in the **Visual** section): override the card's background color while the cover is **open**. Pick a color with the editor's color picker (stored as a `#RRGGBB` hex string). When unset, the theme background is used.
 
-`brushed` (optional, default on, in the **Visual** section): overlay a brushed-metal sheen just above the background. Pair it with a metallic `background_open` color (e.g. silver `#c0c0c0`) for a brushed-aluminum look.
+`brushed` (optional, default off, in the **Visual** section): overlay a brushed-metal sheen just above the background. Pair it with a metallic `background_open` color (e.g. silver `#c0c0c0`) for a brushed-aluminum look.
 
 `rocker` (optional, default on, in the **Visual** section): a Decora-style rocker bevel that makes one half of the card appear raised, pivoting at the center. The raised half follows the state — **top** half raised when closed, **bottom** half raised when open.
 

@@ -237,7 +237,7 @@ export class TedCoverCard extends LitElement implements LovelaceCard {
         @pointercancel=${this._onCardPointerUp}
         @pointerleave=${this._onCardPointerUp}
       >
-        ${this._config.brushed !== false ? brushedOverlay : nothing}
+        ${this._config.brushed ? brushedOverlay : nothing}
         ${this._config.rocker !== false
           ? html`<div class="ted-rocker${isOpen ? " is-bottom" : ""}" aria-hidden="true"></div>`
           : nothing}
