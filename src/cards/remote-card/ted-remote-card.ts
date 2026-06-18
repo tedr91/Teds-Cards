@@ -544,6 +544,7 @@ export class TedRemoteCard extends LitElement implements LovelaceCard {
         --rc-scale: 1;
         --rc-btn: calc(44px * var(--rc-scale));
         --rc-gap: calc(10px * var(--rc-scale));
+        --rc-pad-x: calc(16px * var(--rc-scale));
 
         position: relative;
         isolation: isolate;
@@ -660,9 +661,9 @@ export class TedRemoteCard extends LitElement implements LovelaceCard {
         align-items: center;
         gap: var(--rc-gap);
         width: 100%;
-        max-width: calc(220px * var(--rc-scale));
+        max-width: calc(12.286rem * var(--rc-scale));
         margin: 0 auto;
-        padding: calc(8px * var(--rc-scale)) calc(16px * var(--rc-scale))
+        padding: calc(8px * var(--rc-scale)) var(--rc-pad-x)
           calc(16px * var(--rc-scale));
         box-sizing: border-box;
       }
@@ -714,10 +715,16 @@ export class TedRemoteCard extends LitElement implements LovelaceCard {
       /* Directional pad: a rotated 2×2 diamond (matches Firemote) — quadrant
          buttons with filled-triangle arrows, plus an absolutely-centered button. */
       .dpad {
+        /* Exact Firemote KA1 dimensions: dpadContainer is 11.3rem (× scale, where
+           --rc-scale mirrors Firemote's --sz). It overflows the body padding. */
         position: relative;
-        width: calc(var(--rc-btn) * 2.7);
-        height: calc(var(--rc-btn) * 2.7);
-        margin-bottom: calc(var(--rc-gap) * 0.7);
+        width: calc(11.3rem * var(--rc-scale));
+        height: calc(11.3rem * var(--rc-scale));
+        /* No horizontal auto margins: the disc is wider than the body content box,
+           so auto margins would collapse to 0 and left-align it. align-self centers
+           it (overflowing the padding equally on both sides). */
+        margin: 0 0 calc(0.6rem * var(--rc-scale));
+        align-self: center;
         display: grid;
         place-items: center;
       }
@@ -730,7 +737,7 @@ export class TedRemoteCard extends LitElement implements LovelaceCard {
         transform: rotate(45deg);
         border-radius: 50%;
         overflow: hidden;
-        border: 1px solid var(--ted-style-divider);
+        border: calc(0.0714rem * var(--rc-scale)) solid var(--ted-style-divider);
         background: radial-gradient(
           circle at 50% 40%,
           color-mix(in srgb, var(--ted-style-surface-2) 88%, var(--ted-style-text) 12%),
@@ -753,9 +760,9 @@ export class TedRemoteCard extends LitElement implements LovelaceCard {
         content: "";
         width: 0;
         height: 0;
-        border-left: calc(6.5px * var(--rc-scale)) solid transparent;
-        border-right: calc(6.5px * var(--rc-scale)) solid transparent;
-        border-bottom: calc(10px * var(--rc-scale)) solid currentColor;
+        border-left: calc(0.4rem * var(--rc-scale)) solid transparent;
+        border-right: calc(0.4rem * var(--rc-scale)) solid transparent;
+        border-bottom: calc(0.62rem * var(--rc-scale)) solid currentColor;
         opacity: 0.82;
       }
       .dpad-up::after {
@@ -782,11 +789,11 @@ export class TedRemoteCard extends LitElement implements LovelaceCard {
         left: 50%;
         transform: translate(-50%, -50%);
         z-index: 2;
-        width: calc(var(--rc-btn) * 1.1);
-        height: calc(var(--rc-btn) * 1.1);
+        width: calc(4.6rem * var(--rc-scale));
+        height: calc(4.6rem * var(--rc-scale));
         border-radius: 50%;
         background-color: var(--ted-style-surface) !important;
-        border: 1px solid var(--ted-style-divider) !important;
+        border: calc(0.0714rem * var(--rc-scale)) solid var(--ted-style-divider) !important;
         color: var(--ted-style-text);
       }
       .dpad-center:active {
@@ -898,12 +905,12 @@ export class TedRemoteCard extends LitElement implements LovelaceCard {
             rgba(255, 255, 255, 0.1) 100%
           ),
           radial-gradient(circle at 50% 36%, #6189bd 0%, #41699c 45%, #324f78 100%);
-        border: calc(2px * var(--rc-scale)) solid #0d0f15;
-        box-shadow: 0 calc(4px * var(--rc-scale)) calc(10px * var(--rc-scale)) rgb(0 0 0 / 65%),
-          0 0 0 calc(2px * var(--rc-scale)) rgb(8 10 16 / 85%),
-          0 0 0 calc(5px * var(--rc-scale)) rgb(255 255 255 / 5%),
-          inset 0 calc(5px * var(--rc-scale)) calc(7px * var(--rc-scale)) rgb(0 0 0 / 55%),
-          inset 0 calc(-3px * var(--rc-scale)) calc(5px * var(--rc-scale)) rgb(255 255 255 / 12%);
+        border: calc(0.12rem * var(--rc-scale)) solid #0d0f15;
+        box-shadow: 0 calc(0.22rem * var(--rc-scale)) calc(0.6rem * var(--rc-scale)) rgb(0 0 0 / 65%),
+          0 0 0 calc(0.14rem * var(--rc-scale)) rgb(8 10 16 / 85%),
+          0 0 0 calc(0.3rem * var(--rc-scale)) rgb(255 255 255 / 5%),
+          inset 0 calc(0.32rem * var(--rc-scale)) calc(0.45rem * var(--rc-scale)) rgb(0 0 0 / 55%),
+          inset 0 calc(-0.16rem * var(--rc-scale)) calc(0.32rem * var(--rc-scale)) rgb(255 255 255 / 12%);
       }
       /* Dark translucent triangles (Firemote KA1). */
       .mfr--kaleidescape .dpad-ring .rbtn::after {
@@ -915,12 +922,10 @@ export class TedRemoteCard extends LitElement implements LovelaceCard {
       }
       /* Large dark recessed center button. */
       .mfr--kaleidescape .dpad-center {
-        width: calc(var(--rc-btn) * 1.15);
-        height: calc(var(--rc-btn) * 1.15);
         background: radial-gradient(circle at 50% 38%, #2c2c31 0%, #1b1b1f 70%, #131316 100%) !important;
-        border: calc(1px * var(--rc-scale)) solid #0e0e12 !important;
-        box-shadow: inset 0 calc(4px * var(--rc-scale)) calc(8px * var(--rc-scale)) rgb(0 0 0 / 75%),
-          0 calc(1px * var(--rc-scale)) calc(3px * var(--rc-scale)) rgb(255 255 255 / 8%);
+        border: calc(0.0714rem * var(--rc-scale)) solid #0e0e12 !important;
+        box-shadow: inset 0 calc(0.2rem * var(--rc-scale)) calc(0.4rem * var(--rc-scale)) rgb(0 0 0 / 75%),
+          0 calc(0.05rem * var(--rc-scale)) calc(0.15rem * var(--rc-scale)) rgb(255 255 255 / 8%);
         color: #f4f5f7;
       }
       .mfr--kaleidescape .dpad-center .rbtn-text {
