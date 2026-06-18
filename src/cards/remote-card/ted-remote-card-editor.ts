@@ -56,7 +56,7 @@ export class TedRemoteCardEditor extends LitElement implements LovelaceCardEdito
       show_icon: true,
       show_name: false,
       name_scale: 100,
-      scale: 75,
+      scale: 100,
       kaleidescape_home: "home",
     };
   }

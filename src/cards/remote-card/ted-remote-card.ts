@@ -231,7 +231,7 @@ export class TedRemoteCard extends LitElement implements LovelaceCard {
     const name = this._config.name || stateObj.attributes.friendly_name || this._config.remote_entity;
     const showIcon = this._config.show_icon !== false;
     const showName = this._config.show_name === true;
-    const scale = typeof this._config.scale === "number" ? this._config.scale : 75;
+    const scale = typeof this._config.scale === "number" ? this._config.scale : 100;
 
     const cardStyle: Record<string, string> = { "--rc-scale": String(scale / 100) };
     const isGrid = this.layout === "grid";
@@ -834,20 +834,66 @@ export class TedRemoteCard extends LitElement implements LovelaceCard {
         filter: brightness(1.12);
       }
       .mfr--kaleidescape .dpad {
-        background: radial-gradient(circle at 50% 36%, #6189bd 0%, #41699c 45%, #324f78 100%);
-        border-color: #0d0f15;
-        box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.5), 0 1px 0 rgba(255, 255, 255, 0.06);
+        /* Blue brushed disc with a conic sheen over a radial highlight (Firemote KA1). */
+        background: conic-gradient(
+            from 0deg at 50% 50%,
+            rgba(255, 255, 255, 0.1),
+            rgba(0, 0, 0, 0.12) 25%,
+            rgba(255, 255, 255, 0.1) 50%,
+            rgba(0, 0, 0, 0.12) 75%,
+            rgba(255, 255, 255, 0.1) 100%
+          ),
+          radial-gradient(circle at 50% 36%, #6189bd 0%, #41699c 45%, #324f78 100%);
+        border: calc(2px * var(--rc-scale)) solid #0d0f15;
+        box-shadow: 0 calc(4px * var(--rc-scale)) calc(10px * var(--rc-scale)) rgb(0 0 0 / 65%),
+          0 0 0 calc(2px * var(--rc-scale)) rgb(8 10 16 / 85%),
+          0 0 0 calc(5px * var(--rc-scale)) rgb(255 255 255 / 5%),
+          inset 0 calc(5px * var(--rc-scale)) calc(7px * var(--rc-scale)) rgb(0 0 0 / 55%),
+          inset 0 calc(-3px * var(--rc-scale)) calc(5px * var(--rc-scale)) rgb(255 255 255 / 12%);
       }
-      .mfr--kaleidescape .dpad .rbtn {
-        color: #ffffff;
+      /* Arrows drawn as filled triangles (hide the chevron icons), pointing outward. */
+      .mfr--kaleidescape .dpad .rbtn:not(.dpad-select) ha-icon {
+        display: none;
       }
-      .mfr--kaleidescape .dpad .rbtn:hover {
-        background-color: rgba(255, 255, 255, 0.14);
+      .mfr--kaleidescape .dpad .rbtn:not(.dpad-select)::after {
+        content: "";
+        width: 0;
+        height: 0;
+        border-left: calc(6px * var(--rc-scale)) solid transparent;
+        border-right: calc(6px * var(--rc-scale)) solid transparent;
+        border-bottom: calc(9px * var(--rc-scale)) solid rgba(0, 0, 0, 0.5);
       }
+      .mfr--kaleidescape .dpad-up::after {
+        transform: rotate(0deg);
+      }
+      .mfr--kaleidescape .dpad-right::after {
+        transform: rotate(90deg);
+      }
+      .mfr--kaleidescape .dpad-down::after {
+        transform: rotate(180deg);
+      }
+      .mfr--kaleidescape .dpad-left::after {
+        transform: rotate(270deg);
+      }
+      .mfr--kaleidescape .dpad .rbtn:not(.dpad-select):hover {
+        background-color: rgba(255, 255, 255, 0.12);
+      }
+      .mfr--kaleidescape .dpad .rbtn:not(.dpad-select):active::after {
+        filter: brightness(1.7);
+      }
+      /* Large dark recessed center button. */
       .mfr--kaleidescape .dpad-select {
+        width: calc(var(--rc-btn) * 1.55);
+        height: calc(var(--rc-btn) * 1.55);
+        z-index: 2;
         background: radial-gradient(circle at 50% 38%, #2c2c31 0%, #1b1b1f 70%, #131316 100%) !important;
-        border-color: #0e0e12 !important;
+        border: calc(1px * var(--rc-scale)) solid #0e0e12 !important;
+        box-shadow: inset 0 calc(4px * var(--rc-scale)) calc(8px * var(--rc-scale)) rgb(0 0 0 / 75%),
+          0 calc(1px * var(--rc-scale)) calc(3px * var(--rc-scale)) rgb(255 255 255 / 8%);
         color: #f4f5f7;
+      }
+      .mfr--kaleidescape .dpad-select .rbtn-text {
+        display: none;
       }
       .not-found {
         padding: 12px;
