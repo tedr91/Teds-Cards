@@ -181,7 +181,7 @@ export class TedRemoteCard extends LitElement implements LovelaceCard {
   public getGridOptions(): GridOptions {
     return {
       columns: 6,
-      rows: 5,
+      rows: 6,
       min_columns: 4,
       min_rows: 3,
     };
@@ -825,13 +825,24 @@ export class TedRemoteCard extends LitElement implements LovelaceCard {
         border: 1px solid #14141a;
         box-shadow: 0 6px 22px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.06);
       }
-      .mfr--kaleidescape .rbtn {
+      /* Nav/transport buttons: rounded-rect slate keys (Firemote KA1 remote-button). */
+      .mfr--kaleidescape .row .rbtn {
+        width: calc(var(--rc-btn) * 1.35);
+        height: calc(var(--rc-btn) * 0.9);
+        border-radius: calc(9px * var(--rc-scale));
         background: linear-gradient(180deg, #3c3c42 0%, #2c2c31 100%);
-        border-color: #101015;
+        border: calc(1px * var(--rc-scale)) solid #101015;
+        box-shadow: 0 calc(1.5px * var(--rc-scale)) calc(2.5px * var(--rc-scale)) rgb(0 0 0 / 48%),
+          inset 0 calc(1px * var(--rc-scale)) 0 rgb(255 255 255 / 7%);
         color: #f4f5f7;
       }
-      .mfr--kaleidescape .rbtn:hover {
-        filter: brightness(1.12);
+      .mfr--kaleidescape .row .rbtn:hover {
+        filter: brightness(1.1);
+      }
+      .mfr--kaleidescape .row .rbtn:active {
+        transform: none;
+        background: linear-gradient(180deg, #2a2a2f 0%, #232327 100%);
+        box-shadow: inset 0 calc(2px * var(--rc-scale)) calc(4px * var(--rc-scale)) rgb(0 0 0 / 55%);
       }
       .mfr--kaleidescape .dpad {
         /* Blue brushed disc with a conic sheen over a radial highlight (Firemote KA1). */
@@ -875,8 +886,10 @@ export class TedRemoteCard extends LitElement implements LovelaceCard {
       .mfr--kaleidescape .dpad-left::after {
         transform: rotate(270deg);
       }
-      .mfr--kaleidescape .dpad .rbtn:not(.dpad-select):hover {
-        background-color: rgba(255, 255, 255, 0.12);
+      .mfr--kaleidescape .dpad .rbtn:not(.dpad-select),
+      .mfr--kaleidescape .dpad .rbtn:not(.dpad-select):hover,
+      .mfr--kaleidescape .dpad .rbtn:not(.dpad-select):active {
+        background: transparent;
       }
       .mfr--kaleidescape .dpad .rbtn:not(.dpad-select):active::after {
         filter: brightness(1.7);
