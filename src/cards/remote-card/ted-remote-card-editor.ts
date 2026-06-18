@@ -54,6 +54,7 @@ export class TedRemoteCardEditor extends LitElement implements LovelaceCardEdito
       theme: "manufacturer",
       brushed: false,
       show_icon: true,
+      icon_scale: 100,
       show_name: false,
       name_scale: 100,
       scale: 100,
@@ -134,7 +135,18 @@ export class TedRemoteCardEditor extends LitElement implements LovelaceCardEdito
       },
       { name: "background", selector: { ui_color: {} } },
       { name: "brushed", selector: { boolean: {} } },
-      { name: "show_icon", selector: { boolean: {} } },
+      {
+        type: "grid",
+        name: "",
+        schema: [
+          { name: "show_icon", selector: { boolean: {} } },
+          {
+            name: "icon_scale",
+            disabled: this._config?.show_icon === false,
+            selector: { number: { min: 10, max: 300, step: 5, mode: "box", unit_of_measurement: "%" } },
+          },
+        ],
+      },
       {
         type: "grid",
         name: "",
@@ -225,6 +237,8 @@ export class TedRemoteCardEditor extends LitElement implements LovelaceCardEdito
         return "Brushed effect";
       case "show_icon":
         return "Show icon";
+      case "icon_scale":
+        return "Icon size";
       case "show_name":
         return "Show name";
       case "name_scale":

@@ -230,10 +230,14 @@ export class TedRemoteCard extends LitElement implements LovelaceCard {
     const isPlaying = this._isPlaying();
     const name = this._config.name || stateObj.attributes.friendly_name || this._config.remote_entity;
     const showIcon = this._config.show_icon !== false;
+    const iconScale = typeof this._config.icon_scale === "number" ? this._config.icon_scale : 100;
     const showName = this._config.show_name === true;
     const scale = typeof this._config.scale === "number" ? this._config.scale : 100;
 
-    const cardStyle: Record<string, string> = { "--rc-scale": String(scale / 100) };
+    const cardStyle: Record<string, string> = {
+      "--rc-scale": String(scale / 100),
+      "--rc-icon-scale": String(iconScale / 100),
+    };
     const isGrid = this.layout === "grid";
     if (!isGrid) cardStyle.margin = "0 auto";
     const bgOverride = cssColor(this._config.background);
@@ -565,8 +569,8 @@ export class TedRemoteCard extends LitElement implements LovelaceCard {
       .device-logo {
         display: block;
         flex: none;
-        height: 22px;
-        width: 22px;
+        height: calc(22px * var(--rc-icon-scale, 1));
+        width: calc(22px * var(--rc-icon-scale, 1));
       }
       .device-logo--mono {
         fill: var(--ted-style-text);
@@ -827,14 +831,15 @@ export class TedRemoteCard extends LitElement implements LovelaceCard {
       }
       /* Nav/transport buttons: rounded-rect slate keys (Firemote KA1 remote-button). */
       .mfr--kaleidescape .row .rbtn {
-        width: calc(var(--rc-btn) * 1.35);
-        height: calc(var(--rc-btn) * 0.9);
-        border-radius: calc(9px * var(--rc-scale));
+        width: calc(var(--rc-btn) * 1.05);
+        height: calc(var(--rc-btn) * 0.72);
+        border-radius: calc(7px * var(--rc-scale));
         background: linear-gradient(180deg, #3c3c42 0%, #2c2c31 100%);
         border: calc(1px * var(--rc-scale)) solid #101015;
         box-shadow: 0 calc(1.5px * var(--rc-scale)) calc(2.5px * var(--rc-scale)) rgb(0 0 0 / 48%),
           inset 0 calc(1px * var(--rc-scale)) 0 rgb(255 255 255 / 7%);
         color: #f4f5f7;
+        --mdc-icon-size: calc(18px * var(--rc-scale));
       }
       .mfr--kaleidescape .row .rbtn:hover {
         filter: brightness(1.1);

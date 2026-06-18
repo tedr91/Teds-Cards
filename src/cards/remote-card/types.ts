@@ -42,6 +42,7 @@ export interface RemoteCardConfig extends LovelaceCardConfig {
   background?: string;
   brushed?: boolean;
   show_icon?: boolean;
+  icon_scale?: number;
   show_name?: boolean;
   name_scale?: number;
   scale?: number;
