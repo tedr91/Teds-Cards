@@ -65,6 +65,14 @@ const BUTTON_ICONS: Record<RemoteButton, string> = {
   volume_down: "mdi:volume-minus",
 };
 
+/** Per-family icon overrides (Apple TV uses Siri-remote-style glyphs). */
+const FAMILY_BUTTON_ICONS: Partial<Record<DeviceFamily, Partial<Record<RemoteButton, string>>>> = {
+  "apple-tv": {
+    back: "mdi:chevron-left",
+    home: "mdi:monitor",
+  },
+};
+
 const BUTTON_LABELS: Record<RemoteButton, string> = {
   power: "Power",
   up: "Up",
@@ -335,6 +343,7 @@ export class TedRemoteCard extends LitElement implements LovelaceCard {
     if (!this._resolve(button)) return nothing;
     const classes: Record<string, boolean> = { rbtn: true, lit: !!opts.lit };
     if (opts.cls) classes[opts.cls] = true;
+    const icon = FAMILY_BUTTON_ICONS[this._family()]?.[button] ?? BUTTON_ICONS[button];
     const label = opts.doubleClick
       ? `${BUTTON_LABELS[button]} (double-tap: ${BUTTON_LABELS[opts.doubleClick]})`
       : BUTTON_LABELS[button];
@@ -348,7 +357,7 @@ export class TedRemoteCard extends LitElement implements LovelaceCard {
       >
         ${opts.text
           ? html`<span class="rbtn-text">${opts.text}</span>`
-          : html`<ha-icon .icon=${BUTTON_ICONS[button]}></ha-icon>`}
+          : html`<ha-icon .icon=${icon}></ha-icon>`}
       </button>
     `;
   }
@@ -877,6 +886,22 @@ export class TedRemoteCard extends LitElement implements LovelaceCard {
       }
       .mfr--apple-tv .rbtn:hover {
         background-color: #2c2c2c;
+      }
+      /* Back / Home / Play-Pause mirror Firemote's apple "remote-button" styling. */
+      .mfr--apple-tv .row .rbtn {
+        box-shadow: 0 calc(0.214rem * var(--rc-scale)) calc(0.143rem * var(--rc-scale)) 0
+          rgb(0 0 0 / 13%);
+      }
+      .mfr--apple-tv .row .rbtn:active {
+        transform: none;
+        background: linear-gradient(180deg, #2a2a2f 0%, #232327 100%);
+        box-shadow: inset 0 calc(0.14rem * var(--rc-scale)) calc(0.3rem * var(--rc-scale))
+          rgb(0 0 0 / 55%);
+      }
+      .mfr--apple-tv .row .rbtn.lit {
+        color: #c6c6c6;
+        box-shadow: 0 0 calc(0.857rem * var(--rc-scale)) calc(0.0714rem * var(--rc-scale))
+          rgb(171 253 255 / 15%);
       }
       .mfr--apple-tv .dpad-ring {
         background: radial-gradient(circle at 50% 38%, #1b1b1b 0%, #050505 100%);
