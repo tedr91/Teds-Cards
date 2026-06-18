@@ -903,20 +903,35 @@ export class TedRemoteCard extends LitElement implements LovelaceCard {
         box-shadow: 0 0 calc(0.857rem * var(--rc-scale)) calc(0.0714rem * var(--rc-scale))
           rgb(171 253 255 / 15%);
       }
+      /* Apple clickpad matches Firemote: flat #141414 disc with subtle quadrant
+         outlines and a lighter #373737 center (sizes unchanged). */
       .mfr--apple-tv .dpad-ring {
-        background: radial-gradient(circle at 50% 38%, #1b1b1b 0%, #050505 100%);
+        background: #141414;
         border-color: #000000;
+        box-shadow: rgb(20 20 20) calc(0.1428rem * var(--rc-scale))
+          calc(0.1428rem * var(--rc-scale)) calc(0.4285rem * var(--rc-scale));
       }
       .mfr--apple-tv .dpad-ring .rbtn {
         color: #c6c6c6;
+        outline: solid #2e2e2e calc(0.0714rem * var(--rc-scale));
       }
       .mfr--apple-tv .dpad-ring .rbtn:hover {
         background-color: rgba(255, 255, 255, 0.08);
       }
       .mfr--apple-tv .dpad-center {
-        background: linear-gradient(180deg, #000000 0%, #303030 100%) !important;
-        border-color: #2e2e2e !important;
+        width: calc(5.7rem * var(--rc-scale));
+        height: calc(5.7rem * var(--rc-scale));
+        background: #373737 !important;
+        border: calc(0.0714rem * var(--rc-scale)) solid #000000 !important;
+        box-shadow: inset 0 calc(0.2857rem * var(--rc-scale)) calc(0.1428rem * var(--rc-scale))
+          calc(-0.1428rem * var(--rc-scale)) #000000d9;
         color: #c6c6c6;
+      }
+      /* Pressed center: Firemote's deeper inset shadow, no scale. */
+      .mfr--apple-tv .dpad-center:active {
+        transform: translate(-50%, -50%);
+        box-shadow: inset 0 calc(0.28rem * var(--rc-scale)) calc(0.5rem * var(--rc-scale))
+          rgb(0 0 0 / 85%);
       }
       .mfr--apple-tv .app-btn {
         background-color: #212121;
