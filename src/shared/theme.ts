@@ -69,6 +69,8 @@ export const tedStyleTheme: CSSResult = css`
     pointer-events: none;
     opacity: 0.5;
     mix-blend-mode: overlay;
+    border-radius: inherit;
+    overflow: hidden;
   }
   .ted-brushed-svg {
     display: block;
