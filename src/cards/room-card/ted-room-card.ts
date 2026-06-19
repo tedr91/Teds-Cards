@@ -76,10 +76,9 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
 
   public getGridOptions(): GridOptions {
     return {
-      columns: 6,
-      rows: 3,
+      columns: 12,
+      rows: "auto",
       min_columns: 4,
-      min_rows: 2,
     };
   }
 
