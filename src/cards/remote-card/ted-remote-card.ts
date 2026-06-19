@@ -24,6 +24,9 @@ const OFF_STATES = ["off", "standby", "unavailable", "unknown"];
 /** Max gap between two taps to count as a double-click. */
 const DOUBLE_CLICK_MS = 250;
 
+/** Hold duration after which a directional button starts auto-repeating. */
+const HOLD_MS = 500;
+
 /** Resolve a `ui_color` value (hex/rgb/hsl/var or a theme color name) to a CSS color. */
 function cssColor(value?: string): string | undefined {
   if (!value) return undefined;
@@ -164,6 +167,9 @@ export class TedRemoteCard extends LitElement implements LovelaceCard {
   /** Pending single-click timers, keyed by button, for double-click detection. */
   private _clickTimers = new Map<RemoteButton, number>();
 
+  /** Pending hold/repeat timers, keyed by button, for press-and-hold. */
+  private _holdTimers = new Map<RemoteButton, { hold?: number; repeat?: number }>();
+
   public setConfig(config: RemoteCardConfig): void {
     if (!config) {
       throw new Error("Invalid configuration");
@@ -293,10 +299,10 @@ export class TedRemoteCard extends LitElement implements LovelaceCard {
         <div class="remote-body">
           <div class="dpad" aria-label="Directional pad">
             <div class="dpad-ring">
-              ${this._renderButton("up", { cls: "dpad-q dpad-up" })}
-              ${this._renderButton("right", { cls: "dpad-q dpad-right" })}
-              ${this._renderButton("left", { cls: "dpad-q dpad-left" })}
-              ${this._renderButton("down", { cls: "dpad-q dpad-down" })}
+              ${this._renderButton("up", { cls: "dpad-q dpad-up", hold: true })}
+              ${this._renderButton("right", { cls: "dpad-q dpad-right", hold: true })}
+              ${this._renderButton("left", { cls: "dpad-q dpad-left", hold: true })}
+              ${this._renderButton("down", { cls: "dpad-q dpad-down", hold: true })}
             </div>
             ${this._renderButton("select", { cls: "dpad-center" })}
           </div>
@@ -338,7 +344,13 @@ export class TedRemoteCard extends LitElement implements LovelaceCard {
   /** Render a single remote button. Returns `nothing` if the button has no mapping. */
   private _renderButton(
     button: RemoteButton,
-    opts: { lit?: boolean; cls?: string; text?: string; doubleClick?: RemoteButton } = {},
+    opts: {
+      lit?: boolean;
+      cls?: string;
+      text?: string;
+      doubleClick?: RemoteButton;
+      hold?: boolean;
+    } = {},
   ): TemplateResult | typeof nothing {
     if (!this._resolve(button)) return nothing;
     const classes: Record<string, boolean> = { rbtn: true, lit: !!opts.lit };
@@ -347,6 +359,29 @@ export class TedRemoteCard extends LitElement implements LovelaceCard {
     const label = opts.doubleClick
       ? `${BUTTON_LABELS[button]} (double-tap: ${BUTTON_LABELS[opts.doubleClick]})`
       : BUTTON_LABELS[button];
+    const content = opts.text
+      ? html`<span class="rbtn-text">${opts.text}</span>`
+      : html`<ha-icon .icon=${icon}></ha-icon>`;
+
+    // Directional buttons support press-and-hold to auto-repeat (matches Firemote).
+    if (opts.hold) {
+      return html`
+        <button
+          type="button"
+          class=${classMap(classes)}
+          aria-label=${label}
+          title=${label}
+          @pointerdown=${(e: PointerEvent) => this._onHoldDown(e, button)}
+          @pointerup=${() => this._onHoldUp(button)}
+          @pointercancel=${() => this._cancelHold(button)}
+          @pointerleave=${() => this._cancelHold(button)}
+          @contextmenu=${(e: Event) => e.preventDefault()}
+        >
+          ${content}
+        </button>
+      `;
+    }
+
     return html`
       <button
         type="button"
@@ -355,9 +390,7 @@ export class TedRemoteCard extends LitElement implements LovelaceCard {
         title=${label}
         @click=${() => this._onButtonClick(button, opts.doubleClick)}
       >
-        ${opts.text
-          ? html`<span class="rbtn-text">${opts.text}</span>`
-          : html`<ha-icon .icon=${icon}></ha-icon>`}
+        ${content}
       </button>
     `;
   }
@@ -386,10 +419,60 @@ export class TedRemoteCard extends LitElement implements LovelaceCard {
     this._clickTimers.set(button, timer);
   }
 
+  /**
+   * Press-and-hold for directional buttons: a quick tap fires once; holding past
+   * HOLD_MS repeats the command on an interval until release (Apple TV repeats
+   * with hold_secs=1 about once a second; Kaleidescape about four times a second).
+   */
+  private _onHoldDown(e: PointerEvent, button: RemoteButton): void {
+    if (e.button > 0) return; // ignore non-primary (e.g. right-click)
+    e.preventDefault();
+    const target = e.currentTarget as HTMLElement | null;
+    try {
+      target?.setPointerCapture(e.pointerId);
+    } catch {
+      /* pointer capture is best-effort */
+    }
+    this._cancelHold(button);
+    const state: { hold?: number; repeat?: number } = {};
+    state.hold = window.setTimeout(() => {
+      state.hold = undefined;
+      this._press(button, true);
+      state.repeat = window.setInterval(() => this._press(button, true), this._holdRepeatMs());
+    }, HOLD_MS);
+    this._holdTimers.set(button, state);
+  }
+
+  private _onHoldUp(button: RemoteButton): void {
+    const state = this._holdTimers.get(button);
+    if (!state) return;
+    // Released before the hold threshold fired → it was a tap.
+    if (state.hold !== undefined) this._press(button);
+    this._cancelHold(button);
+  }
+
+  private _cancelHold(button: RemoteButton): void {
+    const state = this._holdTimers.get(button);
+    if (!state) return;
+    if (state.hold !== undefined) window.clearTimeout(state.hold);
+    if (state.repeat !== undefined) window.clearInterval(state.repeat);
+    this._holdTimers.delete(button);
+  }
+
+  /** Repeat interval (ms) while a direction is held down. */
+  private _holdRepeatMs(): number {
+    return this._family() === "apple-tv" ? 1025 : 250;
+  }
+
   public disconnectedCallback(): void {
     super.disconnectedCallback();
     for (const timer of this._clickTimers.values()) window.clearTimeout(timer);
     this._clickTimers.clear();
+    for (const state of this._holdTimers.values()) {
+      if (state.hold !== undefined) window.clearTimeout(state.hold);
+      if (state.repeat !== undefined) window.clearInterval(state.repeat);
+    }
+    this._holdTimers.clear();
   }
 
   /** Dedicated circular power button in the header (matches the DenonMarantz card). */
@@ -417,10 +500,13 @@ export class TedRemoteCard extends LitElement implements LovelaceCard {
     `;
   }
 
-  private _press = (button: RemoteButton): void => {
+  private _press = (button: RemoteButton, hold = false): void => {
     const call = this._resolve(button);
     if (!call || !this.hass) return;
-    this.hass.callService(call.domain, call.service, call.data);
+    const data = { ...call.data };
+    // Apple TV repeats need hold_secs so each press "sticks" like a real remote.
+    if (hold && this._family() === "apple-tv") data.hold_secs = 1;
+    this.hass.callService(call.domain, call.service, data);
     this._haptic();
   };
 
