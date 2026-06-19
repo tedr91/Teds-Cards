@@ -77,7 +77,7 @@ export class TedLightCardEditor extends LitElement implements LovelaceCardEditor
       up_tap: dimmable ? "increase" : "full_on",
       up_double_tap: "full_on",
       up_hold: "more_info",
-      down_tap: dimmable ? "decrease" : "full_off",
+      down_tap: "full_off",
       down_double_tap: "full_off",
       down_hold: "more_info",
       icon_tap: "toggle",

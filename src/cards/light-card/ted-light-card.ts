@@ -357,7 +357,7 @@ export class TedLightCard extends LitElement implements LovelaceCard {
   }
 
   private _bottomSingleClick(): void {
-    this._execAction(this._action("down_tap", "decrease", "full_off"));
+    this._execAction(this._action("down_tap", "full_off"));
   }
 
   private _bottomDoubleClick(): void {

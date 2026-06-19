@@ -50,7 +50,7 @@ The card has **three interactive regions** — the **upper half**, the **lower h
 | Region | Single tap (default) | Double tap (default) | Long press (default) |
 | --- | --- | --- | --- |
 | Upper half | Increase brightness to the next 5% | Full on (100%) | More info |
-| Lower half | Decrease brightness to the next 5% | Turn off | More info |
+| Lower half | Turn off | Turn off | More info |
 | Icon | Toggle | More info | More info |
 
 Available actions: **Increase brightness**, **Decrease brightness**, **Full on (100%)**, **Turn off**, **Toggle**, **More info**, and **Nothing**.
