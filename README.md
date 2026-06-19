@@ -15,6 +15,7 @@ A collection of custom Lovelace cards for [Home Assistant](https://www.home-assi
 | Light Card | `custom:ted-light-card` | Light tile with click-to-dim halves and a brightness hint bar. |
 | Cover Card | `custom:ted-cover-card` | Cover tile with click-to-position halves and a position hint bar. |
 | Remote Card | `custom:ted-remote-card` | Remote control for Apple TV and Kaleidescape devices. |
+| Room Card | `custom:ted-room-card` | Overview card for a Home Assistant area. |
 
 ## Installation
 
@@ -213,6 +214,33 @@ memory_value: 70           # static mode, 1–100 %
 memory_mode: helper
 memory_entity: input_number.blinds_position
 ```
+
+### Room Card
+
+An overview card for a Home Assistant **area**. The area is the card's primary selection, made in
+the editor's **Area Setup** section (an Area picker fed by your Home Assistant areas).
+
+> **Status:** early scaffold. The area is selectable and rendered as the card title; richer
+> per-area content is in progress.
+
+Minimal config:
+
+```yaml
+type: custom:ted-room-card
+area: living_room
+```
+
+All options:
+
+```yaml
+type: custom:ted-room-card
+area: living_room          # the Home Assistant area id
+name: Living Room          # optional title override, defaults to the area's name
+theme: ted-style           # optional, visual styling: ted-style (default) | ha
+brushed: false             # optional brushed-metal sheen over the background
+```
+
+`theme` and `brushed` work as in the other cards (see the Light Card section).
 
 
 ## Development

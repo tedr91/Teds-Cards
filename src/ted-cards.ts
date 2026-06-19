@@ -13,5 +13,6 @@ import "./cards/cover-card/ted-cover-card";
 import "./cards/remote-card/ted-remote-card";
 import "./cards/clock-weather-card/ted-clock-weather-card";
 import "./cards/label-button-card/ted-label-button-card";
+import "./cards/room-card/ted-room-card";
 
 printVersionBanner();
