@@ -239,6 +239,9 @@ export class TedLabelButtonCard extends LitElement implements LovelaceCard {
       }
 
       ha-card {
+        position: relative;
+        isolation: isolate;
+        overflow: hidden;
         height: 100%;
       }
 
