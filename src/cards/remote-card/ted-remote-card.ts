@@ -970,26 +970,28 @@ export class TedRemoteCard extends LitElement implements LovelaceCard {
         --ted-style-muted: rgba(0, 0, 0, 0.55);
         --ted-style-divider: rgba(0, 0, 0, 0.18);
       }
-      .mfr--apple-tv .rbtn {
+      /* Apple round buttons keep the dark Firemote look in every theme, so the
+         whole control surface stays consistent (only the body changes by theme). */
+      .rc--apple-tv .rbtn {
         background-color: #212121;
         border-color: #000000;
         color: #c6c6c6;
       }
-      .mfr--apple-tv .rbtn:hover {
+      .rc--apple-tv .rbtn:hover {
         background-color: #2c2c2c;
       }
       /* Back / Home / Play-Pause mirror Firemote's apple "remote-button" styling. */
-      .mfr--apple-tv .row .rbtn {
+      .rc--apple-tv .row .rbtn {
         box-shadow: 0 calc(0.214rem * var(--rc-scale)) calc(0.143rem * var(--rc-scale)) 0
           rgb(0 0 0 / 13%);
       }
-      .mfr--apple-tv .row .rbtn:active {
+      .rc--apple-tv .row .rbtn:active {
         transform: none;
         background: linear-gradient(180deg, #2a2a2f 0%, #232327 100%);
         box-shadow: inset 0 calc(0.14rem * var(--rc-scale)) calc(0.3rem * var(--rc-scale))
           rgb(0 0 0 / 55%);
       }
-      .mfr--apple-tv .row .rbtn.lit {
+      .rc--apple-tv .row .rbtn.lit {
         color: #c6c6c6;
         box-shadow: 0 0 calc(0.857rem * var(--rc-scale)) calc(0.0714rem * var(--rc-scale))
           rgb(171 253 255 / 15%);
@@ -1038,7 +1040,7 @@ export class TedRemoteCard extends LitElement implements LovelaceCard {
         box-shadow: 0 0 0 1px var(--rc-glow),
           0 0 4px color-mix(in srgb, var(--rc-glow) 22%, transparent);
       }
-      .mfr--apple-tv .app-btn {
+      .rc--apple-tv .app-btn {
         background-color: #212121;
         border-color: #000000;
         color: #e6e6e6;
