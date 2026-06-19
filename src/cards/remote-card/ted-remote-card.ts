@@ -666,13 +666,12 @@ export class TedRemoteCard extends LitElement implements LovelaceCard {
         height: 16px;
         width: 16px;
       }
-      /* ON: a glowing green ring (dark center) rather than a filled accent button. */
+      /* ON: a glowing ring (icon color stays constant, only the ring glows). */
       .power-button--on {
         background: var(--ted-style-surface-2);
         border-color: var(--rc-glow);
         box-shadow: 0 0 0 1px var(--rc-glow),
           0 0 4px color-mix(in srgb, var(--rc-glow) 22%, transparent);
-        color: var(--rc-glow);
       }
       .remote-body {
         display: flex;
