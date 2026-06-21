@@ -289,6 +289,11 @@ button that reveals the rest.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v2.0.33
+
+- Room Card volume status item now greys out and isn't clickable when its media player is off or in standby.
+- Room Card volume slider now dims while muted, matching the Denon Marantz card.
+
 ### v2.0.32
 
 - The paired appearance fields in the light and cover editors (Show name/Name size, Show icon/Icon size, Show state/Show hint) now stay side by side in narrow contexts like the embedded Room Card button editor, cutting the wasted vertical space.

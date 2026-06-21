@@ -103,6 +103,13 @@ const OFF_STATES = new Set([
   "",
 ]);
 
+/**
+ * media_player states where the volume control is inert (the player is off).
+ * Mirrors the Denon Marantz card; note `idle` counts as ON (e.g. an AVR that is
+ * powered on but not playing), so it is intentionally excluded.
+ */
+const VOLUME_OFF_STATES = new Set(["off", "standby", "unavailable", "unknown", ""]);
+
 /** Delay used to distinguish a single tap (open volume slider) from a double tap (mute). */
 const VOLUME_DOUBLE_TAP_MS = 220;
 
@@ -329,7 +336,8 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
 
   private _volumeModel(entityId: string): SliderModel {
     const stateObj = this.hass?.states[entityId];
-    const available = Boolean(stateObj) && stateObj?.state !== "unavailable";
+    // Disabled (greyed, not clickable) when the player is off/standby/unavailable.
+    const available = !!stateObj && !VOLUME_OFF_STATES.has(stateObj.state);
     const pct = Math.round(num(stateObj?.attributes?.volume_level, 0) * 100);
     const muted = stateObj?.attributes?.is_volume_muted === true;
     return { min: 0, max: 100, step: 1, value: pct, unit: "%", kind: "volume", muted, available };
@@ -460,7 +468,7 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
       >
         <span class="slider-popover-value">${readout}</span>
         <input
-          class="rc-slider"
+          class=${classMap({ "rc-slider": true, "is-muted": model.muted })}
           type="range"
           orient="vertical"
           min=${model.min}
@@ -865,6 +873,9 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
       .rc-slider:disabled {
         opacity: 0.4;
         pointer-events: none;
+      }
+      .rc-slider.is-muted {
+        opacity: 0.55;
       }
 
       /* Button sections. */
