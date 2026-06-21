@@ -133,12 +133,12 @@ export class TedRoomCardEditor extends LitElement implements LovelaceCardEditor 
         wanted.add(key);
         const entry = this._buttonEditors.get(key);
         if (entry && entry.type === button.type) {
+          // The mounted child editor owns its own config while open. Pushing
+          // setConfig back on every keystroke (HA echoes our config-changed
+          // back via setConfig) fights the user's input and reverts fields,
+          // so we only keep hass fresh here. Structural changes
+          // (add/move/delete/type change) clear the map and recreate editors.
           entry.el.hass = this.hass;
-          const json = JSON.stringify(button);
-          if (entry.json !== json) {
-            entry.json = json;
-            entry.el.setConfig(button as LovelaceCardConfig);
-          }
         } else {
           if (entry) this._buttonEditors.delete(key);
           void this._createButtonEditor(key, button);
@@ -197,6 +197,11 @@ export class TedRoomCardEditor extends LitElement implements LovelaceCardEditor 
   }
 
   private _onPanelToggle(key: string, ev: Event): void {
+    // ha-expansion-panel's expanded-changed event bubbles and is composed, so a
+    // nested panel's toggle also reaches ancestor panels' handlers. Only act on
+    // the event when it originates from the panel that owns this handler;
+    // otherwise collapsing an item would also collapse its parent group.
+    if (ev.target !== ev.currentTarget) return;
     const expanded = (ev.target as { expanded?: boolean } | null)?.expanded;
     if (typeof expanded === "boolean") {
       this._expanded = { ...this._expanded, [key]: expanded };
