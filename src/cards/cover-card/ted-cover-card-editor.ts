@@ -37,9 +37,14 @@ const FEATURE_OPEN_TILT = 16;
 const FEATURE_CLOSE_TILT = 32;
 const FEATURE_SET_TILT_POSITION = 128;
 
+/** Square size (px) used for width/height when embedded as a room-card button. */
+const EMBEDDED_BUTTON_SIZE = 100;
+
 @customElement(COVER_CARD_EDITOR_TYPE)
 export class TedCoverCardEditor extends LitElement implements LovelaceCardEditor {
   @property({ attribute: false }) public hass?: HomeAssistant;
+  /** Set by the room card when this editor is embedded as a fixed-size button. */
+  @property({ attribute: false }) public embedded = false;
   @state() private _config?: CoverCardConfig;
 
   public setConfig(config: CoverCardConfig): void {
@@ -107,8 +112,8 @@ export class TedCoverCardEditor extends LitElement implements LovelaceCardEditor
       show_icon: true,
       icon_scale: 150,
       show_state: true,
-      width: 100,
-      height: 120,
+      width: this.embedded ? EMBEDDED_BUTTON_SIZE : 100,
+      height: this.embedded ? EMBEDDED_BUTTON_SIZE : 120,
       memory_mode: "off",
       memory_value: 100,
     };
@@ -206,9 +211,10 @@ export class TedCoverCardEditor extends LitElement implements LovelaceCardEditor
     visual.push({
       type: "grid",
       name: "",
+      column_min_width: "100px",
       schema: [
-        { name: "width", selector: { number: { min: 80, max: 600, step: 10, mode: "box", unit_of_measurement: "px" } } },
-        { name: "height", selector: { number: { min: 60, max: 600, step: 10, mode: "box", unit_of_measurement: "px" } } },
+        { name: "width", disabled: this.embedded, selector: { number: { min: 80, max: 600, step: 10, mode: "box", unit_of_measurement: "px" } } },
+        { name: "height", disabled: this.embedded, selector: { number: { min: 60, max: 600, step: 10, mode: "box", unit_of_measurement: "px" } } },
       ],
     });
 

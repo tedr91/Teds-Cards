@@ -162,6 +162,9 @@ export class TedRoomCardEditor extends LitElement implements LovelaceCardEditor 
     this._creatingEditors.add(key);
     try {
       const el = await cardClass.getConfigElement();
+      // Tell our card editors they are embedded as a fixed-size room button so
+      // they default and lock their width/height fields.
+      (el as unknown as { embedded?: boolean }).embedded = true;
       el.hass = this.hass;
       el.setConfig(button as LovelaceCardConfig);
       el.addEventListener("config-changed", (ev: Event) => {
