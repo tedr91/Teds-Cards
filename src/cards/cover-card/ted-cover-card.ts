@@ -206,13 +206,17 @@ export class TedCoverCard extends LitElement implements LovelaceCard {
       : "rgba(255, 255, 255, 0.5)";
     const showHint = this._config.show_hint !== false;
     const bgOpen = cssColor(this._config.background_open);
-    const indicatorWidth = typeof this._config.indicator_width === "number" ? this._config.indicator_width : 8;
+    const indicatorWidth = typeof this._config.indicator_width === "number" ? this._config.indicator_width : 4;
+    const hintWidth = typeof this._config.hint_width === "number" ? this._config.hint_width : 8;
     // In a grid (Sections) view, honor the grid cell sizing. Everywhere else
     // (stacks, masonry, panel), render at the configured fixed size.
     const isGrid = this.layout === "grid";
     const cardWidth = typeof this._config.width === "number" ? this._config.width : 100;
     const cardHeight = typeof this._config.height === "number" ? this._config.height : 120;
-    const cardStyle: Record<string, string> = { "--ted-indicator-width": `${indicatorWidth}px` };
+    const cardStyle: Record<string, string> = {
+      "--ted-indicator-width": `${indicatorWidth}px`,
+      "--ted-hint-width": `${hintWidth}px`,
+    };
     if (isOpen && bgOpen) cardStyle.backgroundColor = bgOpen;
     if (!isGrid) {
       cardStyle.width = `${cardWidth}px`;
@@ -242,12 +246,14 @@ export class TedCoverCard extends LitElement implements LovelaceCard {
         ${this._config.rocker !== false
           ? html`<div class="ted-rocker${isOpen ? " is-bottom" : ""}" aria-hidden="true"></div>`
           : nothing}
-        <div class="position" aria-hidden="true">
-          <div
-            class="position-fill"
-            style=${styleMap({ height: `${pct}%`, backgroundColor: positionColor })}
-          ></div>
-        </div>
+        ${this._config.show_indicator !== false
+          ? html`<div class="position" aria-hidden="true">
+              <div
+                class="position-fill"
+                style=${styleMap({ height: `${pct}%`, backgroundColor: positionColor })}
+              ></div>
+            </div>`
+          : nothing}
         ${showHint
           ? html`
               <div class="stripe" aria-hidden="true"></div>
@@ -794,7 +800,7 @@ export class TedCoverCard extends LitElement implements LovelaceCard {
       top: 0;
       bottom: 0;
       z-index: 0;
-      width: var(--ted-indicator-width, 8px);
+      width: var(--ted-indicator-width, 4px);
       opacity: 0.5;
       background-color: var(--ted-style-surface-2);
       pointer-events: none;
@@ -813,17 +819,17 @@ export class TedCoverCard extends LitElement implements LovelaceCard {
       top: 0;
       bottom: 0;
       z-index: 0;
-      width: var(--ted-indicator-width, 8px);
+      width: var(--ted-hint-width, 8px);
       opacity: 0.5;
       background-color: var(--ted-style-surface-2);
       pointer-events: none;
     }
     .stripe-symbol {
       position: absolute;
-      right: calc((var(--ted-indicator-width, 8px) - 15px) / 2);
+      right: calc(var(--ted-hint-width, 8px) / -2);
       z-index: 0;
-      width: 15px;
-      height: 15px;
+      width: calc(var(--ted-hint-width, 8px) * 2);
+      height: calc(var(--ted-hint-width, 8px) * 2);
       fill: var(--ted-style-text);
       opacity: 0.5;
       pointer-events: none;

@@ -76,7 +76,9 @@ export class TedLightCardEditor extends LitElement implements LovelaceCardEditor
     return {
       theme: "ted-style",
       indicator_color: "theme",
-      indicator_width: 8,
+      indicator_width: 4,
+      show_indicator: true,
+      hint_width: 8,
       icon_color: "light",
       brushed: false,
       rocker: true,
@@ -125,7 +127,21 @@ export class TedLightCardEditor extends LitElement implements LovelaceCardEditor
         },
       },
       {
+        type: "grid",
+        name: "",
+        column_min_width: "100px",
+        schema: [
+          { name: "show_indicator", selector: { boolean: {} } },
+          {
+            name: "indicator_width",
+            disabled: this._config?.show_indicator === false,
+            selector: { number: { min: 0, max: 40, step: 1, mode: "box", unit_of_measurement: "px" } },
+          },
+        ],
+      },
+      {
         name: "indicator_color",
+        disabled: this._config?.show_indicator === false,
         selector: {
           select: {
             mode: "dropdown",
@@ -141,10 +157,6 @@ export class TedLightCardEditor extends LitElement implements LovelaceCardEditor
     if (this._config?.indicator_color === "other") {
       visual.push({ name: "indicator_color_custom", selector: { color_rgb: {} } });
     }
-    visual.push({
-      name: "indicator_width",
-      selector: { number: { min: 0, max: 40, step: 1, mode: "box", unit_of_measurement: "px" } },
-    });
     visual.push({
       name: "icon_color",
       selector: {
@@ -182,13 +194,18 @@ export class TedLightCardEditor extends LitElement implements LovelaceCardEditor
         { name: "icon_scale", disabled: this._config?.show_icon === false, selector: { number: { min: 10, max: 300, step: 5, mode: "box", unit_of_measurement: "%" } } },
       ],
     });
+    visual.push({ name: "show_state", selector: { boolean: {} } });
     visual.push({
       type: "grid",
       name: "",
       column_min_width: "100px",
       schema: [
-        { name: "show_state", selector: { boolean: {} } },
         { name: "show_hint", selector: { boolean: {} } },
+        {
+          name: "hint_width",
+          disabled: this._config?.show_hint !== true,
+          selector: { number: { min: 0, max: 40, step: 1, mode: "box", unit_of_measurement: "px" } },
+        },
       ],
     });
     visual.push({
@@ -327,6 +344,8 @@ export class TedLightCardEditor extends LitElement implements LovelaceCardEditor
         return "Custom indicator color";
       case "indicator_width":
         return "Indicator bar width (px)";
+      case "show_indicator":
+        return "Show indicator bar";
       case "icon_color":
         return "Icon color";
       case "icon_color_custom":
@@ -348,7 +367,9 @@ export class TedLightCardEditor extends LitElement implements LovelaceCardEditor
       case "show_state":
         return "Show entity state";
       case "show_hint":
-        return "Show +/- hint";
+        return "Show hint bar";
+      case "hint_width":
+        return "Hint bar width (px)";
       case "width":
         return "Width (px)";
       case "height":

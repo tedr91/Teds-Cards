@@ -36,6 +36,7 @@ export interface CoverCardConfig extends LovelaceCardConfig {
   indicator_color?: CoverColorMode;
   indicator_color_custom?: number[];
   indicator_width?: number;
+  show_indicator?: boolean;
   icon_color?: CoverColorMode;
   icon_color_custom?: number[];
   background_open?: string;
@@ -47,6 +48,7 @@ export interface CoverCardConfig extends LovelaceCardConfig {
   icon_scale?: number;
   show_state?: boolean;
   show_hint?: boolean;
+  hint_width?: number;
   // Switch behavior: action bound to each region × gesture.
   up_tap?: CoverAction;
   up_double_tap?: CoverAction;
