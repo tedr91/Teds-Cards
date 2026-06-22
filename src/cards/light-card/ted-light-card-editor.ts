@@ -83,6 +83,7 @@ export class TedLightCardEditor extends LitElement implements LovelaceCardEditor
       icon_color: "light",
       brushed: false,
       rocker: true,
+      rocker_effect: true,
       up_tap: dimmable ? "increase" : "full_on",
       up_double_tap: "full_on",
       up_hold: "more_info",
@@ -116,6 +117,7 @@ export class TedLightCardEditor extends LitElement implements LovelaceCardEditor
 
   private _schema() {
     const inGrid = Boolean(this._config?.grid_options);
+    const rockerOff = this._config?.rocker === false;
     const visual: Array<Record<string, unknown>> = [
       {
         name: "theme",
@@ -190,7 +192,15 @@ export class TedLightCardEditor extends LitElement implements LovelaceCardEditor
       visual.push({ name: "icon_color_custom", selector: { color_rgb: {} } });
     }
     visual.push({ name: "background_on", selector: { ui_color: {} } });
-    visual.push({ name: "rocker", selector: { boolean: {} } });
+    visual.push({
+      type: "grid",
+      name: "",
+      column_min_width: "100px",
+      schema: [
+        { name: "rocker", selector: { boolean: {} } },
+        { name: "rocker_effect", disabled: rockerOff, selector: { boolean: {} } },
+      ],
+    });
     visual.push({ name: "brushed", selector: { boolean: {} } });
     visual.push({
       type: "grid",
@@ -243,9 +253,9 @@ export class TedLightCardEditor extends LitElement implements LovelaceCardEditor
           iconPath: UP_ICON_PATH,
           flatten: true,
           schema: [
-            { name: "up_tap", required: true, selector: this._actionSelect(["increase", "full_on", "toggle", "more_info"]) },
-            { name: "up_double_tap", required: true, selector: this._actionSelect(["full_on", "toggle", "more_info", "none"]) },
-            { name: "up_hold", required: true, selector: this._actionSelect(["more_info", "full_on", "none"]) },
+            { name: "up_tap", required: true, disabled: rockerOff, selector: this._actionSelect(["increase", "full_on", "toggle", "more_info"]) },
+            { name: "up_double_tap", required: true, disabled: rockerOff, selector: this._actionSelect(["full_on", "toggle", "more_info", "none"]) },
+            { name: "up_hold", required: true, disabled: rockerOff, selector: this._actionSelect(["more_info", "full_on", "none"]) },
           ],
         },
         {
@@ -255,9 +265,9 @@ export class TedLightCardEditor extends LitElement implements LovelaceCardEditor
           iconPath: DOWN_ICON_PATH,
           flatten: true,
           schema: [
-            { name: "down_tap", required: true, selector: this._actionSelect(["decrease", "full_off", "toggle", "more_info"]) },
-            { name: "down_double_tap", required: true, selector: this._actionSelect(["full_off", "toggle", "more_info", "none"]) },
-            { name: "down_hold", required: true, selector: this._actionSelect(["more_info", "full_off", "none"]) },
+            { name: "down_tap", required: true, disabled: rockerOff, selector: this._actionSelect(["decrease", "full_off", "toggle", "more_info"]) },
+            { name: "down_double_tap", required: true, disabled: rockerOff, selector: this._actionSelect(["full_off", "toggle", "more_info", "none"]) },
+            { name: "down_hold", required: true, disabled: rockerOff, selector: this._actionSelect(["more_info", "full_off", "none"]) },
           ],
         },
         {
@@ -373,6 +383,8 @@ export class TedLightCardEditor extends LitElement implements LovelaceCardEditor
       case "brushed":
         return "Brushed effect";
       case "rocker":
+        return "Rocker";
+      case "rocker_effect":
         return "Rocker effect";
       case "show_name":
         return "Show name";

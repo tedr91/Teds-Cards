@@ -101,6 +101,7 @@ export class TedCoverCardEditor extends LitElement implements LovelaceCardEditor
       icon_color: "theme",
       brushed: false,
       rocker: true,
+      rocker_effect: true,
       show_hint: true,
       up_tap: primary ? "open_step" : "open",
       up_double_tap: "open",
@@ -143,6 +144,7 @@ export class TedCoverCardEditor extends LitElement implements LovelaceCardEditor
 
   private _schema() {
     const inGrid = Boolean(this._config?.grid_options);
+    const rockerOff = this._config?.rocker === false;
     const visual: Array<Record<string, unknown>> = [
       {
         name: "theme",
@@ -215,7 +217,15 @@ export class TedCoverCardEditor extends LitElement implements LovelaceCardEditor
       visual.push({ name: "icon_color_custom", selector: { color_rgb: {} } });
     }
     visual.push({ name: "background_open", selector: { ui_color: {} } });
-    visual.push({ name: "rocker", selector: { boolean: {} } });
+    visual.push({
+      type: "grid",
+      name: "",
+      column_min_width: "100px",
+      schema: [
+        { name: "rocker", selector: { boolean: {} } },
+        { name: "rocker_effect", disabled: rockerOff, selector: { boolean: {} } },
+      ],
+    });
     visual.push({ name: "brushed", selector: { boolean: {} } });
     visual.push({
       type: "grid",
@@ -268,9 +278,9 @@ export class TedCoverCardEditor extends LitElement implements LovelaceCardEditor
           iconPath: UP_ICON_PATH,
           flatten: true,
           schema: [
-            { name: "up_tap", required: true, selector: this._actionSelect(this._opts(["open_step", "open", "toggle", "stop", "more_info"], ["tilt_open"])) },
-            { name: "up_double_tap", required: true, selector: this._actionSelect(this._opts(["open", "toggle", "stop", "more_info"], ["tilt_open"], true)) },
-            { name: "up_hold", required: true, selector: this._actionSelect(this._opts(["more_info", "open", "stop"], ["tilt_open"], true)) },
+            { name: "up_tap", required: true, disabled: rockerOff, selector: this._actionSelect(this._opts(["open_step", "open", "toggle", "stop", "more_info"], ["tilt_open"])) },
+            { name: "up_double_tap", required: true, disabled: rockerOff, selector: this._actionSelect(this._opts(["open", "toggle", "stop", "more_info"], ["tilt_open"], true)) },
+            { name: "up_hold", required: true, disabled: rockerOff, selector: this._actionSelect(this._opts(["more_info", "open", "stop"], ["tilt_open"], true)) },
           ],
         },
         {
@@ -280,9 +290,9 @@ export class TedCoverCardEditor extends LitElement implements LovelaceCardEditor
           iconPath: DOWN_ICON_PATH,
           flatten: true,
           schema: [
-            { name: "down_tap", required: true, selector: this._actionSelect(this._opts(["close_step", "close", "toggle", "stop", "more_info"], ["tilt_close"])) },
-            { name: "down_double_tap", required: true, selector: this._actionSelect(this._opts(["close", "toggle", "stop", "more_info"], ["tilt_close"], true)) },
-            { name: "down_hold", required: true, selector: this._actionSelect(this._opts(["more_info", "close", "stop"], ["tilt_close"], true)) },
+            { name: "down_tap", required: true, disabled: rockerOff, selector: this._actionSelect(this._opts(["close_step", "close", "toggle", "stop", "more_info"], ["tilt_close"])) },
+            { name: "down_double_tap", required: true, disabled: rockerOff, selector: this._actionSelect(this._opts(["close", "toggle", "stop", "more_info"], ["tilt_close"], true)) },
+            { name: "down_hold", required: true, disabled: rockerOff, selector: this._actionSelect(this._opts(["more_info", "close", "stop"], ["tilt_close"], true)) },
           ],
         },
         {
@@ -407,6 +417,8 @@ export class TedCoverCardEditor extends LitElement implements LovelaceCardEditor
       case "brushed":
         return "Brushed effect";
       case "rocker":
+        return "Rocker";
+      case "rocker_effect":
         return "Rocker effect";
       case "show_name":
         return "Show name";

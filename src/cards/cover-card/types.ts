@@ -42,6 +42,7 @@ export interface CoverCardConfig extends LovelaceCardConfig {
   background_open?: string;
   brushed?: boolean;
   rocker?: boolean;
+  rocker_effect?: boolean;
   show_name?: boolean;
   name_scale?: number;
   show_icon?: boolean;

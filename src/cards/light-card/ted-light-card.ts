@@ -218,6 +218,8 @@ export class TedLightCard extends LitElement implements LovelaceCard {
     const nameScale = typeof this._config.name_scale === "number" ? this._config.name_scale : 100;
     const iconScale = typeof this._config.icon_scale === "number" ? this._config.icon_scale : 150;
     const stateScale = typeof this._config.state_scale === "number" ? this._config.state_scale : 100;
+    // The visual rocker effect only shows while the card behaves as a rocker.
+    const showRockerEffect = this._config.rocker !== false && this._config.rocker_effect !== false;
 
     return html`
       <ha-card
@@ -233,7 +235,7 @@ export class TedLightCard extends LitElement implements LovelaceCard {
         @pointerleave=${this._onCardPointerUp}
       >
         ${this._config.brushed ? brushedOverlay : nothing}
-        ${this._config.rocker !== false
+        ${showRockerEffect
           ? html`<div class="ted-rocker${isOn ? " is-bottom" : ""}" aria-hidden="true"></div>`
           : nothing}
         ${this._config.show_indicator !== false
@@ -345,6 +347,11 @@ export class TedLightCard extends LitElement implements LovelaceCard {
     return !!stateObj && lightSupportsBrightness(stateObj);
   }
 
+  /** When false, the card acts as a single button: every region runs the Icon behavior. */
+  private _rockerEnabled(): boolean {
+    return this._config?.rocker !== false;
+  }
+
   /** Configured action for a region + gesture, falling back to a sensible default. */
   private _action(
     key: keyof LightCardConfig,
@@ -357,18 +364,34 @@ export class TedLightCard extends LitElement implements LovelaceCard {
   }
 
   private _topSingleClick(): void {
+    if (!this._rockerEnabled()) {
+      this._execAction(this._action("icon_tap", "toggle"));
+      return;
+    }
     this._execAction(this._action("up_tap", "increase", "full_on"));
   }
 
   private _topDoubleClick(): void {
+    if (!this._rockerEnabled()) {
+      this._execAction(this._action("icon_double_tap", "more_info"));
+      return;
+    }
     this._execAction(this._action("up_double_tap", "full_on"));
   }
 
   private _bottomSingleClick(): void {
+    if (!this._rockerEnabled()) {
+      this._execAction(this._action("icon_tap", "toggle"));
+      return;
+    }
     this._execAction(this._action("down_tap", "full_off"));
   }
 
   private _bottomDoubleClick(): void {
+    if (!this._rockerEnabled()) {
+      this._execAction(this._action("icon_double_tap", "more_info"));
+      return;
+    }
     this._execAction(this._action("down_double_tap", "full_off"));
   }
 
@@ -532,6 +555,7 @@ export class TedLightCard extends LitElement implements LovelaceCard {
   }
 
   private _holdActionFor(region: "up" | "down" | "icon"): LightAction {
+    if (!this._rockerEnabled()) return this._action("icon_hold", "more_info");
     if (region === "up") return this._action("up_hold", "more_info");
     if (region === "down") return this._action("down_hold", "more_info");
     return this._action("icon_hold", "more_info");
