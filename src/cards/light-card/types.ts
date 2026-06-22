@@ -27,6 +27,7 @@ export interface LightCardConfig extends LovelaceCardConfig {
   width?: number;
   height?: number;
   theme?: LightCardTheme;
+  orientation?: "vertical" | "horizontal";
   indicator_color?: BrightnessColorMode;
   indicator_color_custom?: number[];
   indicator_width?: number;

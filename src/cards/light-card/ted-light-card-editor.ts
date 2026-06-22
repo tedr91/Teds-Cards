@@ -74,8 +74,10 @@ export class TedLightCardEditor extends LitElement implements LovelaceCardEditor
   /** Default values shown in the editor (some depend on brightness support). */
   private _defaults(): Partial<LightCardConfig> {
     const dimmable = this._entitySupportsBrightness();
+    const horizontal = this._config?.orientation === "horizontal";
     return {
       theme: "ted-style",
+      orientation: "vertical",
       indicator_color: "theme",
       indicator_width: 4,
       show_indicator: true,
@@ -99,8 +101,8 @@ export class TedLightCardEditor extends LitElement implements LovelaceCardEditor
       icon_scale: 150,
       show_state: true,
       state_scale: 100,
-      width: this.embedded ? EMBEDDED_BUTTON_SIZE : 100,
-      height: this.embedded ? EMBEDDED_BUTTON_SIZE : 120,
+      width: this.embedded ? EMBEDDED_BUTTON_SIZE : horizontal ? 240 : 100,
+      height: this.embedded ? EMBEDDED_BUTTON_SIZE : horizontal ? 80 : 120,
       memory_mode: "off",
       memory_value: 100,
     };
@@ -127,6 +129,18 @@ export class TedLightCardEditor extends LitElement implements LovelaceCardEditor
             options: [
               { value: "ted-style", label: "Ted's Style (default)" },
               { value: "ha", label: "Home Assistant theme" },
+            ],
+          },
+        },
+      },
+      {
+        name: "orientation",
+        selector: {
+          select: {
+            mode: "dropdown",
+            options: [
+              { value: "vertical", label: "Vertical (default)" },
+              { value: "horizontal", label: "Horizontal" },
             ],
           },
         },
@@ -366,6 +380,8 @@ export class TedLightCardEditor extends LitElement implements LovelaceCardEditor
         return "Icon (optional)";
       case "theme":
         return "Visual styling";
+      case "orientation":
+        return "Orientation";
       case "indicator_color":
         return "Indicator bar color";
       case "indicator_color_custom":

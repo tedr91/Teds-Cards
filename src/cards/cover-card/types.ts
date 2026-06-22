@@ -33,6 +33,7 @@ export interface CoverCardConfig extends LovelaceCardConfig {
   width?: number;
   height?: number;
   theme?: CoverCardTheme;
+  orientation?: "vertical" | "horizontal";
   indicator_color?: CoverColorMode;
   indicator_color_custom?: number[];
   indicator_width?: number;

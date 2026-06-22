@@ -110,6 +110,33 @@ export const tedStyleTheme: CSSResult = css`
       rgba(0, 0, 0, 0) 75%
     );
   }
+  /* Horizontal orientation: pivot the rocker bevel left/right instead of top/bottom. */
+  .horizontal .ted-rocker {
+    background: linear-gradient(
+      to right,
+      rgba(255, 255, 255, 0.1) 0%,
+      rgba(255, 255, 255, 0.03) 22%,
+      rgba(255, 255, 255, 0) 44%,
+      rgba(0, 0, 0, 0.05) 48%,
+      rgba(0, 0, 0, 0.2) 50%,
+      rgba(0, 0, 0, 0.1) 55%,
+      rgba(0, 0, 0, 0.03) 64%,
+      rgba(0, 0, 0, 0) 75%
+    );
+  }
+  .horizontal .ted-rocker.is-bottom {
+    background: linear-gradient(
+      to left,
+      rgba(255, 255, 255, 0.1) 0%,
+      rgba(255, 255, 255, 0.03) 22%,
+      rgba(255, 255, 255, 0) 44%,
+      rgba(0, 0, 0, 0.05) 48%,
+      rgba(0, 0, 0, 0.2) 50%,
+      rgba(0, 0, 0, 0.1) 55%,
+      rgba(0, 0, 0, 0.03) 64%,
+      rgba(0, 0, 0, 0) 75%
+    );
+  }
 `;
 
 /**

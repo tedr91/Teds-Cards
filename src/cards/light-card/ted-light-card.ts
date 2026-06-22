@@ -122,6 +122,14 @@ export class TedLightCard extends LitElement implements LovelaceCard {
   }
 
   public getGridOptions(): GridOptions {
+    if (this._config?.orientation === "horizontal") {
+      return {
+        columns: 6,
+        rows: 1,
+        min_columns: 4,
+        min_rows: 1,
+      };
+    }
     return {
       columns: 3,
       rows: 2,
@@ -195,13 +203,14 @@ export class TedLightCard extends LitElement implements LovelaceCard {
         )
       : "rgba(255, 255, 255, 0.5)";
     const bgOn = cssColor(this._config.background_on);
+    const horizontal = this._config.orientation === "horizontal";
     const indicatorWidth = typeof this._config.indicator_width === "number" ? this._config.indicator_width : 4;
     const hintWidth = typeof this._config.hint_width === "number" ? this._config.hint_width : 8;
     // In a grid (Sections) view, honor the grid cell sizing. Everywhere else
     // (stacks, masonry, panel), render at the configured fixed size.
     const isGrid = this.layout === "grid";
-    const cardWidth = typeof this._config.width === "number" ? this._config.width : 100;
-    const cardHeight = typeof this._config.height === "number" ? this._config.height : 120;
+    const cardWidth = typeof this._config.width === "number" ? this._config.width : horizontal ? 240 : 100;
+    const cardHeight = typeof this._config.height === "number" ? this._config.height : horizontal ? 80 : 120;
     const cardStyle: Record<string, string> = {
       "--ted-indicator-width": `${indicatorWidth}px`,
       "--ted-hint-width": `${hintWidth}px`,
@@ -226,6 +235,7 @@ export class TedLightCard extends LitElement implements LovelaceCard {
         class=${classMap({
           on: isOn,
           unavailable: isUnavailable,
+          horizontal,
           ...themeClasses,
         })}
         style=${styleMap(cardStyle)}
@@ -242,7 +252,11 @@ export class TedLightCard extends LitElement implements LovelaceCard {
           ? html`<div class="brightness" aria-hidden="true">
               <div
                 class="brightness-fill"
-                style=${styleMap({ height: `${brightnessPct}%`, backgroundColor: brightnessColor })}
+                style=${styleMap(
+                  horizontal
+                    ? { width: `${brightnessPct}%`, backgroundColor: brightnessColor }
+                    : { height: `${brightnessPct}%`, backgroundColor: brightnessColor },
+                )}
               ></div>
             </div>`
           : nothing}
@@ -797,6 +811,80 @@ export class TedLightCard extends LitElement implements LovelaceCard {
     .stripe-minus {
       top: 75%;
       transform: translateY(-50%);
+    }
+    /* ---- Horizontal orientation overrides ---- */
+    ha-card.horizontal {
+      flex-direction: row;
+    }
+    ha-card.horizontal .zone {
+      width: auto;
+      height: 100%;
+      align-items: center;
+    }
+    ha-card.horizontal .zone-top {
+      justify-content: flex-start;
+    }
+    ha-card.horizontal .zone-bottom {
+      justify-content: flex-end;
+    }
+    ha-card.horizontal .divider {
+      width: 1px;
+      height: auto;
+      align-self: stretch;
+      box-shadow: 1px 0 0 rgba(235, 235, 235, 0.13);
+    }
+    ha-card.horizontal .region {
+      top: 0;
+      bottom: 0;
+      left: auto;
+      right: auto;
+      height: 100%;
+      width: 50%;
+    }
+    /* Right half = UP, left half = DOWN. */
+    ha-card.horizontal .region-top {
+      right: 0;
+    }
+    ha-card.horizontal .region-bottom {
+      left: 0;
+    }
+    /* Indicator bar: horizontal across the bottom, fills left → right. */
+    ha-card.horizontal .brightness {
+      left: 0;
+      right: 0;
+      top: auto;
+      bottom: 0;
+      width: auto;
+      height: var(--ted-indicator-width, 4px);
+    }
+    ha-card.horizontal .brightness-fill {
+      top: 0;
+      bottom: 0;
+      left: 0;
+      right: auto;
+    }
+    /* Hint bar: horizontal across the top. */
+    ha-card.horizontal .stripe {
+      left: 0;
+      right: 0;
+      top: 0;
+      bottom: auto;
+      width: auto;
+      height: var(--ted-hint-width, 8px);
+    }
+    ha-card.horizontal .stripe-symbol {
+      top: calc(var(--ted-hint-width, 8px) / 2);
+      width: auto;
+    }
+    ha-card.horizontal .stripe-plus {
+      right: 25%;
+      left: auto;
+      transform: translate(50%, -50%);
+    }
+    ha-card.horizontal .stripe-minus {
+      left: 25%;
+      right: auto;
+      transform: translate(-50%, -50%);
     }
     .not-found {
       padding: 12px;
