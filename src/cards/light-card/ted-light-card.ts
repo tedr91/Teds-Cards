@@ -182,9 +182,9 @@ export class TedLightCard extends LitElement implements LovelaceCard {
       isOn && supportsBrightness ? `${brightnessPct}%` : this._formatState(stateObj.state);
     const brightnessColor = isOn
       ? resolveColor(
-          this._config.brightness_color,
+          this._config.indicator_color,
           stateObj,
-          this._config.brightness_color_custom,
+          this._config.indicator_color_custom,
         )
       : "var(--ted-style-muted)";
     const iconColor = isOn
@@ -195,12 +195,13 @@ export class TedLightCard extends LitElement implements LovelaceCard {
         )
       : "rgba(255, 255, 255, 0.5)";
     const bgOn = cssColor(this._config.background_on);
+    const indicatorWidth = typeof this._config.indicator_width === "number" ? this._config.indicator_width : 8;
     // In a grid (Sections) view, honor the grid cell sizing. Everywhere else
     // (stacks, masonry, panel), render at the configured fixed size.
     const isGrid = this.layout === "grid";
     const cardWidth = typeof this._config.width === "number" ? this._config.width : 100;
     const cardHeight = typeof this._config.height === "number" ? this._config.height : 120;
-    const cardStyle: Record<string, string> = {};
+    const cardStyle: Record<string, string> = { "--ted-indicator-width": `${indicatorWidth}px` };
     if (isOn && bgOn) cardStyle.backgroundColor = bgOn;
     if (!isGrid) {
       cardStyle.width = `${cardWidth}px`;
@@ -720,7 +721,7 @@ export class TedLightCard extends LitElement implements LovelaceCard {
       top: 0;
       bottom: 0;
       z-index: 0;
-      width: 9px;
+      width: var(--ted-indicator-width, 8px);
       opacity: 0.5;
       background-color: var(--ted-style-surface-2);
       pointer-events: none;
@@ -739,7 +740,7 @@ export class TedLightCard extends LitElement implements LovelaceCard {
       top: 0;
       bottom: 0;
       z-index: 0;
-      width: 9px;
+      width: var(--ted-indicator-width, 8px);
       opacity: 0.5;
       background-color: var(--ted-style-surface-2);
       pointer-events: none;
@@ -748,7 +749,7 @@ export class TedLightCard extends LitElement implements LovelaceCard {
       position: absolute;
       right: 0;
       z-index: 0;
-      width: 9px;
+      width: var(--ted-indicator-width, 8px);
       text-align: center;
       color: var(--ted-style-text);
       opacity: 0.5;

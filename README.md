@@ -12,8 +12,8 @@ A collection of custom Lovelace cards for [Home Assistant](https://www.home-assi
 
 | Card | Type | Description |
 | --- | --- | --- |
-| Light Card | `custom:ted-light-card` | Light tile with click-to-dim halves and a brightness hint bar. |
-| Cover Card | `custom:ted-cover-card` | Cover tile with click-to-position halves and a position hint bar. |
+| Light Card | `custom:ted-light-card` | Light tile with click-to-dim halves and an indicator bar. |
+| Cover Card | `custom:ted-cover-card` | Cover tile with click-to-position halves and an indicator bar. |
 | Remote Card | `custom:ted-remote-card` | Remote control for Apple TV and Kaleidescape devices. |
 | Room Card | `custom:ted-room-card` | Overview card for a Home Assistant area. |
 
@@ -42,7 +42,7 @@ A collection of custom Lovelace cards for [Home Assistant](https://www.home-assi
 ### Light Card
 
 A compact light tile split into two clickable halves by a subtle divider. Supports `light`
-entities only. Brightness is shown as a thin vertical hint bar on the card's left edge.
+entities only. Brightness is shown on a thin vertical indicator bar on the card's left edge.
 
 **Interactions**
 
@@ -56,7 +56,7 @@ The card has **three interactive regions** — the **upper half**, the **lower h
 
 Available actions: **Increase brightness**, **Decrease brightness**, **Full on (100%)**, **Turn off**, **Toggle**, **More info**, and **Nothing**.
 
-For **toggle-only** lights (no brightness support), the upper-half single tap defaults to **Full on** and the lower-half single tap to **Turn off**; the left hint bar shows full when on and empty when off.
+For **toggle-only** lights (no brightness support), the upper-half single tap defaults to **Full on** and the lower-half single tap to **Turn off**; the left indicator bar shows full when on and empty when off.
 
 Minimal config:
 
@@ -79,10 +79,12 @@ theme: ted-style           # optional, visual styling: ted-style (default) | ha
 - `ted-style` (default): a self-contained "Ted's Home Theater" look (Windows 11 Fluent / Mica-dark) that looks the same regardless of your Home Assistant theme.
 - `ha`: follow the active Home Assistant theme (surfaces, text, and accent color).
 
-Brightness is shown as a thin vertical hint bar pinned to the card's left edge (it fills bottom→up with the light's brightness; it is not interactive). `brightness_color` (optional, in the **Appearance** section) sets its color when the light is on:
+Brightness is shown on a thin vertical **indicator bar** pinned to the card's left edge (it fills bottom→up with the light's brightness; it is not interactive). Its color — labeled **Indicator bar color** in the editor's **Appearance** section — is set by `indicator_color` (optional) when the light is on:
 - `theme` (default): the theme accent color.
 - `light`: the light's current color (its `rgb_color`), falling back to a warm tone.
-- `other`: a custom color — set `brightness_color_custom` to an `[r, g, b]` array (chosen via the editor's color picker).
+- `other`: a custom color — set `indicator_color_custom` to an `[r, g, b]` array (chosen via the editor's color picker).
+
+`indicator_width` (optional, px, default `8`, in the **Appearance** section) sets the width of the indicator bar (and the matching right-edge hint stripe).
 
 `show_hint` (optional, default `false`, in the **Appearance** section): show a matching stripe up the right edge with **+** / **−** hints, indicating the top half raises brightness and the bottom half lowers it.
 
@@ -128,7 +130,7 @@ memory_entity: input_number.living_room_brightness
 
 A compact cover tile split into two clickable halves by a subtle divider. Supports `cover`
 entities only (blinds, shades, shutters, curtains, garage doors, …). The current position is
-shown as a thin vertical hint bar on the card's left edge.
+shown on a thin vertical indicator bar on the card's left edge.
 
 **Interactions**
 
@@ -173,10 +175,11 @@ theme: ted-style           # optional, visual styling: ted-style (default) | ha
 `icon_open` (optional) sets a different icon to show while the cover is open — e.g. `icon: mdi:garage`
 with `icon_open: mdi:garage-open`. When unset, `icon` (or a device-class default) is used in all states.
 
-`theme`, `position_color`, `icon_color`, and `show_hint` work as in the Light Card (all in the
-editor's **Appearance** section). `position_color` (`theme` default / `other` custom) colors the
-position bar when open; `show_hint` (**on by default**) shows a right-edge stripe with **up/down
-chevron** hints. The position bar fills from the bottom up with the cover's current position.
+`theme`, `indicator_color`, `icon_color`, `indicator_width`, and `show_hint` work as in the Light Card
+(all in the editor's **Appearance** section). `indicator_color` (`theme` default / `other` custom) —
+labeled **Indicator bar color** — colors the indicator bar when open; `indicator_width` (px, default
+`8`) sets its width; `show_hint` (**on by default**) shows a right-edge stripe with **up/down chevron**
+hints. The indicator bar fills from the bottom up with the cover's current position.
 
 `background_open` (optional, in the **Appearance** section): override the card's background color while the cover is **open**. Pick a color with the editor's color picker (stored as a `#RRGGBB` hex string). When unset, the theme background is used.
 
@@ -288,6 +291,11 @@ button that reveals the rest.
 
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
+
+### v2.0.34
+
+- Light and cover cards: the left **indicator bar** width is now configurable via `indicator_width` (px, default `8`).
+- Renamed the bar to **Indicator bar** in both editors and unified its color config to `indicator_color` / `indicator_color_custom`. **Breaking:** replace `brightness_color`/`brightness_color_custom` (light) and `position_color`/`position_color_custom` (cover) in existing card configs with `indicator_color`/`indicator_color_custom`.
 
 ### v2.0.33
 

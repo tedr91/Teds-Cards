@@ -199,19 +199,20 @@ export class TedCoverCard extends LitElement implements LovelaceCard {
     const stateLabel =
       !isMoving && this._hasPrimaryAttr() && pct > 0 ? `${pct}%` : this._formatState(stateObj.state);
     const positionColor = isOpen
-      ? resolveColor(this._config.position_color, this._config.position_color_custom)
+      ? resolveColor(this._config.indicator_color, this._config.indicator_color_custom)
       : "var(--ted-style-muted)";
     const iconColor = isOpen
       ? resolveColor(this._config.icon_color, this._config.icon_color_custom)
       : "rgba(255, 255, 255, 0.5)";
     const showHint = this._config.show_hint !== false;
     const bgOpen = cssColor(this._config.background_open);
+    const indicatorWidth = typeof this._config.indicator_width === "number" ? this._config.indicator_width : 8;
     // In a grid (Sections) view, honor the grid cell sizing. Everywhere else
     // (stacks, masonry, panel), render at the configured fixed size.
     const isGrid = this.layout === "grid";
     const cardWidth = typeof this._config.width === "number" ? this._config.width : 100;
     const cardHeight = typeof this._config.height === "number" ? this._config.height : 120;
-    const cardStyle: Record<string, string> = {};
+    const cardStyle: Record<string, string> = { "--ted-indicator-width": `${indicatorWidth}px` };
     if (isOpen && bgOpen) cardStyle.backgroundColor = bgOpen;
     if (!isGrid) {
       cardStyle.width = `${cardWidth}px`;
@@ -793,7 +794,7 @@ export class TedCoverCard extends LitElement implements LovelaceCard {
       top: 0;
       bottom: 0;
       z-index: 0;
-      width: 9px;
+      width: var(--ted-indicator-width, 8px);
       opacity: 0.5;
       background-color: var(--ted-style-surface-2);
       pointer-events: none;
@@ -812,14 +813,14 @@ export class TedCoverCard extends LitElement implements LovelaceCard {
       top: 0;
       bottom: 0;
       z-index: 0;
-      width: 9px;
+      width: var(--ted-indicator-width, 8px);
       opacity: 0.5;
       background-color: var(--ted-style-surface-2);
       pointer-events: none;
     }
     .stripe-symbol {
       position: absolute;
-      right: -3px;
+      right: calc((var(--ted-indicator-width, 8px) - 15px) / 2);
       z-index: 0;
       width: 15px;
       height: 15px;

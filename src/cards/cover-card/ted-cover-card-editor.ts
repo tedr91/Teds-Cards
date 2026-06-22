@@ -93,7 +93,8 @@ export class TedCoverCardEditor extends LitElement implements LovelaceCardEditor
     const primary = this._hasPrimary();
     return {
       theme: "ted-style",
-      position_color: "theme",
+      indicator_color: "theme",
+      indicator_width: 8,
       icon_color: "theme",
       brushed: false,
       rocker: true,
@@ -151,7 +152,7 @@ export class TedCoverCardEditor extends LitElement implements LovelaceCardEditor
         },
       },
       {
-        name: "position_color",
+        name: "indicator_color",
         selector: {
           select: {
             mode: "dropdown",
@@ -163,9 +164,13 @@ export class TedCoverCardEditor extends LitElement implements LovelaceCardEditor
         },
       },
     ];
-    if (this._config?.position_color === "other") {
-      visual.push({ name: "position_color_custom", selector: { color_rgb: {} } });
+    if (this._config?.indicator_color === "other") {
+      visual.push({ name: "indicator_color_custom", selector: { color_rgb: {} } });
     }
+    visual.push({
+      name: "indicator_width",
+      selector: { number: { min: 0, max: 40, step: 1, mode: "box", unit_of_measurement: "px" } },
+    });
     visual.push({
       name: "icon_color",
       selector: {
@@ -350,10 +355,12 @@ export class TedCoverCardEditor extends LitElement implements LovelaceCardEditor
         return "Open state icon (optional)";
       case "theme":
         return "Visual styling";
-      case "position_color":
-        return "Position bar color";
-      case "position_color_custom":
-        return "Custom color";
+      case "indicator_color":
+        return "Indicator bar color";
+      case "indicator_color_custom":
+        return "Custom indicator color";
+      case "indicator_width":
+        return "Indicator bar width (px)";
       case "icon_color":
         return "Icon color";
       case "icon_color_custom":
@@ -412,8 +419,8 @@ export class TedCoverCardEditor extends LitElement implements LovelaceCardEditor
         delete config[key];
       }
     }
-    if (config.position_color !== "other") {
-      delete config.position_color_custom;
+    if (config.indicator_color !== "other") {
+      delete config.indicator_color_custom;
     }
     if (config.icon_color !== "other") {
       delete config.icon_color_custom;

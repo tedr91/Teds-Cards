@@ -75,7 +75,8 @@ export class TedLightCardEditor extends LitElement implements LovelaceCardEditor
     const dimmable = this._entitySupportsBrightness();
     return {
       theme: "ted-style",
-      brightness_color: "theme",
+      indicator_color: "theme",
+      indicator_width: 8,
       icon_color: "light",
       brushed: false,
       rocker: true,
@@ -124,7 +125,7 @@ export class TedLightCardEditor extends LitElement implements LovelaceCardEditor
         },
       },
       {
-        name: "brightness_color",
+        name: "indicator_color",
         selector: {
           select: {
             mode: "dropdown",
@@ -137,9 +138,13 @@ export class TedLightCardEditor extends LitElement implements LovelaceCardEditor
         },
       },
     ];
-    if (this._config?.brightness_color === "other") {
-      visual.push({ name: "brightness_color_custom", selector: { color_rgb: {} } });
+    if (this._config?.indicator_color === "other") {
+      visual.push({ name: "indicator_color_custom", selector: { color_rgb: {} } });
     }
+    visual.push({
+      name: "indicator_width",
+      selector: { number: { min: 0, max: 40, step: 1, mode: "box", unit_of_measurement: "px" } },
+    });
     visual.push({
       name: "icon_color",
       selector: {
@@ -316,10 +321,12 @@ export class TedLightCardEditor extends LitElement implements LovelaceCardEditor
         return "Icon (optional)";
       case "theme":
         return "Visual styling";
-      case "brightness_color":
-        return "Brightness slider color";
-      case "brightness_color_custom":
-        return "Custom color";
+      case "indicator_color":
+        return "Indicator bar color";
+      case "indicator_color_custom":
+        return "Custom indicator color";
+      case "indicator_width":
+        return "Indicator bar width (px)";
       case "icon_color":
         return "Icon color";
       case "icon_color_custom":
@@ -378,8 +385,8 @@ export class TedLightCardEditor extends LitElement implements LovelaceCardEditor
         delete config[key];
       }
     }
-    if (config.brightness_color !== "other") {
-      delete config.brightness_color_custom;
+    if (config.indicator_color !== "other") {
+      delete config.indicator_color_custom;
     }
     if (config.icon_color !== "other") {
       delete config.icon_color_custom;

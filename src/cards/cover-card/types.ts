@@ -5,7 +5,7 @@ import type { TedStyleTheme } from "../../shared/types";
 /** Visual styling mode. `ted-style` = self-contained look; `ha` = follow HA theme. */
 export type CoverCardTheme = TedStyleTheme;
 
-/** Source for the position hint-bar and icon colors. */
+/** Source for the indicator bar and icon colors. */
 export type CoverColorMode = "theme" | "other";
 
 /** An action that can be bound to a tap / double-tap / long-press on a region. */
@@ -33,8 +33,9 @@ export interface CoverCardConfig extends LovelaceCardConfig {
   width?: number;
   height?: number;
   theme?: CoverCardTheme;
-  position_color?: CoverColorMode;
-  position_color_custom?: number[];
+  indicator_color?: CoverColorMode;
+  indicator_color_custom?: number[];
+  indicator_width?: number;
   icon_color?: CoverColorMode;
   icon_color_custom?: number[];
   background_open?: string;
