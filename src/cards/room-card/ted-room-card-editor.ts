@@ -62,6 +62,7 @@ const FIELD_LABELS: Record<string, string> = {
   show_header_name: "Display name in header",
   header_name_size: "Name size override (px)",
   header_divider: "Display header divider line",
+  status_align: "Vertical alignment",
   entity: "Entity",
   on_color: "On color",
   off_color: "Off color",
@@ -545,6 +546,27 @@ export class TedRoomCardEditor extends LitElement implements LovelaceCardEditor 
             <ha-icon icon="mdi:gauge"></ha-icon><span>Status items</span>
           </div>
           <div class="panel-content">
+            <ha-form
+              .hass=${this.hass}
+              .data=${{ status_align: this._config.status_align ?? "top" }}
+              .schema=${[
+                {
+                  name: "status_align",
+                  selector: {
+                    select: {
+                      mode: "dropdown",
+                      options: [
+                        { value: "top", label: "Top (default)" },
+                        { value: "middle", label: "Middle" },
+                        { value: "bottom", label: "Bottom" },
+                      ],
+                    },
+                  },
+                },
+              ]}
+              .computeLabel=${this._computeLabel}
+              @value-changed=${this._onStatusAlignChanged}
+            ></ha-form>
             <div class="row-list">
               ${statusItems.map((item, idx) => this._renderStatusItemRow(item, idx, statusItems.length))}
             </div>
@@ -684,6 +706,12 @@ export class TedRoomCardEditor extends LitElement implements LovelaceCardEditor 
     });
   };
 
+  private _onStatusAlignChanged = (ev: CustomEvent): void => {
+    ev.stopPropagation();
+    const value = ev.detail.value as { status_align?: "top" | "middle" | "bottom" };
+    this._commit({ ...this._config, type: this._type(), status_align: value.status_align });
+  };
+
   private _onStatusItemChanged(idx: number, type: RoomStatusItemType, ev: CustomEvent): void {
     ev.stopPropagation();
     const value = (ev.detail?.value ?? {}) as Record<string, unknown>;
@@ -819,6 +847,7 @@ export class TedRoomCardEditor extends LitElement implements LovelaceCardEditor 
     if (next.show_header_name !== false) delete next.show_header_name;
     if (typeof next.header_name_size !== "number") delete next.header_name_size;
     if (next.header_divider !== false) delete next.header_divider;
+    if (!next.status_align || next.status_align === "top") delete next.status_align;
     if (!next.status_items || next.status_items.length === 0) {
       delete next.status_items;
     }

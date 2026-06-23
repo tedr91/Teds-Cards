@@ -113,6 +113,8 @@ export interface RoomCardConfig extends LovelaceCardConfig {
   header_name_size?: number;
   /** Header: show the divider line under the header. Defaults to true. */
   header_divider?: boolean;
+  /** Vertical alignment of the status strip content. Defaults to "top". */
+  status_align?: "top" | "middle" | "bottom";
   /** Items shown in the top STATUS strip. */
   status_items?: RoomStatusItem[];
   /** Button sections rendered below the status strip. */

@@ -674,6 +674,10 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
       typeof this._config.header_icon_size === "number" ? this._config.header_icon_size : undefined;
     const headerNameSize =
       typeof this._config.header_name_size === "number" ? this._config.header_name_size : undefined;
+    const statusAlign =
+      this._config.status_align === "middle" || this._config.status_align === "bottom"
+        ? this._config.status_align
+        : "top";
     const statusItems = this._config.status_items ?? [];
     const sections = this._config.sections ?? [];
     const hasBody = sections.length > 0;
@@ -681,7 +685,7 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
     return html`
       <ha-card class=${classMap(themeClasses)}>
         ${this._config.brushed ? brushedOverlay : nothing}
-        <div class="status-bar${headerDivider ? "" : " no-divider"}">
+        <div class="status-bar align-${statusAlign}${headerDivider ? "" : " no-divider"}">
           <div class="status-heading">
             ${showHeaderIcon
               ? html`<ha-icon
@@ -749,6 +753,15 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
       .status-bar.no-divider {
         border-bottom: none;
         padding-bottom: 0;
+      }
+      .status-bar.align-top {
+        align-items: flex-start;
+      }
+      .status-bar.align-middle {
+        align-items: center;
+      }
+      .status-bar.align-bottom {
+        align-items: flex-end;
       }
       .status-heading {
         display: inline-flex;

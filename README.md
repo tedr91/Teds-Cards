@@ -312,6 +312,10 @@ px, matching a button).
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v2.0.44
+
+- Room Card: the **Status items** section now has a **Vertical alignment** option (Top / Middle / Bottom, default Top) controlling how the status strip content aligns vertically within the header.
+
 ### v2.0.43
 
 - Room Card: added a **Header** section to the editor with an optional **icon** (selectable below the name) and controls for showing/sizing the header **icon** and **name**, plus a toggle for the **header divider line**. Defaults: icon off, name on, divider on.
