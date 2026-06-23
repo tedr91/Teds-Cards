@@ -56,6 +56,8 @@ const FIELD_LABELS: Record<string, string> = {
   off_color: "Off color",
   colors: "State colors (advanced)",
   title: "Section title",
+  show_title: "Show title in card",
+  title_align: "Title alignment",
   max_rows: "Max rows (0 = unlimited)",
 };
 
@@ -437,9 +439,31 @@ export class TedRoomCardEditor extends LitElement implements LovelaceCardEditor 
         <div class="panel-content">
           <ha-form
             .hass=${this.hass}
-            .data=${{ title: section.title ?? "", max_rows: section.max_rows ?? 0 }}
+            .data=${{ title: section.title ?? "", show_title: section.show_title === true, title_align: section.title_align ?? "left", max_rows: section.max_rows ?? 0 }}
             .schema=${[
               { name: "title", selector: { text: {} } },
+              {
+                type: "grid",
+                name: "",
+                column_min_width: "100px",
+                schema: [
+                  { name: "show_title", selector: { boolean: {} } },
+                  {
+                    name: "title_align",
+                    disabled: section.show_title !== true,
+                    selector: {
+                      select: {
+                        mode: "dropdown",
+                        options: [
+                          { value: "left", label: "Left (default)" },
+                          { value: "center", label: "Center" },
+                          { value: "right", label: "Right" },
+                        ],
+                      },
+                    },
+                  },
+                ],
+              },
               { name: "max_rows", selector: { number: { min: 0, max: 20, step: 1, mode: "box" } } },
             ]}
             .computeLabel=${this._computeLabel}
@@ -619,11 +643,22 @@ export class TedRoomCardEditor extends LitElement implements LovelaceCardEditor 
 
   private _onSectionFieldChanged(sIdx: number, ev: CustomEvent): void {
     ev.stopPropagation();
-    const value = (ev.detail?.value ?? {}) as { title?: string; max_rows?: number };
+    const value = (ev.detail?.value ?? {}) as {
+      title?: string;
+      show_title?: boolean;
+      title_align?: "left" | "center" | "right";
+      max_rows?: number;
+    };
     const sections = [...(this._config?.sections ?? [])];
     const section = sections[sIdx];
     if (!section) return;
-    sections[sIdx] = { ...section, title: value.title, max_rows: value.max_rows };
+    sections[sIdx] = {
+      ...section,
+      title: value.title,
+      show_title: value.show_title,
+      title_align: value.title_align,
+      max_rows: value.max_rows,
+    };
     this._commit({ ...this._config, type: this._type(), sections });
   }
 
@@ -715,6 +750,8 @@ export class TedRoomCardEditor extends LitElement implements LovelaceCardEditor 
       next.sections = next.sections.map((section) => {
         const clean: RoomButtonSection = { ...section, buttons: section.buttons ?? [] };
         if (!clean.title) delete clean.title;
+        if (!clean.show_title) delete clean.show_title;
+        if (!clean.title_align || clean.title_align === "left") delete clean.title_align;
         if (!clean.max_rows) delete clean.max_rows;
         return clean;
       });

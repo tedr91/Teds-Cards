@@ -292,11 +292,19 @@ that card's own editor. Buttons lay out 5 per row as squares; set a section's **
 height (`0` = unlimited). When the buttons overflow the cap, the last visible cell becomes a **…**
 button that reveals the rest.
 
+Each section has a **Section title** plus a **Show title in card** toggle (default **off**) and a
+**Title alignment** selector (Left / Center / Right; disabled while the title is hidden). The title
+still labels the section in the editor even when it isn't shown in the card.
+
 
 ## Changelog
 
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
+
+### v2.0.41
+
+- Room Card: each button section now has a **Show title in card** toggle (default **off**) and a **Title alignment** selector (Left / Center / Right, disabled while the title is hidden). The section title still labels the section in the editor even when it isn't shown in the card.
 
 ### v2.0.40
 

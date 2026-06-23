@@ -635,7 +635,9 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
     const visibleCount = overflow ? maxVisible - 1 : buttons.length;
     return html`
       <div class="button-section">
-        ${section.title ? html`<div class="section-title">${section.title}</div>` : nothing}
+        ${section.title && section.show_title === true
+          ? html`<div class="section-title" style=${styleMap({ textAlign: section.title_align ?? "left" })}>${section.title}</div>`
+          : nothing}
         <div class="button-grid">
           ${buttons
             .slice(0, visibleCount)

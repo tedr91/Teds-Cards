@@ -74,6 +74,10 @@ export type RoomButtonConfig = LabelButtonCardConfig | CoverCardConfig | LightCa
 /** A reorderable section of square buttons (NovaStar Presets layout). */
 export interface RoomButtonSection {
   title?: string;
+  /** Whether the section title is shown in the rendered card. Defaults to false. */
+  show_title?: boolean;
+  /** Horizontal alignment of the section title. Defaults to "left". */
+  title_align?: "left" | "center" | "right";
   /** Max number of 5-wide rows shown before the "…" overflow button. 0 = unlimited. */
   max_rows?: number;
   buttons: RoomButtonConfig[];
