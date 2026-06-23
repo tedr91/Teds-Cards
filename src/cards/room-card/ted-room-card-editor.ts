@@ -8,6 +8,10 @@ import {
 } from "custom-card-helpers";
 
 import {
+  BUNDLED_PHOTO_OPTIONS,
+  defaultEdgeGradient,
+  type PhotoEdge,
+  type PhotoPlacement,
   ROOM_BUTTON_CARD_TYPES,
   ROOM_CARD_EDITOR_TYPE,
   STATUS_ITEM_DEFAULT_ICON,
@@ -32,6 +36,10 @@ const APPEARANCE_ICON_PATH =
 // mdi:page-layout-header — Header section
 const HEADER_ICON_PATH =
   "M21,5V19H3V5H21M21,3H3A2,2 0 0,0 1,5V19A2,2 0 0,0 3,21H21A2,2 0 0,0 23,19V5A2,2 0 0,0 21,3M5,7H19V9H5V7Z";
+
+// mdi:image — Room Photo section
+const PHOTO_ICON_PATH =
+  "M8.5,13.5L11,16.5L14.5,12L19,18H5M21,19V5C21,3.89 20.1,3 19,3H5A2,2 0 0,0 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19Z";
 
 /** Order shown in the "Add item" menu. */
 const STATUS_ITEM_TYPES: RoomStatusItemType[] = [
@@ -63,6 +71,15 @@ const FIELD_LABELS: Record<string, string> = {
   header_name_size: "Name size override (px)",
   header_divider: "Display header divider line",
   status_align: "Vertical alignment",
+  show_photo: "Show photo",
+  photo_source: "Photo source",
+  photo: "Select photo",
+  photo_url: "Photo",
+  photo_placement: "Photo placement",
+  photo_height: "Photo height (px)",
+  photo_align: "Photo alignment",
+  photo_edge_gradient: "Edge Gradient (Scrim)",
+  photo_opacity: "Photo opacity",
   entity: "Entity",
   on_color: "On color",
   off_color: "Off color",
@@ -73,6 +90,13 @@ const FIELD_LABELS: Record<string, string> = {
   max_rows: "Max rows (0 = unlimited)",
   size: "Size (px)",
 };
+
+/** Order-independent equality for two edge-gradient sets. */
+function sameEdges(a: PhotoEdge[], b: PhotoEdge[]): boolean {
+  if (a.length !== b.length) return false;
+  const set = new Set(a);
+  return b.every((edge) => set.has(edge));
+}
 
 /** Minimal entity/device registry shapes used to auto-pull an area's sensors. */
 interface EntityRegistryEntry {
@@ -516,13 +540,21 @@ export class TedRoomCardEditor extends LitElement implements LovelaceCardEditor 
   protected render(): TemplateResult | typeof nothing {
     if (!this.hass || !this._config) return nothing;
 
+    const placement = (this._config.photo_placement as PhotoPlacement) ?? "top";
     const data = {
       theme: "ted-style",
       brushed: false,
       show_header_icon: false,
       show_header_name: true,
       header_divider: true,
+      show_photo: true,
+      photo_source: "bundled",
+      photo: "auto",
+      photo_placement: "top",
+      photo_align: "center",
+      photo_opacity: 100,
       ...this._config,
+      photo_edge_gradient: this._config.photo_edge_gradient ?? defaultEdgeGradient(placement),
     };
     const statusItems = this._config.status_items ?? [];
     const sections = this._config.sections ?? [];
@@ -673,7 +705,93 @@ export class TedRoomCardEditor extends LitElement implements LovelaceCardEditor 
           { name: "header_divider", selector: { boolean: {} } },
         ],
       },
+      {
+        name: "",
+        type: "expandable",
+        title: "Room Photo",
+        iconPath: PHOTO_ICON_PATH,
+        flatten: true,
+        schema: this._photoSchema(),
+      },
     ];
+  }
+
+  private _photoSchema(): unknown[] {
+    const placement = (this._config?.photo_placement as PhotoPlacement) ?? "top";
+    const schema: unknown[] = [
+      { name: "show_photo", selector: { boolean: {} } },
+      {
+        name: "photo_source",
+        selector: {
+          select: {
+            mode: "dropdown",
+            options: [
+              { value: "bundled", label: "Bundled photos" },
+              { value: "custom", label: "Custom photo" },
+            ],
+          },
+        },
+      },
+    ];
+    if (this._config?.photo_source === "custom") {
+      schema.push({ name: "photo_url", selector: { image: {} } });
+    } else {
+      schema.push({
+        name: "photo",
+        selector: { select: { mode: "dropdown", options: BUNDLED_PHOTO_OPTIONS } },
+      });
+    }
+    schema.push({
+      name: "photo_placement",
+      selector: {
+        select: {
+          mode: "dropdown",
+          options: [
+            { value: "top", label: "Top of card (default)" },
+            { value: "below_header", label: "Below header" },
+            { value: "fill", label: "Fill card" },
+          ],
+        },
+      },
+    });
+    if (placement !== "fill") {
+      schema.push({
+        name: "photo_height",
+        selector: { number: { min: 0, max: 1000, step: 10, mode: "box", unit_of_measurement: "px" } },
+      });
+    }
+    schema.push({
+      name: "photo_align",
+      selector: {
+        select: {
+          mode: "dropdown",
+          options: [
+            { value: "top", label: "Top" },
+            { value: "center", label: "Center (default)" },
+            { value: "bottom", label: "Bottom" },
+          ],
+        },
+      },
+    });
+    schema.push({
+      name: "photo_edge_gradient",
+      selector: {
+        select: {
+          multiple: true,
+          options: [
+            { value: "top", label: "Top" },
+            { value: "left", label: "Left" },
+            { value: "right", label: "Right" },
+            { value: "bottom", label: "Bottom" },
+          ],
+        },
+      },
+    });
+    schema.push({
+      name: "photo_opacity",
+      selector: { number: { min: 0, max: 100, step: 1, mode: "slider" } },
+    });
+    return schema;
   }
 
   private _computeLabel = (schema: { name: string }): string =>
@@ -701,6 +819,15 @@ export class TedRoomCardEditor extends LitElement implements LovelaceCardEditor 
       show_header_name: value.show_header_name,
       header_name_size: value.header_name_size,
       header_divider: value.header_divider,
+      show_photo: value.show_photo,
+      photo_source: value.photo_source,
+      photo: value.photo,
+      photo_url: value.photo_url,
+      photo_placement: value.photo_placement,
+      photo_height: value.photo_height,
+      photo_align: value.photo_align,
+      photo_edge_gradient: value.photo_edge_gradient,
+      photo_opacity: value.photo_opacity,
       status_items: this._config?.status_items,
       sections: this._config?.sections,
     });
@@ -848,6 +975,22 @@ export class TedRoomCardEditor extends LitElement implements LovelaceCardEditor 
     if (typeof next.header_name_size !== "number") delete next.header_name_size;
     if (next.header_divider !== false) delete next.header_divider;
     if (!next.status_align || next.status_align === "top") delete next.status_align;
+    // Room photo defaults.
+    if (next.show_photo !== false) delete next.show_photo;
+    if (next.photo_source !== "custom") delete next.photo_source;
+    if (next.photo_source !== "custom" || !next.photo_url) delete next.photo_url;
+    if (!next.photo || next.photo === "auto") delete next.photo;
+    if (!next.photo_placement || next.photo_placement === "top") delete next.photo_placement;
+    if (typeof next.photo_height !== "number") delete next.photo_height;
+    if (!next.photo_align || next.photo_align === "center") delete next.photo_align;
+    if (typeof next.photo_opacity !== "number" || next.photo_opacity === 100) delete next.photo_opacity;
+    const placement = (next.photo_placement as PhotoPlacement) ?? "top";
+    if (
+      !Array.isArray(next.photo_edge_gradient) ||
+      sameEdges(next.photo_edge_gradient, defaultEdgeGradient(placement))
+    ) {
+      delete next.photo_edge_gradient;
+    }
     if (!next.status_items || next.status_items.length === 0) {
       delete next.status_items;
     }

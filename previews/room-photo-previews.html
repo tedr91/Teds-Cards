@@ -1,0 +1,338 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Room Card — Room Photo previews</title>
+    <style>
+      :root {
+        /* Mirrors the ted-style tokens used by the real Room Card. */
+        --ted-style-text: #e9e9ec;
+        --ted-style-muted: #9a9aa2;
+        --ted-style-divider: rgba(120, 120, 120, 0.32);
+        --ted-style-surface: #26262b;
+        --ted-style-surface-2: #303036;
+        --ted-style-accent: #4f9dff;
+        --ted-style-radius: 12px;
+        --ted-style-radius-sm: 10px;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        padding: 28px;
+        background: #14141a;
+        color: #e9e9ec;
+        font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      }
+      h1 {
+        font-size: 20px;
+        margin: 0 0 4px;
+      }
+      p.sub {
+        margin: 0 0 24px;
+        color: #9a9aa2;
+        font-size: 13px;
+        max-width: 760px;
+        line-height: 1.5;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+        gap: 28px;
+        align-items: start;
+        max-width: 1180px;
+      }
+      .variant > .label {
+        font-size: 13px;
+        font-weight: 600;
+        margin-bottom: 4px;
+      }
+      .variant > .desc {
+        font-size: 12px;
+        color: #9a9aa2;
+        margin-bottom: 10px;
+        line-height: 1.4;
+      }
+
+      /* ---- Room Card mock (mirrors the real card structure) ---- */
+      .ha-card {
+        position: relative;
+        isolation: isolate;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        padding: 12px;
+        min-height: 240px;
+        border-radius: var(--ted-style-radius);
+        border: 1px solid var(--ted-style-divider);
+        overflow: hidden;
+        color: var(--ted-style-text);
+        /* ted-style brushed dark body */
+        background: linear-gradient(145deg, #2e2e32 0%, #222226 45%, #16161a 100%);
+      }
+
+      /* Photo layer: above background, below all UI. */
+      .room-photo {
+        position: absolute;
+        z-index: -2;
+        overflow: hidden;
+        border-radius: inherit;
+        pointer-events: none;
+      }
+      .room-photo img {
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+      .photo-fill {
+        inset: 0;
+      }
+      .photo-top {
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 118px;
+      }
+      .photo-below {
+        left: 0;
+        right: 0;
+        top: 46px; /* approx header bottom in this mock */
+        bottom: 0;
+      }
+
+      /* Optional legibility scrims (the thing to choose). */
+      .scrim {
+        position: absolute;
+        z-index: -1;
+        pointer-events: none;
+        border-radius: inherit;
+      }
+      .scrim-top {
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 118px;
+        background: linear-gradient(to bottom, rgba(0, 0, 0, 0.55) 0%, rgba(0, 0, 0, 0.15) 60%, rgba(0, 0, 0, 0) 100%);
+      }
+      .scrim-fill {
+        inset: 0;
+        background: linear-gradient(to top, rgba(0, 0, 0, 0.66) 0%, rgba(0, 0, 0, 0.25) 38%, rgba(0, 0, 0, 0.1) 70%);
+      }
+
+      .status-bar {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 12px;
+        min-height: 24px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid var(--ted-style-divider);
+      }
+      .status-heading {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        min-width: 0;
+      }
+      .status-heading .icon {
+        font-size: 20px;
+        line-height: 1;
+      }
+      .status-title {
+        font-size: 1rem;
+        font-weight: 600;
+        line-height: 1.2;
+        white-space: nowrap;
+      }
+      .status-items {
+        display: inline-flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 10px;
+        font-size: 0.8rem;
+        font-weight: 600;
+      }
+      .status-item {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        color: var(--ted-style-text);
+      }
+      .status-item .mi {
+        font-size: 15px;
+        color: var(--ted-style-muted);
+      }
+
+      .sections {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .button-grid {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 8px;
+      }
+      .button-cell {
+        position: relative;
+        aspect-ratio: 1 / 1;
+        border-radius: var(--ted-style-radius-sm);
+        background: rgba(38, 38, 43, 0.92);
+        border: 1px solid var(--ted-style-divider);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        font-size: 10px;
+        color: var(--ted-style-muted);
+      }
+      .button-cell .mi {
+        font-size: 20px;
+        color: var(--ted-style-accent);
+      }
+
+      /* Material-ish icon stand-ins via unicode so no external font is needed. */
+      .mi {
+        font-style: normal;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Room Card — Room Photo previews</h1>
+    <p class="sub">
+      Same sample room ("Living Room") with the bundled photo behind the card UI. The photo always sits
+      above the card background but below the header, status, and buttons. Pick the treatment you like
+      (especially whether to add a legibility <em>scrim/gradient</em> behind the text). If the images are
+      blank, open this file from inside the repo so the relative path to
+      <code>images/room-header-photos/</code> resolves.
+    </p>
+
+    <div class="grid">
+      <!-- 1. Top banner, NO scrim -->
+      <div class="variant">
+        <div class="label">A · Top banner — no scrim</div>
+        <div class="desc">Photo as a top band behind the header. Title may be hard to read on bright photos.</div>
+        <div class="ha-card">
+          <div class="room-photo photo-top"><img src="../images/room-header-photos/Living%20Room.jpg" alt="" /></div>
+          <div class="status-bar">
+            <div class="status-heading"><span class="icon mi">🛋️</span><span class="status-title">Living Room</span></div>
+            <div class="status-items">
+              <span class="status-item"><span class="mi">🌡️</span>72°</span>
+              <span class="status-item"><span class="mi">👁️</span>Clear</span>
+            </div>
+          </div>
+          <div class="sections"><div class="button-grid">
+            <div class="button-cell"><span class="mi">💡</span>Lamp</div>
+            <div class="button-cell"><span class="mi">🪟</span>Shade</div>
+            <div class="button-cell"><span class="mi">📺</span>TV</div>
+            <div class="button-cell"><span class="mi">🔊</span>Audio</div>
+            <div class="button-cell"><span class="mi">🎬</span>Scene</div>
+          </div></div>
+        </div>
+      </div>
+
+      <!-- 2. Top banner, WITH scrim -->
+      <div class="variant">
+        <div class="label">B · Top banner — with scrim (recommended)</div>
+        <div class="desc">A subtle dark gradient under the header keeps the title readable on any photo.</div>
+        <div class="ha-card">
+          <div class="room-photo photo-top"><img src="../images/room-header-photos/Living%20Room.jpg" alt="" /></div>
+          <div class="scrim scrim-top"></div>
+          <div class="status-bar">
+            <div class="status-heading"><span class="icon mi">🛋️</span><span class="status-title">Living Room</span></div>
+            <div class="status-items">
+              <span class="status-item"><span class="mi">🌡️</span>72°</span>
+              <span class="status-item"><span class="mi">👁️</span>Clear</span>
+            </div>
+          </div>
+          <div class="sections"><div class="button-grid">
+            <div class="button-cell"><span class="mi">💡</span>Lamp</div>
+            <div class="button-cell"><span class="mi">🪟</span>Shade</div>
+            <div class="button-cell"><span class="mi">📺</span>TV</div>
+            <div class="button-cell"><span class="mi">🔊</span>Audio</div>
+            <div class="button-cell"><span class="mi">🎬</span>Scene</div>
+          </div></div>
+        </div>
+      </div>
+
+      <!-- 3. Fill, with bottom gradient -->
+      <div class="variant">
+        <div class="label">C · Fill card — bottom gradient (recommended)</div>
+        <div class="desc">Photo fills the whole card; a bottom-up gradient keeps status + buttons legible.</div>
+        <div class="ha-card">
+          <div class="room-photo photo-fill"><img src="../images/room-header-photos/Living%20Room.jpg" alt="" /></div>
+          <div class="scrim scrim-fill"></div>
+          <div class="status-bar">
+            <div class="status-heading"><span class="icon mi">🛋️</span><span class="status-title">Living Room</span></div>
+            <div class="status-items">
+              <span class="status-item"><span class="mi">🌡️</span>72°</span>
+              <span class="status-item"><span class="mi">👁️</span>Clear</span>
+            </div>
+          </div>
+          <div class="sections"><div class="button-grid">
+            <div class="button-cell"><span class="mi">💡</span>Lamp</div>
+            <div class="button-cell"><span class="mi">🪟</span>Shade</div>
+            <div class="button-cell"><span class="mi">📺</span>TV</div>
+            <div class="button-cell"><span class="mi">🔊</span>Audio</div>
+            <div class="button-cell"><span class="mi">🎬</span>Scene</div>
+          </div></div>
+        </div>
+      </div>
+
+      <!-- 4. Fill, no gradient -->
+      <div class="variant">
+        <div class="label">D · Fill card — no gradient</div>
+        <div class="desc">Photo fills the card with no overlay. Buttons keep their own surfaces, but contrast varies by photo.</div>
+        <div class="ha-card">
+          <div class="room-photo photo-fill"><img src="../images/room-header-photos/Living%20Room.jpg" alt="" /></div>
+          <div class="status-bar">
+            <div class="status-heading"><span class="icon mi">🛋️</span><span class="status-title">Living Room</span></div>
+            <div class="status-items">
+              <span class="status-item"><span class="mi">🌡️</span>72°</span>
+              <span class="status-item"><span class="mi">👁️</span>Clear</span>
+            </div>
+          </div>
+          <div class="sections"><div class="button-grid">
+            <div class="button-cell"><span class="mi">💡</span>Lamp</div>
+            <div class="button-cell"><span class="mi">🪟</span>Shade</div>
+            <div class="button-cell"><span class="mi">📺</span>TV</div>
+            <div class="button-cell"><span class="mi">🔊</span>Audio</div>
+            <div class="button-cell"><span class="mi">🎬</span>Scene</div>
+          </div></div>
+        </div>
+      </div>
+
+      <!-- 5. Below header -->
+      <div class="variant">
+        <div class="label">E · Below header band</div>
+        <div class="desc">Header stays on the plain card; the photo fills the area beneath it, behind the buttons.</div>
+        <div class="ha-card">
+          <div class="room-photo photo-below"><img src="../images/room-header-photos/Living%20Room.jpg" alt="" /></div>
+          <div class="status-bar">
+            <div class="status-heading"><span class="icon mi">🛋️</span><span class="status-title">Living Room</span></div>
+            <div class="status-items">
+              <span class="status-item"><span class="mi">🌡️</span>72°</span>
+              <span class="status-item"><span class="mi">👁️</span>Clear</span>
+            </div>
+          </div>
+          <div class="sections"><div class="button-grid">
+            <div class="button-cell"><span class="mi">💡</span>Lamp</div>
+            <div class="button-cell"><span class="mi">🪟</span>Shade</div>
+            <div class="button-cell"><span class="mi">📺</span>TV</div>
+            <div class="button-cell"><span class="mi">🔊</span>Audio</div>
+            <div class="button-cell"><span class="mi">🎬</span>Scene</div>
+          </div></div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

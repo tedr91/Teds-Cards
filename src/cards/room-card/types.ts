@@ -115,6 +115,25 @@ export interface RoomCardConfig extends LovelaceCardConfig {
   header_divider?: boolean;
   /** Vertical alignment of the status strip content. Defaults to "top". */
   status_align?: "top" | "middle" | "bottom";
+  // --- Room photo ---
+  /** Show the room photo behind the card UI. Defaults to true. */
+  show_photo?: boolean;
+  /** Where the photo comes from. Defaults to "bundled". */
+  photo_source?: "bundled" | "custom";
+  /** Bundled photo key, or "auto" to match the room name. Defaults to "auto". */
+  photo?: string;
+  /** Custom photo path/URL (from the HA image selector) when source is "custom". */
+  photo_url?: string;
+  /** Where the photo sits in the card. Defaults to "top". */
+  photo_placement?: "top" | "below_header" | "fill";
+  /** Cropped photo height in px (top/below_header). Empty = full natural image. */
+  photo_height?: number;
+  /** Vertical focal point when the photo is cropped. Defaults to "center". */
+  photo_align?: "top" | "center" | "bottom";
+  /** Edges to darken with a legibility scrim. Defaults per placement. */
+  photo_edge_gradient?: Array<"top" | "left" | "right" | "bottom">;
+  /** Photo opacity (0–100). Defaults to 100. */
+  photo_opacity?: number;
   /** Items shown in the top STATUS strip. */
   status_items?: RoomStatusItem[];
   /** Button sections rendered below the status strip. */

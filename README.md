@@ -276,6 +276,23 @@ section: **Display icon in header** (default off; pick the icon below **Name**) 
 size override**, **Display name in header** (default on) with an optional **Name size override**, and
 **Display header divider line** (default on).
 
+**Room Photo** — an optional photo behind the card UI (above the background/brushed effect, below the
+header, status, and buttons). In the editor's **Room Photo** section:
+
+- **Show photo** (default on).
+- **Photo source** — **Bundled** (a curated set served from a CDN; pick one or leave **Auto** to match
+  the room name) or **Custom** (upload your own via the HA image picker).
+- **Photo placement** — **Top of card** (default), **Below header**, or **Fill card**.
+- **Photo height** (px) — leave empty to show the full image at card width; set a height to crop it
+  (hidden for **Fill**).
+- **Photo alignment** — the vertical focal point (Top / Center / Bottom) used when the photo is cropped.
+- **Edge Gradient (Scrim)** — darken any of the **Top / Left / Right / Bottom** edges so text/buttons
+  stay readable. Sensible defaults per placement (Top→top edge, Fill→top+bottom, Below header→none).
+- **Photo opacity** (default 100%).
+
+The default (Show photo on, Auto) silently shows nothing when the room name doesn't match a bundled
+photo or the image can't be loaded.
+
 **Status bar** — a small strip of items pinned to the top edge of the card, managed in the editor's
 **Status items** section (add, reorder, delete). Each item is one of:
 
@@ -311,6 +328,10 @@ px, matching a button).
 
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
+
+### v2.0.45
+
+- Room Card: added a **Room Photo** — an optional photo behind the card UI (above the background, below the header/status/buttons). Choose a **bundled** photo (auto-matched to the room name) or upload a **custom** one; control **placement** (top / below header / fill), **height** + **alignment** (crop focal point), an **Edge Gradient (Scrim)** to keep text readable, and **opacity**. On by default, silently hidden when there's no name match or the image can't load.
 
 ### v2.0.44
 

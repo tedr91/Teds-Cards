@@ -12,6 +12,12 @@ import {
 import { registerCustomCard } from "../../shared/register-card";
 import { brushedOverlay, tedStyleTheme } from "../../shared/theme";
 import {
+  autoMatchPhotoKey,
+  BUNDLED_PHOTOS,
+  bundledPhotoUrl,
+  defaultEdgeGradient,
+  type PhotoEdge,
+  type PhotoPlacement,
   ROOM_CARD_DESCRIPTION,
   ROOM_CARD_EDITOR_TYPE,
   ROOM_CARD_NAME,
@@ -168,6 +174,11 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
   @state() private _config?: RoomCardConfig;
   /** Transient live value of the slider currently being dragged (one at a time). */
   @state() private _activeSlider?: { key: string; value: number };
+  /** True when the configured room photo failed to load (hidden gracefully). */
+  @state() private _photoError = false;
+  /** Measured y (px) of the header's bottom edge, for the "below header" photo. */
+  @state() private _headerBottom = 0;
+  private _headerObserver?: ResizeObserver;
 
   /** Lazily-loaded Lovelace card helpers (for embedding the button sub-cards). */
   private _helpers?: CardHelpers;
@@ -202,19 +213,44 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
       window.clearTimeout(this._volumeClickTimer);
       this._volumeClickTimer = undefined;
     }
+    this._headerObserver?.disconnect();
+    this._headerObserver = undefined;
   }
 
   protected firstUpdated(): void {
     void this._loadHelpers();
+    this._observeHeader();
   }
 
   protected willUpdate(changed: PropertyValues): void {
     if (changed.has("_config")) {
       this._buildButtonElements();
+      // A new config may point at a different photo — give it another chance.
+      this._photoError = false;
     }
     if (changed.has("hass")) {
       this._propagateHass();
     }
+  }
+
+  protected updated(): void {
+    if (!this._headerObserver) this._observeHeader();
+  }
+
+  /** Track the header's height so the "below header" photo can sit beneath it. */
+  private _observeHeader(): void {
+    const header = this.renderRoot?.querySelector?.(".status-bar") as HTMLElement | null;
+    if (!header) return;
+    this._measureHeader(header);
+    if (typeof ResizeObserver === "undefined") return;
+    this._headerObserver?.disconnect();
+    this._headerObserver = new ResizeObserver(() => this._measureHeader(header));
+    this._headerObserver.observe(header);
+  }
+
+  private _measureHeader(header: HTMLElement): void {
+    const bottom = header.offsetTop + header.offsetHeight;
+    if (bottom !== this._headerBottom) this._headerBottom = bottom;
   }
 
   // --- Embedded button sub-cards -------------------------------------------
@@ -656,6 +692,83 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
     `;
   }
 
+  // --- Room photo -----------------------------------------------------------
+
+  private _onPhotoError = (): void => {
+    this._photoError = true;
+  };
+
+  /** Resolve the configured photo to a URL (bundled CDN, custom, or auto-match). */
+  private _resolvePhotoUrl(): string | undefined {
+    const c = this._config;
+    if (!c) return undefined;
+    if (c.photo_source === "custom") {
+      return c.photo_url || undefined;
+    }
+    const key =
+      !c.photo || c.photo === "auto" ? autoMatchPhotoKey(c.name || this._areaName()) : c.photo;
+    if (!key) return undefined;
+    const file = BUNDLED_PHOTOS[key];
+    return file ? bundledPhotoUrl(file) : undefined;
+  }
+
+  /** Build the comma-separated CSS gradients for the selected scrim edges. */
+  private _edgeGradientCss(edges: PhotoEdge[]): string {
+    const s = 0.6;
+    const parts: string[] = [];
+    if (edges.includes("top")) parts.push(`linear-gradient(to bottom, rgba(0,0,0,${s}) 0%, rgba(0,0,0,0) 48%)`);
+    if (edges.includes("bottom")) parts.push(`linear-gradient(to top, rgba(0,0,0,${s}) 0%, rgba(0,0,0,0) 48%)`);
+    if (edges.includes("left")) parts.push(`linear-gradient(to right, rgba(0,0,0,${s}) 0%, rgba(0,0,0,0) 48%)`);
+    if (edges.includes("right")) parts.push(`linear-gradient(to left, rgba(0,0,0,${s}) 0%, rgba(0,0,0,0) 48%)`);
+    return parts.join(", ");
+  }
+
+  private _renderPhoto(): TemplateResult | typeof nothing {
+    const c = this._config;
+    if (!c || c.show_photo === false) return nothing;
+    const url = this._resolvePhotoUrl();
+    if (!url || this._photoError) return nothing;
+
+    const placement: PhotoPlacement =
+      c.photo_placement === "fill" || c.photo_placement === "below_header" ? c.photo_placement : "top";
+    const opacity = typeof c.photo_opacity === "number" ? c.photo_opacity : 100;
+    const align = c.photo_align === "top" || c.photo_align === "bottom" ? c.photo_align : "center";
+    const height = typeof c.photo_height === "number" ? c.photo_height : undefined;
+    const edges = c.photo_edge_gradient ?? defaultEdgeGradient(placement);
+    const cropped = placement === "fill" || typeof height === "number";
+
+    const layer: Record<string, string> = {};
+    if (placement === "fill") {
+      layer.inset = "0";
+    } else {
+      layer.left = "0";
+      layer.right = "0";
+      layer.top = placement === "below_header" ? `${this._headerBottom}px` : "0";
+      if (typeof height === "number") layer.height = `${height}px`;
+    }
+
+    const img: Record<string, string> = {
+      opacity: String(opacity / 100),
+      objectPosition: `center ${align}`,
+    };
+    if (cropped) {
+      img.height = "100%";
+      img.objectFit = "cover";
+    } else {
+      img.height = "auto";
+    }
+
+    const gradient = this._edgeGradientCss(edges);
+    return html`
+      <div class="room-photo" style=${styleMap(layer)} aria-hidden="true">
+        <img src=${url} alt="" style=${styleMap(img)} @error=${this._onPhotoError} />
+        ${gradient
+          ? html`<div class="photo-scrim" style=${styleMap({ background: gradient })}></div>`
+          : nothing}
+      </div>
+    `;
+  }
+
   protected render(): TemplateResult | typeof nothing {
     if (!this._config || !this.hass) return nothing;
 
@@ -685,6 +798,7 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
     return html`
       <ha-card class=${classMap(themeClasses)}>
         ${this._config.brushed ? brushedOverlay : nothing}
+        ${this._renderPhoto()}
         <div class="status-bar align-${statusAlign}${headerDivider ? "" : " no-divider"}">
           <div class="status-heading">
             ${showHeaderIcon
@@ -736,6 +850,23 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
         box-sizing: border-box;
         overflow: hidden;
         color: var(--ted-style-text);
+      }
+
+      /* Room photo: above the card background + brushed effect, below all UI. */
+      .room-photo {
+        position: absolute;
+        z-index: -2;
+        overflow: hidden;
+        pointer-events: none;
+      }
+      .room-photo img {
+        display: block;
+        width: 100%;
+      }
+      .photo-scrim {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
       }
 
       /* Status strip (pinned to the top edge). */

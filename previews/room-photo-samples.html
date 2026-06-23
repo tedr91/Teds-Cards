@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Room Card — Room Photo sample looks</title>
+    <style>
+      :root {
+        --ted-style-text: #e9e9ec;
+        --ted-style-muted: #9a9aa2;
+        --ted-style-divider: rgba(120, 120, 120, 0.32);
+        --ted-style-surface: #26262b;
+        --ted-style-accent: #4f9dff;
+        --ted-style-radius: 12px;
+        --ted-style-radius-sm: 10px;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        padding: 28px;
+        background: #131318;
+        color: #e9e9ec;
+        font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      }
+      h1 { font-size: 20px; margin: 0 0 4px; }
+      p.lead {
+        margin: 0 0 6px;
+        color: #9a9aa2;
+        font-size: 13px;
+        max-width: 820px;
+        line-height: 1.55;
+      }
+      h2 {
+        font-size: 15px;
+        margin: 30px 0 2px;
+        padding-top: 16px;
+        border-top: 1px solid #2a2a31;
+      }
+      p.note { margin: 0 0 14px; color: #80808a; font-size: 12px; }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+        gap: 24px;
+        align-items: start;
+      }
+      .cap { font-size: 12.5px; font-weight: 600; margin-bottom: 8px; color: #d6d6da; }
+      .cap small { display: block; font-weight: 400; color: #80808a; margin-top: 2px; }
+
+      /* ---- Room Card mock (mirrors the real card) ---- */
+      .ha-card {
+        position: relative;
+        isolation: isolate;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        padding: 12px;
+        min-height: 230px;
+        border-radius: var(--ted-style-radius);
+        border: 1px solid var(--ted-style-divider);
+        overflow: hidden;
+        color: var(--ted-style-text);
+        background: linear-gradient(145deg, #2e2e32 0%, #222226 45%, #16161a 100%);
+        --header-bottom: 46px; /* approximates the measured header height in the real card */
+      }
+      .room-photo {
+        position: absolute;
+        z-index: -2;
+        overflow: hidden;
+        pointer-events: none;
+      }
+      .room-photo img { display: block; width: 100%; }
+      .photo-scrim { position: absolute; inset: 0; pointer-events: none; }
+
+      .status-bar {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 12px;
+        min-height: 24px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid var(--ted-style-divider);
+      }
+      .status-heading { display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
+      .status-heading .hi { font-size: 20px; line-height: 1; }
+      .status-title { font-size: 1rem; font-weight: 600; line-height: 1.2; white-space: nowrap; }
+      .status-items {
+        display: inline-flex; flex-wrap: wrap; align-items: center; justify-content: flex-end;
+        gap: 10px; font-size: 0.8rem; font-weight: 600;
+      }
+      .status-item { display: inline-flex; align-items: center; gap: 4px; }
+      .status-item .mi { font-size: 15px; color: var(--ted-style-muted); }
+
+      .sections { position: relative; z-index: 1; }
+      .button-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+      .button-cell {
+        position: relative; aspect-ratio: 1/1; border-radius: var(--ted-style-radius-sm);
+        background: rgba(38, 38, 43, 0.92); border: 1px solid var(--ted-style-divider);
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        gap: 4px; font-size: 10px; color: var(--ted-style-muted);
+      }
+      .button-cell .mi { font-size: 20px; color: var(--ted-style-accent); }
+      .mi { font-style: normal; }
+    </style>
+  </head>
+  <body>
+    <h1>Room Card — Room Photo sample looks</h1>
+    <p class="lead">
+      Generated from the same logic the card now uses (<code>_renderPhoto</code> + edge-gradient scrim).
+      The photo always sits above the card background but below the header, status, and buttons. If images
+      are blank, open this file from inside the repo so the relative path to
+      <code>images/room-header-photos/</code> resolves. Icons are emoji stand-ins for layout only.
+    </p>
+
+    <div id="root"></div>
+
+    <script>
+      // ---- Mirrors src/cards/room-card/ted-room-card.ts ----
+      function edgeGradientCss(edges) {
+        const s = 0.6;
+        const p = [];
+        if (edges.includes("top")) p.push(`linear-gradient(to bottom, rgba(0,0,0,${s}) 0%, rgba(0,0,0,0) 48%)`);
+        if (edges.includes("bottom")) p.push(`linear-gradient(to top, rgba(0,0,0,${s}) 0%, rgba(0,0,0,0) 48%)`);
+        if (edges.includes("left")) p.push(`linear-gradient(to right, rgba(0,0,0,${s}) 0%, rgba(0,0,0,0) 48%)`);
+        if (edges.includes("right")) p.push(`linear-gradient(to left, rgba(0,0,0,${s}) 0%, rgba(0,0,0,0) 48%)`);
+        return p.join(", ");
+      }
+      function defaultEdges(placement) {
+        if (placement === "fill") return ["top", "bottom"];
+        if (placement === "top") return ["top"];
+        return [];
+      }
+      function photoPath(name) {
+        return "../images/room-header-photos/" + encodeURIComponent(name) + ".jpg";
+      }
+
+      function photoLayer(cfg) {
+        const placement = cfg.placement || "top";
+        const align = cfg.align || "center";
+        const height = cfg.height;
+        const opacity = cfg.opacity == null ? 100 : cfg.opacity;
+        const edges = cfg.edges == null ? defaultEdges(placement) : cfg.edges;
+        const cropped = placement === "fill" || typeof height === "number";
+
+        const layer = document.createElement("div");
+        layer.className = "room-photo";
+        if (placement === "fill") {
+          layer.style.inset = "0";
+        } else {
+          layer.style.left = "0";
+          layer.style.right = "0";
+          layer.style.top = placement === "below_header" ? "var(--header-bottom)" : "0";
+          if (typeof height === "number") layer.style.height = height + "px";
+        }
+
+        const img = document.createElement("img");
+        img.src = photoPath(cfg.photo);
+        img.alt = "";
+        img.style.opacity = String(opacity / 100);
+        img.style.objectPosition = "center " + align;
+        if (cropped) {
+          img.style.height = "100%";
+          img.style.objectFit = "cover";
+        } else {
+          img.style.height = "auto";
+        }
+        layer.appendChild(img);
+
+        const grad = edgeGradientCss(edges);
+        if (grad) {
+          const scrim = document.createElement("div");
+          scrim.className = "photo-scrim";
+          scrim.style.background = grad;
+          layer.appendChild(scrim);
+        }
+        return layer;
+      }
+
+      function card(cfg) {
+        const c = document.createElement("div");
+        c.className = "ha-card";
+        c.appendChild(photoLayer(cfg));
+        c.insertAdjacentHTML(
+          "beforeend",
+          `<div class="status-bar">
+             <div class="status-heading"><span class="hi">${cfg.icon || "🛋️"}</span><span class="status-title">${cfg.name}</span></div>
+             <div class="status-items">
+               <span class="status-item"><span class="mi">🌡️</span>72°</span>
+               <span class="status-item"><span class="mi">👁️</span>Clear</span>
+             </div>
+           </div>
+           <div class="sections"><div class="button-grid">
+             <div class="button-cell"><span class="mi">💡</span>Lamp</div>
+             <div class="button-cell"><span class="mi">🪟</span>Shade</div>
+             <div class="button-cell"><span class="mi">📺</span>TV</div>
+             <div class="button-cell"><span class="mi">🔊</span>Audio</div>
+             <div class="button-cell"><span class="mi">🎬</span>Scene</div>
+           </div></div>`
+        );
+        return c;
+      }
+
+      const SECTIONS = [
+        {
+          title: "1 · Placements (full natural image, default scrim per placement)",
+          note: "Default Edge Gradient: Top→top edge, Below header→none, Fill→top+bottom.",
+          cards: [
+            { cap: "Top of card", sub: "natural height · scrim: top (default)", photo: "Living Room", name: "Living Room", icon: "🛋️", placement: "top" },
+            { cap: "Below header", sub: "natural height · scrim: none (default)", photo: "Kitchen", name: "Kitchen", icon: "🍳", placement: "below_header" },
+            { cap: "Fill card", sub: "scrim: top + bottom (default)", photo: "Bedroom", name: "Bedroom", icon: "🛏️", placement: "fill" },
+          ],
+        },
+        {
+          title: "2 · Edge Gradient (Scrim) options",
+          note: "Top placement cropped to 150px so the scrim differences are easy to compare.",
+          cards: [
+            { cap: "No scrim", sub: "edges: []", photo: "Office", name: "Office", icon: "💼", placement: "top", height: 150, edges: [] },
+            { cap: "Top", sub: "edges: [top]", photo: "Office", name: "Office", icon: "💼", placement: "top", height: 150, edges: ["top"] },
+            { cap: "Top + Bottom", sub: "edges: [top, bottom]", photo: "Office", name: "Office", icon: "💼", placement: "top", height: 150, edges: ["top", "bottom"] },
+            { cap: "All four edges", sub: "edges: [top, bottom, left, right]", photo: "Office", name: "Office", icon: "💼", placement: "top", height: 150, edges: ["top", "bottom", "left", "right"] },
+            { cap: "Left + Right", sub: "edges: [left, right]", photo: "Office", name: "Office", icon: "💼", placement: "top", height: 150, edges: ["left", "right"] },
+          ],
+        },
+        {
+          title: "3 · Crop height + vertical alignment (focal point)",
+          note: "When a Photo height is set (or Fill), the image crops with object-fit: cover and the chosen focal edge.",
+          cards: [
+            { cap: "Fill · align Top", sub: "shows the top of the photo", photo: "Media Room", name: "Media Room", icon: "🎬", placement: "fill", align: "top" },
+            { cap: "Fill · align Center", sub: "shows the middle (default)", photo: "Media Room", name: "Media Room", icon: "🎬", placement: "fill", align: "center" },
+            { cap: "Fill · align Bottom", sub: "shows the bottom of the photo", photo: "Media Room", name: "Media Room", icon: "🎬", placement: "fill", align: "bottom" },
+            { cap: "Top · height 120px", sub: "short banner, center focal", photo: "Dining Room", name: "Dining Room", icon: "🍽️", placement: "top", height: 120, edges: ["top"] },
+            { cap: "Top · height 240px", sub: "tall banner, center focal", photo: "Dining Room", name: "Dining Room", icon: "🍽️", placement: "top", height: 240, edges: ["top"] },
+          ],
+        },
+        {
+          title: "4 · Photo opacity",
+          note: "Opacity dims the photo only — the scrim stays at full strength for legibility.",
+          cards: [
+            { cap: "Fill · 100%", sub: "opacity: 100", photo: "Bathroom", name: "Bathroom", icon: "🛁", placement: "fill", opacity: 100 },
+            { cap: "Fill · 60%", sub: "opacity: 60", photo: "Bathroom", name: "Bathroom", icon: "🛁", placement: "fill", opacity: 60 },
+            { cap: "Fill · 30%", sub: "opacity: 30", photo: "Bathroom", name: "Bathroom", icon: "🛁", placement: "fill", opacity: 30 },
+          ],
+        },
+      ];
+
+      const root = document.getElementById("root");
+      for (const sec of SECTIONS) {
+        const h = document.createElement("h2");
+        h.textContent = sec.title;
+        root.appendChild(h);
+        if (sec.note) {
+          const n = document.createElement("p");
+          n.className = "note";
+          n.textContent = sec.note;
+          root.appendChild(n);
+        }
+        const grid = document.createElement("div");
+        grid.className = "grid";
+        for (const cfg of sec.cards) {
+          const wrap = document.createElement("div");
+          wrap.innerHTML = `<div class="cap">${cfg.cap}<small>${cfg.sub}</small></div>`;
+          wrap.appendChild(card(cfg));
+          grid.appendChild(wrap);
+        }
+        root.appendChild(grid);
+      }
+    </script>
+  </body>
+</html>
