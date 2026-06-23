@@ -29,6 +29,10 @@ const AREA_ICON_PATH =
 const APPEARANCE_ICON_PATH =
   "M12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2C17.5,2 22,6 22,11A6,6 0 0,1 16,17H14.2C13.9,17 13.7,17.2 13.7,17.5C13.7,17.6 13.8,17.7 13.8,17.8C14.2,18.3 14.4,18.9 14.4,19.5C14.5,20.9 13.4,22 12,22M7,11A1,1 0 0,0 6,12A1,1 0 0,0 7,13A1,1 0 0,0 8,12A1,1 0 0,0 7,11M10,7A1,1 0 0,0 9,8A1,1 0 0,0 10,9A1,1 0 0,0 11,8A1,1 0 0,0 10,7M14,7A1,1 0 0,0 13,8A1,1 0 0,0 14,9A1,1 0 0,0 15,8A1,1 0 0,0 14,7M17,11A1,1 0 0,0 16,12A1,1 0 0,0 17,13A1,1 0 0,0 18,12A1,1 0 0,0 17,11Z";
 
+// mdi:page-layout-header — Header section
+const HEADER_ICON_PATH =
+  "M21,5V19H3V5H21M21,3H3A2,2 0 0,0 1,5V19A2,2 0 0,0 3,21H21A2,2 0 0,0 23,19V5A2,2 0 0,0 21,3M5,7H19V9H5V7Z";
+
 /** Order shown in the "Add item" menu. */
 const STATUS_ITEM_TYPES: RoomStatusItemType[] = [
   "temperature",
@@ -50,10 +54,15 @@ const BUTTON_TYPE_META: Record<string, { label: string; icon: string }> = {
 const FIELD_LABELS: Record<string, string> = {
   area: "Area",
   name: "Name",
+  icon: "Icon",
   theme: "Visual styling",
   brushed: "Brushed effect",
+  show_header_icon: "Display icon in header",
+  header_icon_size: "Icon size override (px)",
+  show_header_name: "Display name in header",
+  header_name_size: "Name size override (px)",
+  header_divider: "Display header divider line",
   entity: "Entity",
-  icon: "Icon",
   on_color: "On color",
   off_color: "Off color",
   colors: "State colors (advanced)",
@@ -506,7 +515,14 @@ export class TedRoomCardEditor extends LitElement implements LovelaceCardEditor 
   protected render(): TemplateResult | typeof nothing {
     if (!this.hass || !this._config) return nothing;
 
-    const data = { theme: "ted-style", brushed: false, ...this._config };
+    const data = {
+      theme: "ted-style",
+      brushed: false,
+      show_header_icon: false,
+      show_header_name: true,
+      header_divider: true,
+      ...this._config,
+    };
     const statusItems = this._config.status_items ?? [];
     const sections = this._config.sections ?? [];
 
@@ -574,12 +590,13 @@ export class TedRoomCardEditor extends LitElement implements LovelaceCardEditor 
         schema: [
           { name: "area", selector: { area: {} } },
           { name: "name", selector: { text: {} } },
+          { name: "icon", selector: { icon: {} } },
         ],
       },
       {
         name: "",
         type: "expandable",
-        title: "Appearance",
+        title: "Appearance (general)",
         iconPath: APPEARANCE_ICON_PATH,
         flatten: true,
         schema: [
@@ -596,6 +613,42 @@ export class TedRoomCardEditor extends LitElement implements LovelaceCardEditor 
             },
           },
           { name: "brushed", selector: { boolean: {} } },
+        ],
+      },
+      {
+        name: "",
+        type: "expandable",
+        title: "Header",
+        iconPath: HEADER_ICON_PATH,
+        flatten: true,
+        schema: [
+          {
+            type: "grid",
+            name: "",
+            column_min_width: "100px",
+            schema: [
+              { name: "show_header_icon", selector: { boolean: {} } },
+              {
+                name: "header_icon_size",
+                disabled: this._config?.show_header_icon !== true,
+                selector: { number: { min: 0, max: 200, step: 1, mode: "box", unit_of_measurement: "px" } },
+              },
+            ],
+          },
+          {
+            type: "grid",
+            name: "",
+            column_min_width: "100px",
+            schema: [
+              { name: "show_header_name", selector: { boolean: {} } },
+              {
+                name: "header_name_size",
+                disabled: this._config?.show_header_name === false,
+                selector: { number: { min: 0, max: 200, step: 1, mode: "box", unit_of_measurement: "px" } },
+              },
+            ],
+          },
+          { name: "header_divider", selector: { boolean: {} } },
         ],
       },
     ];
@@ -618,8 +671,14 @@ export class TedRoomCardEditor extends LitElement implements LovelaceCardEditor 
       type: this._type(),
       area: value.area,
       name: value.name,
+      icon: value.icon,
       theme: value.theme,
       brushed: value.brushed,
+      show_header_icon: value.show_header_icon,
+      header_icon_size: value.header_icon_size,
+      show_header_name: value.show_header_name,
+      header_name_size: value.header_name_size,
+      header_divider: value.header_divider,
       status_items: this._config?.status_items,
       sections: this._config?.sections,
     });
@@ -754,6 +813,12 @@ export class TedRoomCardEditor extends LitElement implements LovelaceCardEditor 
     if (!next.brushed) delete next.brushed;
     if (!next.area) delete next.area;
     if (!next.name) delete next.name;
+    if (!next.icon) delete next.icon;
+    if (!next.show_header_icon) delete next.show_header_icon;
+    if (typeof next.header_icon_size !== "number") delete next.header_icon_size;
+    if (next.show_header_name !== false) delete next.show_header_name;
+    if (typeof next.header_name_size !== "number") delete next.header_name_size;
+    if (next.header_divider !== false) delete next.header_divider;
     if (!next.status_items || next.status_items.length === 0) {
       delete next.status_items;
     }

@@ -158,7 +158,7 @@ export class TedLabelButtonCardEditor extends LitElement implements LovelaceCard
       {
         name: "",
         type: "expandable",
-        title: "Appearance",
+        title: "Appearance (general)",
         iconPath: VISUAL_ICON_PATH,
         flatten: true,
         schema: visual,

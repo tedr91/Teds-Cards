@@ -271,6 +271,11 @@ sections:                  # optional, grids of buttons below the status bar
 
 `theme` and `brushed` work as in the other cards (see the Light Card section).
 
+**Header** — the top strip shows an optional **icon** and the room **name**. In the editor's **Header**
+section: **Display icon in header** (default off; pick the icon below **Name**) with an optional **Icon
+size override**, **Display name in header** (default on) with an optional **Name size override**, and
+**Display header divider line** (default on).
+
 **Status bar** — a small strip of items pinned to the top edge of the card, managed in the editor's
 **Status items** section (add, reorder, delete). Each item is one of:
 
@@ -306,6 +311,11 @@ px, matching a button).
 
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
+
+### v2.0.43
+
+- Room Card: added a **Header** section to the editor with an optional **icon** (selectable below the name) and controls for showing/sizing the header **icon** and **name**, plus a toggle for the **header divider line**. Defaults: icon off, name on, divider on.
+- All card editors: the **Appearance** section is now labeled **Appearance (general)**.
 
 ### v2.0.42
 

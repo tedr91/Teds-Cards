@@ -38,7 +38,7 @@ export class TedClockWeatherCardEditor extends LitElement implements LovelaceCar
     return html`
       <ha-expansion-panel outlined .leftChevron=${true}>
         <ha-svg-icon slot="leading-icon" .path=${VISUAL_ICON_PATH}></ha-svg-icon>
-        <span slot="header">Appearance (General)</span>
+        <span slot="header">Appearance (general)</span>
         <div class="appearance-content">
           <ha-form
             .hass=${this.hass}

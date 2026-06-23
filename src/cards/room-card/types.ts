@@ -99,8 +99,20 @@ export interface RoomCardConfig extends LovelaceCardConfig {
   area?: string;
   /** Optional title override (defaults to the area's name). */
   name?: string;
+  /** Optional icon shown in the header when `show_header_icon` is on. */
+  icon?: string;
   theme?: RoomCardTheme;
   brushed?: boolean;
+  /** Header: show the icon. Defaults to false. */
+  show_header_icon?: boolean;
+  /** Header: icon size override in px. */
+  header_icon_size?: number;
+  /** Header: show the name. Defaults to true. */
+  show_header_name?: boolean;
+  /** Header: name size override in px. */
+  header_name_size?: number;
+  /** Header: show the divider line under the header. Defaults to true. */
+  header_divider?: boolean;
   /** Items shown in the top STATUS strip. */
   status_items?: RoomStatusItem[];
   /** Button sections rendered below the status strip. */

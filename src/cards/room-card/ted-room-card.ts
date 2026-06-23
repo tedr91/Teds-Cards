@@ -667,6 +667,13 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
     };
 
     const title = this._config.name || this._areaName();
+    const showHeaderIcon = this._config.show_header_icon === true;
+    const showHeaderName = this._config.show_header_name !== false;
+    const headerDivider = this._config.header_divider !== false;
+    const headerIconSize =
+      typeof this._config.header_icon_size === "number" ? this._config.header_icon_size : undefined;
+    const headerNameSize =
+      typeof this._config.header_name_size === "number" ? this._config.header_name_size : undefined;
     const statusItems = this._config.status_items ?? [];
     const sections = this._config.sections ?? [];
     const hasBody = sections.length > 0;
@@ -674,8 +681,24 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
     return html`
       <ha-card class=${classMap(themeClasses)}>
         ${this._config.brushed ? brushedOverlay : nothing}
-        <div class="status-bar">
-          ${title ? html`<div class="status-title">${title}</div>` : nothing}
+        <div class="status-bar${headerDivider ? "" : " no-divider"}">
+          <div class="status-heading">
+            ${showHeaderIcon
+              ? html`<ha-icon
+                  class="status-heading-icon"
+                  .icon=${this._config.icon || "mdi:home"}
+                  style=${styleMap(headerIconSize ? { "--mdc-icon-size": `${headerIconSize}px` } : {})}
+                ></ha-icon>`
+              : nothing}
+            ${showHeaderName && title
+              ? html`<div
+                  class="status-title"
+                  style=${styleMap(headerNameSize ? { fontSize: `${headerNameSize}px` } : {})}
+                >
+                  ${title}
+                </div>`
+              : nothing}
+          </div>
           <div class="status-items">
             ${statusItems.map((item, index) => this._renderStatusItem(item, index))}
           </div>
@@ -722,6 +745,22 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
         min-height: 24px;
         padding-bottom: 10px;
         border-bottom: 1px solid var(--ted-style-divider);
+      }
+      .status-bar.no-divider {
+        border-bottom: none;
+        padding-bottom: 0;
+      }
+      .status-heading {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        min-width: 0;
+        flex: 0 1 auto;
+      }
+      .status-heading-icon {
+        --mdc-icon-size: 22px;
+        color: var(--ted-style-text);
+        flex: none;
       }
       .status-title {
         font-size: 1rem;
