@@ -36,6 +36,7 @@ const STATUS_ITEM_TYPES: RoomStatusItemType[] = [
   "brightness",
   "volume",
   "led",
+  "spacer",
 ];
 
 /** Per-button-type metadata for headers and the "Add button" menu. */
@@ -43,6 +44,7 @@ const BUTTON_TYPE_META: Record<string, { label: string; icon: string }> = {
   [ROOM_BUTTON_CARD_TYPES.label]: { label: "Button", icon: "mdi:gesture-tap-button" },
   [ROOM_BUTTON_CARD_TYPES.cover]: { label: "Cover", icon: "mdi:window-shutter" },
   [ROOM_BUTTON_CARD_TYPES.light]: { label: "Light", icon: "mdi:lightbulb" },
+  [ROOM_BUTTON_CARD_TYPES.spacer]: { label: "Spacer", icon: "mdi:arrow-expand-horizontal" },
 };
 
 const FIELD_LABELS: Record<string, string> = {
@@ -59,6 +61,7 @@ const FIELD_LABELS: Record<string, string> = {
   show_title: "Show title in card",
   title_align: "Title alignment",
   max_rows: "Max rows (0 = unlimited)",
+  size: "Size (px)",
 };
 
 /** Minimal entity/device registry shapes used to auto-pull an area's sensors. */
@@ -283,6 +286,13 @@ export class TedRoomCardEditor extends LitElement implements LovelaceCardEditor 
           name,
           { name: "colors", selector: { object: {} } },
         ];
+      case "spacer":
+        return [
+          {
+            name: "size",
+            selector: { number: { min: 0, max: 600, step: 1, mode: "box", unit_of_measurement: "px" } },
+          },
+        ];
     }
   }
 
@@ -297,6 +307,8 @@ export class TedRoomCardEditor extends LitElement implements LovelaceCardEditor 
         return { type, entity: "" };
       case "led":
         return { type, entity: "" };
+      case "spacer":
+        return { type, size: 24 };
     }
   }
 
@@ -480,6 +492,7 @@ export class TedRoomCardEditor extends LitElement implements LovelaceCardEditor 
               { value: ROOM_BUTTON_CARD_TYPES.label, label: "Button" },
               { value: ROOM_BUTTON_CARD_TYPES.cover, label: "Cover" },
               { value: ROOM_BUTTON_CARD_TYPES.light, label: "Light" },
+              { value: ROOM_BUTTON_CARD_TYPES.spacer, label: "Spacer" },
             ],
             (value) => this._addButton(sIdx, value),
           )}

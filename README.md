@@ -296,11 +296,20 @@ Each section has a **Section title** plus a **Show title in card** toggle (defau
 **Title alignment** selector (Left / Center / Right; disabled while the title is hidden). The title
 still labels the section in the editor even when it isn't shown in the card.
 
+**Spacer** — both the status strip and button sections can hold a **Spacer**: a transparent,
+non-interactive placeholder whose only option is its **Size** in px. Status-strip spacers add a
+horizontal gap (default `24` px); button-section spacers reserve an empty square cell (default `100`
+px, matching a button).
+
 
 ## Changelog
 
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
+
+### v2.0.42
+
+- Room Card: added a **Spacer** that can be added to the status strip or a button section. A spacer is a transparent, non-interactive placeholder whose only option is its **Size** in px — status-strip spacers default to `24` px wide, button-section spacers default to `100` px (a single square button).
 
 ### v2.0.41
 

@@ -23,6 +23,7 @@ import type {
   RoomCardConfig,
   RoomLedStatusItem,
   RoomSensorStatusItem,
+  RoomSpacerStatusItem,
   RoomStatusItem,
 } from "./types";
 
@@ -371,6 +372,11 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
     `;
   }
 
+  private _renderSpacerItem(item: RoomSpacerStatusItem): TemplateResult {
+    const size = typeof item.size === "number" ? item.size : 24;
+    return html`<div class="status-spacer" style=${styleMap({ width: `${size}px` })}></div>`;
+  }
+
   private _ledColor(item: RoomLedStatusItem, stateObj?: HomeAssistant["states"][string]): string {
     const rawState = stateObj?.state ?? "unavailable";
     if (item.colors) {
@@ -497,6 +503,8 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
         return this._renderVolumeItem(item, index);
       case "led":
         return this._renderLedItem(item);
+      case "spacer":
+        return this._renderSpacerItem(item);
     }
   }
 
@@ -740,6 +748,11 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
         font-weight: 600;
         color: var(--ted-style-text);
         white-space: nowrap;
+      }
+      .status-spacer {
+        flex: none;
+        align-self: stretch;
+        pointer-events: none;
       }
       .status-icon {
         --mdc-icon-size: 16px;

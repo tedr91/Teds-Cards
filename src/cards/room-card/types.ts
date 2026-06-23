@@ -4,6 +4,7 @@ import type { TedStyleTheme } from "../../shared/types";
 import type { CoverCardConfig } from "../cover-card/types";
 import type { LightCardConfig } from "../light-card/types";
 import type { LabelButtonCardConfig } from "../label-button-card/types";
+import type { SpacerCardConfig } from "../spacer-card/types";
 
 /** Visual styling mode. `ted-style` = self-contained look; `ha` = follow HA theme. */
 export type RoomCardTheme = TedStyleTheme;
@@ -14,7 +15,8 @@ export type RoomStatusItemType =
   | "occupancy"
   | "brightness"
   | "volume"
-  | "led";
+  | "led"
+  | "spacer";
 
 /** Fields shared by every status item. */
 interface RoomStatusItemBase {
@@ -62,14 +64,22 @@ export interface RoomLedStatusItem extends RoomStatusItemBase {
   colors?: Record<string, string>;
 }
 
+/** A transparent fixed-width gap in the status strip. */
+export interface RoomSpacerStatusItem extends RoomStatusItemBase {
+  type: "spacer";
+  /** Width of the gap in px. Defaults to 24. */
+  size?: number;
+}
+
 export type RoomStatusItem =
   | RoomSensorStatusItem
   | RoomBrightnessStatusItem
   | RoomVolumeStatusItem
-  | RoomLedStatusItem;
+  | RoomLedStatusItem
+  | RoomSpacerStatusItem;
 
 /** A button inside a button section — one of the embeddable Ted card types. */
-export type RoomButtonConfig = LabelButtonCardConfig | CoverCardConfig | LightCardConfig;
+export type RoomButtonConfig = LabelButtonCardConfig | CoverCardConfig | LightCardConfig | SpacerCardConfig;
 
 /** A reorderable section of square buttons (NovaStar Presets layout). */
 export interface RoomButtonSection {
