@@ -329,6 +329,12 @@ px, matching a button).
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v2.0.53
+
+- Light & Cover Cards: the **Name**, **Icon**, and **State** elements are now in a reorderable **Name / Icon / State** section in the editor — use the up/down arrows on each row to set their stacking order (top→bottom vertically, left→right horizontally).
+- Light & Cover Cards: removed the forced top/bottom-half clipping — elements are no longer cut off when only some are shown (e.g. Name on with Icon and State off).
+- Light & Cover Cards: when two or more elements are shown they now automatically spread to fill the card; a single element positions by its place in the order.
+
 ### v2.0.52
 
 - Room Card: the status-strip **icon size** is now configurable (default `16` px) via a **Status icon size** option next to the Vertical alignment in the Status items section.

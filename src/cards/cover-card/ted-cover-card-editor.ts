@@ -3,7 +3,7 @@ import { customElement, property, state } from "lit/decorators.js";
 import { type HomeAssistant, type LovelaceCardEditor, fireEvent } from "custom-card-helpers";
 
 import { COVER_CARD_EDITOR_TYPE } from "./const";
-import type { CoverCardConfig, CoverAction } from "./types";
+import type { CardElement, CoverCardConfig, CoverAction } from "./types";
 
 const VISUAL_ICON_PATH =
   "M17.5,12A1.5,1.5 0 0,1 16,10.5A1.5,1.5 0 0,1 17.5,9A1.5,1.5 0 0,1 19,10.5A1.5,1.5 0 0,1 17.5,12M14.5,8A1.5,1.5 0 0,1 13,6.5A1.5,1.5 0 0,1 14.5,5A1.5,1.5 0 0,1 16,6.5A1.5,1.5 0 0,1 14.5,8M9.5,8A1.5,1.5 0 0,1 8,6.5A1.5,1.5 0 0,1 9.5,5A1.5,1.5 0 0,1 11,6.5A1.5,1.5 0 0,1 9.5,8M6.5,12A1.5,1.5 0 0,1 5,10.5A1.5,1.5 0 0,1 6.5,9A1.5,1.5 0 0,1 8,10.5A1.5,1.5 0 0,1 6.5,12M12,3A9,9 0 0,0 3,12A9,9 0 0,0 12,21A1.5,1.5 0 0,0 13.5,19.5C13.5,19.11 13.35,18.76 13.11,18.5C12.88,18.23 12.73,17.88 12.73,17.5A1.5,1.5 0 0,1 14.23,16H16A5,5 0 0,0 21,11C21,6.58 16.97,3 12,3Z";
@@ -18,6 +18,9 @@ const ICON_BEHAVIOR_ICON_PATH = "M12,7A5,5 0 0,0 7,12A5,5 0 0,0 12,17A5,5 0 0,0 
 // mdi:memory — Memory section
 const MEMORY_ICON_PATH =
   "M17,17H7V7H17M21,11V9H19V7C19,5.89 18.1,5 17,5H15V3H13V5H11V3H9V5H7C5.89,5 5,5.89 5,7V9H3V11H5V13H3V15H5V17A2,2 0 0,0 7,19H9V21H11V19H13V21H15V19H17A2,2 0 0,0 19,17V15H21V13H19V11M13,13H11V11H13M15,9H9V15H15V9Z";
+// mdi:format-list-bulleted — Elements (reorder) section
+const ELEMENTS_ICON_PATH =
+  "M7,5H21V7H7V5M7,13V11H21V13H7M4,4.5A1.5,1.5 0 0,1 5.5,6A1.5,1.5 0 0,1 4,7.5A1.5,1.5 0 0,1 2.5,6A1.5,1.5 0 0,1 4,4.5M4,10.5A1.5,1.5 0 0,1 5.5,12A1.5,1.5 0 0,1 4,13.5A1.5,1.5 0 0,1 2.5,12A1.5,1.5 0 0,1 4,10.5M7,19V17H21V19H7M4,16.5A1.5,1.5 0 0,1 5.5,18A1.5,1.5 0 0,1 4,19.5A1.5,1.5 0 0,1 2.5,18A1.5,1.5 0 0,1 4,16.5Z";
 
 const ACTION_LABELS: Record<CoverAction, string> = {
   open_step: "Open more",
@@ -58,14 +61,17 @@ export class TedCoverCardEditor extends LitElement implements LovelaceCardEditor
     const data = { ...this._defaults(), ...this._config };
 
     return html`
-      <ha-form
-        .hass=${this.hass}
-        .data=${data}
-        .schema=${this._schema()}
-        .computeLabel=${this._computeLabel}
-        .computeHelper=${this._computeHelper}
-        @value-changed=${this._valueChanged}
-      ></ha-form>
+      <div class="editor">
+        <ha-form
+          .hass=${this.hass}
+          .data=${data}
+          .schema=${this._schema()}
+          .computeLabel=${this._computeLabel}
+          .computeHelper=${this._computeHelper}
+          @value-changed=${this._valueChanged}
+        ></ha-form>
+        ${this._renderElements()}
+      </div>
     `;
   }
 
@@ -241,33 +247,6 @@ export class TedCoverCardEditor extends LitElement implements LovelaceCardEditor
       ],
     });
     visual.push({ name: "brushed", selector: { boolean: {} } });
-    visual.push({
-      type: "grid",
-      name: "",
-      column_min_width: "100px",
-      schema: [
-        { name: "show_name", selector: { boolean: {} } },
-        { name: "name_scale", disabled: this._config?.show_name === false, selector: { number: { min: 10, max: 300, step: 5, mode: "box", unit_of_measurement: "%" } } },
-      ],
-    });
-    visual.push({
-      type: "grid",
-      name: "",
-      column_min_width: "100px",
-      schema: [
-        { name: "show_icon", selector: { boolean: {} } },
-        { name: "icon_scale", disabled: this._config?.show_icon === false, selector: { number: { min: 10, max: 300, step: 5, mode: "box", unit_of_measurement: "%" } } },
-      ],
-    });
-    visual.push({
-      type: "grid",
-      name: "",
-      column_min_width: "100px",
-      schema: [
-        { name: "show_state", selector: { boolean: {} } },
-        { name: "state_scale", disabled: this._config?.show_state === false, selector: { number: { min: 10, max: 300, step: 5, mode: "box", unit_of_measurement: "%" } } },
-      ],
-    });
     visual.push({
       type: "grid",
       name: "",
@@ -480,9 +459,13 @@ export class TedCoverCardEditor extends LitElement implements LovelaceCardEditor
   };
 
   private _valueChanged = (ev: CustomEvent): void => {
-    const config = { ...ev.detail.value } as CoverCardConfig;
+    this._commit({ ...this._config, ...ev.detail.value } as CoverCardConfig);
+  };
+
+  /** Strip values equal to their default and fire config-changed. */
+  private _commit(raw: CoverCardConfig): void {
+    const config = { ...raw } as CoverCardConfig;
     const defaults = this._defaults();
-    // Strip values equal to their default so the saved YAML stays minimal.
     for (const key of Object.keys(defaults) as Array<keyof CoverCardConfig>) {
       if (config[key] === defaults[key]) {
         delete config[key];
@@ -500,12 +483,149 @@ export class TedCoverCardEditor extends LitElement implements LovelaceCardEditor
     if (config.memory_mode !== "helper") {
       delete config.memory_entity;
     }
+    if (Array.isArray(config.element_order) && this._isDefaultOrder(config.element_order)) {
+      delete config.element_order;
+    }
     fireEvent(this, "config-changed", { config });
+  }
+
+  // --- Elements (reorderable name / icon / state) ---------------------------
+
+  private _elementOrder(): CardElement[] {
+    const valid: CardElement[] = ["name", "icon", "state"];
+    const order = this._config?.element_order;
+    if (!Array.isArray(order)) return valid;
+    const result = order.filter((el): el is CardElement => valid.includes(el as CardElement));
+    for (const el of valid) if (!result.includes(el)) result.push(el);
+    return result.slice(0, 3);
+  }
+
+  private _isDefaultOrder(order: CardElement[]): boolean {
+    return order.length === 3 && order[0] === "name" && order[1] === "icon" && order[2] === "state";
+  }
+
+  private _moveElement(idx: number, dir: -1 | 1): void {
+    const order = this._elementOrder();
+    const target = idx + dir;
+    if (target < 0 || target >= order.length) return;
+    [order[idx], order[target]] = [order[target], order[idx]];
+    this._commit({ ...this._config, element_order: order } as CoverCardConfig);
+  }
+
+  private _onElementChanged = (ev: CustomEvent): void => {
+    ev.stopPropagation();
+    this._commit({ ...this._config, ...ev.detail.value } as CoverCardConfig);
   };
+
+  private _renderElements(): TemplateResult {
+    const order = this._elementOrder();
+    const meta: Record<CardElement, { label: string; showKey: keyof CoverCardConfig; sizeKey: keyof CoverCardConfig; defSize: number }> = {
+      name: { label: "Name", showKey: "show_name", sizeKey: "name_scale", defSize: 100 },
+      icon: { label: "Icon", showKey: "show_icon", sizeKey: "icon_scale", defSize: 150 },
+      state: { label: "State", showKey: "show_state", sizeKey: "state_scale", defSize: 100 },
+    };
+    return html`
+      <ha-expansion-panel outlined class="elements-panel">
+        <div slot="header" class="elements-header">
+          <ha-svg-icon .path=${ELEMENTS_ICON_PATH}></ha-svg-icon>
+          <span>Name / Icon / State (drag-free reorder)</span>
+        </div>
+        <div class="elements">
+          ${order.map((el, idx) => {
+            const m = meta[el];
+            const show = this._config?.[m.showKey] !== false;
+            const size = typeof this._config?.[m.sizeKey] === "number" ? this._config[m.sizeKey] : m.defSize;
+            return html`
+              <div class="element-row">
+                <span class="element-label">${m.label}</span>
+                <ha-form
+                  class="element-form"
+                  .hass=${this.hass}
+                  .data=${{ [m.showKey]: show, [m.sizeKey]: size }}
+                  .schema=${[
+                    {
+                      type: "grid",
+                      name: "",
+                      column_min_width: "90px",
+                      schema: [
+                        { name: m.showKey, selector: { boolean: {} } },
+                        {
+                          name: m.sizeKey,
+                          disabled: !show,
+                          selector: { number: { min: 10, max: 300, step: 5, mode: "box", unit_of_measurement: "%" } },
+                        },
+                      ],
+                    },
+                  ]}
+                  .computeLabel=${this._computeLabel}
+                  @value-changed=${this._onElementChanged}
+                ></ha-form>
+                <div class="element-actions">
+                  <ha-icon-button label="Move up" ?disabled=${idx === 0} @click=${() => this._moveElement(idx, -1)}>
+                    <ha-icon icon="mdi:arrow-up"></ha-icon>
+                  </ha-icon-button>
+                  <ha-icon-button label="Move down" ?disabled=${idx === order.length - 1} @click=${() => this._moveElement(idx, 1)}>
+                    <ha-icon icon="mdi:arrow-down"></ha-icon>
+                  </ha-icon-button>
+                </div>
+              </div>
+            `;
+          })}
+        </div>
+      </ha-expansion-panel>
+    `;
+  }
 
   static styles = css`
     :host {
       display: block;
+    }
+    .editor {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .elements-panel {
+      --expansion-panel-content-padding: 0;
+      border-radius: 6px;
+    }
+    .elements-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 500;
+    }
+    .elements-header ha-svg-icon {
+      color: var(--secondary-text-color);
+    }
+    .elements {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 12px 16px 16px;
+    }
+    .element-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .element-label {
+      flex: none;
+      width: 46px;
+      font-weight: 500;
+    }
+    .element-form {
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+    .element-actions {
+      display: flex;
+      flex: none;
+    }
+    .element-actions ha-icon-button {
+      --mdc-icon-button-size: 36px;
+      --mdc-icon-size: 20px;
+      color: var(--secondary-text-color);
     }
   `;
 }

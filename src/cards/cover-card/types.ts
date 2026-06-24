@@ -24,6 +24,9 @@ export type CoverAction =
 /** Position "memory" source used when the card opens a position-capable cover. */
 export type MemoryMode = "off" | "static" | "helper";
 
+/** A reorderable visual element of the card body. */
+export type CardElement = "name" | "icon" | "state";
+
 export interface CoverCardConfig extends LovelaceCardConfig {
   type: string;
   entity: string;
@@ -50,6 +53,8 @@ export interface CoverCardConfig extends LovelaceCardConfig {
   icon_scale?: number;
   show_state?: boolean;
   state_scale?: number;
+  /** Stacking order of the name / icon / state elements. Defaults to name, icon, state. */
+  element_order?: CardElement[];
   show_hint?: boolean;
   hint_width?: number;
   // Switch behavior: action bound to each region × gesture.

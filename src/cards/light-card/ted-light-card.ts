@@ -17,7 +17,7 @@ import {
   LIGHT_CARD_NAME,
   LIGHT_CARD_TYPE,
 } from "./const";
-import type { LightCardConfig, LightAction } from "./types";
+import type { CardElement, LightCardConfig, LightAction } from "./types";
 
 const DOUBLE_CLICK_MS = 250;
 const LONG_PRESS_MS = 500;
@@ -230,6 +230,40 @@ export class TedLightCard extends LitElement implements LovelaceCard {
     // The visual rocker effect only shows while the card behaves as a rocker.
     const showRockerEffect = this._config.rocker !== false && this._config.rocker_effect !== false;
 
+    // The three content elements, laid out in the configured order and spread to
+    // fill the card (no forced top/bottom-half clipping).
+    const order = this._elementOrder();
+    const elements: Record<CardElement, { show: boolean; tpl: TemplateResult }> = {
+      name: {
+        show: showName,
+        tpl: html`<span class="primary" style=${styleMap({ fontSize: `${(14 * nameScale) / 100}px` })}>${name}</span>`,
+      },
+      icon: {
+        show: showIcon,
+        tpl: html`<button
+          type="button"
+          class="icon-shape"
+          style=${styleMap({ color: iconColor, "--mdc-icon-size": `${(24 * iconScale) / 100}px` })}
+          aria-label=${name}
+          ?disabled=${isUnavailable}
+          @click=${this._onIconClick}
+        >
+          <ha-icon .icon=${icon}></ha-icon>
+        </button>`,
+      },
+      state: {
+        show: showState,
+        tpl: html`<div class="info"><span class="secondary" style=${styleMap({ fontSize: `${(12 * stateScale) / 100}px` })}>${stateLabel}</span></div>`,
+      },
+    };
+    const visible = order.filter((el) => elements[el].show);
+    const justify =
+      visible.length >= 2
+        ? "space-between"
+        : visible.length === 1
+          ? ["flex-start", "center", "flex-end"][order.indexOf(visible[0])]
+          : "center";
+
     return html`
       <ha-card
         class=${classMap({
@@ -267,32 +301,11 @@ export class TedLightCard extends LitElement implements LovelaceCard {
               <span class="stripe-symbol stripe-minus" aria-hidden="true">−</span>
             `
           : nothing}
-        ${showIcon
-          ? html`
-              <button
-                type="button"
-                class="icon-shape"
-                style=${styleMap({ color: iconColor, "--mdc-icon-size": `${(24 * iconScale) / 100}px` })}
-                aria-label=${name}
-                ?disabled=${isUnavailable}
-                @click=${this._onIconClick}
-              >
-                <ha-icon .icon=${icon}></ha-icon>
-              </button>
-            `
-          : nothing}
-        <div class="zone zone-top">
-          ${showName
-            ? html`<span class="primary" style=${styleMap({ fontSize: `${(14 * nameScale) / 100}px` })}>${name}</span>`
-            : nothing}
-        </div>
         ${this._config.rocker !== false
           ? html`<div class="divider" aria-hidden="true"></div>`
           : nothing}
-        <div class="zone zone-bottom">
-          ${showState
-            ? html`<div class="info"><span class="secondary" style=${styleMap({ fontSize: `${(12 * stateScale) / 100}px` })}>${stateLabel}</span></div>`
-            : nothing}
+        <div class="content" style=${styleMap({ justifyContent: justify })}>
+          ${visible.map((el) => elements[el].tpl)}
         </div>
         <button
           type="button"
@@ -315,6 +328,16 @@ export class TedLightCard extends LitElement implements LovelaceCard {
   private _formatState(state: string): string {
     if (!state) return "";
     return state.charAt(0).toUpperCase() + state.slice(1).replace(/_/g, " ");
+  }
+
+  /** Resolved name/icon/state order, always containing all three. */
+  private _elementOrder(): CardElement[] {
+    const valid: CardElement[] = ["name", "icon", "state"];
+    const order = this._config?.element_order;
+    if (!Array.isArray(order)) return valid;
+    const result = order.filter((el): el is CardElement => valid.includes(el as CardElement));
+    for (const el of valid) if (!result.includes(el)) result.push(el);
+    return result.slice(0, 3);
   }
 
   private _onTopClick = (): void => {
@@ -647,24 +670,22 @@ export class TedLightCard extends LitElement implements LovelaceCard {
     ha-card.unavailable {
       opacity: 0.6;
     }
-    .zone {
+    .content {
       position: relative;
-      z-index: 1;
       flex: 1 1 0;
       min-height: 0;
       width: 100%;
       box-sizing: border-box;
       display: flex;
-      justify-content: center;
+      flex-direction: column;
+      align-items: center;
       pointer-events: none;
     }
-    .zone-top {
-      align-items: flex-start;
-      /* The name must never bleed into the bottom half. */
-      overflow: hidden;
-    }
-    .zone-bottom {
-      align-items: flex-end;
+    /* Content elements sit above the indicator/hint bars (icon also above the regions). */
+    .content > * {
+      position: relative;
+      z-index: 1;
+      max-width: 100%;
     }
     /* The three interactive regions overlay the whole card (padding + hint bars). */
     .region {
@@ -697,20 +718,20 @@ export class TedLightCard extends LitElement implements LovelaceCard {
       cursor: not-allowed;
     }
     .divider {
-      position: relative;
+      position: absolute;
+      left: 12px;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
       z-index: -2;
-      flex: none;
       height: 1px;
-      margin: 0;
       /* Engraved/sunken look: a dark groove with a faint highlight just below. */
       background-color: rgba(35, 35, 35, 0.45);
       box-shadow: 0 1px 0 rgba(235, 235, 235, 0.13);
+      pointer-events: none;
     }
     .icon-shape {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
+      position: relative;
       z-index: 4;
       display: inline-flex;
       line-height: 0;
@@ -720,6 +741,7 @@ export class TedLightCard extends LitElement implements LovelaceCard {
       padding: 0;
       cursor: pointer;
       outline: none;
+      pointer-events: auto;
       transition: color 180ms ease;
       -webkit-tap-highlight-color: transparent;
     }
@@ -727,7 +749,7 @@ export class TedLightCard extends LitElement implements LovelaceCard {
       box-shadow: 0 0 0 2px var(--ted-style-accent);
     }
     .icon-shape:active {
-      transform: translate(-50%, -50%) scale(0.92);
+      transform: scale(0.92);
     }
     ha-card.unavailable .icon-shape {
       cursor: not-allowed;
@@ -813,24 +835,17 @@ export class TedLightCard extends LitElement implements LovelaceCard {
       transform: translateY(-50%);
     }
     /* ---- Horizontal orientation overrides ---- */
-    ha-card.horizontal {
+    ha-card.horizontal .content {
       flex-direction: row;
     }
-    ha-card.horizontal .zone {
-      width: auto;
-      height: 100%;
-      align-items: center;
-    }
-    ha-card.horizontal .zone-top {
-      justify-content: flex-start;
-    }
-    ha-card.horizontal .zone-bottom {
-      justify-content: flex-end;
-    }
     ha-card.horizontal .divider {
+      left: 50%;
+      right: auto;
+      top: 12px;
+      bottom: 12px;
       width: 1px;
       height: auto;
-      align-self: stretch;
+      transform: translateX(-50%);
       box-shadow: 1px 0 0 rgba(235, 235, 235, 0.13);
     }
     ha-card.horizontal .region {

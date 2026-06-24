@@ -6,6 +6,9 @@ export type LightCardTheme = "ted-style" | "ha";
 /** Source for the indicator bar and icon colors when the light is on. */
 export type BrightnessColorMode = "theme" | "light" | "other";
 
+/** The three reorderable content elements of the card. */
+export type CardElement = "name" | "icon" | "state";
+
 /** An action that can be bound to a tap / double-tap / long-press on a region. */
 export type LightAction =
   | "increase"
@@ -44,6 +47,8 @@ export interface LightCardConfig extends LovelaceCardConfig {
   icon_scale?: number;
   show_state?: boolean;
   state_scale?: number;
+  /** Vertical (or horizontal) order of name / icon / state. Defaults to name, icon, state. */
+  element_order?: CardElement[];
   show_hint?: boolean;
   hint_width?: number;
   // Switch behavior: action bound to each region × gesture.
