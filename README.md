@@ -329,6 +329,10 @@ px, matching a button).
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v2.0.61
+
+- Room Card: the photo **State entity** option now reads "dims photo when off", and its defaults are **Greyscale when off = off** and **Opacity when off = 25%**.
+
 ### v2.0.60
 
 - Room Card: the room photo can now react to a **State entity** — when that entity is off the photo can turn **greyscale** and/or dim to an **Opacity when off** value, fading smoothly when it flips on/off. Both options are independent and only appear once an entity is selected.

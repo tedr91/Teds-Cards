@@ -892,9 +892,9 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
     const stateObj = stateEntity ? this.hass?.states[stateEntity] : undefined;
     const isOff =
       !!stateEntity && (!stateObj || OFF_STATES.has(String(stateObj.state).toLowerCase()));
-    const offOpacity = typeof c.photo_off_opacity === "number" ? c.photo_off_opacity : opacity;
+    const offOpacity = typeof c.photo_off_opacity === "number" ? c.photo_off_opacity : 25;
     const effectiveOpacity = isOff ? offOpacity : opacity;
-    const grayscale = isOff && c.photo_off_grayscale !== false;
+    const grayscale = isOff && c.photo_off_grayscale === true;
 
     const layer: Record<string, string> = {};
     if (placement === "fill") {

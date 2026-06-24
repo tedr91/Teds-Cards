@@ -161,9 +161,9 @@ export interface RoomCardConfig extends LovelaceCardConfig {
   photo_opacity?: number;
   /** Entity whose on/off state drives the photo treatment (greyscale / opacity). */
   photo_state_entity?: string;
-  /** Greyscale the photo while the state entity is off. Defaults to true. */
+  /** Greyscale the photo while the state entity is off. Defaults to false. */
   photo_off_grayscale?: boolean;
-  /** Photo opacity (0–100) while the state entity is off. Defaults to 100. */
+  /** Photo opacity (0–100) while the state entity is off. Defaults to 25. */
   photo_off_opacity?: number;
   /** Items shown in the top STATUS strip. */
   status_items?: RoomStatusItem[];

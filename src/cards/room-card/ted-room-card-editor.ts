@@ -98,7 +98,7 @@ const FIELD_LABELS: Record<string, string> = {
   shift_buttons_down: "Shift buttons down",
   photo_edge_gradient: "Edge Gradient (Scrim)",
   photo_opacity: "Photo opacity",
-  photo_state_entity: "State entity (greys photo when off)",
+  photo_state_entity: "State entity (dims photo when off)",
   photo_off_grayscale: "Greyscale when off",
   photo_off_opacity: "Opacity when off (%)",
   entity: "Entity",
@@ -629,8 +629,8 @@ export class TedRoomCardEditor extends LitElement implements LovelaceCardEditor 
       photo_align: "center",
       shift_buttons_down: true,
       photo_opacity: 100,
-      photo_off_grayscale: true,
-      photo_off_opacity: 100,
+      photo_off_grayscale: false,
+      photo_off_opacity: 25,
       ...this._config,
       photo_edge_gradient: this._config.photo_edge_gradient ?? defaultEdgeGradient(placement),
     };
@@ -1133,8 +1133,8 @@ export class TedRoomCardEditor extends LitElement implements LovelaceCardEditor 
       delete next.photo_off_grayscale;
       delete next.photo_off_opacity;
     } else {
-      if (next.photo_off_grayscale !== false) delete next.photo_off_grayscale;
-      if (typeof next.photo_off_opacity !== "number" || next.photo_off_opacity === 100) delete next.photo_off_opacity;
+      if (next.photo_off_grayscale !== true) delete next.photo_off_grayscale;
+      if (typeof next.photo_off_opacity !== "number" || next.photo_off_opacity === 25) delete next.photo_off_opacity;
     }
     const placement = (next.photo_placement as PhotoPlacement) ?? "top";
     if (
