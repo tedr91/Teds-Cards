@@ -886,6 +886,16 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
     const edges = c.photo_edge_gradient ?? defaultEdgeGradient(placement);
     const cropped = placement === "fill" || typeof height === "number";
 
+    // Optional state-driven treatment: when a state entity is set and reads as
+    // "off", greyscale and/or dim the photo (with a smooth transition).
+    const stateEntity = c.photo_state_entity;
+    const stateObj = stateEntity ? this.hass?.states[stateEntity] : undefined;
+    const isOff =
+      !!stateEntity && (!stateObj || OFF_STATES.has(String(stateObj.state).toLowerCase()));
+    const offOpacity = typeof c.photo_off_opacity === "number" ? c.photo_off_opacity : opacity;
+    const effectiveOpacity = isOff ? offOpacity : opacity;
+    const grayscale = isOff && c.photo_off_grayscale !== false;
+
     const layer: Record<string, string> = {};
     if (placement === "fill") {
       layer.inset = "0";
@@ -898,9 +908,13 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
     }
 
     const img: Record<string, string> = {
-      opacity: String(opacity / 100),
+      opacity: String(effectiveOpacity / 100),
       objectPosition: `center ${align}`,
     };
+    if (stateEntity) {
+      img.filter = grayscale ? "grayscale(1)" : "none";
+      img.transition = "opacity 0.4s ease, filter 0.4s ease";
+    }
     if (cropped) {
       img.height = "100%";
       img.objectFit = "cover";

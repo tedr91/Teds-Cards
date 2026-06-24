@@ -98,6 +98,9 @@ const FIELD_LABELS: Record<string, string> = {
   shift_buttons_down: "Shift buttons down",
   photo_edge_gradient: "Edge Gradient (Scrim)",
   photo_opacity: "Photo opacity",
+  photo_state_entity: "State entity (greys photo when off)",
+  photo_off_grayscale: "Greyscale when off",
+  photo_off_opacity: "Opacity when off (%)",
   entity: "Entity",
   on_color: "On color",
   off_color: "Off color",
@@ -626,6 +629,8 @@ export class TedRoomCardEditor extends LitElement implements LovelaceCardEditor 
       photo_align: "center",
       shift_buttons_down: true,
       photo_opacity: 100,
+      photo_off_grayscale: true,
+      photo_off_opacity: 100,
       ...this._config,
       photo_edge_gradient: this._config.photo_edge_gradient ?? defaultEdgeGradient(placement),
     };
@@ -901,6 +906,21 @@ export class TedRoomCardEditor extends LitElement implements LovelaceCardEditor 
       name: "photo_opacity",
       selector: { number: { min: 0, max: 100, step: 1, mode: "slider" } },
     });
+    schema.push({ name: "photo_state_entity", selector: { entity: {} } });
+    if (this._config?.photo_state_entity) {
+      schema.push({
+        type: "grid",
+        name: "",
+        column_min_width: "100px",
+        schema: [
+          { name: "photo_off_grayscale", selector: { boolean: {} } },
+          {
+            name: "photo_off_opacity",
+            selector: { number: { min: 0, max: 100, step: 1, mode: "slider" } },
+          },
+        ],
+      });
+    }
     return schema;
   }
 
@@ -939,6 +959,9 @@ export class TedRoomCardEditor extends LitElement implements LovelaceCardEditor 
       shift_buttons_down: value.shift_buttons_down,
       photo_edge_gradient: value.photo_edge_gradient,
       photo_opacity: value.photo_opacity,
+      photo_state_entity: value.photo_state_entity,
+      photo_off_grayscale: value.photo_off_grayscale,
+      photo_off_opacity: value.photo_off_opacity,
       status_items: this._config?.status_items,
       sections: this._config?.sections,
     });
@@ -1105,6 +1128,14 @@ export class TedRoomCardEditor extends LitElement implements LovelaceCardEditor 
     if (!next.photo_align || next.photo_align === "center") delete next.photo_align;
     if (next.shift_buttons_down !== false) delete next.shift_buttons_down;
     if (typeof next.photo_opacity !== "number" || next.photo_opacity === 100) delete next.photo_opacity;
+    if (!next.photo_state_entity) {
+      delete next.photo_state_entity;
+      delete next.photo_off_grayscale;
+      delete next.photo_off_opacity;
+    } else {
+      if (next.photo_off_grayscale !== false) delete next.photo_off_grayscale;
+      if (typeof next.photo_off_opacity !== "number" || next.photo_off_opacity === 100) delete next.photo_off_opacity;
+    }
     const placement = (next.photo_placement as PhotoPlacement) ?? "top";
     if (
       !Array.isArray(next.photo_edge_gradient) ||
