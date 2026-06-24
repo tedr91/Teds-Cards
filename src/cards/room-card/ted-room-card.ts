@@ -25,6 +25,8 @@ import {
   STATUS_ITEM_DEFAULT_ICON,
 } from "./const";
 import type {
+  ButtonSize,
+  RoomButtonConfig,
   RoomButtonSection,
   RoomCardConfig,
   RoomLedStatusItem,
@@ -124,6 +126,64 @@ const VOLUME_DOUBLE_TAP_MS = 220;
 function num(value: unknown, fallback: number): number {
   const parsed = typeof value === "number" ? value : Number.parseFloat(String(value));
   return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+/** Number of half-unit grid tracks a button size occupies. */
+const SIZE_SPAN: Record<ButtonSize, number> = { half: 1, normal: 2, double: 4 };
+/** Width of the section grid in half-unit columns (5 normal buttons across). */
+const GRID_COLS = 10;
+
+/** Resolve a button's width/height footprint in half-unit grid spans. */
+function buttonSpans(button: RoomButtonConfig | undefined): { w: number; h: number } {
+  return {
+    w: SIZE_SPAN[button?.ted_button_width ?? "normal"],
+    h: SIZE_SPAN[button?.ted_button_height ?? "normal"],
+  };
+}
+
+interface PlacedButton {
+  bIdx: number;
+  w: number;
+  h: number;
+}
+
+/**
+ * Simulate CSS Grid `auto-flow: row dense` placement to know how many grid rows a
+ * set of sized buttons occupies. Each button is placed in the first (topmost,
+ * left-most) free w×h slot, scanning from row 0 — matching the browser's dense
+ * packing. Returns the total number of half-unit rows used.
+ */
+function packedRows(buttons: PlacedButton[], cols = GRID_COLS): number {
+  const occupied: boolean[][] = [];
+  const row = (r: number): boolean[] => {
+    while (occupied.length <= r) occupied.push(new Array(cols).fill(false));
+    return occupied[r];
+  };
+  const fits = (r: number, c: number, w: number, h: number): boolean => {
+    if (c + w > cols) return false;
+    for (let dr = 0; dr < h; dr += 1) {
+      const line = row(r + dr);
+      for (let dc = 0; dc < w; dc += 1) if (line[c + dc]) return false;
+    }
+    return true;
+  };
+  let used = 0;
+  for (const { w, h } of buttons) {
+    let placed = false;
+    for (let r = 0; !placed; r += 1) {
+      for (let c = 0; c + w <= cols; c += 1) {
+        if (!fits(r, c, w, h)) continue;
+        for (let dr = 0; dr < h; dr += 1) {
+          const line = row(r + dr);
+          for (let dc = 0; dc < w; dc += 1) line[c + dc] = true;
+        }
+        used = Math.max(used, r + h);
+        placed = true;
+        break;
+      }
+    }
+  }
+  return used;
 }
 
 /** Convert HA brightness (0–255) to a 1–100% scale. */
@@ -257,6 +317,14 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
     const photoHeight = photo ? photo.offsetHeight : 0;
     if (bottom !== this._headerBottom) this._headerBottom = bottom;
     if (photoHeight !== this._photoHeight) this._photoHeight = photoHeight;
+    // Size the button grid's half-unit rows to match a half-column's width so
+    // cells stay square as the card scales responsively.
+    const grid = root?.querySelector?.(".button-grid:not(.overflow-grid)") as HTMLElement | null;
+    if (grid && grid.clientWidth > 0) {
+      const gap = 8;
+      const unit = (grid.clientWidth - gap * (GRID_COLS - 1)) / GRID_COLS;
+      if (unit > 0) this.style.setProperty("--rc-btn-unit", `${unit}px`);
+    }
   }
 
   private _onPhotoLoad = (): void => {
@@ -295,13 +363,14 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
     (this._config.sections ?? []).forEach((section, sIdx) => {
       (section.buttons ?? []).forEach((button, bIdx) => {
         const key = `${sIdx}:${bIdx}`;
-        const json = JSON.stringify(button);
+        const cardConfig = this._buttonCardConfig(button);
+        const json = JSON.stringify(cardConfig);
         const existing = this._buttonEls.get(key);
         if (existing && existing.json === json) {
           next.set(key, existing);
           return;
         }
-        const el = this._helpers!.createCardElement(button as LovelaceCardConfig);
+        const el = this._helpers!.createCardElement(cardConfig);
         // Render buttons as grid items so cards that otherwise apply a fixed
         // width/height (light, cover) fill the square cell instead.
         (el as unknown as { layout?: string }).layout = "grid";
@@ -310,6 +379,14 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
       });
     });
     this._buttonEls = next;
+  }
+
+  /** Strip the room-card-only sizing keys so the embedded sub-card stays clean. */
+  private _buttonCardConfig(button: RoomButtonConfig): LovelaceCardConfig {
+    const { ted_button_width, ted_button_height, ...cardConfig } = button;
+    void ted_button_width;
+    void ted_button_height;
+    return cardConfig as LovelaceCardConfig;
   }
 
   private _propagateHass(): void {
@@ -669,8 +746,13 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
 
   private _renderButtonCell(sIdx: number, bIdx: number): TemplateResult {
     const entry = this._buttonEls.get(`${sIdx}:${bIdx}`);
+    const button = this._config?.sections?.[sIdx]?.buttons?.[bIdx];
+    const { w, h } = buttonSpans(button);
     return html`
-      <div class="button-cell">
+      <div
+        class="button-cell"
+        style=${styleMap({ gridColumn: `span ${w}`, gridRow: `span ${h}` })}
+      >
         ${entry ? entry.el : html`<div class="button-cell__placeholder"></div>`}
       </div>
     `;
@@ -687,6 +769,7 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
       <button
         id=${anchorId}
         class="button-cell button-overflow"
+        style=${styleMap({ gridColumn: "span 2", gridRow: "span 2" })}
         popovertarget=${popId}
         title="Show more"
         aria-label="Show more"
@@ -708,9 +791,27 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
   private _renderSection(section: RoomButtonSection, sIdx: number): TemplateResult {
     const buttons = section.buttons ?? [];
     const maxRows = num(section.max_rows, 0);
-    const maxVisible = maxRows > 0 ? maxRows * 5 : Number.POSITIVE_INFINITY;
-    const overflow = buttons.length > maxVisible;
-    const visibleCount = overflow ? maxVisible - 1 : buttons.length;
+    const sizes: PlacedButton[] = buttons.map((button, bIdx) => {
+      const { w, h } = buttonSpans(button);
+      return { bIdx, w, h };
+    });
+    // Size/row-aware overflow: a normal row is 2 half-unit rows tall, so the
+    // budget is maxRows × 2. When the densely-packed buttons exceed it, show the
+    // largest in-order prefix that — together with the "…" cell — still fits.
+    let visibleCount = buttons.length;
+    let overflow = false;
+    if (maxRows > 0 && packedRows(sizes) > maxRows * 2) {
+      overflow = true;
+      const budget = maxRows * 2;
+      const overflowCell: PlacedButton = { bIdx: -1, w: 2, h: 2 };
+      visibleCount = 0;
+      for (let v = buttons.length - 1; v >= 0; v -= 1) {
+        if (packedRows([...sizes.slice(0, v), overflowCell]) <= budget) {
+          visibleCount = v;
+          break;
+        }
+      }
+    }
     return html`
       <div class="button-section">
         ${section.title && section.show_title === true
@@ -1174,13 +1275,15 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
       }
       .button-grid {
         display: grid;
-        grid-template-columns: repeat(5, 1fr);
+        grid-template-columns: repeat(10, 1fr);
+        grid-auto-rows: var(--rc-btn-unit, 36px);
+        grid-auto-flow: row dense;
         gap: 8px;
       }
       .button-cell {
         position: relative;
-        aspect-ratio: 1 / 1;
         min-width: 0;
+        min-height: 0;
       }
       .button-cell > * {
         display: block;
@@ -1236,7 +1339,8 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
         background: transparent;
       }
       .overflow-grid {
-        grid-template-columns: repeat(4, 76px);
+        grid-template-columns: repeat(8, 38px);
+        grid-auto-rows: 38px;
         max-width: 92vw;
       }
 

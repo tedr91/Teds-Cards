@@ -18,6 +18,7 @@ import {
   STATUS_ITEM_LABEL,
 } from "./const";
 import type {
+  ButtonSize,
   RoomButtonConfig,
   RoomButtonSection,
   RoomCardConfig,
@@ -59,6 +60,21 @@ const BUTTON_TYPE_META: Record<string, { label: string; icon: string }> = {
   [ROOM_BUTTON_CARD_TYPES.spacer]: { label: "Spacer", icon: "mdi:arrow-expand-horizontal" },
 };
 
+/** Width / height footprint options for a section button. */
+const BUTTON_SIZE_OPTIONS = [
+  { value: "half", label: "Half" },
+  { value: "normal", label: "Normal (default)" },
+  { value: "double", label: "Double" },
+];
+
+/** Remove the room-only sizing keys so the embedded sub-card editor stays clean. */
+function stripButtonSize(button: RoomButtonConfig): LovelaceCardConfig {
+  const { ted_button_width, ted_button_height, ...cardConfig } = button;
+  void ted_button_width;
+  void ted_button_height;
+  return cardConfig as LovelaceCardConfig;
+}
+
 const FIELD_LABELS: Record<string, string> = {
   area: "Area",
   name: "Name (override)",
@@ -91,6 +107,8 @@ const FIELD_LABELS: Record<string, string> = {
   title_align: "Title alignment",
   max_rows: "Max rows (0 = unlimited)",
   size: "Size (px)",
+  ted_button_width: "Width",
+  ted_button_height: "Height",
 };
 
 /** Order-independent equality for two edge-gradient sets. */
@@ -207,12 +225,13 @@ export class TedRoomCardEditor extends LitElement implements LovelaceCardEditor 
       // they default and lock their width/height fields.
       (el as unknown as { embedded?: boolean }).embedded = true;
       el.hass = this.hass;
-      el.setConfig(button as LovelaceCardConfig);
+      const cardConfig = stripButtonSize(button);
+      el.setConfig(cardConfig);
       el.addEventListener("config-changed", (ev: Event) => {
         ev.stopPropagation();
         this._onButtonConfigChanged(key, ev as CustomEvent);
       });
-      this._buttonEditors.set(key, { el, type: button.type, json: JSON.stringify(button) });
+      this._buttonEditors.set(key, { el, type: button.type, json: JSON.stringify(cardConfig) });
       this.requestUpdate();
     } finally {
       this._creatingEditors.delete(key);
@@ -220,9 +239,19 @@ export class TedRoomCardEditor extends LitElement implements LovelaceCardEditor 
   }
 
   private _onButtonConfigChanged(key: string, ev: CustomEvent): void {
-    const newButton = ev.detail?.config as RoomButtonConfig | undefined;
-    if (!newButton) return;
-    const json = JSON.stringify(newButton);
+    const newCard = ev.detail?.config as RoomButtonConfig | undefined;
+    if (!newCard) return;
+    const [sIdx, bIdx] = key.split(":").map((part) => Number(part));
+    const section = this._config?.sections?.[sIdx];
+    const oldButton = section?.buttons?.[bIdx];
+    // The sub-editor never sees the room-only size keys, so re-attach them.
+    const newButton = {
+      ...stripButtonSize(newCard),
+      ...(oldButton?.ted_button_width ? { ted_button_width: oldButton.ted_button_width } : {}),
+      ...(oldButton?.ted_button_height ? { ted_button_height: oldButton.ted_button_height } : {}),
+    } as RoomButtonConfig;
+    const cardConfig = stripButtonSize(newButton);
+    const json = JSON.stringify(cardConfig);
     const entry = this._buttonEditors.get(key);
     if (entry && entry.json === json) return;
     if (entry) {
@@ -231,14 +260,35 @@ export class TedRoomCardEditor extends LitElement implements LovelaceCardEditor 
       // setConfig, and it does not self-update on input. Echo the value it just
       // emitted straight back so a later re-render (e.g. when hass updates)
       // shows the current value instead of reverting to a stale one.
-      entry.el.setConfig(newButton as LovelaceCardConfig);
+      entry.el.setConfig(cardConfig);
     }
-    const [sIdx, bIdx] = key.split(":").map((part) => Number(part));
+    if (!section) return;
+    const sections = [...(this._config?.sections ?? [])];
+    const buttons = [...(section.buttons ?? [])];
+    buttons[bIdx] = newButton;
+    sections[sIdx] = { ...section, buttons };
+    this._commit({ ...this._config, type: this._type(), sections });
+  }
+
+  private _onButtonSizeChanged(sIdx: number, bIdx: number, ev: CustomEvent): void {
+    ev.stopPropagation();
+    const value = ev.detail?.value as
+      | { ted_button_width?: ButtonSize; ted_button_height?: ButtonSize }
+      | undefined;
+    if (!value) return;
     const sections = [...(this._config?.sections ?? [])];
     const section = sections[sIdx];
     if (!section) return;
     const buttons = [...(section.buttons ?? [])];
-    buttons[bIdx] = newButton;
+    const button = buttons[bIdx];
+    if (!button) return;
+    const next = { ...button } as RoomButtonConfig;
+    // Strip values equal to the "normal" default so the saved YAML stays minimal.
+    if (value.ted_button_width && value.ted_button_width !== "normal") next.ted_button_width = value.ted_button_width;
+    else delete next.ted_button_width;
+    if (value.ted_button_height && value.ted_button_height !== "normal") next.ted_button_height = value.ted_button_height;
+    else delete next.ted_button_height;
+    buttons[bIdx] = next;
     sections[sIdx] = { ...section, buttons };
     this._commit({ ...this._config, type: this._type(), sections });
   }
@@ -458,6 +508,26 @@ export class TedRoomCardEditor extends LitElement implements LovelaceCardEditor 
           )}
         </div>
         <div class="panel-content">
+          <ha-form
+            .hass=${this.hass}
+            .data=${{
+              ted_button_width: button.ted_button_width ?? "normal",
+              ted_button_height: button.ted_button_height ?? "normal",
+            }}
+            .schema=${[
+              {
+                type: "grid",
+                name: "",
+                column_min_width: "100px",
+                schema: [
+                  { name: "ted_button_width", selector: { select: { mode: "dropdown", options: BUTTON_SIZE_OPTIONS } } },
+                  { name: "ted_button_height", selector: { select: { mode: "dropdown", options: BUTTON_SIZE_OPTIONS } } },
+                ],
+              },
+            ]}
+            .computeLabel=${this._computeLabel}
+            @value-changed=${(ev: CustomEvent) => this._onButtonSizeChanged(sIdx, bIdx, ev)}
+          ></ha-form>
           ${editor ? editor.el : html`<div class="loading">Loading editor…</div>`}
         </div>
       </ha-expansion-panel>

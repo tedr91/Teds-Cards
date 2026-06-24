@@ -79,7 +79,28 @@ export type RoomStatusItem =
   | RoomSpacerStatusItem;
 
 /** A button inside a button section — one of the embeddable Ted card types. */
-export type RoomButtonConfig = LabelButtonCardConfig | CoverCardConfig | LightCardConfig | SpacerCardConfig;
+export type RoomButtonConfig = (
+  | LabelButtonCardConfig
+  | CoverCardConfig
+  | LightCardConfig
+  | SpacerCardConfig
+) &
+  RoomButtonSizing;
+
+/** Footprint size of a button in its section grid. */
+export type ButtonSize = "half" | "normal" | "double";
+
+/**
+ * Per-button layout footprint in a section grid. These reserved keys are stripped
+ * by the room card before the embedded sub-card is created, so they never reach
+ * the sub-card config. Omitted when "normal" (the default).
+ */
+export interface RoomButtonSizing {
+  /** Width footprint: half / normal / double. Defaults to "normal". */
+  ted_button_width?: ButtonSize;
+  /** Height footprint: half / normal / double. Defaults to "normal". */
+  ted_button_height?: ButtonSize;
+}
 
 /** A reorderable section of square buttons (NovaStar Presets layout). */
 export interface RoomButtonSection {
