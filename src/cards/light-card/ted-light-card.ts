@@ -230,39 +230,28 @@ export class TedLightCard extends LitElement implements LovelaceCard {
     // The visual rocker effect only shows while the card behaves as a rocker.
     const showRockerEffect = this._config.rocker !== false && this._config.rocker_effect !== false;
 
-    // The three content elements, laid out in the configured order and spread to
-    // fill the card (no forced top/bottom-half clipping).
+    // The three content elements, laid out in the configured order. Visible
+    // elements fill the card (no forced top/bottom-half clipping); the middle
+    // element of a 1- or 3-element layout is pinned to the exact card center.
+    const showFlags: Record<CardElement, boolean> = { name: showName, icon: showIcon, state: showState };
     const order = this._elementOrder();
-    const elements: Record<CardElement, { show: boolean; tpl: TemplateResult }> = {
-      name: {
-        show: showName,
-        tpl: html`<span class="primary" style=${styleMap({ fontSize: `${(14 * nameScale) / 100}px` })}>${name}</span>`,
-      },
-      icon: {
-        show: showIcon,
-        tpl: html`<button
-          type="button"
-          class="icon-shape"
-          style=${styleMap({ color: iconColor, "--mdc-icon-size": `${(24 * iconScale) / 100}px` })}
-          aria-label=${name}
-          ?disabled=${isUnavailable}
-          @click=${this._onIconClick}
-        >
-          <ha-icon .icon=${icon}></ha-icon>
-        </button>`,
-      },
-      state: {
-        show: showState,
-        tpl: html`<div class="info"><span class="secondary" style=${styleMap({ fontSize: `${(12 * stateScale) / 100}px` })}>${stateLabel}</span></div>`,
-      },
+    const visible = order.filter((el) => showFlags[el]);
+    const midEl: CardElement | null =
+      visible.length === 1 ? visible[0] : visible.length === 3 ? visible[1] : null;
+    const tpls: Record<CardElement, TemplateResult> = {
+      name: html`<span class=${classMap({ primary: true, "is-mid": midEl === "name" })} style=${styleMap({ fontSize: `${(14 * nameScale) / 100}px` })}>${name}</span>`,
+      icon: html`<button
+        type="button"
+        class=${classMap({ "icon-shape": true, "is-mid": midEl === "icon" })}
+        style=${styleMap({ color: iconColor, "--mdc-icon-size": `${(24 * iconScale) / 100}px` })}
+        aria-label=${name}
+        ?disabled=${isUnavailable}
+        @click=${this._onIconClick}
+      >
+        <ha-icon .icon=${icon}></ha-icon>
+      </button>`,
+      state: html`<div class=${classMap({ info: true, "is-mid": midEl === "state" })}><span class="secondary" style=${styleMap({ fontSize: `${(12 * stateScale) / 100}px` })}>${stateLabel}</span></div>`,
     };
-    const visible = order.filter((el) => elements[el].show);
-    const justify =
-      visible.length >= 2
-        ? "space-between"
-        : visible.length === 1
-          ? ["flex-start", "center", "flex-end"][order.indexOf(visible[0])]
-          : "center";
 
     return html`
       <ha-card
@@ -304,8 +293,8 @@ export class TedLightCard extends LitElement implements LovelaceCard {
         ${this._config.rocker !== false
           ? html`<div class="divider" aria-hidden="true"></div>`
           : nothing}
-        <div class="content" style=${styleMap({ justifyContent: justify })}>
-          ${visible.map((el) => elements[el].tpl)}
+        <div class=${classMap({ content: true, [`count-${visible.length}`]: true })}>
+          ${visible.map((el) => tpls[el])}
         </div>
         <button
           type="button"
@@ -680,6 +669,27 @@ export class TedLightCard extends LitElement implements LovelaceCard {
       flex-direction: column;
       align-items: center;
       pointer-events: none;
+    }
+    /* 2- and 3-element layouts spread to the card edges; 1-element centers. */
+    .content.count-1 {
+      justify-content: center;
+    }
+    .content.count-2,
+    .content.count-3 {
+      justify-content: space-between;
+    }
+    /* The middle element of a 1- or 3-element layout is pinned to the exact
+       center of the card, independent of the content above/below it. */
+    .content.count-1 .is-mid,
+    .content.count-3 .is-mid {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
+    .content.count-1 .is-mid.icon-shape:active,
+    .content.count-3 .is-mid.icon-shape:active {
+      transform: translate(-50%, -50%) scale(0.92);
     }
     /* Content elements sit above the indicator/hint bars (icon also above the regions). */
     .content > * {

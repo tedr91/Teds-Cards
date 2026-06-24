@@ -329,6 +329,10 @@ px, matching a button).
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v2.0.54
+
+- Light & Cover Cards: when the **Name / Icon / State** layout shows three elements (or one), the middle element is now pinned to the exact center of the card regardless of the content above and below it — it no longer drifts when the name wraps or the state text changes length.
+
 ### v2.0.53
 
 - Light & Cover Cards: the **Name**, **Icon**, and **State** elements are now in a reorderable **Name / Icon / State** section in the editor — use the up/down arrows on each row to set their stacking order (top→bottom vertically, left→right horizontally).
