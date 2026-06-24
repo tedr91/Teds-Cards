@@ -262,6 +262,22 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
     this._measureLayout();
   };
 
+  /** Card content padding (px), read from the --rc-card-padding CSS variable. */
+  private _cardPadding(): number {
+    return this._cssLength("--rc-card-padding", 12);
+  }
+
+  /** Header→body gap (px), read from the --rc-header-body-gap CSS variable. */
+  private _cardGap(): number {
+    return this._cssLength("--rc-header-body-gap", 12);
+  }
+
+  /** Read a px length from one of the host's CSS variables, with a fallback. */
+  private _cssLength(name: string, fallback: number): number {
+    const parsed = Number.parseFloat(getComputedStyle(this).getPropertyValue(name));
+    return Number.isFinite(parsed) ? parsed : fallback;
+  }
+
   // --- Embedded button sub-cards -------------------------------------------
 
   private async _loadHelpers(): Promise<void> {
@@ -815,8 +831,12 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
     const photoShown = this._config.show_photo !== false && !!this._resolvePhotoUrl() && !this._photoError;
     const shiftButtons =
       photoShown && placement === "top" && this._config.shift_buttons_down !== false;
+    // Push the body to the bottom of the photo: photo height, minus the header's
+    // bottom and the header→body gap, plus the card's top padding.
+    const CARD_PADDING = this._cardPadding();
+    const HEADER_GAP = this._cardGap();
     const bodyShift = shiftButtons
-      ? Math.max(0, this._photoHeight - this._headerBottom - 12)
+      ? Math.max(0, this._photoHeight - this._headerBottom - HEADER_GAP + CARD_PADDING)
       : 0;
     const bodyStyle = bodyShift ? { marginTop: `${bodyShift}px` } : {};
 
@@ -863,14 +883,17 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
       :host {
         display: block;
         height: 100%;
+        /* Card content padding + header→body gap — read in JS for the photo "shift buttons" math. */
+        --rc-card-padding: 12px;
+        --rc-header-body-gap: 12px;
       }
       ha-card {
         position: relative;
         isolation: isolate;
         display: flex;
         flex-direction: column;
-        gap: 12px;
-        padding: 12px;
+        gap: var(--rc-header-body-gap);
+        padding: var(--rc-card-padding);
         height: 100%;
         box-sizing: border-box;
         overflow: hidden;

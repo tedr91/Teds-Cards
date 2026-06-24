@@ -329,6 +329,10 @@ px, matching a button).
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v2.0.47
+
+- Room Card photo: the **Shift buttons down** pad now also accounts for the card's padding so buttons clear the photo fully. The card padding and header→body gap are now driven by CSS variables (`--rc-card-padding`, `--rc-header-body-gap`) used in both the layout and that calculation.
+
 ### v2.0.46
 
 - Room Card photo: renamed **Photo alignment** to **Photo vertical alignment** and paired it on one line with **Photo placement**. For **Top of card** placement, added a **Shift buttons down** toggle (default on) that pads the body so the first button section sits below the photo banner instead of overlapping it.
