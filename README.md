@@ -329,6 +329,10 @@ px, matching a button).
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v2.0.50
+
+- Room Card: fixed the status strip **Vertical alignment** so it moves the status items (not just the header) — the items previously stayed centered regardless of the setting.
+
 ### v2.0.49
 
 - Room Card photo: the **Below header** photo now starts a gap below the status area (matching the header→body spacing) instead of butting right against it.

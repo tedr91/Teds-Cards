@@ -946,6 +946,17 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
       .status-bar.align-bottom {
         align-items: flex-end;
       }
+      /* Keep the status items vertically aligned to match (their own box can be
+         the tallest element, so the parent alignment alone won't move them). */
+      .status-bar.align-top .status-items {
+        align-items: flex-start;
+      }
+      .status-bar.align-middle .status-items {
+        align-items: center;
+      }
+      .status-bar.align-bottom .status-items {
+        align-items: flex-end;
+      }
       .status-heading {
         display: inline-flex;
         align-items: center;
