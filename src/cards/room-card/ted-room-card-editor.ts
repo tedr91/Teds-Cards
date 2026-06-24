@@ -651,7 +651,7 @@ export class TedRoomCardEditor extends LitElement implements LovelaceCardEditor 
 
         <ha-expansion-panel
           outlined
-          .expanded=${this._isExpanded("g-status", true)}
+          .expanded=${this._isExpanded("g-status", false)}
           @expanded-changed=${(ev: Event) => this._onPanelToggle("g-status", ev)}
         >
           <div slot="header" class="panel-header">
@@ -733,7 +733,6 @@ export class TedRoomCardEditor extends LitElement implements LovelaceCardEditor 
         type: "expandable",
         title: "Room",
         iconPath: AREA_ICON_PATH,
-        expanded: true,
         flatten: true,
         schema: [
           { name: "area", selector: { area: {} } },

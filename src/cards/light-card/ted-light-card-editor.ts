@@ -141,16 +141,24 @@ export class TedLightCardEditor extends LitElement implements LovelaceCardEditor
     const rockerOff = this._config?.rocker === false;
     const visual: Array<Record<string, unknown>> = [
       {
-        name: "theme",
-        selector: {
-          select: {
-            mode: "dropdown",
-            options: [
-              { value: "ted-style", label: "Ted's Style (default)" },
-              { value: "ha", label: "Home Assistant theme" },
-            ],
+        type: "grid",
+        name: "",
+        column_min_width: "100px",
+        schema: [
+          {
+            name: "theme",
+            selector: {
+              select: {
+                mode: "dropdown",
+                options: [
+                  { value: "ted-style", label: "Ted's Style (default)" },
+                  { value: "ha", label: "Home Assistant theme" },
+                ],
+              },
+            },
           },
-        },
+          { name: "brushed", selector: { boolean: {} } },
+        ],
       },
       {
         type: "grid",
@@ -169,19 +177,20 @@ export class TedLightCardEditor extends LitElement implements LovelaceCardEditor
               },
             },
           },
-          {
-            name: "orientation",
-            selector: {
-              select: {
-                mode: "dropdown",
-                options: [
-                  { value: "vertical", label: "Vertical (default)" },
-                  { value: "horizontal", label: "Horizontal" },
-                ],
-              },
-            },
-          },
+          { name: "rocker_effect", disabled: rockerOff, selector: { boolean: {} } },
         ],
+      },
+      {
+        name: "orientation",
+        selector: {
+          select: {
+            mode: "dropdown",
+            options: [
+              { value: "vertical", label: "Vertical (default)" },
+              { value: "horizontal", label: "Horizontal" },
+            ],
+          },
+        },
       },
     ];
     // Indicator bar: the show toggle is on its own row; width + color appear
@@ -241,15 +250,6 @@ export class TedLightCardEditor extends LitElement implements LovelaceCardEditor
       visual.push({ name: "icon_color_custom", selector: { color_rgb: {} } });
     }
     visual.push({ name: "background_on", selector: { ui_color: {} } });
-    visual.push({
-      type: "grid",
-      name: "",
-      column_min_width: "100px",
-      schema: [
-        { name: "brushed", selector: { boolean: {} } },
-        { name: "rocker_effect", disabled: rockerOff, selector: { boolean: {} } },
-      ],
-    });
     visual.push({
       type: "grid",
       name: "",

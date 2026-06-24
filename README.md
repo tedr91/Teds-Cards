@@ -329,6 +329,11 @@ px, matching a button).
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v2.0.63
+
+- Light & Cover Cards: tidied the Appearance layout — **Visual styling** + **Brushed effect** share a row, **Mode** + **Rocker effect** share a row, and **Orientation** is on its own row.
+- Room Card editor: all sections now start collapsed except **Button sections**.
+
 ### v2.0.62
 
 - Light & Cover Cards: when **Mode** is set to **Button style** (Rocker off), the whole card is now a single continuous click surface instead of separate up/down/icon zones.
