@@ -822,6 +822,8 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
       this._config.status_align === "middle" || this._config.status_align === "bottom"
         ? this._config.status_align
         : "top";
+    const statusIconSize =
+      typeof this._config.status_icon_size === "number" ? this._config.status_icon_size : 16;
     const statusItems = this._config.status_items ?? [];
     const sections = this._config.sections ?? [];
     const hasBody = sections.length > 0;
@@ -848,7 +850,10 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
       <ha-card class=${classMap(themeClasses)}>
         ${this._config.brushed ? brushedOverlay : nothing}
         ${this._renderPhoto()}
-        <div class="status-bar align-${statusAlign}${headerDivider ? "" : " no-divider"}">
+        <div
+          class="status-bar align-${statusAlign}${headerDivider ? "" : " no-divider"}"
+          style=${styleMap({ "--rc-status-icon-size": `${statusIconSize}px` })}
+        >
           <div class="status-heading">
             ${showHeaderIcon
               ? html`<ha-icon
@@ -1002,7 +1007,7 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
         pointer-events: none;
       }
       .status-icon {
-        --mdc-icon-size: 22px;
+        --mdc-icon-size: var(--rc-status-icon-size, 16px);
         color: var(--ted-style-muted);
         flex: none;
       }
@@ -1032,7 +1037,7 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
         -webkit-tap-highlight-color: transparent;
       }
       .status-icon-button ha-icon {
-        --mdc-icon-size: 22px;
+        --mdc-icon-size: var(--rc-status-icon-size, 16px);
       }
       .status-icon-button:hover {
         color: var(--ted-style-text);

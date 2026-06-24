@@ -71,6 +71,7 @@ const FIELD_LABELS: Record<string, string> = {
   header_name_size: "Name size override (px)",
   header_divider: "Display header divider line",
   status_align: "Vertical alignment",
+  status_icon_size: "Status icon size (px)",
   show_photo: "Show photo",
   photo_source: "Photo source",
   photo: "Select photo",
@@ -582,24 +583,38 @@ export class TedRoomCardEditor extends LitElement implements LovelaceCardEditor 
           <div class="panel-content">
             <ha-form
               .hass=${this.hass}
-              .data=${{ status_align: this._config.status_align ?? "top" }}
+              .data=${{
+                status_align: this._config.status_align ?? "top",
+                status_icon_size: this._config.status_icon_size ?? 16,
+              }}
               .schema=${[
                 {
-                  name: "status_align",
-                  selector: {
-                    select: {
-                      mode: "dropdown",
-                      options: [
-                        { value: "top", label: "Top (default)" },
-                        { value: "middle", label: "Middle" },
-                        { value: "bottom", label: "Bottom" },
-                      ],
+                  type: "grid",
+                  name: "",
+                  column_min_width: "100px",
+                  schema: [
+                    {
+                      name: "status_align",
+                      selector: {
+                        select: {
+                          mode: "dropdown",
+                          options: [
+                            { value: "top", label: "Top (default)" },
+                            { value: "middle", label: "Middle" },
+                            { value: "bottom", label: "Bottom" },
+                          ],
+                        },
+                      },
                     },
-                  },
+                    {
+                      name: "status_icon_size",
+                      selector: { number: { min: 8, max: 48, step: 1, mode: "box", unit_of_measurement: "px" } },
+                    },
+                  ],
                 },
               ]}
               .computeLabel=${this._computeLabel}
-              @value-changed=${this._onStatusAlignChanged}
+              @value-changed=${this._onStatusSettingsChanged}
             ></ha-form>
             <div class="row-list">
               ${statusItems.map((item, idx) => this._renderStatusItemRow(item, idx, statusItems.length))}
@@ -852,10 +867,18 @@ export class TedRoomCardEditor extends LitElement implements LovelaceCardEditor 
     });
   };
 
-  private _onStatusAlignChanged = (ev: CustomEvent): void => {
+  private _onStatusSettingsChanged = (ev: CustomEvent): void => {
     ev.stopPropagation();
-    const value = ev.detail.value as { status_align?: "top" | "middle" | "bottom" };
-    this._commit({ ...this._config, type: this._type(), status_align: value.status_align });
+    const value = ev.detail.value as {
+      status_align?: "top" | "middle" | "bottom";
+      status_icon_size?: number;
+    };
+    this._commit({
+      ...this._config,
+      type: this._type(),
+      status_align: value.status_align,
+      status_icon_size: value.status_icon_size,
+    });
   };
 
   private _onStatusItemChanged(idx: number, type: RoomStatusItemType, ev: CustomEvent): void {
@@ -994,6 +1017,7 @@ export class TedRoomCardEditor extends LitElement implements LovelaceCardEditor 
     if (typeof next.header_name_size !== "number") delete next.header_name_size;
     if (next.header_divider !== true) delete next.header_divider;
     if (!next.status_align || next.status_align === "top") delete next.status_align;
+    if (typeof next.status_icon_size !== "number" || next.status_icon_size === 16) delete next.status_icon_size;
     // Room photo defaults.
     if (next.show_photo !== false) delete next.show_photo;
     if (next.photo_source !== "custom") delete next.photo_source;

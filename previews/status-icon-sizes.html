@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Room Card — status icon sizes</title>
+    <style>
+      :root {
+        --ted-style-text: #e9e9ec;
+        --ted-style-muted: #9a9aa2;
+        --ted-style-divider: rgba(120, 120, 120, 0.32);
+        --ted-style-accent: #4f9dff;
+        --ted-style-radius: 12px;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        padding: 28px;
+        background: #131318;
+        color: #e9e9ec;
+        font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      }
+      h1 { font-size: 20px; margin: 0 0 4px; }
+      p.lead { margin: 0 0 24px; color: #9a9aa2; font-size: 13px; max-width: 760px; line-height: 1.5; }
+      .row { margin-bottom: 18px; }
+      .size-label { font-size: 12px; font-weight: 600; color: #d6d6da; margin-bottom: 6px; }
+      .size-label.current { color: var(--ted-style-accent); }
+
+      /* ---- mirrors the real Room Card status strip ---- */
+      .ha-card {
+        border-radius: var(--ted-style-radius);
+        border: 1px solid var(--ted-style-divider);
+        padding: 12px;
+        background: linear-gradient(145deg, #2e2e32 0%, #222226 45%, #16161a 100%);
+        color: var(--ted-style-text);
+      }
+      .status-bar {
+        display: flex;
+        align-items: flex-start; /* "Top" alignment (default) */
+        justify-content: space-between;
+        gap: 12px;
+        min-height: 24px;
+      }
+      .status-heading { display: inline-flex; align-items: center; gap: 8px; min-width: 0; flex: 0 1 auto; }
+      .status-title { font-size: 1rem; font-weight: 600; line-height: 1.2; white-space: nowrap; }
+      .status-items {
+        display: inline-flex;
+        flex: 1 1 auto;
+        flex-wrap: wrap;
+        align-items: flex-start;
+        justify-content: flex-end;
+        gap: 10px;
+        min-width: 0;
+      }
+      .status-item {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        min-height: 28px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: var(--ted-style-text);
+        white-space: nowrap;
+      }
+      .status-icon { color: var(--ted-style-muted); flex: none; }
+      .status-text { color: var(--ted-style-text); }
+      .status-icon-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex: none;
+        width: 28px;
+        height: 28px;
+        padding: 0;
+        border: none;
+        border-radius: 50%;
+        background: transparent;
+        color: var(--ted-style-muted);
+      }
+      /* Icon size is driven per-row by --icon-size. */
+      .status-icon,
+      .status-icon-button svg {
+        width: var(--icon-size, 22px);
+        height: var(--icon-size, 22px);
+        fill: currentColor;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Room Card — status icon sizes</h1>
+    <p class="lead">
+      Same "Kitchen" status strip with the icons fixed at each size from 14px to 20px, plus the current
+      22px for reference. Items keep a 28px min-height (matching the brightness/volume buttons) so the
+      icons stay on a common centerline. Alignment shown is the default <strong>Top</strong>.
+    </p>
+
+    <div id="root"></div>
+
+    <script>
+      const ICONS = {
+        thermometer:
+          "M15,13V5A3,3 0 0,0 12,2A3,3 0 0,0 9,5V13A5,5 0 1,0 15,13M12,4A1,1 0 0,1 13,5V8H11V5A1,1 0 0,1 12,4Z",
+        walk:
+          "M14.12,10H19V8.2H15.38L13.38,4.87C13.08,4.37 12.54,4.03 11.92,4.03C11.74,4.03 11.58,4.06 11.42,4.11L6,5.8V11H7.8V7.33L9.91,6.67L6,22H7.8L10.67,13.59L13,17V22H14.8V15.59L12.31,10.45L13.04,7.86L14.12,10Z",
+        brightness:
+          "M12,18V6A6,6 0 0,1 18,12A6,6 0 0,1 12,18M20,8.69V4H15.31L12,0.69L8.69,4H4V8.69L0.69,12L4,15.31V20H8.69L12,23.31L15.31,20H20V15.31L23.31,12L20,8.69Z",
+        volume:
+          "M14,3.23V5.29C16.89,6.15 19,8.83 19,12C19,15.17 16.89,17.84 14,18.7V20.77C18,19.86 21,16.28 21,12C21,7.72 18,4.14 14,3.23M16.5,12C16.5,10.23 15.5,8.71 14,7.97V16C15.5,15.29 16.5,13.76 16.5,12M3,9V15H7L12,20V4L7,9H3Z",
+      };
+      function svg(path) {
+        return `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${path}"></path></svg>`;
+      }
+      function statusBar() {
+        return `
+          <div class="ha-card">
+            <div class="status-bar">
+              <div class="status-heading"><span class="status-title">Kitchen</span></div>
+              <div class="status-items">
+                <div class="status-item"><span class="status-icon">${svg(ICONS.thermometer)}</span><span class="status-text">73 °F</span></div>
+                <div class="status-item"><span class="status-icon">${svg(ICONS.walk)}</span><span class="status-text">Clear</span></div>
+                <button class="status-icon-button">${svg(ICONS.brightness)}</button>
+                <button class="status-icon-button">${svg(ICONS.volume)}</button>
+                <div class="status-item"><span class="status-icon">${svg(ICONS.walk)}</span><span class="status-text">Clear</span></div>
+              </div>
+            </div>
+          </div>`;
+      }
+
+      const root = document.getElementById("root");
+      const sizes = [14, 15, 16, 17, 18, 19, 20, 22];
+      for (const size of sizes) {
+        const row = document.createElement("div");
+        row.className = "row";
+        row.style.setProperty("--icon-size", size + "px");
+        const current = size === 22;
+        row.innerHTML =
+          `<div class="size-label ${current ? "current" : ""}">${size}px${current ? " — current" : ""}</div>` +
+          statusBar();
+        root.appendChild(row);
+      }
+    </script>
+  </body>
+</html>

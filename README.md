@@ -329,6 +329,10 @@ px, matching a button).
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v2.0.52
+
+- Room Card: the status-strip **icon size** is now configurable (default `16` px) via a **Status icon size** option next to the Vertical alignment in the Status items section.
+
 ### v2.0.51
 
 - Room Card: **Display header divider line** now defaults to **off**.

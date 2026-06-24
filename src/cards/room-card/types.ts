@@ -115,6 +115,8 @@ export interface RoomCardConfig extends LovelaceCardConfig {
   header_divider?: boolean;
   /** Vertical alignment of the status strip content. Defaults to "top". */
   status_align?: "top" | "middle" | "bottom";
+  /** Status strip icon size in px. Defaults to 16. */
+  status_icon_size?: number;
   // --- Room photo ---
   /** Show the room photo behind the card UI. Defaults to true. */
   show_photo?: boolean;
