@@ -53,17 +53,26 @@ export class TedLightCardEditor extends LitElement implements LovelaceCardEditor
     // Apply defaults so the dropdowns show the current selection.
     const data = { ...this._defaults(), ...this._config };
 
+    const schema = this._schema();
     return html`
       <div class="editor">
         <ha-form
           .hass=${this.hass}
           .data=${data}
-          .schema=${this._schema()}
+          .schema=${schema.top}
           .computeLabel=${this._computeLabel}
           .computeHelper=${this._computeHelper}
           @value-changed=${this._valueChanged}
         ></ha-form>
         ${this._renderElements()}
+        <ha-form
+          .hass=${this.hass}
+          .data=${data}
+          .schema=${schema.bottom}
+          .computeLabel=${this._computeLabel}
+          .computeHelper=${this._computeHelper}
+          @value-changed=${this._valueChanged}
+        ></ha-form>
       </div>
     `;
   }
@@ -278,7 +287,7 @@ export class TedLightCardEditor extends LitElement implements LovelaceCardEditor
       ],
     };
 
-    const sections: Array<Record<string, unknown>> = [
+    const top: Array<Record<string, unknown>> = [
       {
         name: "entity",
         required: true,
@@ -294,8 +303,9 @@ export class TedLightCardEditor extends LitElement implements LovelaceCardEditor
         flatten: true,
         schema: visual,
       },
-      switchBehavior,
     ];
+
+    const bottom: Array<Record<string, unknown>> = [switchBehavior];
 
     // Brightness "memory" only applies to dimmable lights.
     if (this._entitySupportsBrightness()) {
@@ -329,7 +339,7 @@ export class TedLightCardEditor extends LitElement implements LovelaceCardEditor
           selector: { entity: { domain: ["input_number", "number"] } },
         });
       }
-      sections.push({
+      bottom.push({
         name: "",
         type: "expandable",
         title: "Memory",
@@ -339,7 +349,7 @@ export class TedLightCardEditor extends LitElement implements LovelaceCardEditor
       });
     }
 
-    return sections;
+    return { top, bottom };
   }
 
   private _computeHelper = (schema: { name: string }): string | undefined => {
