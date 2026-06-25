@@ -329,6 +329,11 @@ px, matching a button).
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v2.0.70
+
+- Button Card: added the **Neumorphic effect** (on by default) — a raised tile that presses in when the bound entity is active — plus a subtle drop shadow behind the icon.
+- All cards now show a live **preview** in Home Assistant's "Add to dashboard → By card" picker instead of just a text description.
+
 ### v2.0.69
 
 - Light & Cover Cards: added a subtle drop shadow behind the icon, and the rocker pivot divider is now hidden when the Neumorphic effect is on (the paddle seam serves as the pivot).

@@ -191,7 +191,7 @@ registerCustomCard({
   type: CLOCK_WEATHER_CARD_TYPE,
   name: CLOCK_WEATHER_CARD_NAME,
   description: CLOCK_WEATHER_CARD_DESCRIPTION,
-  preview: false,
+  preview: true,
   documentationURL: "https://github.com/tedr91/HA-Teds-Cards#clock-weather-card",
 });
 

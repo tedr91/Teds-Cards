@@ -213,7 +213,7 @@ registerCustomCard({
   type: ROOM_CARD_TYPE,
   name: ROOM_CARD_NAME,
   description: ROOM_CARD_DESCRIPTION,
-  preview: false,
+  preview: true,
   documentationURL: "https://github.com/tedr91/HA-Teds-Cards#room-card",
 });
 

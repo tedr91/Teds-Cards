@@ -39,6 +39,24 @@ function cssColor(value?: string): string | undefined {
 /** States Home Assistant treats as "off" (mirrors the frontend's STATES_OFF). */
 const STATES_OFF = ["closed", "locked", "off"];
 
+/** States treated as "active/on" for the neumorphic pressed look. */
+const ON_STATES = new Set([
+  "on",
+  "open",
+  "unlocked",
+  "home",
+  "playing",
+  "active",
+  "heat",
+  "cool",
+  "auto",
+  "heat_cool",
+  "cleaning",
+  "armed_home",
+  "armed_away",
+  "armed_night",
+]);
+
 /**
  * Toggle an entity the way Home Assistant's built-in cards do.
  *
@@ -94,7 +112,7 @@ registerCustomCard({
   type: LABEL_BUTTON_CARD_TYPE,
   name: LABEL_BUTTON_CARD_NAME,
   description: LABEL_BUTTON_CARD_DESCRIPTION,
-  preview: false,
+  preview: true,
   documentationURL: "https://github.com/tedr91/HA-Teds-Cards#label--button-card",
 });
 
@@ -188,6 +206,11 @@ export class TedLabelButtonCard extends LitElement implements LovelaceCard {
     const iconScale = typeof this._config.icon_scale === "number" ? this._config.icon_scale : 100;
     const nameScale = typeof this._config.name_scale === "number" ? this._config.name_scale : 100;
     const stateScale = typeof this._config.state_scale === "number" ? this._config.state_scale : 100;
+    // Neumorphic effect: a single raised tile (off/idle) that presses in when the
+    // bound entity is active. On by default.
+    const neumorphic = this._config.neumorphic !== false;
+    const stateObj = this._stateObj();
+    const isActive = !!stateObj && ON_STATES.has(String(stateObj.state).toLowerCase());
 
     const cardClasses = {
       "ted-card": true,
@@ -212,6 +235,9 @@ export class TedLabelButtonCard extends LitElement implements LovelaceCard {
         @pointerleave=${this._onPointerUp}
       >
         ${brushed ? brushedOverlay : nothing}
+        ${neumorphic
+          ? html`<div class="ted-neu full ${isActive ? "pressed" : "raised"}" aria-hidden="true"></div>`
+          : nothing}
         <div class="lbc">
           ${showIcon
             ? html`<ha-icon class="icon" style=${styleMap({ color: iconColor, "--mdc-icon-size": `${(32 * iconScale) / 100}px` })} .icon=${this._icon()}></ha-icon>`
@@ -363,6 +389,7 @@ export class TedLabelButtonCard extends LitElement implements LovelaceCard {
       .icon {
         --mdc-icon-size: 32px;
         color: var(--ted-style-accent);
+        filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.4));
       }
 
       .name {

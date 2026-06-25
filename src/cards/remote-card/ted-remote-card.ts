@@ -144,7 +144,7 @@ registerCustomCard({
   type: REMOTE_CARD_TYPE,
   name: REMOTE_CARD_NAME,
   description: REMOTE_CARD_DESCRIPTION,
-  preview: false,
+  preview: true,
   documentationURL: "https://github.com/tedr91/HA-Teds-Cards#remote-card",
 });
 

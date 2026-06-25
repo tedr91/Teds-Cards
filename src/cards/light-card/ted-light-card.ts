@@ -77,7 +77,7 @@ registerCustomCard({
   type: LIGHT_CARD_TYPE,
   name: LIGHT_CARD_NAME,
   description: LIGHT_CARD_DESCRIPTION,
-  preview: false,
+  preview: true,
   documentationURL: "https://github.com/tedr91/HA-Teds-Cards#light-card",
 });
 

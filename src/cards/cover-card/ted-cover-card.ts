@@ -94,7 +94,7 @@ registerCustomCard({
   type: COVER_CARD_TYPE,
   name: COVER_CARD_NAME,
   description: COVER_CARD_DESCRIPTION,
-  preview: false,
+  preview: true,
   documentationURL: "https://github.com/tedr91/HA-Teds-Cards#cover-card",
 });
 
