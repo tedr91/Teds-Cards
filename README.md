@@ -329,6 +329,10 @@ px, matching a button).
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v2.0.67
+
+- Light & Cover Cards: the **Rocker effect** now has a softer, neumorphic-style depth — a lit highlight along the raised half and a gentle recess on the pressed half (both orientations).
+
 ### v2.0.66
 
 - Clock Weather & Room Cards: fixed the card sizing staying stuck at the editor's (narrower) width after leaving the dashboard editor — the layout now recomputes for the restored width without needing a manual page refresh.

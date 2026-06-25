@@ -79,12 +79,15 @@ export const tedStyleTheme: CSSResult = css`
   }
 
   /* Decora-style rocker bevel: makes one half appear raised, pivoting at the
-     center. Default = top half raised; add \`is-bottom\` to raise the bottom. */
+     center. Default = top half raised; add \`is-bottom\` to raise the bottom.
+     Soft neumorphic inset shadows give the raised half a lit outer edge and the
+     pressed half a gentle recess. */
   .ted-rocker {
     position: absolute;
     inset: 0;
     z-index: -1;
     pointer-events: none;
+    border-radius: inherit;
     background: linear-gradient(
       to bottom,
       rgba(255, 255, 255, 0.1) 0%,
@@ -96,6 +99,9 @@ export const tedStyleTheme: CSSResult = css`
       rgba(0, 0, 0, 0.03) 64%,
       rgba(0, 0, 0, 0) 75%
     );
+    box-shadow:
+      inset 0 18px 22px -20px rgba(255, 255, 255, 0.5),
+      inset 0 -26px 26px -24px rgba(0, 0, 0, 0.42);
   }
   .ted-rocker.is-bottom {
     background: linear-gradient(
@@ -109,6 +115,9 @@ export const tedStyleTheme: CSSResult = css`
       rgba(0, 0, 0, 0.03) 64%,
       rgba(0, 0, 0, 0) 75%
     );
+    box-shadow:
+      inset 0 -18px 22px -20px rgba(255, 255, 255, 0.5),
+      inset 0 26px 26px -24px rgba(0, 0, 0, 0.42);
   }
   /* Horizontal orientation: pivot the rocker bevel left/right instead of top/bottom. */
   .horizontal .ted-rocker {
@@ -123,6 +132,9 @@ export const tedStyleTheme: CSSResult = css`
       rgba(0, 0, 0, 0.03) 64%,
       rgba(0, 0, 0, 0) 75%
     );
+    box-shadow:
+      inset 18px 0 22px -20px rgba(255, 255, 255, 0.5),
+      inset -26px 0 26px -24px rgba(0, 0, 0, 0.42);
   }
   .horizontal .ted-rocker.is-bottom {
     background: linear-gradient(
@@ -136,6 +148,9 @@ export const tedStyleTheme: CSSResult = css`
       rgba(0, 0, 0, 0.03) 64%,
       rgba(0, 0, 0, 0) 75%
     );
+    box-shadow:
+      inset -18px 0 22px -20px rgba(255, 255, 255, 0.5),
+      inset 26px 0 26px -24px rgba(0, 0, 0, 0.42);
   }
 `;
 
