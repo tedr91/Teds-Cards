@@ -60,16 +60,20 @@ function hassLiteral(states) {
  */
 function harnessHtml({ cards, padding }) {
   const setup = cards
-    .map(
-      (c, i) => `
+    .map((c, i) => {
+      const frame = c.frame
+        ? `card.style.width=${JSON.stringify(c.frame.width ?? "auto")};card.style.height=${JSON.stringify(c.frame.height ?? "auto")};`
+        : "";
+      return `
       {
         const card = document.createElement(${JSON.stringify(c.tag)});
         card.setConfig(${JSON.stringify({ type: "x", ...c.config })});
         card.hass = ${hassLiteral(c.states)};
+        ${frame}
         wrap.appendChild(card);
         cards[${i}] = card;
-      }`,
-    )
+      }`;
+    })
     .join("\n");
 
   return `<!doctype html>
@@ -114,6 +118,15 @@ function harnessHtml({ cards, padding }) {
           }
         },
       );
+
+      // Minimal loadCardHelpers so the Room Card can embed real ted-* button sub-cards.
+      window.loadCardHelpers = async () => ({
+        createCardElement(config) {
+          const el = document.createElement(String(config.type).replace(/^custom:/, ""));
+          el.setConfig(config);
+          return el;
+        },
+      });
 
       await import("/dist/ted-cards.js");
       const wrap = document.getElementById("wrap");
@@ -222,12 +235,130 @@ const CARDS = [
     cards: [
       {
         tag: "ted-label-button-card",
-        config: { entity: "scene.movie_night", name: "Movie Night", icon: "mdi:movie-open", tap_action: { action: "toggle" } },
+        frame: { width: "200px", height: "120px" },
+        config: { entity: "switch.fireplace", name: "Fireplace", icon: "mdi:fireplace" },
         states: {
-          "scene.movie_night": {
-            entity_id: "scene.movie_night",
-            state: "2026-06-17T04:00:00+00:00",
-            attributes: { friendly_name: "Movie Night" },
+          "switch.fireplace": {
+            entity_id: "switch.fireplace",
+            state: "on",
+            attributes: { friendly_name: "Fireplace" },
+          },
+        },
+      },
+    ],
+  },
+  {
+    name: "clock-weather-card",
+    padding: 28,
+    cards: [
+      {
+        tag: "ted-clock-weather-card",
+        frame: { width: "340px", height: "auto" },
+        config: { weather_entity: "weather.home", show_weather_icon: true, show_current_temp: true },
+        states: {
+          "weather.home": {
+            entity_id: "weather.home",
+            state: "partlycloudy",
+            attributes: { temperature: 66, temperature_unit: "\u00b0F", friendly_name: "Home" },
+          },
+        },
+      },
+    ],
+  },
+  {
+    name: "remote-card",
+    padding: 28,
+    cards: [
+      {
+        tag: "ted-remote-card",
+        config: {
+          remote_entity: "remote.theater",
+          media_player_entity: "media_player.theater",
+          device_family: "apple-tv",
+          name: "Apple TV",
+          show_name: true,
+        },
+        states: {
+          "remote.theater": { entity_id: "remote.theater", state: "on", attributes: { friendly_name: "Apple TV" } },
+          "media_player.theater": {
+            entity_id: "media_player.theater",
+            state: "playing",
+            attributes: { friendly_name: "Theater" },
+          },
+        },
+      },
+    ],
+  },
+  {
+    name: "room-card",
+    padding: 28,
+    cards: [
+      {
+        tag: "ted-room-card",
+        frame: { width: "560px", height: "auto" },
+        config: {
+          area: "living_room",
+          name: "Living Room",
+          icon: "mdi:sofa",
+          show_header_icon: true,
+          show_photo: false,
+          status_items: [
+            { type: "temperature", entity: "sensor.living_room_temperature" },
+            { type: "occupancy", entity: "binary_sensor.living_room_motion" },
+            { type: "led", entity: "binary_sensor.living_room_window" },
+          ],
+          sections: [
+            {
+              buttons: [
+                { type: "custom:ted-light-card", entity: "light.living_room", name: "Lamp" },
+                { type: "custom:ted-light-card", entity: "light.accent", name: "Accent" },
+                { type: "custom:ted-cover-card", entity: "cover.living_room_blinds", name: "Blinds" },
+                { type: "custom:ted-label-button-card", entity: "script.movie_night", name: "Movie", icon: "mdi:movie-open" },
+                { type: "custom:ted-label-button-card", entity: "switch.fireplace", name: "Fire", icon: "mdi:fireplace" },
+              ],
+            },
+          ],
+        },
+        states: {
+          "sensor.living_room_temperature": {
+            entity_id: "sensor.living_room_temperature",
+            state: "72",
+            attributes: { unit_of_measurement: "\u00b0F", device_class: "temperature", friendly_name: "Temperature" },
+          },
+          "binary_sensor.living_room_motion": {
+            entity_id: "binary_sensor.living_room_motion",
+            state: "off",
+            attributes: { device_class: "occupancy", friendly_name: "Motion" },
+          },
+          "binary_sensor.living_room_window": {
+            entity_id: "binary_sensor.living_room_window",
+            state: "off",
+            attributes: { device_class: "window", friendly_name: "Window" },
+          },
+          "light.living_room": {
+            entity_id: "light.living_room",
+            state: "on",
+            attributes: { brightness: 153, supported_color_modes: ["brightness"], friendly_name: "Lamp" },
+          },
+          "light.accent": {
+            entity_id: "light.accent",
+            state: "on",
+            attributes: { brightness: 102, supported_color_modes: ["brightness"], friendly_name: "Accent" },
+          },
+          "cover.living_room_blinds": {
+            entity_id: "cover.living_room_blinds",
+            state: "open",
+            attributes: { current_position: 60, supported_features: 15, device_class: "blind", friendly_name: "Blinds" },
+          },
+          "script.movie_night": {
+            entity_id: "script.movie_night",
+            state: "off",
+            attributes: { friendly_name: "Movie" },
+          },
+          "switch.fireplace": {
+            entity_id: "switch.fireplace",
+            state: "on",
+            attributes: { friendly_name: "Fire" },
           },
         },
       },
