@@ -41,9 +41,12 @@ export interface CoverCardConfig extends LovelaceCardConfig {
   indicator_color_custom?: number[];
   indicator_width?: number;
   show_indicator?: boolean;
-  icon_color?: CoverColorMode;
-  icon_color_custom?: number[];
+  /** Per-element colors applied when the cover is open (blank = default). */
+  name_color?: string;
+  icon_color?: string;
+  state_color?: string;
   background_open?: string;
+  background_closed?: string;
   brushed?: boolean;
   shadow?: boolean;
   rocker?: boolean;

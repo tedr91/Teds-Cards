@@ -48,6 +48,13 @@ function resolveColor(mode: string | undefined, custom?: number[]): string {
   return "var(--ted-style-accent)";
 }
 
+/** Resolve a per-element ui_color override. Legacy icon_color stored a
+ *  "theme"/"other" mode string — treat those (and blanks) as unset. */
+function elementColor(value: string | undefined): string | undefined {
+  if (!value || value === "theme" || value === "other") return undefined;
+  return cssColor(value);
+}
+
 /** Default icon for a cover based on its device_class and open/closed state. */
 function defaultCoverIcon(deviceClass: string | undefined, isOpen: boolean): string {
   switch (deviceClass) {
@@ -213,11 +220,14 @@ export class TedCoverCard extends LitElement implements LovelaceCard {
     const positionColor = isOpen
       ? resolveColor(this._config.indicator_color, this._config.indicator_color_custom)
       : "var(--ted-style-muted)";
+    const nameColor = isOpen ? elementColor(this._config.name_color) : undefined;
     const iconColor = isOpen
-      ? resolveColor(this._config.icon_color, this._config.icon_color_custom)
-      : "rgba(255, 255, 255, 0.5)";
+      ? elementColor(this._config.icon_color) ?? "var(--ted-style-accent)"
+      : "var(--ted-style-icon-dim)";
+    const stateColor = isOpen ? elementColor(this._config.state_color) : undefined;
     const showHint = this._config.show_hint !== false;
     const bgOpen = cssColor(this._config.background_open);
+    const bgClosed = cssColor(this._config.background_closed);
     const horizontal = this._config.orientation === "horizontal";
     const indicatorWidth = typeof this._config.indicator_width === "number" ? this._config.indicator_width : 4;
     const hintWidth = typeof this._config.hint_width === "number" ? this._config.hint_width : 8;
@@ -231,6 +241,7 @@ export class TedCoverCard extends LitElement implements LovelaceCard {
       "--ted-hint-width": `${hintWidth}px`,
     };
     if (isOpen && bgOpen) cardStyle.backgroundColor = bgOpen;
+    if (!isOpen && bgClosed) cardStyle.backgroundColor = bgClosed;
     if (!isGrid) {
       cardStyle.width = `${cardWidth}px`;
       cardStyle.height = `${cardHeight}px`;
@@ -248,19 +259,19 @@ export class TedCoverCard extends LitElement implements LovelaceCard {
     const rockerMode = this._config.rocker !== false;
     const shadow = this._config.shadow !== false; // default true
 
-    // The three content elements, laid out in the configured order. Visible
-    // elements fill the card (no forced top/bottom-half clipping); the middle
-    // element of a 1- or 3-element layout is pinned to the exact card center.
+    // Each element has a fixed home based on its position in the order: 1st →
+    // top, 2nd → exact center, 3rd → bottom. Hidden elements leave their home
+    // empty, so any visible subset stays positioned by order.
     const showFlags: Record<CardElement, boolean> = { name: showName, icon: showIcon, state: showState };
     const order = this._elementOrder();
     const visible = order.filter((el) => showFlags[el]);
-    const midEl: CardElement | null =
-      visible.length === 1 ? visible[0] : visible.length === 3 ? visible[1] : null;
+    const slotClass = (el: CardElement): string =>
+      (["slot-top", "slot-mid", "slot-bot"] as const)[order.indexOf(el)];
     const tpls: Record<CardElement, TemplateResult> = {
-      name: html`<span class=${classMap({ primary: true, "is-mid": midEl === "name" })} style=${styleMap({ fontSize: `${(14 * nameScale) / 100}px` })}>${name}</span>`,
+      name: html`<span class=${classMap({ primary: true, [slotClass("name")]: true })} style=${styleMap({ fontSize: `${(14 * nameScale) / 100}px`, ...(nameColor ? { color: nameColor } : {}) })}>${name}</span>`,
       icon: html`<button
         type="button"
-        class=${classMap({ "icon-shape": true, "is-mid": midEl === "icon" })}
+        class=${classMap({ "icon-shape": true, [slotClass("icon")]: true })}
         style=${styleMap({ color: iconColor, "--mdc-icon-size": `${(24 * iconScale) / 100}px` })}
         aria-label=${name}
         ?disabled=${isUnavailable}
@@ -268,7 +279,7 @@ export class TedCoverCard extends LitElement implements LovelaceCard {
       >
         <ha-icon .icon=${icon}></ha-icon>
       </button>`,
-      state: html`<div class=${classMap({ info: true, "is-mid": midEl === "state" })}><span class="secondary" style=${styleMap({ fontSize: `${(12 * stateScale) / 100}px` })}>${stateLabel}</span></div>`,
+      state: html`<div class=${classMap({ info: true, [slotClass("state")]: true })}><span class="secondary" style=${styleMap({ fontSize: `${(12 * stateScale) / 100}px`, ...(stateColor ? { color: stateColor } : {}) })}>${stateLabel}</span></div>`,
     };
 
     return html`
@@ -322,7 +333,7 @@ export class TedCoverCard extends LitElement implements LovelaceCard {
         ${rockerMode && !neumorphic
           ? html`<div class="divider" aria-hidden="true"></div>`
           : nothing}
-        <div class=${classMap({ content: true, [`count-${visible.length}`]: true })}>
+        <div class="content">
           ${visible.map((el) => tpls[el])}
         </div>
         ${this._config.rocker !== false
@@ -762,25 +773,21 @@ export class TedCoverCard extends LitElement implements LovelaceCard {
       align-items: center;
       pointer-events: none;
     }
-    /* 2- and 3-element layouts spread to the card edges; 1-element centers. */
-    .content.count-1 {
-      justify-content: center;
+    /* Each element has a fixed home based on its order: 1st → top, 2nd → exact
+       center, 3rd → bottom. Hidden elements leave their home empty, so any
+       subset stays positioned by order. */
+    .content .slot-bot {
+      margin-top: auto;
     }
-    .content.count-2,
-    .content.count-3 {
-      justify-content: space-between;
-    }
-    /* The middle element of a 1- or 3-element layout is pinned to the exact
-       center of the card, independent of the content above/below it. */
-    .content.count-1 .is-mid,
-    .content.count-3 .is-mid {
+    /* The middle (2nd) element is pinned to the exact card center, independent
+       of the elements above/below it. */
+    .content .slot-mid {
       position: absolute;
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
     }
-    .content.count-1 .is-mid.icon-shape:active,
-    .content.count-3 .is-mid.icon-shape:active {
+    .content .slot-mid.icon-shape:active {
       transform: translate(-50%, -50%) scale(0.92);
     }
     /* Content elements sit above the indicator/hint bars (icon also above the regions). */
@@ -955,6 +962,11 @@ export class TedCoverCard extends LitElement implements LovelaceCard {
     /* ---- Horizontal orientation overrides ---- */
     ha-card.horizontal .content {
       flex-direction: row;
+    }
+    /* In horizontal mode the homes run left → right: 1st → left, 3rd → right. */
+    ha-card.horizontal .content .slot-bot {
+      margin-top: 0;
+      margin-left: auto;
     }
     ha-card.horizontal .divider {
       left: 50%;

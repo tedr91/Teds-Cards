@@ -35,9 +35,12 @@ export interface LightCardConfig extends LovelaceCardConfig {
   indicator_color_custom?: number[];
   indicator_width?: number;
   show_indicator?: boolean;
-  icon_color?: BrightnessColorMode;
-  icon_color_custom?: number[];
+  /** Per-element colors applied when the light is on (blank = default). */
+  name_color?: string;
+  icon_color?: string;
+  state_color?: string;
   background_on?: string;
+  background_off?: string;
   brushed?: boolean;
   shadow?: boolean;
   rocker?: boolean;

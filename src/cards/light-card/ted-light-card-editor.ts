@@ -101,7 +101,6 @@ export class TedLightCardEditor extends LitElement implements LovelaceCardEditor
       indicator_width: 4,
       show_indicator: true,
       hint_width: 8,
-      icon_color: "light",
       brushed: false,
       shadow: true,
       rocker: true,
@@ -236,22 +235,14 @@ export class TedLightCardEditor extends LitElement implements LovelaceCardEditor
       });
     }
     visual.push({
-      name: "icon_color",
-      selector: {
-        select: {
-          mode: "dropdown",
-          options: [
-            { value: "theme", label: "Theme color" },
-            { value: "light", label: "Light color (default)" },
-            { value: "other", label: "Custom color" },
-          ],
-        },
-      },
+      type: "grid",
+      name: "",
+      column_min_width: "100px",
+      schema: [
+        { name: "background_on", selector: { ui_color: {} } },
+        { name: "background_off", selector: { ui_color: {} } },
+      ],
     });
-    if (this._config?.icon_color === "other") {
-      visual.push({ name: "icon_color_custom", selector: { color_rgb: {} } });
-    }
-    visual.push({ name: "background_on", selector: { ui_color: {} } });
     visual.push({
       type: "grid",
       name: "",
@@ -402,12 +393,14 @@ export class TedLightCardEditor extends LitElement implements LovelaceCardEditor
         return "Indicator bar width (px)";
       case "show_indicator":
         return "Show indicator bar";
+      case "name_color":
       case "icon_color":
-        return "Icon color";
-      case "icon_color_custom":
-        return "Custom icon color";
+      case "state_color":
+        return "Custom color";
       case "background_on":
         return "Background color when on";
+      case "background_off":
+        return "Background color when off";
       case "brushed":
         return "Brushed effect";
       case "rocker":
@@ -480,9 +473,12 @@ export class TedLightCardEditor extends LitElement implements LovelaceCardEditor
     if (config.indicator_color !== "other") {
       delete config.indicator_color_custom;
     }
-    if (config.icon_color !== "other") {
-      delete config.icon_color_custom;
+    // Legacy: icon_color was a light/theme/custom mode. Drop the old mode value
+    // and its companion RGB so the new per-element color picker starts clean.
+    if (config.icon_color === "light" || config.icon_color === "theme" || config.icon_color === "other") {
+      delete config.icon_color;
     }
+    delete (config as { icon_color_custom?: unknown }).icon_color_custom;
     if (!config.show_hint) {
       delete config.show_hint;
     }
@@ -523,15 +519,19 @@ export class TedLightCardEditor extends LitElement implements LovelaceCardEditor
 
   private _onElementChanged = (ev: CustomEvent): void => {
     ev.stopPropagation();
-    this._commit({ ...this._config, ...ev.detail.value } as LightCardConfig);
+    const next = { ...this._config, ...ev.detail.value } as LightCardConfig;
+    for (const key of ["name_color", "icon_color", "state_color"] as const) {
+      if (!next[key]) delete next[key];
+    }
+    this._commit(next);
   };
 
   private _renderElements(): TemplateResult {
     const order = this._elementOrder();
-    const meta: Record<CardElement, { label: string; showKey: keyof LightCardConfig; sizeKey: keyof LightCardConfig; defSize: number }> = {
-      name: { label: "Name", showKey: "show_name", sizeKey: "name_scale", defSize: 100 },
-      icon: { label: "Icon", showKey: "show_icon", sizeKey: "icon_scale", defSize: 150 },
-      state: { label: "State", showKey: "show_state", sizeKey: "state_scale", defSize: 100 },
+    const meta: Record<CardElement, { label: string; showKey: keyof LightCardConfig; sizeKey: keyof LightCardConfig; colorKey: keyof LightCardConfig; defSize: number }> = {
+      name: { label: "Name", showKey: "show_name", sizeKey: "name_scale", colorKey: "name_color", defSize: 100 },
+      icon: { label: "Icon", showKey: "show_icon", sizeKey: "icon_scale", colorKey: "icon_color", defSize: 150 },
+      state: { label: "State", showKey: "show_state", sizeKey: "state_scale", colorKey: "state_color", defSize: 100 },
     };
     return html`
       <ha-expansion-panel outlined class="elements-panel">
@@ -550,7 +550,7 @@ export class TedLightCardEditor extends LitElement implements LovelaceCardEditor
                 <ha-form
                   class="element-form"
                   .hass=${this.hass}
-                  .data=${{ [m.showKey]: show, [m.sizeKey]: size }}
+                  .data=${{ [m.showKey]: show, [m.sizeKey]: size, [m.colorKey]: this._config?.[m.colorKey] }}
                   .schema=${[
                     {
                       type: "grid",
@@ -565,6 +565,7 @@ export class TedLightCardEditor extends LitElement implements LovelaceCardEditor
                         },
                       ],
                     },
+                    { name: m.colorKey, disabled: !show, selector: { ui_color: {} } },
                   ]}
                   .computeLabel=${this._computeLabel}
                   @value-changed=${this._onElementChanged}

@@ -607,16 +607,25 @@ px, matching a button).
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v2.0.85
+
+- Light, Cover & Button Cards: you can now set a **custom color** for the **Name**, **Icon**, and **State** individually (leave a picker blank to keep the default).
+- Light & Cover Cards: added a **background color for the off / closed** state, alongside the existing on / open background color.
+- Light, Cover & Button Cards: when the entity is **off / inactive** the icon now **dims to match Home Assistant's built-in Button card**, and any custom Name / Icon / State colors apply only while it's on / open / active.
+- Button Card: the **Name / Icon / State** elements are now **reorderable**, with the same per-element show / size / custom-color controls as the Light & Cover cards.
+- Light, Cover & Button Cards: when only some of Name / Icon / State are shown, each now sits in its **order-based spot** (1st → top, 2nd → center, 3rd → bottom) instead of forcing a single element to the center.
+- Note: the old icon-color **mode** option has been retired — if you had set a custom icon color, re-pick it with the new per-element **Custom color** picker.
+
 ### v2.0.84
 
 - Room Card: each status item now has a **Display** option — **Both**, **Icon only**, or **State only** — so you can show just the icon, just the value, or both. Defaults: Temperature & Occupancy show both; Brightness, Volume & Status LED show the icon only.
 
+<details>
+<summary>Previous release notes</summary>
+
 ### v2.0.83
 
 - Room Card: the header **Name size** and **Icon size** overrides and the **Status icon size** are now **percentage-based** (100% = default), consistent with the size controls on the other Ted cards. (If you'd previously set one of these in pixels, re-set it as a percentage.)
-
-<details>
-<summary>Previous release notes</summary>
 
 ### v2.0.82
 

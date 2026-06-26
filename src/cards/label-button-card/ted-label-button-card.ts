@@ -23,7 +23,7 @@ import {
   LABEL_BUTTON_CARD_TYPE,
   entityDefaultButtonAction,
 } from "./const";
-import type { LabelButtonCardConfig } from "./types";
+import type { CardElement, LabelButtonCardConfig } from "./types";
 
 const DOUBLE_CLICK_MS = 250;
 const LONG_PRESS_MS = 500;
@@ -35,6 +35,12 @@ function cssColor(value?: string): string | undefined {
     return value;
   }
   return `var(--${value}-color, ${value})`;
+}
+
+/** Resolve a per-element custom color, ignoring blank/legacy mode tokens. */
+function elementColor(value?: string): string | undefined {
+  if (!value || value === "theme" || value === "other") return undefined;
+  return cssColor(value);
 }
 
 /** States Home Assistant treats as "off" (mirrors the frontend's STATES_OFF). */
@@ -228,7 +234,29 @@ export class TedLabelButtonCard extends LitElement implements LovelaceCard {
     const bg = cssColor(this._config.background);
     if (bg) cardStyle.background = bg;
 
-    const iconColor = cssColor(this._config.icon_color) ?? "var(--ted-style-accent)";
+    // Dim the icon (and drop custom colors) for a bound entity that's inactive,
+    // matching Home Assistant's built-in button card. Label-only buttons (no entity)
+    // always show their configured colors.
+    const dim = !!stateObj && !isActive;
+    const nameColor = dim ? undefined : elementColor(this._config.name_color);
+    const stateColor = dim ? undefined : elementColor(this._config.state_color);
+    const iconColor = dim
+      ? "var(--ted-style-icon-dim)"
+      : elementColor(this._config.icon_color) ?? "var(--ted-style-accent)";
+
+    // Each element has a fixed home based on its position in the order: 1st →
+    // top, 2nd → exact center, 3rd → bottom. Hidden elements leave their home
+    // empty, so any visible subset stays positioned by order.
+    const showFlags: Record<CardElement, boolean> = { name: showName, icon: showIcon, state: showState };
+    const order = this._elementOrder();
+    const visible = order.filter((el) => showFlags[el]);
+    const slotClass = (el: CardElement): string =>
+      (["slot-top", "slot-mid", "slot-bot"] as const)[order.indexOf(el)];
+    const tpls: Record<CardElement, TemplateResult> = {
+      name: html`<span class=${classMap({ name: true, [slotClass("name")]: true })} style=${styleMap({ fontSize: `${(16 * nameScale) / 100}px`, ...(nameColor ? { color: nameColor } : {}) })}>${this._name()}</span>`,
+      icon: html`<ha-icon class=${classMap({ icon: true, [slotClass("icon")]: true })} style=${styleMap({ color: iconColor, "--mdc-icon-size": `${(32 * iconScale) / 100}px` })} .icon=${this._icon()}></ha-icon>`,
+      state: html`<span class=${classMap({ state: true, [slotClass("state")]: true })} style=${styleMap({ fontSize: `${(13.6 * stateScale) / 100}px`, ...(stateColor ? { color: stateColor } : {}) })}>${this._stateLabel()}</span>`,
+    };
 
     return html`
       <ha-card
@@ -244,15 +272,20 @@ export class TedLabelButtonCard extends LitElement implements LovelaceCard {
         ${neumorphic
           ? html`<div class="ted-neu full ${isActive ? "pressed" : "raised"}" aria-hidden="true"></div>`
           : nothing}
-        <div class="lbc">
-          ${showIcon
-            ? html`<ha-icon class="icon" style=${styleMap({ color: iconColor, "--mdc-icon-size": `${(32 * iconScale) / 100}px` })} .icon=${this._icon()}></ha-icon>`
-            : nothing}
-          ${showName ? html`<span class="name" style=${styleMap({ fontSize: `${(16 * nameScale) / 100}px` })}>${this._name()}</span>` : nothing}
-          ${showState ? html`<span class="state" style=${styleMap({ fontSize: `${(13.6 * stateScale) / 100}px` })}>${this._stateLabel()}</span>` : nothing}
-        </div>
+        <div class="lbc">${visible.map((el) => tpls[el])}</div>
       </ha-card>
     `;
+  }
+
+  /** The element layout order (default: icon, name, state). Unknown/missing
+   *  elements are dropped/appended so the list is always the full set of three. */
+  private _elementOrder(): CardElement[] {
+    const valid: CardElement[] = ["icon", "name", "state"];
+    const order = this._config?.element_order;
+    if (!Array.isArray(order)) return valid;
+    const result = order.filter((el): el is CardElement => valid.includes(el as CardElement));
+    for (const el of valid) if (!result.includes(el)) result.push(el);
+    return result.slice(0, 3);
   }
 
   private _onClick = (): void => {
@@ -395,14 +428,25 @@ export class TedLabelButtonCard extends LitElement implements LovelaceCard {
         display: flex;
         flex-direction: column;
         align-items: center;
-        justify-content: center;
-        gap: 6px;
         width: 100%;
         height: 100%;
         min-height: 64px;
         padding: 12px;
         text-align: center;
         color: var(--ted-style-text);
+      }
+
+      /* Each element has a fixed home based on its order: 1st → top, 2nd →
+         exact center, 3rd → bottom. Hidden elements leave their home empty,
+         so any visible subset stays positioned by order. */
+      .lbc .slot-bot {
+        margin-top: auto;
+      }
+      .lbc .slot-mid {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
       }
 
       .icon {
