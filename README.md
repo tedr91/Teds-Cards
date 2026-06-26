@@ -4,9 +4,10 @@
 
 # Ted's Cards
 
-This is my collection of custom Lovelace cards for [Home Assistant](https://www.home-assistant.io/) that I use for my HA wall panels and handheld devices so I could achieve a consistent look and feel without a ton of styling overrides cluttering up my YAML files. 😊
+This is my collection of custom cards for [Home Assistant](https://www.home-assistant.io/) which I use for my HA wall panels and handheld devices. 
 
-It all started with the Light Card -- after spending countless hours across multiple years in an attempt to find an "on/off/brightness" switch that I liked.  
+After spending months attempting to find an "on/off/brightness" switch that I liked aesthetically, I finally gave up and decided to create my own.  The rest of the cards happened as strived to achieve a consistent look and feel without a ton of styling overrides cluttering up all my YAML files. 😊
+
 
 ---
 
@@ -24,7 +25,8 @@ It all started with the Light Card -- after spending countless hours across mult
 ---
 
 ## 📸 Screenshots
-![Ted's Cards — light and cover cards](images/showcase.png)
+![Ted's Cards — dark mode](images/showcase-darkmode.png)
+![Ted's Cards — light mode](images/showcase-lightmode.png)
 
 ---
 
@@ -607,6 +609,11 @@ px, matching a button).
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v2.0.86
+
+- Light, Cover & Button Cards: the **Icon** color picker now works like Home Assistant's built-in Button card — choose **No color**, **State color (default)**, or any color. A chosen color still shows only while the entity is on / open / active.
+- Light, Cover & Button Cards: redesigned the **Name / Icon / State** editor section — each element is now a collapsible card you can **drag to reorder** by its handle, with a chevron to fold it away (replaces the up / down arrows).
+
 ### v2.0.85
 
 - Light, Cover & Button Cards: you can now set a **custom color** for the **Name**, **Icon**, and **State** individually (leave a picker blank to keep the default).
@@ -616,12 +623,12 @@ the Home Assistant / HACS **update** dialog when you update. Newest first.
 - Light, Cover & Button Cards: when only some of Name / Icon / State are shown, each now sits in its **order-based spot** (1st → top, 2nd → center, 3rd → bottom) instead of forcing a single element to the center.
 - Note: the old icon-color **mode** option has been retired — if you had set a custom icon color, re-pick it with the new per-element **Custom color** picker.
 
+<details>
+<summary>Previous release notes</summary>
+
 ### v2.0.84
 
 - Room Card: each status item now has a **Display** option — **Both**, **Icon only**, or **State only** — so you can show just the icon, just the value, or both. Defaults: Temperature & Occupancy show both; Brightness, Volume & Status LED show the icon only.
-
-<details>
-<summary>Previous release notes</summary>
 
 ### v2.0.83
 

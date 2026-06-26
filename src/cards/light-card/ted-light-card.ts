@@ -62,9 +62,11 @@ function lightColor(stateObj: { attributes: { rgb_color?: number[] } }): string 
 }
 
 /** Resolve a per-element ui_color override. Legacy icon_color stored a
- *  "light"/"theme"/"other" mode string — treat those (and blanks) as unset. */
+ *  "light"/"theme"/"other" mode string; the icon picker can also store the HA
+ *  sentinels "state" (use the default) and "none" (handled by the caller) —
+ *  treat all of those (and blanks) as unset here. */
 function elementColor(value: string | undefined): string | undefined {
-  if (!value || value === "light" || value === "theme" || value === "other") return undefined;
+  if (!value || value === "light" || value === "theme" || value === "other" || value === "state" || value === "none") return undefined;
   return cssColor(value);
 }
 
@@ -214,9 +216,10 @@ export class TedLightCard extends LitElement implements LovelaceCard {
         )
       : "var(--ted-style-muted)";
     const nameColor = isOn ? elementColor(this._config.name_color) : undefined;
-    const iconColor = isOn
-      ? elementColor(this._config.icon_color) ?? lightColor(stateObj)
-      : "var(--ted-style-icon-dim)";
+    const iconColor =
+      isOn && this._config.icon_color !== "none"
+        ? elementColor(this._config.icon_color) ?? lightColor(stateObj)
+        : "var(--ted-style-icon-dim)";
     const stateColor = isOn ? elementColor(this._config.state_color) : undefined;
     const bgOn = cssColor(this._config.background_on);
     const bgOff = cssColor(this._config.background_off);

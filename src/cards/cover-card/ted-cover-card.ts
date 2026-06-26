@@ -51,7 +51,7 @@ function resolveColor(mode: string | undefined, custom?: number[]): string {
 /** Resolve a per-element ui_color override. Legacy icon_color stored a
  *  "theme"/"other" mode string — treat those (and blanks) as unset. */
 function elementColor(value: string | undefined): string | undefined {
-  if (!value || value === "theme" || value === "other") return undefined;
+  if (!value || value === "theme" || value === "other" || value === "state" || value === "none") return undefined;
   return cssColor(value);
 }
 
@@ -221,9 +221,10 @@ export class TedCoverCard extends LitElement implements LovelaceCard {
       ? resolveColor(this._config.indicator_color, this._config.indicator_color_custom)
       : "var(--ted-style-muted)";
     const nameColor = isOpen ? elementColor(this._config.name_color) : undefined;
-    const iconColor = isOpen
-      ? elementColor(this._config.icon_color) ?? "var(--ted-style-accent)"
-      : "var(--ted-style-icon-dim)";
+    const iconColor =
+      isOpen && this._config.icon_color !== "none"
+        ? elementColor(this._config.icon_color) ?? "var(--ted-style-accent)"
+        : "var(--ted-style-icon-dim)";
     const stateColor = isOpen ? elementColor(this._config.state_color) : undefined;
     const showHint = this._config.show_hint !== false;
     const bgOpen = cssColor(this._config.background_open);

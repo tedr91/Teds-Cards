@@ -1,5 +1,6 @@
 import { LitElement, css, html, nothing, type TemplateResult } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
+import { repeat } from "lit/directives/repeat.js";
 import { type HomeAssistant, type LovelaceCardEditor, fireEvent } from "custom-card-helpers";
 
 import { COVER_CARD_EDITOR_TYPE } from "./const";
@@ -21,6 +22,11 @@ const MEMORY_ICON_PATH =
 // mdi:format-list-bulleted — Elements (reorder) section
 const ELEMENTS_ICON_PATH =
   "M7,5H21V7H7V5M7,13V11H21V13H7M4,4.5A1.5,1.5 0 0,1 5.5,6A1.5,1.5 0 0,1 4,7.5A1.5,1.5 0 0,1 2.5,6A1.5,1.5 0 0,1 4,4.5M4,10.5A1.5,1.5 0 0,1 5.5,12A1.5,1.5 0 0,1 4,13.5A1.5,1.5 0 0,1 2.5,12A1.5,1.5 0 0,1 4,10.5M7,19V17H21V19H7M4,16.5A1.5,1.5 0 0,1 5.5,18A1.5,1.5 0 0,1 4,19.5A1.5,1.5 0 0,1 2.5,18A1.5,1.5 0 0,1 4,16.5Z";
+// mdi:drag — reorder handle
+const GRIP_ICON_PATH =
+  "M7,19V17H9V19H7M11,19V17H13V19H11M15,19V17H17V19H15M7,15V13H9V15H7M11,15V13H13V15H11M15,15V13H17V15H15M7,11V9H9V11H7M11,11V9H13V11H11M15,11V9H17V11H15M7,7V5H9V7H7M11,7V5H13V7H11M15,7V5H17V7H15Z";
+// mdi:chevron-down — collapse toggle
+const CHEVRON_ICON_PATH = "M7.41,8.58L12,13.17L16.59,8.58L18,10L12,16L6,10L7.41,8.58Z";
 
 const ACTION_LABELS: Record<CoverAction, string> = {
   open_step: "Open more",
@@ -49,6 +55,8 @@ export class TedCoverCardEditor extends LitElement implements LovelaceCardEditor
   /** Set by the room card when this editor is embedded as a fixed-size button. */
   @property({ attribute: false }) public embedded = false;
   @state() private _config?: CoverCardConfig;
+  /** Element chips currently collapsed in the reorder section (UI-only state). */
+  @state() private _collapsed = new Set<CardElement>();
 
   public setConfig(config: CoverCardConfig): void {
     this._config = config;
@@ -429,9 +437,10 @@ export class TedCoverCardEditor extends LitElement implements LovelaceCardEditor
       case "show_indicator":
         return "Show indicator bar";
       case "name_color":
-      case "icon_color":
       case "state_color":
         return "Custom color";
+      case "icon_color":
+        return "Color";
       case "background_open":
         return "Background color when open";
       case "background_closed":
@@ -510,7 +519,7 @@ export class TedCoverCardEditor extends LitElement implements LovelaceCardEditor
     }
     // Legacy: icon_color was a theme/custom mode. Drop the old mode value and
     // its companion RGB so the new per-element color picker starts clean.
-    if (config.icon_color === "theme" || config.icon_color === "other") {
+    if (config.icon_color === "theme" || config.icon_color === "other" || config.icon_color === "state") {
       delete config.icon_color;
     }
     delete (config as { icon_color_custom?: unknown }).icon_color_custom;
@@ -541,12 +550,19 @@ export class TedCoverCardEditor extends LitElement implements LovelaceCardEditor
     return order.length === 3 && order[0] === "name" && order[1] === "icon" && order[2] === "state";
   }
 
-  private _moveElement(idx: number, dir: -1 | 1): void {
+  private _elementMoved = (ev: CustomEvent): void => {
+    ev.stopPropagation();
+    const { oldIndex, newIndex } = ev.detail as { oldIndex: number; newIndex: number };
     const order = this._elementOrder();
-    const target = idx + dir;
-    if (target < 0 || target >= order.length) return;
-    [order[idx], order[target]] = [order[target], order[idx]];
+    order.splice(newIndex, 0, order.splice(oldIndex, 1)[0]);
     this._commit({ ...this._config, element_order: order } as CoverCardConfig);
+  };
+
+  private _toggleCollapse(el: CardElement): void {
+    const next = new Set(this._collapsed);
+    if (next.has(el)) next.delete(el);
+    else next.add(el);
+    this._collapsed = next;
   }
 
   private _onElementChanged = (ev: CustomEvent): void => {
@@ -569,51 +585,70 @@ export class TedCoverCardEditor extends LitElement implements LovelaceCardEditor
       <ha-expansion-panel outlined class="elements-panel">
         <div slot="header" class="elements-header">
           <ha-svg-icon .path=${ELEMENTS_ICON_PATH}></ha-svg-icon>
-          <span>Name / Icon / State (drag-free reorder)</span>
+          <span>Name / Icon / State</span>
         </div>
-        <div class="elements">
-          ${order.map((el, idx) => {
-            const m = meta[el];
-            const show = this._config?.[m.showKey] !== false;
-            const size = typeof this._config?.[m.sizeKey] === "number" ? this._config[m.sizeKey] : m.defSize;
-            return html`
-              <div class="element-row">
-                <span class="element-label">${m.label}</span>
-                <ha-form
-                  class="element-form"
-                  .hass=${this.hass}
-                  .data=${{ [m.showKey]: show, [m.sizeKey]: size, [m.colorKey]: this._config?.[m.colorKey] }}
-                  .schema=${[
-                    {
-                      type: "grid",
-                      name: "",
-                      column_min_width: "90px",
-                      schema: [
-                        { name: m.showKey, selector: { boolean: {} } },
-                        {
-                          name: m.sizeKey,
-                          disabled: !show,
-                          selector: { number: { min: 10, max: 300, step: 5, mode: "box", unit_of_measurement: "%" } },
-                        },
-                      ],
-                    },
-                    { name: m.colorKey, disabled: !show, selector: { ui_color: {} } },
-                  ]}
-                  .computeLabel=${this._computeLabel}
-                  @value-changed=${this._onElementChanged}
-                ></ha-form>
-                <div class="element-actions">
-                  <ha-icon-button label="Move up" ?disabled=${idx === 0} @click=${() => this._moveElement(idx, -1)}>
-                    <ha-icon icon="mdi:arrow-up"></ha-icon>
-                  </ha-icon-button>
-                  <ha-icon-button label="Move down" ?disabled=${idx === order.length - 1} @click=${() => this._moveElement(idx, 1)}>
-                    <ha-icon icon="mdi:arrow-down"></ha-icon>
-                  </ha-icon-button>
-                </div>
-              </div>
-            `;
-          })}
-        </div>
+        <ha-sortable handle-selector=".drag-handle" @item-moved=${this._elementMoved}>
+          <div class="elements">
+            ${repeat(
+              order,
+              (el) => el,
+              (el) => {
+                const m = meta[el];
+                const show = this._config?.[m.showKey] !== false;
+                const size = typeof this._config?.[m.sizeKey] === "number" ? this._config[m.sizeKey] : m.defSize;
+                const collapsed = this._collapsed.has(el);
+                return html`
+                  <div class="element-chip ${collapsed ? "collapsed" : ""}">
+                    <div class="chip-head">
+                      <div class="drag-handle" title="Drag to reorder">
+                        <ha-svg-icon .path=${GRIP_ICON_PATH}></ha-svg-icon>
+                      </div>
+                      <button type="button" class="chip-headmain" @click=${() => this._toggleCollapse(el)}>
+                        <span class="chip-title">${m.label}</span>
+                        <ha-svg-icon class="chip-chevron" .path=${CHEVRON_ICON_PATH}></ha-svg-icon>
+                      </button>
+                    </div>
+                    ${collapsed
+                      ? nothing
+                      : html`
+                          <div class="chip-body">
+                            <ha-form
+                              .hass=${this.hass}
+                              .data=${{ [m.showKey]: show, [m.sizeKey]: size, [m.colorKey]: this._config?.[m.colorKey] }}
+                              .schema=${[
+                                {
+                                  type: "grid",
+                                  name: "",
+                                  column_min_width: "120px",
+                                  schema: [
+                                    { name: m.showKey, selector: { boolean: {} } },
+                                    {
+                                      name: m.sizeKey,
+                                      disabled: !show,
+                                      selector: { number: { min: 10, max: 300, step: 5, mode: "box", unit_of_measurement: "%" } },
+                                    },
+                                  ],
+                                },
+                                {
+                                  name: m.colorKey,
+                                  disabled: !show,
+                                  selector:
+                                    el === "icon"
+                                      ? { ui_color: { default_color: "state", include_state: true, include_none: true } }
+                                      : { ui_color: {} },
+                                },
+                              ]}
+                              .computeLabel=${this._computeLabel}
+                              @value-changed=${this._onElementChanged}
+                            ></ha-form>
+                          </div>
+                        `}
+                  </div>
+                `;
+              },
+            )}
+          </div>
+        </ha-sortable>
       </ha-expansion-panel>
     `;
   }
@@ -646,28 +681,56 @@ export class TedCoverCardEditor extends LitElement implements LovelaceCardEditor
       gap: 8px;
       padding: 12px 16px 16px;
     }
-    .element-row {
+    .element-chip {
+      border: 1px solid var(--divider-color, rgba(255, 255, 255, 0.12));
+      border-radius: 8px;
+      overflow: hidden;
+      background: var(--secondary-background-color, rgba(255, 255, 255, 0.03));
+    }
+    .chip-head {
       display: flex;
       align-items: center;
-      gap: 8px;
     }
-    .element-label {
-      flex: none;
-      width: 46px;
+    .element-chip:not(.collapsed) .chip-head {
+      border-bottom: 1px solid var(--divider-color, rgba(255, 255, 255, 0.12));
+    }
+    .drag-handle {
+      display: flex;
+      align-items: center;
+      padding: 8px 4px 8px 10px;
+      color: var(--secondary-text-color);
+      cursor: grab;
+      touch-action: none;
+    }
+    .drag-handle > * {
+      pointer-events: none;
+    }
+    .chip-headmain {
+      display: flex;
+      align-items: center;
+      flex: 1 1 auto;
+      gap: 8px;
+      padding: 10px 12px 10px 4px;
+      background: none;
+      border: none;
+      color: inherit;
+      font: inherit;
+      text-align: left;
+      cursor: pointer;
+    }
+    .chip-title {
+      flex: 1 1 auto;
       font-weight: 500;
     }
-    .element-form {
-      flex: 1 1 auto;
-      min-width: 0;
-    }
-    .element-actions {
-      display: flex;
-      flex: none;
-    }
-    .element-actions ha-icon-button {
-      --mdc-icon-button-size: 36px;
-      --mdc-icon-size: 20px;
+    .chip-chevron {
       color: var(--secondary-text-color);
+      transition: transform 0.18s ease;
+    }
+    .element-chip.collapsed .chip-chevron {
+      transform: rotate(-90deg);
+    }
+    .chip-body {
+      padding: 12px;
     }
   `;
 }

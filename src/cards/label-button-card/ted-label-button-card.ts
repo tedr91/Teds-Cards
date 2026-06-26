@@ -39,7 +39,7 @@ function cssColor(value?: string): string | undefined {
 
 /** Resolve a per-element custom color, ignoring blank/legacy mode tokens. */
 function elementColor(value?: string): string | undefined {
-  if (!value || value === "theme" || value === "other") return undefined;
+  if (!value || value === "theme" || value === "other" || value === "state" || value === "none") return undefined;
   return cssColor(value);
 }
 
@@ -240,9 +240,10 @@ export class TedLabelButtonCard extends LitElement implements LovelaceCard {
     const dim = !!stateObj && !isActive;
     const nameColor = dim ? undefined : elementColor(this._config.name_color);
     const stateColor = dim ? undefined : elementColor(this._config.state_color);
-    const iconColor = dim
-      ? "var(--ted-style-icon-dim)"
-      : elementColor(this._config.icon_color) ?? "var(--ted-style-accent)";
+    const iconColor =
+      dim || this._config.icon_color === "none"
+        ? "var(--ted-style-icon-dim)"
+        : elementColor(this._config.icon_color) ?? "var(--ted-style-accent)";
 
     // Each element has a fixed home based on its position in the order: 1st →
     // top, 2nd → exact center, 3rd → bottom. Hidden elements leave their home
