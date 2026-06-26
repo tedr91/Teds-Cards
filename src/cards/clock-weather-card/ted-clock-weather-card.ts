@@ -30,9 +30,9 @@ const DATE_WEIGHT = "500";
 /** "12:22" should occupy this fraction of the card width at the default (Large) size. */
 const CLOCK_WIDTH_FRACTION = 0.65;
 /** "Saturday, June 22" should occupy this fraction of the card width at the default size. */
-const DATE_WIDTH_FRACTION = 0.33;
+const DATE_WIDTH_FRACTION = 0.328125;
 /** The weather block (icon + temperature) should occupy this fraction of the card width at the default size. */
-const WEATHER_WIDTH_FRACTION = 0.28;
+const WEATHER_WIDTH_FRACTION = 0.328125;
 /** AM/PM suffix font-size as a fraction of the clock font-size. */
 const AMPM_SCALE = 1 / 3;
 /**
@@ -430,10 +430,34 @@ export class TedClockWeatherCard extends LitElement implements LovelaceCard {
     const weatherW = (showIcon ? 1 : 0) + (showIcon && showTemp ? 0.25 : 0) + tempTextW;
     const tempPx = weatherW > 0 ? (width * WEATHER_WIDTH_FRACTION * this._weatherFactor()) / weatherW : 0;
 
+    // Vertically recenter the clock. With line-height:1 the font leaves leading
+    // above the caps and below the baseline; for many fonts (e.g. Segoe UI /
+    // system-ui) the leading above is far larger than below, so the digits look
+    // pushed down and the top padding looks bigger — and it scales with the font
+    // size. Measure that asymmetry and lift the rows by half of it (--cwc-vshift)
+    // so the visible glyphs sit with equal space above and below.
+    let vshift = 0;
+    const vctx = this._canvas?.getContext("2d");
+    if (vctx) {
+      vctx.font = `${CLOCK_WEIGHT} 100px ${family}`;
+      const m = vctx.measureText(main);
+      const fa = m.fontBoundingBoxAscent;
+      const fd = m.fontBoundingBoxDescent;
+      const aa = m.actualBoundingBoxAscent;
+      const ad = m.actualBoundingBoxDescent;
+      if ([fa, fd, aa, ad].every((v) => typeof v === "number")) {
+        const halfLeading = (100 - fa - fd) / 2;
+        const leadAbove = halfLeading + fa - aa;
+        const leadBelow = halfLeading + fd - ad;
+        vshift = ((leadAbove - leadBelow) / 2) * (clockPx / 100);
+      }
+    }
+
     el.style.setProperty("--cwc-clock-size", `${clockPx}px`);
     el.style.setProperty("--cwc-date-size", `${datePx}px`);
     el.style.setProperty("--cwc-temp-size", `${tempPx}px`);
     el.style.setProperty("--cwc-icon-size", `${tempPx}px`);
+    el.style.setProperty("--cwc-vshift", `${vshift}px`);
   }
 
   protected render(): TemplateResult | typeof nothing {
@@ -559,15 +583,17 @@ export class TedClockWeatherCard extends LitElement implements LovelaceCard {
         display: block;
       }
 
+      /* position/isolation/overflow clip the brushed-metal overlay to the
+         rounded corners (same trio the other ted-* cards use). No height:100%
+         though: the card hugs its content so Home Assistant's Sections "auto
+         height" grid (grid-auto-rows: auto) measures the real clock height.
+         With height:100% the card filled the grid row and echoed that height
+         back, so once the width-driven clock font changed the auto row stayed
+         locked taller than the content (empty space below). */
       ha-card {
-        box-sizing: border-box;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        /* Fill a fixed-height cell, but collapse to the content height when the
-           grid uses auto height (so the card reports its true height to HA and
-           never leaves empty space). */
-        min-height: 100%;
+        position: relative;
+        isolation: isolate;
+        overflow: hidden;
       }
 
       ha-card.is-transparent {
@@ -582,7 +608,7 @@ export class TedClockWeatherCard extends LitElement implements LovelaceCard {
         box-sizing: border-box;
         display: flex;
         flex-direction: column;
-        justify-content: center;
+        justify-content: flex-end;
         gap: 4px;
         width: 100%;
         min-height: 56px;
@@ -594,6 +620,11 @@ export class TedClockWeatherCard extends LitElement implements LovelaceCard {
       .row {
         position: relative;
         width: 100%;
+        /* Lift the rows by --cwc-vshift (measured per render) so the clock's
+           visible glyphs are centered: line-height:1 leaves more leading above
+           the caps than below the baseline for many fonts, which would push the
+           clock down and make the top padding look larger. */
+        transform: translateY(calc(-1 * var(--cwc-vshift, 0px)));
       }
 
       .clock-row {
