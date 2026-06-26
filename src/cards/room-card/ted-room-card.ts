@@ -167,11 +167,21 @@ interface GridPos {
  * the grid downward when it can't fit inside the current height.
  *
  * Returns each button's placement plus the total number of half-unit rows used.
+ *
+ * Pure + deterministic, so results are memoized by the size signature: a section
+ * is packed several times per render (layout + overflow probing) and re-renders
+ * happen on every relevant state tick, but the inputs only change with config.
+ * Callers treat the result as read-only, so sharing the cached object is safe.
  */
+const _packCache = new Map<string, { placements: GridPos[]; rows: number }>();
+
 function packButtons(
   items: { w: number; h: number }[],
   cols = GRID_COLS,
 ): { placements: GridPos[]; rows: number } {
+  const key = cols + "|" + items.map((i) => i.w + "x" + i.h).join(",");
+  const cached = _packCache.get(key);
+  if (cached) return cached;
   const occupied: boolean[][] = [];
   const rowAt = (r: number): boolean[] => {
     while (occupied.length <= r) occupied.push(new Array(cols).fill(false));
@@ -220,7 +230,11 @@ function packButtons(
     frontier = Math.max(frontier, pos.row + h);
     placements.push(pos);
   }
-  return { placements, rows: frontier };
+  const result = { placements, rows: frontier };
+  // Bound the cache so a long-lived dashboard editing many configs can't leak.
+  if (_packCache.size > 256) _packCache.clear();
+  _packCache.set(key, result);
+  return result;
 }
 
 /** Convert HA brightness (0–255) to a 1–100% scale. */
@@ -338,14 +352,29 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
     this._observeHeader();
   }
 
+  protected shouldUpdate(changed: PropertyValues): boolean {
+    if (changed.has("_config")) return true;
+    if (!changed.has("hass") || !this._config) return true;
+    // Keep the embedded child cards live regardless of our own gate — each has
+    // its own shouldUpdate to filter ticks that don't touch its entity.
+    this._propagateHass();
+    const oldHass = changed.get("hass") as HomeAssistant | undefined;
+    if (!oldHass || !this.hass) return true;
+    const oldReg = oldHass as HassWithRegistries;
+    const newReg = this.hass as HassWithRegistries;
+    // Registry edits (area name/icon, area-sensor re-resolution) → re-render.
+    if (oldReg.areas !== newReg.areas || oldReg.entities !== newReg.entities) {
+      return true;
+    }
+    // Otherwise re-render only when an entity our own template shows changed.
+    return this._ownEntities().some((id) => oldHass.states[id] !== this.hass!.states[id]);
+  }
+
   protected willUpdate(changed: PropertyValues): void {
     if (changed.has("_config")) {
       this._buildButtonElements();
       // A new config may point at a different photo — give it another chance.
       this._photoError = false;
-    }
-    if (changed.has("hass")) {
-      this._propagateHass();
     }
   }
 
@@ -442,10 +471,34 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
     return cardConfig as LovelaceCardConfig;
   }
 
+  private _lastPropagatedHass?: HomeAssistant;
+
   private _propagateHass(): void {
+    if (this.hass === this._lastPropagatedHass) return;
+    this._lastPropagatedHass = this.hass;
     for (const entry of this._buttonEls.values()) {
       entry.el.hass = this.hass;
     }
+  }
+
+  /** Entity ids whose state this card's own template renders (status items +
+   *  photo state). Embedded button cards track their own entities. */
+  private _ownEntities(): string[] {
+    const ids: string[] = [];
+    for (const item of this._config?.status_items ?? []) {
+      if (item.type === "spacer") continue;
+      const explicit = (item as { entity?: string }).entity;
+      const id =
+        explicit ??
+        (item.type === "temperature" || item.type === "occupancy"
+          ? this._resolveAreaEntity(item.type)
+          : undefined);
+      if (id) ids.push(id);
+    }
+    const pe = this._config?.photo_state_entity;
+    if (Array.isArray(pe)) ids.push(...pe);
+    else if (typeof pe === "string" && pe) ids.push(pe);
+    return ids;
   }
 
   // --- Area entity resolution ----------------------------------------------
