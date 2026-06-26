@@ -30,9 +30,9 @@ const DATE_WEIGHT = "500";
 /** "12:22" should occupy this fraction of the card width at the default (Large) size. */
 const CLOCK_WIDTH_FRACTION = 0.65;
 /** "Saturday, June 22" should occupy this fraction of the card width at the default size. */
-const DATE_WIDTH_FRACTION = 0.328125;
+const DATE_WIDTH_FRACTION = 0.33;
 /** The weather block (icon + temperature) should occupy this fraction of the card width at the default size. */
-const WEATHER_WIDTH_FRACTION = 0.328125;
+const WEATHER_WIDTH_FRACTION = 0.28;
 /** AM/PM suffix font-size as a fraction of the clock font-size. */
 const AMPM_SCALE = 1 / 3;
 /**
@@ -656,6 +656,16 @@ export class TedClockWeatherCard extends LitElement implements LovelaceCard {
         left: calc(var(--cwc-off, 0) * 1%);
         right: auto;
         transform: translate(calc(var(--cwc-off, 0) * -1%), var(--cwc-nudge-y, 0));
+      }
+
+      /* Subtle drop shadow behind the clock, date and weather glyphs (the same
+         shadow used behind the icon on the Light and Cover cards) so they lift
+         off the card background. drop-shadow follows the glyph/icon outlines and
+         works for both the text and the weather SVG. */
+      .clock,
+      .date,
+      .weather {
+        filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.4));
       }
 
       .clock {
