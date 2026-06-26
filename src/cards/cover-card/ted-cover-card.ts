@@ -853,7 +853,11 @@ export class TedCoverCard extends LitElement implements LovelaceCard {
       outline: none;
       pointer-events: auto;
       transition: color 180ms ease;
+      /* Shadow opacity scales with the icon color's lightness (relative-color), so it
+         fades out for dark icon colors instead of looking muddy. Older browsers fall
+         back to the plain dark shadow. */
       filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.4));
+      filter: drop-shadow(0 1px 2px hsl(from currentColor 0 0% 0% / calc(l * 0.4)));
       -webkit-tap-highlight-color: transparent;
     }
     .icon-shape:focus-visible {

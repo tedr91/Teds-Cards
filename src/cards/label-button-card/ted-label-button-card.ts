@@ -21,6 +21,7 @@ import {
   LABEL_BUTTON_CARD_EDITOR_TYPE,
   LABEL_BUTTON_CARD_NAME,
   LABEL_BUTTON_CARD_TYPE,
+  entityDefaultButtonAction,
 } from "./const";
 import type { LabelButtonCardConfig } from "./types";
 
@@ -205,7 +206,7 @@ export class TedLabelButtonCard extends LitElement implements LovelaceCard {
     const brushed = this._config.brushed === true;
     const showIcon = this._config.show_icon !== false;
     const showName = this._config.show_name !== false;
-    const showState = this._config.show_state !== false && !!this._stateObj();
+    const showState = this._config.show_state === true && !!this._stateObj();
     const iconScale = typeof this._config.icon_scale === "number" ? this._config.icon_scale : 100;
     const nameScale = typeof this._config.name_scale === "number" ? this._config.name_scale : 100;
     const stateScale = typeof this._config.state_scale === "number" ? this._config.state_scale : 100;
@@ -290,18 +291,31 @@ export class TedLabelButtonCard extends LitElement implements LovelaceCard {
     }
   };
 
-  /** True when any tap/hold/double-tap action is configured (card acts as a button). */
+  /** True when a tap/hold/double-tap action will run (card acts as a button). A tap
+   *  with no explicit action still counts when the entity has a default action. */
   private _hasInteractions(): boolean {
     const config = this._config;
     if (!config) return false;
     return (
-      hasAction(config.tap_action) ||
+      hasAction(this._tapActionConfig()) ||
       hasAction(config.hold_action) ||
       hasAction(config.double_tap_action)
     );
   }
 
-  /** Run a configured action. Hold/double only fire when configured; tap defaults to more-info. */
+  /** The tap action that will run: the explicit `tap_action`, or — when none is set
+   *  — the entity's default button action (toggle for toggleable domains, else
+   *  more-info), matching Home Assistant's built-in button card. */
+  private _tapActionConfig(): ActionConfig {
+    return (
+      this._config?.tap_action ??
+      ({ action: entityDefaultButtonAction(this._config?.entity) } as ActionConfig)
+    );
+  }
+
+  /** Run a configured action. Hold/double only fire when configured; a tap with no
+   *  explicit action falls back to the entity's default button action (toggle for
+   *  toggleable domains, otherwise more-info), matching HA's built-in button card. */
   private _dispatch(action: "tap" | "hold" | "double_tap"): void {
     if (!this.hass || !this._config) return;
     if (action === "hold" && !hasAction(this._config.hold_action)) return;
@@ -312,7 +326,7 @@ export class TedLabelButtonCard extends LitElement implements LovelaceCard {
     // `toggle` ourselves to match HA's built-in button card; delegate everything else.
     const actionConfig =
       action === "tap"
-        ? this._config.tap_action
+        ? this._tapActionConfig()
         : action === "hold"
           ? this._config.hold_action
           : this._config.double_tap_action;
@@ -392,7 +406,11 @@ export class TedLabelButtonCard extends LitElement implements LovelaceCard {
       .icon {
         --mdc-icon-size: 32px;
         color: var(--ted-style-accent);
+        /* Shadow opacity scales with the icon color's lightness (relative-color), so it
+           fades out for dark icon colors instead of looking muddy. Older browsers fall
+           back to the plain dark shadow. */
         filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.4));
+        filter: drop-shadow(0 1px 2px hsl(from currentColor 0 0% 0% / calc(l * 0.4)));
       }
 
       .name {

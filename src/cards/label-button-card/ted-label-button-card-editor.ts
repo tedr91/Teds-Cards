@@ -2,7 +2,7 @@ import { LitElement, css, html, nothing, type TemplateResult } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { type HomeAssistant, type LovelaceCardEditor, fireEvent } from "custom-card-helpers";
 
-import { LABEL_BUTTON_CARD_EDITOR_TYPE } from "./const";
+import { LABEL_BUTTON_CARD_EDITOR_TYPE, entityDefaultButtonAction } from "./const";
 import type { LabelButtonCardConfig } from "./types";
 
 // mdi:palette — Visual section
@@ -15,26 +15,6 @@ const INTERACTIONS_ICON_PATH =
 // Mirrors Home Assistant's ACTION_RELATED_CONTEXT so the action editor can resolve
 // entity-based defaults (more-info / toggle) from our `entity` field.
 const ACTION_CONTEXT = { entity_id: "entity" } as const;
-
-// Domains whose default button action is "toggle" (matches HA's getEntityDefaultButtonAction).
-const TOGGLE_DOMAINS = new Set([
-  "light",
-  "switch",
-  "fan",
-  "input_boolean",
-  "automation",
-  "script",
-  "group",
-  "cover",
-  "lock",
-  "climate",
-  "media_player",
-  "humidifier",
-  "valve",
-  "siren",
-  "remote",
-  "vacuum",
-]);
 
 @customElement(LABEL_BUTTON_CARD_EDITOR_TYPE)
 export class TedLabelButtonCardEditor extends LitElement implements LovelaceCardEditor {
@@ -70,7 +50,7 @@ export class TedLabelButtonCardEditor extends LitElement implements LovelaceCard
       icon_scale: 100,
       show_name: true,
       name_scale: 100,
-      show_state: true,
+      show_state: false,
       state_scale: 100,
     };
   }
@@ -130,7 +110,7 @@ export class TedLabelButtonCardEditor extends LitElement implements LovelaceCard
         column_min_width: "100px",
         schema: [
           { name: "show_state", selector: { boolean: {} } },
-          { name: "state_scale", disabled: this._config?.show_state === false, selector: { number: { min: 10, max: 300, step: 5, mode: "box", unit_of_measurement: "%" } } },
+          { name: "state_scale", disabled: this._config?.show_state !== true, selector: { number: { min: 10, max: 300, step: 5, mode: "box", unit_of_measurement: "%" } } },
         ],
       },
     ];
@@ -185,10 +165,7 @@ export class TedLabelButtonCardEditor extends LitElement implements LovelaceCard
 
   /** Default tap action shown in the editor, based on the configured entity's domain. */
   private _defaultTapAction(): string {
-    const entity = this._config?.entity;
-    if (!entity) return "none";
-    const domain = entity.split(".")[0];
-    return TOGGLE_DOMAINS.has(domain) ? "toggle" : "more-info";
+    return entityDefaultButtonAction(this._config?.entity);
   }
 
   /** Default hold action shown in the editor: more-info when an entity is set, otherwise nothing. */

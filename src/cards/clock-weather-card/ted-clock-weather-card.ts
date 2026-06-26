@@ -658,14 +658,17 @@ export class TedClockWeatherCard extends LitElement implements LovelaceCard {
         transform: translate(calc(var(--cwc-off, 0) * -1%), var(--cwc-nudge-y, 0));
       }
 
-      /* Subtle drop shadow behind the clock, date and weather glyphs (the same
-         shadow used behind the icon on the Light and Cover cards) so they lift
-         off the card background. drop-shadow follows the glyph/icon outlines and
-         works for both the text and the weather SVG. */
+      /* Subtle drop shadow behind the clock, date and weather glyphs (like the
+         icon shadow on the Light and Cover cards) so they lift off the card.
+         The shadow's opacity scales with the text lightness (relative-color
+         syntax), so it adds depth behind light text but fades out for dark/black
+         text, where a dark shadow just looks muddy. Older browsers that don't
+         support relative-color from currentColor fall back to the plain dark shadow. */
       .clock,
       .date,
       .weather {
         filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.4));
+        filter: drop-shadow(0 1px 2px hsl(from currentColor 0 0% 0% / calc(l * 0.4)));
       }
 
       .clock {
