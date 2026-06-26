@@ -607,18 +607,22 @@ px, matching a button).
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v2.0.81
+
+- Clock Weather, Light, Cover & Button Cards: made the subtle shadow behind the text and icons **even more subtle**.
+
 ### v2.0.80
 
 - Label / Button Card: tapping a card that has an entity now **toggles** the entity by default (instead of opening more-info), matching Home Assistant's button card.
 - Label / Button Card: **Show entity state** now defaults to off.
 - Clock Weather, Light, Cover & Button Cards: the subtle shadow behind the text and icons now **fades out for dark colours**, so black text and dark icon colours no longer get a muddy shadow.
 
+<details>
+<summary>Previous release notes</summary>
+
 ### v2.0.79
 
 - Clock Weather Card: the clock, date, and weather now cast a **subtle drop shadow** (the same shadow used behind the icon on the Light and Cover cards) so they lift off the card background.
-
-<details>
-<summary>Previous release notes</summary>
 
 ### v2.0.78
 

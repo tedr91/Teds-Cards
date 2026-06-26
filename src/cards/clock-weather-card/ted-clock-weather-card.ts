@@ -667,8 +667,8 @@ export class TedClockWeatherCard extends LitElement implements LovelaceCard {
       .clock,
       .date,
       .weather {
-        filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.4));
-        filter: drop-shadow(0 1px 2px hsl(from currentColor 0 0% 0% / calc(l * 0.4)));
+        filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2));
+        filter: drop-shadow(0 1px 2px hsl(from currentColor 0 0% 0% / calc(l * 0.2)));
       }
 
       .clock {
