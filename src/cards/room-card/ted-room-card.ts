@@ -1365,7 +1365,7 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
         display: inline-flex;
         align-items: center;
         gap: 4px;
-        min-height: 28px;
+        min-height: 19px;
         font-size: 0.8rem;
         font-weight: 600;
         color: var(--ted-style-text);

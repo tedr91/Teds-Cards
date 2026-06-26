@@ -664,17 +664,22 @@ double_tap_action:
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v2.0.93
+
+- Camera Card: in a dashboard **Sections** grid you can now resize it all the way down to **3 wide × 1 tall** (the minimum height was 2).
+- Room Card: status items now line up more tightly with the room **Name** — a text-only status strip is no longer padded taller than the title.
+
 ### v2.0.92
 
 - **New Camera Card** (`custom:ted-camera-card`): show a camera feed — auto thumbnail or live stream — like Home Assistant's picture-glance, with **Camera view**, **Fit mode**, and aspect-ratio options, and **More Info** on tap.
 - Room Card: a room's **photo can now be a live camera feed** (a new "Camera feed" photo source), and you can add **cameras as buttons** in any button section.
 
+<details>
+<summary>Previous release notes</summary>
+
 ### v2.0.91
 
 - Light & Cover Cards: the gap between the two neumorphic rocker paddles is now also **tightened in the horizontal layout**, matching the vertical rocker.
-
-<details>
-<summary>Previous release notes</summary>
 
 ### v2.0.90
 

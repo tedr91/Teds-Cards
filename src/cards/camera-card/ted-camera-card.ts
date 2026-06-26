@@ -90,7 +90,7 @@ export class TedCameraCard extends LitElement implements LovelaceCard {
       columns: 6,
       rows: 3,
       min_columns: 3,
-      min_rows: 2,
+      min_rows: 1,
     };
   }
 
