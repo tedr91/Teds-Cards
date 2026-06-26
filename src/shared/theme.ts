@@ -125,7 +125,7 @@ export const tedStyleTheme: CSSResult = css`
     bottom: 0;
     left: 0;
     right: auto;
-    width: calc(50% - 1.5px);
+    width: calc(50% - 1px);
     height: auto;
     border-radius: var(--ted-style-radius) 3px 3px var(--ted-style-radius);
   }
@@ -134,7 +134,7 @@ export const tedStyleTheme: CSSResult = css`
     bottom: 0;
     left: auto;
     right: 0;
-    width: calc(50% - 1.5px);
+    width: calc(50% - 1px);
     height: auto;
     border-radius: 3px var(--ted-style-radius) var(--ted-style-radius) 3px;
   }

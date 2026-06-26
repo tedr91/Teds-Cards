@@ -609,17 +609,21 @@ px, matching a button).
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v2.0.91
+
+- Light & Cover Cards: the gap between the two neumorphic rocker paddles is now also **tightened in the horizontal layout**, matching the vertical rocker.
+
 ### v2.0.90
 
 - Room Card: **performance** — it now skips redundant re-renders when unrelated entities update and caches its button layout, so dashboards with several Room Cards stay smoother. No visible change.
+
+<details>
+<summary>Previous release notes</summary>
 
 ### v2.0.89
 
 - Light & Cover Cards: the rocker **divider line now follows your Home Assistant theme** — on a light theme it shows as a subtle hairline instead of the dark engraved line that only suited the dark style.
 - Light & Cover Cards: slightly **tightened the gap** between the two neumorphic rocker paddles.
-
-<details>
-<summary>Previous release notes</summary>
 
 ### v2.0.88
 
