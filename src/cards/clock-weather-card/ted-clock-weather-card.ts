@@ -30,9 +30,9 @@ const DATE_WEIGHT = "500";
 /** "12:22" should occupy this fraction of the card width at the default (Large) size. */
 const CLOCK_WIDTH_FRACTION = 0.65;
 /** "Saturday, June 22" should occupy this fraction of the card width at the default size. */
-const DATE_WIDTH_FRACTION = 0.328125;
+const DATE_WIDTH_FRACTION = 0.33;
 /** The weather block (icon + temperature) should occupy this fraction of the card width at the default size. */
-const WEATHER_WIDTH_FRACTION = 0.328125;
+const WEATHER_WIDTH_FRACTION = 0.28;
 /** AM/PM suffix font-size as a fraction of the clock font-size. */
 const AMPM_SCALE = 1 / 3;
 /**
@@ -560,7 +560,14 @@ export class TedClockWeatherCard extends LitElement implements LovelaceCard {
       }
 
       ha-card {
-        height: 100%;
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        /* Fill a fixed-height cell, but collapse to the content height when the
+           grid uses auto height (so the card reports its true height to HA and
+           never leaves empty space). */
+        min-height: 100%;
       }
 
       ha-card.is-transparent {
@@ -575,10 +582,9 @@ export class TedClockWeatherCard extends LitElement implements LovelaceCard {
         box-sizing: border-box;
         display: flex;
         flex-direction: column;
-        justify-content: flex-end;
+        justify-content: center;
         gap: 4px;
         width: 100%;
-        height: 100%;
         min-height: 56px;
         padding: 14px 18px;
         overflow: hidden;
