@@ -479,9 +479,10 @@ export class TedClockWeatherCard extends LitElement implements LovelaceCard {
       "no-shadow": !shadow,
     };
 
+    const cwBg = cssColor(this._config.background);
     const cardStyle: Record<string, string> = appearanceStyle({
-      background: cssColor(this._config.background),
-      transparency: this._config.transparency ?? 100,
+      background: cwBg,
+      transparency: this._config.transparency ?? (cwBg ? 0 : 100),
       blur: this._config.blur,
     });
 

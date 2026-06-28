@@ -45,8 +45,10 @@ export interface CoverCardConfig extends LovelaceCardConfig {
   name_color?: string;
   icon_color?: string;
   state_color?: string;
+  /** Card background color (base; applies in all states). */
+  background?: string;
+  /** Card background color when the cover is open (overrides the base). */
   background_open?: string;
-  background_closed?: string;
   transparency?: number;
   blur?: number;
   brushed?: boolean;

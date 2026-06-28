@@ -126,6 +126,7 @@ export class TedCameraCardEditor extends LitElement implements LovelaceCardEdito
               },
             },
           },
+          { name: "background", selector: { ui_color: {} } },
           {
             type: "grid",
             name: "",
@@ -216,6 +217,8 @@ export class TedCameraCardEditor extends LitElement implements LovelaceCardEdito
         return "Aspect ratio (optional)";
       case "theme":
         return "Visual styling";
+      case "background":
+        return "Background color";
       case "brushed":
         return "Brushed effect";
       case "transparency":
@@ -255,6 +258,7 @@ export class TedCameraCardEditor extends LitElement implements LovelaceCardEdito
     }
     if (!config.name) delete config.name;
     if (!config.aspect_ratio) delete config.aspect_ratio;
+    if (!config.background) delete config.background;
     fireEvent(this, "config-changed", { config });
   }
 

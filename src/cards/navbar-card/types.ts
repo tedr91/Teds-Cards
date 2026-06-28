@@ -70,6 +70,8 @@ export interface NavbarCardConfig extends LovelaceCardConfig {
   min_width?: number;
   /** Float mode: maximum bar width in px. */
   max_width?: number;
+  /** Card background color override (theme color name or hex/rgb/hsl/var). */
+  background?: string;
   /** Background transparency override, 0–100% (unset = no override). */
   transparency?: number;
   /** Background blur override, 0–100% (unset = no override). */

@@ -94,6 +94,8 @@ export interface RoomCardConfig extends LovelaceCardConfig {
   icon?: string;
   theme?: RoomCardTheme;
   brushed?: boolean;
+  /** Appearance: card background color override (theme color name or hex/rgb/hsl/var). */
+  background?: string;
   /** Appearance: surface transparency override (0–100%). */
   transparency?: number;
   /** Appearance: backdrop blur override (0–100%). */

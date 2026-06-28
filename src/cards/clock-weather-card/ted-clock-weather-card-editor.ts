@@ -362,7 +362,7 @@ export class TedClockWeatherCardEditor extends LitElement implements LovelaceCar
       case "blur":
         return "Background blur";
       case "background":
-        return "Background color override";
+        return "Background color";
       case "brushed":
         return "Brushed effect";
       case "shadow":

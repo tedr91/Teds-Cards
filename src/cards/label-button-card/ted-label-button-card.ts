@@ -328,8 +328,10 @@ export class TedLabelButtonCard extends LitElement implements LovelaceCard {
       grid: this.layout === "grid",
     };
 
+    const bgBase = cssColor(this._config.background);
+    const bgActive = cssColor(this._config.background_on);
     const cardStyle: Record<string, string> = appearanceStyle({
-      background: cssColor(this._config.background),
+      background: isActive ? bgActive ?? bgBase : bgBase,
       transparency: this._config.transparency,
       blur: this._config.blur,
     });

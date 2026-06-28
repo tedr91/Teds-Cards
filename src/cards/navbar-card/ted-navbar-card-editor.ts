@@ -139,6 +139,7 @@ export class TedNavbarCardEditor extends LitElement implements LovelaceCardEdito
               },
             },
           },
+          { name: "background", selector: { ui_color: {} } },
           {
             type: "grid",
             name: "",
@@ -203,6 +204,8 @@ export class TedNavbarCardEditor extends LitElement implements LovelaceCardEdito
     switch (schema.name) {
       case "theme":
         return "Visual styling";
+      case "background":
+        return "Background color";
       case "alignment":
         return "Navbar alignment";
       case "bar_type":
@@ -240,6 +243,7 @@ export class TedNavbarCardEditor extends LitElement implements LovelaceCardEdito
     for (const key of Object.keys(defaults) as Array<keyof NavbarCardConfig>) {
       if (next[key] === defaults[key]) delete next[key];
     }
+    if (!next.background) delete next.background;
     return next;
   }
 

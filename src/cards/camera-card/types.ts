@@ -23,6 +23,8 @@ export interface CameraCardConfig extends LovelaceCardConfig {
   theme?: CameraCardTheme;
   /** Brushed-metal sheen overlay. Defaults to false. */
   brushed?: boolean;
+  /** Card background color override (theme color name or hex/rgb/hsl/var). */
+  background?: string;
   transparency?: number;
   blur?: number;
   /** Manual width in px (used outside the Sections grid). */

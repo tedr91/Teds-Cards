@@ -236,7 +236,7 @@ export class TedRemoteCardEditor extends LitElement implements LovelaceCardEdito
       case "theme":
         return "Visual styling";
       case "background":
-        return "Background color override";
+        return "Background color";
       case "transparency":
         return "Transparency";
       case "blur":

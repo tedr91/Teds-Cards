@@ -9,7 +9,7 @@ import type {
   LovelaceCardEditor,
 } from "custom-card-helpers";
 
-import { appearanceStyle } from "../../shared/appearance";
+import { appearanceStyle, cssColor } from "../../shared/appearance";
 import { registerCustomCard } from "../../shared/register-card";
 import { tedCardThemeClass, tedStyleTheme } from "../../shared/theme";
 import { renderStatusItem, type StatusItemContext } from "../../shared/status-items/render";
@@ -351,8 +351,10 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
   protected render(): TemplateResult | typeof nothing {
     if (!this._config) return nothing;
     const theme = this._config.theme === "ted-style" ? "ted-style" : "ha";
+    const navBg = cssColor(this._config.background);
     const cardStyle: Record<string, string> = appearanceStyle({
-      transparency: this._config.transparency ?? 100,
+      background: navBg,
+      transparency: this._config.transparency ?? (navBg ? 0 : 100),
       blur: this._config.blur,
     });
     if (this._barType() === "float") {

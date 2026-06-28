@@ -9,7 +9,7 @@ import {
   type LovelaceCardEditor,
 } from "custom-card-helpers";
 
-import { appearanceStyle } from "../../shared/appearance";
+import { appearanceStyle, cssColor } from "../../shared/appearance";
 import { ensureHuiImage } from "../../shared/camera";
 import { registerCustomCard } from "../../shared/register-card";
 import { brushedOverlay, tedStyleTheme } from "../../shared/theme";
@@ -863,6 +863,7 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
       : 0;
     const bodyStyle = bodyShift ? { marginTop: `${bodyShift}px` } : {};
     const appearance = appearanceStyle({
+      background: cssColor(this._config.background),
       transparency: this._config.transparency,
       blur: this._config.blur,
     });

@@ -281,8 +281,8 @@ export class TedCoverCardEditor extends LitElement implements LovelaceCardEditor
       name: "",
       column_min_width: "100px",
       schema: [
+        { name: "background", selector: { ui_color: {} } },
         { name: "background_open", selector: { ui_color: {} } },
-        { name: "background_closed", selector: { ui_color: {} } },
       ],
     });
     visual.push(transparencyBlurSchema(this._config?.transparency));
@@ -454,10 +454,10 @@ export class TedCoverCardEditor extends LitElement implements LovelaceCardEditor
         return "Transparency";
       case "blur":
         return "Background blur";
+      case "background":
+        return "Background color";
       case "background_open":
         return "Background color when open";
-      case "background_closed":
-        return "Background color when closed";
       case "brushed":
         return "Brushed effect";
       case "rocker":

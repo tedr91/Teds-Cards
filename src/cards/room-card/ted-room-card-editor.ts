@@ -79,6 +79,7 @@ const FIELD_LABELS: Record<string, string> = {
   icon: "Icon (override)",
   display: "Display",
   theme: "Visual styling",
+  background: "Background color",
   brushed: "Brushed effect",
   transparency: "Transparency",
   blur: "Background blur",
@@ -718,6 +719,7 @@ export class TedRoomCardEditor extends LitElement implements LovelaceCardEditor 
               },
             },
           },
+          { name: "background", selector: { ui_color: {} } },
           { name: "brushed", selector: { boolean: {} } },
           transparencyBlurSchema(this._config?.transparency),
         ],
@@ -946,6 +948,7 @@ export class TedRoomCardEditor extends LitElement implements LovelaceCardEditor 
       icon: value.icon,
       theme: value.theme,
       brushed: value.brushed,
+      background: value.background,
       transparency: value.transparency,
       blur: value.blur,
       show_header_icon: value.show_header_icon,
@@ -1121,6 +1124,7 @@ export class TedRoomCardEditor extends LitElement implements LovelaceCardEditor 
     const next: RoomCardConfig = { ...config };
     if (next.theme === "ted-style") delete next.theme;
     if (!next.brushed) delete next.brushed;
+    if (!next.background) delete next.background;
     if (typeof next.transparency !== "number") delete next.transparency;
     if (typeof next.blur !== "number") delete next.blur;
     if (!next.area) delete next.area;

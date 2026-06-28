@@ -39,8 +39,10 @@ export interface LightCardConfig extends LovelaceCardConfig {
   name_color?: string;
   icon_color?: string;
   state_color?: string;
+  /** Card background color (base; applies in all states). */
+  background?: string;
+  /** Card background color when the light is on (overrides the base). */
   background_on?: string;
-  background_off?: string;
   transparency?: number;
   blur?: number;
   brushed?: boolean;

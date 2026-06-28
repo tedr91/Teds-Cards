@@ -228,8 +228,8 @@ export class TedCoverCard extends LitElement implements LovelaceCard {
         : "var(--ted-style-icon-dim)";
     const stateColor = isOpen ? elementColor(this._config.state_color) : undefined;
     const showHint = this._config.show_hint !== false;
+    const bgBase = cssColor(this._config.background);
     const bgOpen = cssColor(this._config.background_open);
-    const bgClosed = cssColor(this._config.background_closed);
     const horizontal = this._config.orientation === "horizontal";
     const indicatorWidth = typeof this._config.indicator_width === "number" ? this._config.indicator_width : 4;
     const hintWidth = typeof this._config.hint_width === "number" ? this._config.hint_width : 8;
@@ -243,8 +243,8 @@ export class TedCoverCard extends LitElement implements LovelaceCard {
       "--ted-hint-width": `${hintWidth}px`,
       ...appearanceStyle({ transparency: this._config.transparency, blur: this._config.blur }),
     };
-    if (isOpen && bgOpen) cardStyle.backgroundColor = fadeColor(bgOpen, this._config.transparency);
-    if (!isOpen && bgClosed) cardStyle.backgroundColor = fadeColor(bgClosed, this._config.transparency);
+    const bg = isOpen ? bgOpen ?? bgBase : bgBase;
+    if (bg) cardStyle.backgroundColor = fadeColor(bg, this._config.transparency);
     if (!isGrid) {
       cardStyle.width = `${cardWidth}px`;
       cardStyle.height = `${cardHeight}px`;

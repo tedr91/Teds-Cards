@@ -122,6 +122,7 @@ export class TedLabelButtonCardEditor extends LitElement implements LovelaceCard
         },
       },
       { name: "background", selector: { ui_color: {} } },
+      { name: "background_on", selector: { ui_color: {} } },
       transparencyBlurSchema(this._config?.transparency),
       {
         type: "grid",
@@ -218,6 +219,8 @@ export class TedLabelButtonCardEditor extends LitElement implements LovelaceCard
         return "Background blur";
       case "background":
         return "Background color";
+      case "background_on":
+        return "Background color when on";
       case "brushed":
         return "Brushed effect";
       case "neumorphic":
@@ -270,6 +273,7 @@ export class TedLabelButtonCardEditor extends LitElement implements LovelaceCard
     if (!config.name_color) delete config.name_color;
     if (!config.state_color) delete config.state_color;
     if (!config.background) delete config.background;
+    if (!config.background_on) delete config.background_on;
     if (Array.isArray(config.element_order) && this._isDefaultOrder(config.element_order)) {
       delete config.element_order;
     }

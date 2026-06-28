@@ -61,6 +61,18 @@ export function appearanceStyle(opts: {
 }
 
 /**
+ * Normalize a color value for inline CSS: pass hex/rgb/hsl/var through unchanged,
+ * and map a bare theme color name (e.g. "primary", "red") to `var(--name-color, name)`.
+ */
+export function cssColor(value?: string): string | undefined {
+  if (!value) return undefined;
+  if (value.startsWith("#") || value.startsWith("rgb") || value.startsWith("hsl") || value.startsWith("var")) {
+    return value;
+  }
+  return `var(--${value}-color, ${value})`;
+}
+
+/**
  * Apply a transparency override to an already-resolved background color. Returns
  * the color unchanged when transparency is unset/0 (so behavior is identical to
  * before). Used by cards that set `background-color` directly (e.g. light/cover).

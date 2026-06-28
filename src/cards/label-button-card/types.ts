@@ -45,6 +45,8 @@ export interface LabelButtonCardConfig extends LovelaceCardConfig {
   name_color?: string;
   state_color?: string;
   background?: string;
+  /** Card background color when the entity is on/active (overrides the base). */
+  background_on?: string;
   transparency?: number;
   blur?: number;
   brushed?: boolean;
