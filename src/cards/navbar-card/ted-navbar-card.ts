@@ -24,6 +24,7 @@ import {
   NAVBAR_CARD_EDITOR_TYPE,
   NAVBAR_CARD_NAME,
   NAVBAR_CARD_TYPE,
+  defaultNavButton,
 } from "./const";
 import { detectEditOrPreview, forceNavbarPadding, removeNavbarPadding } from "./navbar-dom";
 import type { NavButtonConfig, NavItem, NavPopupConfig, NavSection, NavZone, NavbarCardConfig } from "./types";
@@ -65,16 +66,8 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
         {
           placement: "center",
           align: "center",
-          buttons: [
-            {
-              type: "custom:ted-label-button-card",
-              name: "Home",
-              icon: "mdi:home",
-              theme: "ha",
-              neumorphic: false,
-              transparency: 100,
-            },
-          ],
+          // Exactly an editor-added button, then given the Home name + icon.
+          items: [{ ...defaultNavButton(), name: "Home", icon: "mdi:home" }],
         },
       ],
     };
@@ -354,7 +347,7 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
     const navBg = cssColor(this._config.background);
     const cardStyle: Record<string, string> = appearanceStyle({
       background: navBg,
-      transparency: this._config.transparency ?? (navBg ? 0 : 100),
+      transparency: this._config.transparency,
       blur: this._config.blur,
     });
     if (this._barType() === "float") {

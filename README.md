@@ -784,6 +784,12 @@ sections:                 # up to 5 sections
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v2.1.1
+
+- **Fix: fully transparent cards are see-through again.** A transparent **Clock Weather** card (and the **Navbar**) was being frosted by the blur that some Home Assistant themes apply to every card; a 100%-transparent card now disables that blur, so it shows straight through — no surface, blur, or border.
+- **Navbar Card:** a new navbar is no longer forced transparent — it shows its normal card surface by default (set **Transparency** to 100% yourself for a see-through bar). The **Home** button it starts with now matches a button added via **+ Add item → Button** (just with the Home name & icon).
+- Every card: the **Transparency** and **Background blur** boxes always sit **side-by-side** in the editor.
+
 ### v2.1.0
 
 - **Navbar Card: popup menus & auto-overflow.** A new **Popup** item is a tappable icon that opens a small popover holding any mix of buttons and status items — great for tucking extra controls (say, a "Lights" popup) behind one icon. Sections also now **auto-collapse** items that don't fit the bar into a **“…” overflow** popover (on by default, toggleable per section).
@@ -791,13 +797,13 @@ the Home Assistant / HACS **update** dialog when you update. Newest first.
 - **Every card: 100% Transparency is now truly see-through** — setting Transparency to **100%** disables blur (instead of blurring whatever's behind the card), and an explicitly set background color now shows on cards that default to transparent.
 - **Light & Cover Cards: the neumorphic button now fills the freed space** when you hide the indicator and/or hint bars (the tap areas are unchanged).
 
+<details>
+<summary>Previous release notes</summary>
+
 ### v2.0.100
 
 - **Navbar Card: status items.** A section can now show **status items** alongside (or instead of) buttons — **time**, **date** and **weather**, plus a room's **temperature**, **occupancy**, **brightness**, **volume**, an entity **status LED**, and a **spacer**. Mix them across the **left / center / right** zones — for example date & weather on the left, a **Home** button dead-center, and a live clock on the right. Brightness and volume keep their tap-to-open sliders, and each section's **+ Add item** menu adds a button or any status item, all **drag-to-reorder**.
 - Every card: the **Transparency** and **Background blur** controls are now **clearable number boxes** — leave a box empty for "no override" (the card keeps its normal background) instead of the old sliders that always forced a value.
-
-<details>
-<summary>Previous release notes</summary>
 
 ### v2.0.99
 

@@ -22,13 +22,13 @@ import {
   statusItemSubtitle,
 } from "../../shared/status-items/editor";
 import type { StatusItem, StatusItemType } from "../../shared/status-items/types";
-import { LABEL_BUTTON_CARD_TYPE } from "../label-button-card/const";
 import {
   DEFAULT_NAVBAR_MAX_WIDTH,
   DEFAULT_NAVBAR_MIN_WIDTH,
   DEFAULT_NAVBAR_SIZE,
   MAX_NAV_SECTIONS,
   NAVBAR_CARD_EDITOR_TYPE,
+  defaultNavButton,
 } from "./const";
 import type {
   NavAlign,
@@ -690,20 +690,7 @@ export class TedNavbarCardEditor extends LitElement implements LovelaceCardEdito
   }
 
   private _addButton(containerPath: number[]): void {
-    const items: NavItem[] = [
-      ...this._itemsAt(containerPath),
-      {
-        type: `custom:${LABEL_BUTTON_CARD_TYPE}`,
-        icon: "mdi:gesture-tap-button",
-        theme: "ha",
-        brushed: false,
-        neumorphic: false,
-        transparency: 100,
-        show_name: false,
-        show_state: false,
-        tap_action: { action: "navigate", navigation_path: "/home" },
-      },
-    ];
+    const items: NavItem[] = [...this._itemsAt(containerPath), defaultNavButton()];
     this._expanded = new Set([...this._expanded, `btn-${[...containerPath, items.length - 1].join("-")}`]);
     this._commitItemList(containerPath, items);
   }

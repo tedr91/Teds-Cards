@@ -100,6 +100,7 @@ export function transparencyBlurSchema(transparency?: number): Record<string, un
   return {
     type: "grid",
     name: "",
+    column_min_width: "100px",
     schema: [
       {
         name: "transparency",
