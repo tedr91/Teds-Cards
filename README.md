@@ -784,24 +784,20 @@ sections:                 # up to 5 sections
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v2.1.7
+
+- **Navbar Card: new buttons start more subtle** — they default to **99% transparency** (a barely-there surface that still picks up your theme's blur) and a **dimmed icon colour** (“No colour”) instead of the accent. Existing buttons are unchanged.
+
 ### v2.1.6
 
 - **Navbar Card: the bar now reaches the right edge** of the dashboard content. It previously stopped short by the width of the vertical scrollbar, leaving a small gap on the right.
 
+<details>
+<summary>Previous release notes</summary>
+
 ### v2.1.5
 
 - **Navbar Card: popup & overflow menus now frost the dashboard behind them** instead of showing it straight through. The popover opts into your theme's card blur (`--ha-card-backdrop-filter`), so on translucent Mica/glass themes it looks like a proper frosted card; flat/opaque themes are unaffected.
-
-### v2.1.4
-
-- **Navbar Card: the popup & overflow “more” trigger now blends in** with the other buttons — no grey box or border, just an accent-coloured chevron sized to match. (Set a custom icon on a popup to override the chevron.)
-
-### v2.1.3
-
-- **Navbar Card: popup & overflow triggers now show a chevron** that points the way the menu will open (up for a bottom bar, down for a top bar) and flips when it's open. Set a custom icon on a popup to override.
-
-<details>
-<summary>Previous release notes</summary>
 
 ### v2.1.4
 
