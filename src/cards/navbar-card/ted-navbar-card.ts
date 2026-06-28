@@ -662,23 +662,22 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
         flex: none;
       }
 
-      /* Popup trigger: an icon button styled like a nav button. */
+      /* Popup / overflow trigger: a transparent icon button that blends in with
+         the other nav buttons (accent icon, no surface box or border). */
       .nav-popup {
         display: inline-flex;
         align-items: center;
         justify-content: center;
         padding: 0;
-        border: 1px solid var(--ted-style-divider);
-        border-radius: var(--ted-style-radius-sm, 10px);
-        background-color: var(--ted-style-surface);
-        background-image: linear-gradient(var(--ted-style-surface-2), var(--ted-style-surface-2));
-        color: var(--ted-style-muted);
+        border: none;
+        background: transparent;
+        color: var(--ted-style-accent);
         cursor: pointer;
-        transition: color 0.18s ease, border-color 0.18s ease, transform 0.08s ease;
+        transition: color 0.18s ease, transform 0.08s ease;
         -webkit-tap-highlight-color: transparent;
       }
       .nav-popup ha-icon {
-        --mdc-icon-size: calc((var(--nav-size) - 12px) * 0.55);
+        --mdc-icon-size: calc((var(--nav-size) - 12px) * 0.78);
         transition: transform 0.2s ease;
       }
       /* The default chevron flips to point the opposite way while its popup is open. */
@@ -686,8 +685,7 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
         transform: rotate(180deg);
       }
       .nav-popup:hover {
-        color: var(--ted-style-text);
-        border-color: color-mix(in srgb, var(--ted-style-accent) 50%, var(--ted-style-divider));
+        color: color-mix(in srgb, var(--ted-style-accent) 75%, var(--ted-style-text));
       }
       .nav-popup:active {
         transform: scale(0.96);

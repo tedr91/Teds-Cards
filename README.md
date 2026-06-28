@@ -784,18 +784,22 @@ sections:                 # up to 5 sections
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v2.1.4
+
+- **Navbar Card: the popup & overflow “more” trigger now blends in** with the other buttons — no grey box or border, just an accent-coloured chevron sized to match. (Set a custom icon on a popup to override the chevron.)
+
 ### v2.1.3
 
 - **Navbar Card: popup & overflow triggers now show a chevron** that points the way the menu will open (up for a bottom bar, down for a top bar) and flips when it's open. Set a custom icon on a popup to override.
+
+<details>
+<summary>Previous release notes</summary>
 
 ### v2.1.2
 
 - **Navbar Card: clears the sidebar.** The bar now aligns with the dashboard **content area** instead of the full window, so its left section is no longer hidden behind Home Assistant's sidebar.
 - **Navbar Card: a new navbar starts ready to fill** — five sections are pre-created (left, three center, right) with the **Home** button in the center, and new buttons default to a **150%** icon.
 - Navbar Card: section rows are now labelled by **placement and alignment** (e.g. *"Section 2 - center (right aligned)"*), and a section's (or item's) **expanded/collapsed state stays put when you drag to reorder**.
-
-<details>
-<summary>Previous release notes</summary>
 
 ### v2.1.1
 
