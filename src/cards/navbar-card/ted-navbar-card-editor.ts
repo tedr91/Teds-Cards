@@ -427,7 +427,6 @@ export class TedNavbarCardEditor extends LitElement implements LovelaceCardEdito
         icon: "mdi:gesture-tap-button",
         show_name: false,
         show_state: false,
-        icon_scale: 75,
         tap_action: { action: "navigate", navigation_path: "/home" },
       },
     ];

@@ -762,17 +762,22 @@ sections:                 # up to 5 sections
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v2.0.98
+
+- Label / Button Card: **fixed icon centering** in small buttons — in a small grid cell (like a navbar button) the icon was pushed below the middle; it now stays properly centered.
+- Navbar Card: new buttons now default to a full-size (**100%**) icon.
+
 ### v2.0.97
 
 - Label / Button Card: the **icon now scales with the card** — small buttons (like those in the navbar) get proportionally smaller icons and larger buttons get bigger ones — and the default content order is now **Name → Icon → State**.
 - Navbar Card: new buttons now default to a tidy **icon-only button that navigates to `/home`** (name & state hidden, icon at 75%), and the default **bar thickness is 48px**.
 
+<details>
+<summary>Previous release notes</summary>
+
 ### v2.0.96
 
 - **New Navbar Card** (`custom:ted-navbar-card`): a navigation bar **pinned to the top or bottom** of your dashboard, with buttons arranged in **left / center / right** zones (the center stays dead-center — great for a Home button). Each button is a full **Label / Button Card**, sections and buttons **drag to reorder**, and the bar can be **edge-to-edge (snap)** or **floating**.
-
-<details>
-<summary>Previous release notes</summary>
 
 ### v2.0.95
 

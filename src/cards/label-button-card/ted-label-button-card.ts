@@ -324,6 +324,7 @@ export class TedLabelButtonCard extends LitElement implements LovelaceCard {
       [tedCardThemeClass(theme)]: true,
       clickable: this._hasInteractions(),
       "no-shadow": !shadow,
+      grid: this.layout === "grid",
     };
 
     const cardStyle: Record<string, string> = {};
@@ -548,6 +549,13 @@ export class TedLabelButtonCard extends LitElement implements LovelaceCard {
         padding: 12px;
         text-align: center;
         color: var(--ted-style-text);
+      }
+
+      /* In a grid / fixed cell the surrounding card sets the height, so drop the
+         standalone minimum — a small embedded button (e.g. in the navbar) then
+         fills its cell and the centered element stays vertically centered. */
+      ha-card.grid .lbc {
+        min-height: 0;
       }
 
       /* Each element has a fixed home based on its order: 1st → top, 2nd →
