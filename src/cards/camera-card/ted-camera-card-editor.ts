@@ -135,7 +135,7 @@ export class TedCameraCardEditor extends LitElement implements LovelaceCardEdito
               { name: "brushed", selector: { boolean: {} } },
             ],
           },
-          transparencyBlurSchema(),
+          transparencyBlurSchema(this._config?.transparency),
           { name: "name", selector: { text: {} } },
           {
             type: "grid",

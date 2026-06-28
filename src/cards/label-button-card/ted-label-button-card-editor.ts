@@ -122,7 +122,7 @@ export class TedLabelButtonCardEditor extends LitElement implements LovelaceCard
         },
       },
       { name: "background", selector: { ui_color: {} } },
-      transparencyBlurSchema(),
+      transparencyBlurSchema(this._config?.transparency),
       {
         type: "grid",
         name: "",

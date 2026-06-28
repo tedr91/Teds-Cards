@@ -48,7 +48,11 @@ export function appearanceStyle(opts: {
     style.background = opts.background;
   }
 
-  if (blur != null && blur > 0) {
+  // A fully-transparent card (100%) should show straight through, so its blur is
+  // disabled and treated as 0 — otherwise backdrop-filter would still blur the view
+  // behind it, defeating a true transparent look.
+  const fullyTransparent = transparency != null && transparency >= 100;
+  if (blur != null && blur > 0 && !fullyTransparent) {
     const px = (blur / 100) * MAX_BLUR_PX;
     style["backdrop-filter"] = `blur(${px}px)`;
     style["-webkit-backdrop-filter"] = `blur(${px}px)`;
@@ -73,7 +77,10 @@ export function fadeColor(color: string, transparency?: number): string {
  * "no override" — distinct from an explicit `0`, which a slider can't express
  * (its thumb is always at some value).
  */
-export function transparencyBlurSchema(): Record<string, unknown> {
+export function transparencyBlurSchema(transparency?: number): Record<string, unknown> {
+  // At 100% transparency the card is fully see-through, so blur has no effect: the
+  // field is disabled here (and treated as 0 at runtime) for a true transparent look.
+  const blurDisabled = typeof transparency === "number" && transparency >= 100;
   return {
     type: "grid",
     name: "",
@@ -84,6 +91,7 @@ export function transparencyBlurSchema(): Record<string, unknown> {
       },
       {
         name: "blur",
+        disabled: blurDisabled,
         selector: { number: { min: 0, max: 100, step: 1, mode: "box", unit_of_measurement: "%" } },
       },
     ],

@@ -105,7 +105,7 @@ export class TedClockWeatherCardEditor extends LitElement implements LovelaceCar
         },
       },
       { name: "background", selector: { ui_color: {} } },
-      transparencyBlurSchema(),
+      transparencyBlurSchema(this._config?.transparency),
       { name: "brushed", selector: { boolean: {} } },
       { name: "shadow", selector: { boolean: {} } },
     ];

@@ -719,7 +719,7 @@ export class TedRoomCardEditor extends LitElement implements LovelaceCardEditor 
             },
           },
           { name: "brushed", selector: { boolean: {} } },
-          transparencyBlurSchema(),
+          transparencyBlurSchema(this._config?.transparency),
         ],
       },
       {

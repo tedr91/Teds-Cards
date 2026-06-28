@@ -136,7 +136,7 @@ export class TedRemoteCardEditor extends LitElement implements LovelaceCardEdito
         },
       },
       { name: "background", selector: { ui_color: {} } },
-      transparencyBlurSchema(),
+      transparencyBlurSchema(this._config?.transparency),
       { name: "brushed", selector: { boolean: {} } },
       {
         type: "grid",

@@ -285,7 +285,7 @@ export class TedCoverCardEditor extends LitElement implements LovelaceCardEditor
         { name: "background_closed", selector: { ui_color: {} } },
       ],
     });
-    visual.push(transparencyBlurSchema());
+    visual.push(transparencyBlurSchema(this._config?.transparency));
     visual.push({
       type: "grid",
       name: "",

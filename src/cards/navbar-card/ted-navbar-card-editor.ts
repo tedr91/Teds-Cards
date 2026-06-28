@@ -193,7 +193,7 @@ export class TedNavbarCardEditor extends LitElement implements LovelaceCardEdito
             name: "size",
             selector: { number: { min: 40, max: 120, step: 2, mode: "slider", unit_of_measurement: "px" } },
           },
-          transparencyBlurSchema(),
+          transparencyBlurSchema(this._config?.transparency),
         ],
       },
     ];
