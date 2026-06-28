@@ -48,11 +48,15 @@ export function appearanceStyle(opts: {
     style.background = opts.background;
   }
 
-  // A fully-transparent card (100%) should show straight through, so its blur is
-  // disabled and treated as 0 — otherwise backdrop-filter would still blur the view
-  // behind it, defeating a true transparent look.
+  // A fully-transparent card (100%) should show straight through: blur is disabled,
+  // and we force `backdrop-filter: none` to override any blur the active HA theme
+  // applies to every ha-card (via --ha-card-backdrop-filter) — otherwise the
+  // "transparent" card would still frost the view behind it.
   const fullyTransparent = transparency != null && transparency >= 100;
-  if (blur != null && blur > 0 && !fullyTransparent) {
+  if (fullyTransparent) {
+    style["backdrop-filter"] = "none";
+    style["-webkit-backdrop-filter"] = "none";
+  } else if (blur != null && blur > 0) {
     const px = (blur / 100) * MAX_BLUR_PX;
     style["backdrop-filter"] = `blur(${px}px)`;
     style["-webkit-backdrop-filter"] = `blur(${px}px)`;
