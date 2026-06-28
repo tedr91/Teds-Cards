@@ -11,7 +11,27 @@ import type { SpacerCardConfig } from "../spacer-card/types";
 /** Visual styling mode. `ted-style` = self-contained look; `ha` = follow HA theme. */
 export type RoomCardTheme = TedStyleTheme;
 
-/** The kinds of items the STATUS strip can hold. */
+/**
+ * Status-strip items. The Room Card uses a subset of the shared status-item set
+ * (it omits the Navbar-only time/date/weather kinds). The underlying types live
+ * in the shared `status-items` module so both cards render identically.
+ */
+import type {
+  BrightnessStatusItem,
+  LedStatusItem,
+  SensorStatusItem,
+  SpacerStatusItem,
+  StatusDisplay,
+  VolumeStatusItem,
+} from "../../shared/status-items/types";
+
+export type RoomStatusDisplay = StatusDisplay;
+export type RoomSensorStatusItem = SensorStatusItem;
+export type RoomBrightnessStatusItem = BrightnessStatusItem;
+export type RoomVolumeStatusItem = VolumeStatusItem;
+export type RoomLedStatusItem = LedStatusItem;
+export type RoomSpacerStatusItem = SpacerStatusItem;
+
 export type RoomStatusItemType =
   | "temperature"
   | "occupancy"
@@ -20,70 +40,12 @@ export type RoomStatusItemType =
   | "led"
   | "spacer";
 
-/** How a status item displays: icon + state, just the icon, or just the state. */
-export type RoomStatusDisplay = "both" | "icon" | "state";
-
-/** Fields shared by every status item. */
-interface RoomStatusItemBase {
-  type: RoomStatusItemType;
-  /** Optional label (tooltip / a11y); falls back to the entity's friendly name. */
-  name?: string;
-  /** Icon + state, icon only, or state only. Defaults per type. Unused by spacer. */
-  display?: RoomStatusDisplay;
-}
-
-/**
- * Temperature / occupancy: an icon plus the entity's value. `entity` is optional —
- * when omitted it is resolved from the card's `area`.
- */
-export interface RoomSensorStatusItem extends RoomStatusItemBase {
-  type: "temperature" | "occupancy";
-  entity?: string;
-  icon?: string;
-}
-
-/**
- * Brightness slider (NovaStar-style). Targets a light (on/off + brightness %) or a
- * number / input_number entity (min/max/step → set_value), auto-detected by domain.
- */
-export interface RoomBrightnessStatusItem extends RoomStatusItemBase {
-  type: "brightness";
-  entity: string;
-  icon?: string;
-}
-
-/** Volume control (Denon-style): tap opens a slider, double-tap mutes. Targets a media_player. */
-export interface RoomVolumeStatusItem extends RoomStatusItemBase {
-  type: "volume";
-  entity: string;
-  icon?: string;
-}
-
-/**
- * Status LED: a small colored dot. On/active = green, off = grey by default;
- * `on_color`/`off_color` override those, and `colors` maps specific states to colors.
- */
-export interface RoomLedStatusItem extends RoomStatusItemBase {
-  type: "led";
-  entity: string;
-  on_color?: string;
-  off_color?: string;
-  colors?: Record<string, string>;
-}
-
-/** A transparent fixed-width gap in the status strip. */
-export interface RoomSpacerStatusItem extends RoomStatusItemBase {
-  type: "spacer";
-  /** Width of the gap in px. Defaults to 24. */
-  size?: number;
-}
-
 export type RoomStatusItem =
-  | RoomSensorStatusItem
-  | RoomBrightnessStatusItem
-  | RoomVolumeStatusItem
-  | RoomLedStatusItem
-  | RoomSpacerStatusItem;
+  | SensorStatusItem
+  | BrightnessStatusItem
+  | VolumeStatusItem
+  | LedStatusItem
+  | SpacerStatusItem;
 
 /** A button inside a button section — one of the embeddable Ted card types. */
 export type RoomButtonConfig = (

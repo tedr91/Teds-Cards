@@ -58,8 +58,8 @@ export class TedClockWeatherCardEditor extends LitElement implements LovelaceCar
   private _defaults(): Partial<ClockWeatherCardConfig> {
     return {
       theme: "ted-style",
-      transparency: 100,
-      blur: 0,
+      transparency: undefined,
+      blur: undefined,
       brushed: false,
       shadow: true,
       show_clock: true,

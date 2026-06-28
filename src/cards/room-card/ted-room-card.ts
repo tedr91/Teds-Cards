@@ -13,6 +13,9 @@ import { appearanceStyle } from "../../shared/appearance";
 import { ensureHuiImage } from "../../shared/camera";
 import { registerCustomCard } from "../../shared/register-card";
 import { brushedOverlay, tedStyleTheme } from "../../shared/theme";
+import { renderStatusItem, type StatusItemContext } from "../../shared/status-items/render";
+import { StatusSliderController } from "../../shared/status-items/slider-controller";
+import { statusItemStyles } from "../../shared/status-items/styles";
 import {
   autoMatchPhotoKey,
   BUNDLED_PHOTOS,
@@ -24,18 +27,12 @@ import {
   ROOM_CARD_EDITOR_TYPE,
   ROOM_CARD_NAME,
   ROOM_CARD_TYPE,
-  STATUS_ITEM_DEFAULT_ICON,
-  STATUS_ITEM_DEFAULT_DISPLAY,
 } from "./const";
 import type {
   ButtonSize,
   RoomButtonConfig,
   RoomButtonSection,
   RoomCardConfig,
-  RoomLedStatusItem,
-  RoomSensorStatusItem,
-  RoomSpacerStatusItem,
-  RoomStatusItem,
 } from "./types";
 
 /** Minimal shape of an area registry entry (not in custom-card-helpers' types). */
@@ -80,18 +77,6 @@ interface ButtonEntry {
   json: string;
 }
 
-/** Resolved slider bounds + current value for a brightness / volume control. */
-interface SliderModel {
-  min: number;
-  max: number;
-  step: number;
-  value: number;
-  unit: string;
-  kind: "light" | "number" | "volume";
-  muted: boolean;
-  available: boolean;
-}
-
 /** Subset of Home Assistant's LovelaceGridOptions for the Sections grid layout. */
 interface GridOptions {
   columns?: number | "full";
@@ -102,7 +87,7 @@ interface GridOptions {
   max_rows?: number;
 }
 
-/** Entity states treated as "off / inactive" for status-LED coloring. */
+/** Entity states treated as "off / inactive" (used for room-photo dimming). */
 const OFF_STATES = new Set([
   "off",
   "unavailable",
@@ -115,16 +100,6 @@ const OFF_STATES = new Set([
   "0",
   "",
 ]);
-
-/**
- * media_player states where the volume control is inert (the player is off).
- * Mirrors the Denon Marantz card; note `idle` counts as ON (e.g. an AVR that is
- * powered on but not playing), so it is intentionally excluded.
- */
-const VOLUME_OFF_STATES = new Set(["off", "standby", "unavailable", "unknown", ""]);
-
-/** Delay used to distinguish a single tap (open volume slider) from a double tap (mute). */
-const VOLUME_DOUBLE_TAP_MS = 220;
 
 function num(value: unknown, fallback: number): number {
   const parsed = typeof value === "number" ? value : Number.parseFloat(String(value));
@@ -240,28 +215,6 @@ function packButtons(
 }
 
 /** Convert HA brightness (0–255) to a 1–100% scale. */
-function brightnessToPct(brightness?: number): number {
-  if (brightness == null) return 0;
-  return Math.max(Math.round((brightness * 100) / 255), 1);
-}
-
-/** Resolve a configured color (hex / rgb / css var / HA theme color name) to a CSS value. */
-function resolveColor(value: string | undefined): string | undefined {
-  if (typeof value !== "string") return undefined;
-  const raw = value.trim();
-  if (!raw) return undefined;
-  if (/^#([0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(raw)) return raw;
-  if (/^(rgb|rgba|hsl|hsla)\(/i.test(raw)) return raw;
-  if (/^var\(/i.test(raw)) return raw;
-  if (/^[a-z]+(-[a-z]+)*$/i.test(raw)) return `var(--${raw}-color)`;
-  return raw;
-}
-
-function capitalize(text: string): string {
-  if (!text) return text;
-  return text.charAt(0).toUpperCase() + text.slice(1).replace(/_/g, " ");
-}
-
 registerCustomCard({
   type: ROOM_CARD_TYPE,
   name: ROOM_CARD_NAME,
@@ -294,8 +247,6 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
   @property({ attribute: false }) public hass?: HomeAssistant;
   @property({ attribute: false }) public layout?: string;
   @state() private _config?: RoomCardConfig;
-  /** Transient live value of the slider currently being dragged (one at a time). */
-  @state() private _activeSlider?: { key: string; value: number };
   /** True when the configured room photo failed to load (hidden gracefully). */
   @state() private _photoError = false;
   /** True once HA's `<hui-image>` is registered (for a camera room photo). */
@@ -310,8 +261,8 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
   private _helpers?: CardHelpers;
   /** Embedded button elements, keyed by `${sectionIndex}:${buttonIndex}`. */
   private _buttonEls = new Map<string, ButtonEntry>();
-  private _volumeClickTimer?: number;
-  private _volumeClosedAt = 0;
+  /** Shared controller for the brightness/volume slider popovers. */
+  private _slider = new StatusSliderController(this);
 
   public setConfig(config: RoomCardConfig): void {
     if (!config) {
@@ -335,10 +286,6 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
 
   public disconnectedCallback(): void {
     super.disconnectedCallback();
-    if (this._volumeClickTimer !== undefined) {
-      window.clearTimeout(this._volumeClickTimer);
-      this._volumeClickTimer = undefined;
-    }
     this._layoutObserver?.disconnect();
     this._layoutObserver = undefined;
   }
@@ -551,323 +498,26 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
     return undefined;
   }
 
-  // --- Service helpers ------------------------------------------------------
-
-  private _setLightBrightness(entityId: string, pct: number): void {
-    if (pct <= 0) {
-      this.hass?.callService("light", "turn_off", { entity_id: entityId });
-    } else {
-      this.hass?.callService("light", "turn_on", {
-        entity_id: entityId,
-        brightness_pct: Math.round(pct),
-      });
-    }
-  }
-
-  private _setVolume(entityId: string, pct: number): void {
-    this.hass?.callService("media_player", "volume_set", {
-      entity_id: entityId,
-      volume_level: Math.max(0, Math.min(1, pct / 100)),
-    });
-  }
-
-  private _toggleMute(entityId: string): void {
-    const muted = this.hass?.states[entityId]?.attributes?.is_volume_muted === true;
-    this.hass?.callService("media_player", "volume_mute", {
-      entity_id: entityId,
-      is_volume_muted: !muted,
-    });
-  }
-
-  // --- Slider models --------------------------------------------------------
-
-  private _brightnessModel(entityId: string): SliderModel {
-    const stateObj = this.hass?.states[entityId];
-    const available = Boolean(stateObj) && stateObj?.state !== "unavailable";
-    const domain = entityId.split(".")[0];
-    if (domain === "light") {
-      const on = stateObj?.state === "on";
-      const pct = on ? brightnessToPct(stateObj?.attributes?.brightness as number | undefined) : 0;
-      return { min: 0, max: 100, step: 1, value: pct, unit: "%", kind: "light", muted: false, available };
-    }
-    const value = num(stateObj?.state, 0);
-    const min = num(stateObj?.attributes?.min, 0);
-    const max = num(stateObj?.attributes?.max, 100);
-    const step = num(stateObj?.attributes?.step, 1);
-    const unit = (stateObj?.attributes?.unit_of_measurement as string | undefined) ?? "";
-    return { min, max, step, value, unit, kind: "number", muted: false, available };
-  }
-
-  private _volumeModel(entityId: string): SliderModel {
-    const stateObj = this.hass?.states[entityId];
-    // Disabled (greyed, not clickable) when the player is off/standby/unavailable.
-    const available = !!stateObj && !VOLUME_OFF_STATES.has(stateObj.state);
-    const pct = Math.round(num(stateObj?.attributes?.volume_level, 0) * 100);
-    const muted = stateObj?.attributes?.is_volume_muted === true;
-    return { min: 0, max: 100, step: 1, value: pct, unit: "%", kind: "volume", muted, available };
-  }
-
   // --- Status items ---------------------------------------------------------
 
-  private _formatSensor(
-    stateObj: HomeAssistant["states"][string] | undefined,
-    type: "temperature" | "occupancy",
-  ): string {
-    if (!stateObj) return "—";
-    if (type === "occupancy") {
-      if (stateObj.state === "on") return "Detected";
-      if (stateObj.state === "off") return "Clear";
-    }
-    const unit = stateObj.attributes?.unit_of_measurement as string | undefined;
-    return unit ? `${stateObj.state} ${unit}` : capitalize(stateObj.state);
+  /** Build the render context handed to the shared status-item renderers. */
+  private _statusCtx(): StatusItemContext {
+    return {
+      hass: this.hass as HomeAssistant,
+      slider: this._slider,
+      keyPrefix: "rc",
+      resolveAreaEntity: (kind: "temperature" | "occupancy") => this._resolveAreaEntity(kind),
+    };
   }
 
-  /** Resolve whether a status item shows its icon and/or its state value. */
-  private _itemDisplay(item: RoomStatusItem): { icon: boolean; state: boolean } {
-    const display = item.display ?? STATUS_ITEM_DEFAULT_DISPLAY[item.type];
-    return { icon: display !== "state", state: display !== "icon" };
-  }
-
-  /** Inline state text for a brightness/volume item ("61%", "Muted", "—"). */
-  private _sliderStateText(model: SliderModel): string {
-    if (!model.available) return "—";
-    if (model.muted) return "Muted";
-    return model.kind === "number" ? `${Math.round(model.value)}${model.unit}` : `${Math.round(model.value)}%`;
-  }
-
-  private _renderSensorItem(item: RoomSensorStatusItem): TemplateResult {
-    const entityId = item.entity ?? this._resolveAreaEntity(item.type);
-    const stateObj = entityId ? this.hass?.states[entityId] : undefined;
-    const icon = item.icon ?? STATUS_ITEM_DEFAULT_ICON[item.type];
-    const label = String(item.name ?? stateObj?.attributes?.friendly_name ?? entityId ?? "");
-    const show = this._itemDisplay(item);
-    return html`
-      <div class="status-item" title=${label}>
-        ${show.icon ? html`<ha-icon class="status-icon" .icon=${icon}></ha-icon>` : nothing}
-        ${show.state
-          ? html`<span class="status-text">${this._formatSensor(stateObj, item.type)}</span>`
-          : nothing}
-      </div>
-    `;
-  }
-
-  private _renderSpacerItem(item: RoomSpacerStatusItem): TemplateResult {
-    const size = typeof item.size === "number" ? item.size : 24;
-    return html`<div class="status-spacer" style=${styleMap({ width: `${size}px` })}></div>`;
-  }
-
-  private _ledColor(item: RoomLedStatusItem, stateObj?: HomeAssistant["states"][string]): string {
-    const rawState = stateObj?.state ?? "unavailable";
-    if (item.colors) {
-      const mapped = resolveColor(item.colors[rawState] ?? item.colors[rawState.toLowerCase()]);
-      if (mapped) return mapped;
-    }
-    const isOn = !OFF_STATES.has(rawState.toLowerCase());
-    return isOn
-      ? resolveColor(item.on_color) ?? "var(--ted-style-success)"
-      : resolveColor(item.off_color) ?? "color-mix(in srgb, var(--ted-style-muted) 55%, transparent)";
-  }
-
-  private _renderLedItem(item: RoomLedStatusItem): TemplateResult {
-    const stateObj = this.hass?.states[item.entity];
-    const color = this._ledColor(item, stateObj);
-    const label = String(item.name ?? stateObj?.attributes?.friendly_name ?? item.entity);
-    const show = this._itemDisplay(item);
-    return html`
-      <div class="status-item" title=${label}>
-        ${show.icon
-          ? html`<span
-              class="status-led"
-              style=${styleMap({ background: color, boxShadow: `0 0 6px ${color}` })}
-            ></span>`
-          : nothing}
-        ${show.state
-          ? html`<span class="status-text">${stateObj ? capitalize(stateObj.state) : "—"}</span>`
-          : nothing}
-      </div>
-    `;
-  }
-
-  private _renderBrightnessItem(
-    item: Extract<RoomStatusItem, { type: "brightness" }>,
-    index: number,
-  ): TemplateResult {
-    const model = this._brightnessModel(item.entity);
-    const icon = item.icon ?? STATUS_ITEM_DEFAULT_ICON.brightness;
-    const anchorId = `rc-bri-anchor-${index}`;
-    const popId = `rc-bri-pop-${index}`;
-    const show = this._itemDisplay(item);
-    return html`
-      <div class="status-item">
-        ${show.icon
-          ? html`<button
-              id=${anchorId}
-              class="status-icon-button"
-              popovertarget=${popId}
-              ?disabled=${!model.available}
-              title=${String(item.name ?? "Brightness")}
-              aria-label="Brightness"
-            >
-              <ha-icon .icon=${icon}></ha-icon>
-            </button>`
-          : nothing}
-        ${show.state ? html`<span class="status-text">${this._sliderStateText(model)}</span>` : nothing}
-      </div>
-      ${show.icon ? this._renderSliderPopover(popId, anchorId, `bri-${index}`, item, model, icon) : nothing}
-    `;
-  }
-
-  private _renderVolumeItem(
-    item: Extract<RoomStatusItem, { type: "volume" }>,
-    index: number,
-  ): TemplateResult {
-    const model = this._volumeModel(item.entity);
-    const icon = item.icon ?? STATUS_ITEM_DEFAULT_ICON.volume;
-    const anchorId = `rc-vol-anchor-${index}`;
-    const popId = `rc-vol-pop-${index}`;
-    const show = this._itemDisplay(item);
-    return html`
-      <div class="status-item">
-        ${show.icon
-          ? html`<button
-              id=${anchorId}
-              class=${classMap({ "status-icon-button": true, "is-active": model.muted })}
-              ?disabled=${!model.available}
-              @click=${() => this._onVolumeAnchorClick(index, item.entity)}
-              title="Volume — double-tap to mute"
-              aria-label="Volume"
-            >
-              <ha-icon .icon=${model.muted ? "mdi:volume-off" : icon}></ha-icon>
-            </button>`
-          : nothing}
-        ${show.state ? html`<span class="status-text">${this._sliderStateText(model)}</span>` : nothing}
-      </div>
-      ${show.icon ? this._renderSliderPopover(popId, anchorId, `vol-${index}`, item, model, icon) : nothing}
-    `;
-  }
-
-  private _renderSliderPopover(
-    popId: string,
-    anchorId: string,
-    key: string,
-    item: RoomStatusItem,
-    model: SliderModel,
-    icon: string,
-  ): TemplateResult {
-    const live = this._activeSlider?.key === key ? this._activeSlider.value : model.value;
-    const span = model.max - model.min || 1;
-    const fill = Math.max(0, Math.min(100, Math.round(((live - model.min) / span) * 100)));
-    const readout = model.muted
-      ? "Muted"
-      : model.kind === "number"
-        ? `${Math.round(live)}${model.unit}`
-        : `${Math.round(live)}%`;
-    return html`
-      <div
-        id=${popId}
-        class="slider-popover"
-        popover
-        data-anchor=${anchorId}
-        @toggle=${this._onPopoverToggle}
-      >
-        <span class="slider-popover-value">${readout}</span>
-        <input
-          class=${classMap({ "rc-slider": true, "is-muted": model.muted })}
-          type="range"
-          orient="vertical"
-          min=${model.min}
-          max=${model.max}
-          step=${model.step}
-          style=${`--ted-style-fill:${fill}%`}
-          .value=${String(live)}
-          ?disabled=${!model.available}
-          aria-label=${item.type === "volume" ? "Volume" : "Brightness"}
-          @input=${(ev: Event) => this._onSliderInput(ev, key)}
-          @change=${(ev: Event) => this._onSliderChange(ev, item)}
-        />
-        <ha-icon class="slider-popover-icon" .icon=${icon}></ha-icon>
-      </div>
-    `;
-  }
-
-  private _renderStatusItem(item: RoomStatusItem, index: number): TemplateResult {
-    switch (item.type) {
-      case "temperature":
-      case "occupancy":
-        return this._renderSensorItem(item);
-      case "brightness":
-        return this._renderBrightnessItem(item, index);
-      case "volume":
-        return this._renderVolumeItem(item, index);
-      case "led":
-        return this._renderLedItem(item);
-      case "spacer":
-        return this._renderSpacerItem(item);
-    }
-  }
-
-  // --- Slider / volume interaction -----------------------------------------
-
-  private _onSliderInput(ev: Event, key: string): void {
-    const value = num((ev.target as HTMLInputElement).value, Number.NaN);
-    if (!Number.isFinite(value)) return;
-    this._activeSlider = { key, value };
-  }
-
-  private _onSliderChange(ev: Event, item: RoomStatusItem): void {
-    const value = num((ev.target as HTMLInputElement).value, Number.NaN);
-    this._activeSlider = undefined;
-    if (!Number.isFinite(value)) return;
-    if (item.type === "brightness") {
-      const domain = item.entity.split(".")[0];
-      if (domain === "light") {
-        this._setLightBrightness(item.entity, value);
-      } else {
-        this.hass?.callService(domain, "set_value", { entity_id: item.entity, value });
-      }
-    } else if (item.type === "volume") {
-      this._setVolume(item.entity, value);
-    }
-  }
-
-  private _onVolumeAnchorClick(index: number, entityId: string): void {
-    if (this._volumeClickTimer !== undefined) {
-      window.clearTimeout(this._volumeClickTimer);
-      this._volumeClickTimer = undefined;
-      this._toggleMute(entityId);
-      return;
-    }
-    this._volumeClickTimer = window.setTimeout(() => {
-      this._volumeClickTimer = undefined;
-      this._openVolumePopover(index);
-    }, VOLUME_DOUBLE_TAP_MS);
-  }
-
-  private _openVolumePopover(index: number): void {
-    const root = this.renderRoot as ShadowRoot;
-    const popover = root.getElementById(`rc-vol-pop-${index}`) as
-      | (HTMLElement & { showPopover?: () => void })
-      | null;
-    if (!popover || popover.matches(":popover-open")) return;
-    if (Date.now() - this._volumeClosedAt < 350) return;
-    popover.showPopover?.();
-  }
-
+  /** Reposition a popover (button overflow menu) against its anchor when it opens. */
   private _onPopoverToggle = (ev: Event): void => {
     const popover = ev.currentTarget as HTMLElement;
     const newState = (ev as Event & { newState?: string }).newState;
-    if (newState === "open") {
-      const anchorId = popover.dataset.anchor;
-      const anchor = anchorId ? (this.renderRoot as ShadowRoot).getElementById(anchorId) : null;
-      this._positionPopover(popover, anchor ?? undefined);
-      return;
-    }
-    if (popover.id.startsWith("rc-vol-")) {
-      this._volumeClosedAt = Date.now();
-    }
-    if (this._activeSlider) {
-      this._activeSlider = undefined;
-    }
+    if (newState !== "open") return;
+    const anchorId = popover.dataset.anchor;
+    const anchor = anchorId ? (this.renderRoot as ShadowRoot).getElementById(anchorId) : null;
+    this._positionPopover(popover, anchor ?? undefined);
   };
 
   /** Pin a popover to the bottom-right of its anchor, flipping above when needed. */
@@ -1223,7 +873,7 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
         ${this._renderPhoto()}
         <div
           class="status-bar align-${statusAlign} header-align-${headerAlign}${headerDivider ? "" : " no-divider"}"
-          style=${styleMap({ "--rc-status-icon-size": `calc(16px * ${statusIconSize} / 100)` })}
+          style=${styleMap({ "--ted-status-icon-size": `calc(16px * ${statusIconSize} / 100)` })}
         >
           <div class="status-heading">
             ${showHeaderIcon
@@ -1243,7 +893,7 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
               : nothing}
           </div>
           <div class="status-items">
-            ${statusItems.map((item, index) => this._renderStatusItem(item, index))}
+            ${statusItems.map((item, index) => renderStatusItem(item, this._statusCtx(), index))}
           </div>
         </div>
         ${hasBody
@@ -1259,6 +909,7 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
 
   static styles = [
     tedStyleTheme,
+    statusItemStyles,
     css`
       :host {
         display: block;
@@ -1366,160 +1017,6 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
         gap: 10px;
         min-width: 0;
       }
-      .status-item {
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-        min-height: 19px;
-        font-size: 0.8rem;
-        font-weight: 600;
-        color: var(--ted-style-text);
-        white-space: nowrap;
-      }
-      .status-spacer {
-        flex: none;
-        align-self: stretch;
-        pointer-events: none;
-      }
-      .status-icon {
-        --mdc-icon-size: var(--rc-status-icon-size, 16px);
-        color: var(--ted-style-muted);
-        flex: none;
-      }
-      .status-text {
-        color: var(--ted-style-text);
-      }
-      .status-led {
-        flex: none;
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-      }
-      .status-icon-button {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        flex: none;
-        width: 28px;
-        height: 28px;
-        padding: 0;
-        border: none;
-        border-radius: 50%;
-        background: transparent;
-        color: var(--ted-style-muted);
-        cursor: pointer;
-        transition: color 0.18s ease, background 0.18s ease, transform 0.08s ease;
-        -webkit-tap-highlight-color: transparent;
-      }
-      .status-icon-button ha-icon {
-        --mdc-icon-size: var(--rc-status-icon-size, 16px);
-      }
-      .status-icon-button:hover {
-        color: var(--ted-style-text);
-      }
-      .status-icon-button:active {
-        transform: scale(0.9);
-      }
-      .status-icon-button:focus-visible {
-        outline: 2px solid var(--ted-style-accent);
-        outline-offset: 2px;
-      }
-      .status-icon-button:disabled {
-        opacity: 0.4;
-        pointer-events: none;
-      }
-      .status-icon-button.is-active {
-        color: var(--ted-style-danger);
-      }
-
-      /* Slider popover (brightness / volume). */
-      .slider-popover {
-        position: fixed;
-        inset: auto;
-        margin: 0;
-        box-sizing: border-box;
-        padding: 14px 12px;
-        background: var(--ted-style-surface);
-        border: 1px solid var(--ted-style-divider);
-        border-radius: var(--ted-style-radius-sm);
-        box-shadow: 0 18px 48px rgba(0, 0, 0, 0.45);
-      }
-      .slider-popover:popover-open {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 10px;
-      }
-      .slider-popover::backdrop {
-        background: transparent;
-      }
-      .slider-popover-value {
-        color: var(--ted-style-text);
-        font-size: 0.85rem;
-        font-weight: 600;
-      }
-      .slider-popover-icon {
-        --mdc-icon-size: 18px;
-        color: var(--ted-style-muted);
-      }
-      .rc-slider {
-        -webkit-appearance: none;
-        appearance: none;
-        width: 28px;
-        height: 150px;
-        margin: 0;
-        background: transparent;
-        direction: rtl;
-        writing-mode: vertical-lr;
-      }
-      .rc-slider::-webkit-slider-runnable-track {
-        width: 6px;
-        border-radius: var(--ted-style-pill);
-        background: linear-gradient(
-          to top,
-          var(--ted-style-accent) 0%,
-          var(--ted-style-accent) var(--ted-style-fill, 50%),
-          color-mix(in srgb, var(--ted-style-text) 18%, transparent) var(--ted-style-fill, 50%),
-          color-mix(in srgb, var(--ted-style-text) 18%, transparent) 100%
-        );
-      }
-      .rc-slider::-webkit-slider-thumb {
-        -webkit-appearance: none;
-        appearance: none;
-        width: 22px;
-        height: 22px;
-        margin-left: -8px;
-        border-radius: 50%;
-        background: var(--ted-style-surface);
-        border: 1px solid color-mix(in srgb, var(--ted-style-text) 20%, transparent);
-        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
-      }
-      .rc-slider::-moz-range-track {
-        width: 6px;
-        border-radius: var(--ted-style-pill);
-        background: color-mix(in srgb, var(--ted-style-text) 18%, transparent);
-      }
-      .rc-slider::-moz-range-progress {
-        width: 6px;
-        border-radius: var(--ted-style-pill);
-        background: var(--ted-style-accent);
-      }
-      .rc-slider::-moz-range-thumb {
-        width: 22px;
-        height: 22px;
-        border-radius: 50%;
-        background: var(--ted-style-surface);
-        border: 1px solid color-mix(in srgb, var(--ted-style-text) 20%, transparent);
-        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
-      }
-      .rc-slider:disabled {
-        opacity: 0.4;
-        pointer-events: none;
-      }
-      .rc-slider.is-muted {
-        opacity: 0.55;
-      }
-
       /* Button sections. */
       .sections {
         position: relative;

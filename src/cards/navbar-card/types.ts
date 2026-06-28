@@ -1,5 +1,6 @@
 import type { LovelaceCardConfig } from "custom-card-helpers";
 
+import type { StatusItem } from "../../shared/status-items/types";
 import type { TedStyleTheme } from "../../shared/types";
 import type { LabelButtonCardConfig } from "../label-button-card/types";
 
@@ -23,7 +24,10 @@ export type NavButtonConfig = LabelButtonCardConfig & {
   nav_button_size?: NavButtonSize;
 };
 
-/** A section of the navbar, placed in a zone and holding an ordered list of buttons. */
+/** An item in a navbar section: either a button or a status item. */
+export type NavItem = NavButtonConfig | StatusItem;
+
+/** A section of the navbar, placed in a zone and holding an ordered list of items. */
 export interface NavSection {
   /** Which zone the section sits in. Defaults to "left". */
   placement?: NavZone;
@@ -31,6 +35,9 @@ export interface NavSection {
   align?: NavAlign;
   /** Whether the section is shown. Defaults to true. */
   visible?: boolean;
+  /** Ordered mix of nav buttons and status items. */
+  items?: NavItem[];
+  /** Legacy buttons-only list; read as items when `items` is unset. */
   buttons?: NavButtonConfig[];
 }
 

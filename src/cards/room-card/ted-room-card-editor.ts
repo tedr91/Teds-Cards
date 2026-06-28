@@ -27,6 +27,8 @@ import type {
   RoomStatusItemType,
 } from "./types";
 import { transparencyBlurSchema } from "../../shared/appearance";
+import { ROOM_STATUS_ITEM_TYPES } from "../../shared/status-items/const";
+import { newStatusItem, statusItemData, statusItemSchema } from "../../shared/status-items/editor";
 
 // mdi:texture-box — Room section
 const AREA_ICON_PATH =
@@ -45,14 +47,7 @@ const PHOTO_ICON_PATH =
   "M8.5,13.5L11,16.5L14.5,12L19,18H5M21,19V5C21,3.89 20.1,3 19,3H5A2,2 0 0,0 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19Z";
 
 /** Order shown in the "Add item" menu. */
-const STATUS_ITEM_TYPES: RoomStatusItemType[] = [
-  "temperature",
-  "occupancy",
-  "brightness",
-  "volume",
-  "led",
-  "spacer",
-];
+const STATUS_ITEM_TYPES = ROOM_STATUS_ITEM_TYPES;
 
 /** Per-button-type metadata for headers and the "Add button" menu. */
 const BUTTON_TYPE_META: Record<string, { label: string; icon: string }> = {
@@ -347,83 +342,15 @@ export class TedRoomCardEditor extends LitElement implements LovelaceCardEditor 
 
   /** Form data for a status item, with the per-type default display filled in. */
   private _statusItemData(item: RoomStatusItem): Record<string, unknown> {
-    if (item.type === "spacer") return { ...item };
-    return { ...item, display: item.display ?? STATUS_ITEM_DEFAULT_DISPLAY[item.type] };
+    return statusItemData(item);
   }
 
   private _statusItemSchema(type: RoomStatusItemType): unknown[] {
-    const icon = { name: "icon", selector: { icon: {} } };
-    const name = { name: "name", selector: { text: {} } };
-    const display = {
-      name: "display",
-      selector: {
-        select: {
-          mode: "dropdown",
-          options: [
-            { value: "both", label: "Both" },
-            { value: "icon", label: "Icon only" },
-            { value: "state", label: "State only" },
-          ],
-        },
-      },
-    };
-    switch (type) {
-      case "temperature":
-      case "occupancy":
-        return [{ name: "entity", selector: { entity: {} } }, display, icon, name];
-      case "brightness":
-        return [
-          {
-            name: "entity",
-            required: true,
-            selector: {
-              entity: { filter: [{ domain: "light" }, { domain: "number" }, { domain: "input_number" }] },
-            },
-          },
-          display,
-          icon,
-          name,
-        ];
-      case "volume":
-        return [
-          { name: "entity", required: true, selector: { entity: { filter: { domain: "media_player" } } } },
-          display,
-          icon,
-          name,
-        ];
-      case "led":
-        return [
-          { name: "entity", required: true, selector: { entity: {} } },
-          display,
-          { name: "on_color", selector: { ui_color: {} } },
-          { name: "off_color", selector: { ui_color: {} } },
-          name,
-          { name: "colors", selector: { object: {} } },
-        ];
-      case "spacer":
-        return [
-          {
-            name: "size",
-            selector: { number: { min: 0, max: 600, step: 1, mode: "box", unit_of_measurement: "px" } },
-          },
-        ];
-    }
+    return statusItemSchema(type);
   }
 
   private _newStatusItem(type: RoomStatusItemType): RoomStatusItem {
-    switch (type) {
-      case "temperature":
-        return { type, entity: resolveAreaEntity(this.hass, this._config?.area, "temperature") ?? "" };
-      case "occupancy":
-        return { type, entity: resolveAreaEntity(this.hass, this._config?.area, "occupancy") ?? "" };
-      case "brightness":
-      case "volume":
-        return { type, entity: "" };
-      case "led":
-        return { type, entity: "" };
-      case "spacer":
-        return { type, size: 24 };
-    }
+    return newStatusItem(type, (kind) => resolveAreaEntity(this.hass, this._config?.area, kind)) as RoomStatusItem;
   }
 
   private _renderStatusItemRow(item: RoomStatusItem, idx: number): TemplateResult {
@@ -639,8 +566,8 @@ export class TedRoomCardEditor extends LitElement implements LovelaceCardEditor 
     const data = {
       theme: "ted-style",
       brushed: false,
-      transparency: 0,
-      blur: 0,
+      transparency: undefined,
+      blur: undefined,
       show_header_icon: false,
       show_header_name: true,
       header_divider: false,
@@ -1194,8 +1121,8 @@ export class TedRoomCardEditor extends LitElement implements LovelaceCardEditor 
     const next: RoomCardConfig = { ...config };
     if (next.theme === "ted-style") delete next.theme;
     if (!next.brushed) delete next.brushed;
-    if (typeof next.transparency !== "number" || next.transparency === 0) delete next.transparency;
-    if (typeof next.blur !== "number" || next.blur === 0) delete next.blur;
+    if (typeof next.transparency !== "number") delete next.transparency;
+    if (typeof next.blur !== "number") delete next.blur;
     if (!next.area) delete next.area;
     if (!next.name) delete next.name;
     if (!next.icon) delete next.icon;

@@ -12,6 +12,10 @@ import type {
 import { appearanceStyle } from "../../shared/appearance";
 import { registerCustomCard } from "../../shared/register-card";
 import { tedCardThemeClass, tedStyleTheme } from "../../shared/theme";
+import { renderStatusItem, type StatusItemContext } from "../../shared/status-items/render";
+import { StatusSliderController } from "../../shared/status-items/slider-controller";
+import { statusItemStyles } from "../../shared/status-items/styles";
+import type { StatusItem } from "../../shared/status-items/types";
 import {
   DEFAULT_NAVBAR_MAX_WIDTH,
   DEFAULT_NAVBAR_MIN_WIDTH,
@@ -22,7 +26,7 @@ import {
   NAVBAR_CARD_TYPE,
 } from "./const";
 import { detectEditOrPreview, forceNavbarPadding, removeNavbarPadding } from "./navbar-dom";
-import type { NavButtonConfig, NavSection, NavZone, NavbarCardConfig } from "./types";
+import type { NavButtonConfig, NavItem, NavSection, NavZone, NavbarCardConfig } from "./types";
 
 interface CardHelpers {
   createCardElement(config: LovelaceCardConfig): LovelaceCard;
@@ -83,6 +87,10 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
   private _helpers?: CardHelpers;
   private _buttonEls = new Map<string, ButtonEntry>();
   private _editMode = false;
+  /** Shared controller for status-item brightness/volume popovers. */
+  private _slider = new StatusSliderController(this);
+  /** Interval id that re-renders live time/date items. */
+  private _clockTimer?: number;
 
   public setConfig(config: NavbarCardConfig): void {
     if (!config) throw new Error("Invalid configuration");
@@ -103,17 +111,23 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
     this._editMode = detectEditOrPreview(this);
     void this._loadHelpers();
     this._applyPadding();
+    this._syncClockTimer();
   }
 
   public disconnectedCallback(): void {
     super.disconnectedCallback();
     removeNavbarPadding();
+    if (this._clockTimer !== undefined) {
+      window.clearInterval(this._clockTimer);
+      this._clockTimer = undefined;
+    }
   }
 
   protected willUpdate(changed: PropertyValues): void {
     if (changed.has("_config")) {
       this._buildButtonElements();
       this._applyPadding();
+      this._syncClockTimer();
     }
     if (changed.has("hass")) this._propagateHass();
   }
@@ -160,9 +174,10 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
     if (!this._helpers || !this._config) return;
     const next = new Map<string, ButtonEntry>();
     (this._config.sections ?? []).forEach((section, sIdx) => {
-      (section.buttons ?? []).forEach((button, bIdx) => {
-        const key = `${sIdx}:${bIdx}`;
-        const cardConfig = this._buttonCardConfig(button);
+      this._sectionItems(section).forEach((item, idx) => {
+        if (!this._isButton(item)) return;
+        const key = `${sIdx}:${idx}`;
+        const cardConfig = this._buttonCardConfig(item);
         const json = JSON.stringify(cardConfig);
         const existing = this._buttonEls.get(key);
         if (existing && existing.json === json) {
@@ -184,6 +199,29 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
     const { nav_button_size, ...cardConfig } = button;
     void nav_button_size;
     return cardConfig as LovelaceCardConfig;
+  }
+
+  /** A section's ordered items, falling back to the legacy buttons-only list. */
+  private _sectionItems(section: NavSection): NavItem[] {
+    return section.items ?? section.buttons ?? [];
+  }
+
+  /** A nav item is a button when its `type` is an embeddable `custom:` card. */
+  private _isButton(item: NavItem): item is NavButtonConfig {
+    return typeof item.type === "string" && item.type.startsWith("custom:");
+  }
+
+  /** Re-render once a second while any live time/date item is present. */
+  private _syncClockTimer(): void {
+    const ticking = (this._config?.sections ?? [])
+      .flatMap((s) => this._sectionItems(s))
+      .some((i) => i.type === "time" || i.type === "date");
+    if (ticking && this._clockTimer === undefined) {
+      this._clockTimer = window.setInterval(() => this.requestUpdate(), 1000);
+    } else if (!ticking && this._clockTimer !== undefined) {
+      window.clearInterval(this._clockTimer);
+      this._clockTimer = undefined;
+    }
   }
 
   private _lastPropagatedHass?: HomeAssistant;
@@ -221,8 +259,8 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
     // Center-only float bars shrink to fit their buttons; bars with left/right
     // items stay full width so those items can pin to the edges.
     const hasSides =
-      byZone.left.some(({ section }) => (section.buttons?.length ?? 0) > 0) ||
-      byZone.right.some(({ section }) => (section.buttons?.length ?? 0) > 0);
+      byZone.left.some(({ section }) => this._sectionItems(section).length > 0) ||
+      byZone.right.some(({ section }) => this._sectionItems(section).length > 0);
     const hug = this._barType() === "float" && !hasSides;
 
     const navClasses = {
@@ -254,19 +292,34 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
     const align = section.align ?? "center";
     return html`
       <div class="section align-${align}">
-        ${(section.buttons ?? []).map((button, bIdx) => this._renderButton(sIdx, bIdx, button))}
+        ${this._sectionItems(section).map((item, idx) =>
+          this._isButton(item)
+            ? this._renderButton(sIdx, idx, item)
+            : this._renderStatusItem(item as StatusItem, sIdx, idx),
+        )}
       </div>
     `;
   }
 
-  private _renderButton(sIdx: number, bIdx: number, button: NavButtonConfig): TemplateResult {
-    const entry = this._buttonEls.get(`${sIdx}:${bIdx}`);
+  private _renderButton(sIdx: number, idx: number, button: NavButtonConfig): TemplateResult {
+    const entry = this._buttonEls.get(`${sIdx}:${idx}`);
     const wide = button.nav_button_size === "wide";
     return html`<div class="nav-button ${wide ? "wide" : ""}">${entry ? entry.el : nothing}</div>`;
   }
 
+  private _renderStatusItem(item: StatusItem, sIdx: number, idx: number): TemplateResult {
+    if (!this.hass) return html`<div class="nav-status"></div>`;
+    const ctx: StatusItemContext = {
+      hass: this.hass,
+      slider: this._slider,
+      keyPrefix: `nav-${sIdx}`,
+    };
+    return html`<div class="nav-status">${renderStatusItem(item, ctx, idx)}</div>`;
+  }
+
   static styles = [
     tedStyleTheme,
+    statusItemStyles,
     css`
       :host {
         display: block;
@@ -369,6 +422,12 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
       }
       .nav-button.wide {
         width: calc((var(--nav-size) - 12px) * 2 + 8px);
+      }
+      .nav-status {
+        display: inline-flex;
+        align-items: center;
+        height: 100%;
+        flex: none;
       }
     `,
   ];

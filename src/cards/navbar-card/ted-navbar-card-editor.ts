@@ -8,6 +8,20 @@ import {
 } from "custom-card-helpers";
 
 import { transparencyBlurSchema } from "../../shared/appearance";
+import {
+  NAVBAR_STATUS_ITEM_TYPES,
+  STATUS_ITEM_DEFAULT_DISPLAY,
+  STATUS_ITEM_DEFAULT_ICON,
+  STATUS_ITEM_LABEL,
+} from "../../shared/status-items/const";
+import {
+  newStatusItem,
+  statusItemData,
+  statusItemFieldLabel,
+  statusItemSchema,
+  statusItemSubtitle,
+} from "../../shared/status-items/editor";
+import type { StatusItem, StatusItemType } from "../../shared/status-items/types";
 import { LABEL_BUTTON_CARD_TYPE } from "../label-button-card/const";
 import {
   DEFAULT_NAVBAR_MAX_WIDTH,
@@ -20,6 +34,7 @@ import type {
   NavAlign,
   NavButtonConfig,
   NavButtonSize,
+  NavItem,
   NavSection,
   NavZone,
   NavbarCardConfig,
@@ -53,8 +68,10 @@ function stripNavSize(button: NavButtonConfig): LovelaceCardConfig {
 export class TedNavbarCardEditor extends LitElement implements LovelaceCardEditor {
   @property({ attribute: false }) public hass?: HomeAssistant;
   @state() private _config?: NavbarCardConfig;
-  /** Keys (`sec-<i>` / `btn-<s>-<b>`) of currently expanded panels. */
+  /** Keys (`sec-<i>` / `btn-<s>-<b>` / `item-<s>-<i>`) of currently expanded panels. */
   @state() private _expanded = new Set<string>();
+  /** Key of the currently open "add item" menu, if any. */
+  @state() private _openMenu?: string;
 
   private _buttonEditors = new Map<string, ButtonEditorEntry>();
   private _creatingEditors = new Set<string>();
@@ -94,7 +111,8 @@ export class TedNavbarCardEditor extends LitElement implements LovelaceCardEdito
       size: DEFAULT_NAVBAR_SIZE,
       min_width: DEFAULT_NAVBAR_MIN_WIDTH,
       max_width: DEFAULT_NAVBAR_MAX_WIDTH,
-      transparency: 100,
+      transparency: undefined,
+      blur: undefined,
     };
   }
 
@@ -205,7 +223,7 @@ export class TedNavbarCardEditor extends LitElement implements LovelaceCardEdito
       case "nav_button_size":
         return "Button size";
       default:
-        return schema.name;
+        return statusItemFieldLabel(schema.name) ?? schema.name;
     }
   };
 
@@ -230,6 +248,27 @@ export class TedNavbarCardEditor extends LitElement implements LovelaceCardEdito
 
   private _sections(): NavSection[] {
     return Array.isArray(this._config?.sections) ? this._config!.sections! : [];
+  }
+
+  /** A section's ordered items, falling back to the legacy buttons-only list. */
+  private _items(section: NavSection): NavItem[] {
+    return section.items ?? section.buttons ?? [];
+  }
+
+  /** A nav item is a button when its `type` is an embeddable `custom:` card. */
+  private _isButton(item: NavItem): item is NavButtonConfig {
+    return typeof item.type === "string" && item.type.startsWith("custom:");
+  }
+
+  /** Write an items list to a section, dropping the legacy buttons key. */
+  private _commitItems(sIdx: number, items: NavItem[]): void {
+    const sections = [...this._sections()];
+    const section = sections[sIdx];
+    if (!section) return;
+    const { buttons, ...rest } = section;
+    void buttons;
+    sections[sIdx] = { ...rest, items };
+    this._commit({ ...this._config, sections } as NavbarCardConfig);
   }
 
   private _stop = (ev: Event): void => {
@@ -274,7 +313,7 @@ export class TedNavbarCardEditor extends LitElement implements LovelaceCardEdito
     const key = `sec-${sIdx}`;
     const expanded = this._expanded.has(key);
     const visible = section.visible !== false;
-    const buttons = section.buttons ?? [];
+    const items = this._items(section);
     return html`
       <ha-expansion-panel
         outlined
@@ -341,27 +380,29 @@ export class TedNavbarCardEditor extends LitElement implements LovelaceCardEdito
             .computeLabel=${this._computeLabel}
             @value-changed=${(ev: CustomEvent) => this._onSectionFieldsChanged(sIdx, ev)}
           ></ha-form>
-          <div class="subgroup-label">Buttons</div>
+          <div class="subgroup-label">Items</div>
           <ha-sortable
             handle-selector=".drag-handle"
-            @item-moved=${(ev: CustomEvent) => this._buttonMoved(sIdx, ev)}
+            @item-moved=${(ev: CustomEvent) => this._itemMoved(sIdx, ev)}
           >
             <div class="row-list">
-              ${buttons.map((button, bIdx) => this._renderButtonRow(sIdx, bIdx, button))}
+              ${items.map((item, idx) =>
+                this._isButton(item)
+                  ? this._renderButtonRow(sIdx, idx, item)
+                  : this._renderStatusItemRow(sIdx, idx, item as StatusItem),
+              )}
             </div>
           </ha-sortable>
-          <button type="button" class="add-btn" @click=${(ev: Event) => this._addButton(sIdx, ev)}>
-            + Add button
-          </button>
+          ${this._renderAddMenu(sIdx)}
         </div>
       </ha-expansion-panel>
     `;
   }
 
-  private _renderButtonRow(sIdx: number, bIdx: number, button: NavButtonConfig): TemplateResult {
-    const key = `btn-${sIdx}-${bIdx}`;
+  private _renderButtonRow(sIdx: number, idx: number, button: NavButtonConfig): TemplateResult {
+    const key = `btn-${sIdx}-${idx}`;
     const expanded = this._expanded.has(key);
-    const entry = this._buttonEditors.get(`${sIdx}:${bIdx}`);
+    const entry = this._buttonEditors.get(`${sIdx}:${idx}`);
     return html`
       <ha-expansion-panel
         outlined
@@ -373,12 +414,14 @@ export class TedNavbarCardEditor extends LitElement implements LovelaceCardEdito
           <div class="drag-handle" @click=${this._stop} title="Drag to reorder">
             <ha-svg-icon .path=${GRIP_ICON_PATH}></ha-svg-icon>
           </div>
-          <span class="row-title">${button.name || "Button"}</span>
+          <ha-icon class="row-icon" icon=${button.icon || "mdi:gesture-tap-button"}></ha-icon>
+          <span class="row-title">Button</span>
+          ${button.name ? html`<span class="row-subtitle">${button.name}</span>` : nothing}
           <ha-icon-button
             class="warning"
             label="Delete button"
             .path=${DELETE_ICON_PATH}
-            @click=${(ev: Event) => this._removeButton(sIdx, bIdx, ev)}
+            @click=${(ev: Event) => this._removeItem(sIdx, idx, ev)}
           ></ha-icon-button>
         </div>
         <div class="row-body">
@@ -400,11 +443,92 @@ export class TedNavbarCardEditor extends LitElement implements LovelaceCardEdito
               },
             ]}
             .computeLabel=${this._computeLabel}
-            @value-changed=${(ev: CustomEvent) => this._onButtonSizeChanged(sIdx, bIdx, ev)}
+            @value-changed=${(ev: CustomEvent) => this._onButtonSizeChanged(sIdx, idx, ev)}
           ></ha-form>
           ${entry ? entry.el : html`<div class="loading">Loading…</div>`}
         </div>
       </ha-expansion-panel>
+    `;
+  }
+
+  private _renderStatusItemRow(sIdx: number, idx: number, item: StatusItem): TemplateResult {
+    const key = `item-${sIdx}-${idx}`;
+    const expanded = this._expanded.has(key);
+    const subtitle = statusItemSubtitle(item, this.hass);
+    return html`
+      <ha-expansion-panel
+        outlined
+        class="row"
+        .expanded=${expanded}
+        @expanded-changed=${(ev: CustomEvent) => this._onPanelToggle(key, ev)}
+      >
+        <div slot="header" class="row-header">
+          <div class="drag-handle" @click=${this._stop} title="Drag to reorder">
+            <ha-svg-icon .path=${GRIP_ICON_PATH}></ha-svg-icon>
+          </div>
+          <ha-icon class="row-icon" icon=${STATUS_ITEM_DEFAULT_ICON[item.type]}></ha-icon>
+          <span class="row-title">${STATUS_ITEM_LABEL[item.type]}</span>
+          ${subtitle ? html`<span class="row-subtitle">${subtitle}</span>` : nothing}
+          <ha-icon-button
+            class="warning"
+            label="Delete item"
+            .path=${DELETE_ICON_PATH}
+            @click=${(ev: Event) => this._removeItem(sIdx, idx, ev)}
+          ></ha-icon-button>
+        </div>
+        <div class="row-body">
+          <ha-form
+            .hass=${this.hass}
+            .data=${statusItemData(item)}
+            .schema=${statusItemSchema(item.type)}
+            .computeLabel=${this._computeLabel}
+            @value-changed=${(ev: CustomEvent) => this._onStatusItemChanged(sIdx, idx, item.type, ev)}
+          ></ha-form>
+        </div>
+      </ha-expansion-panel>
+    `;
+  }
+
+  private _toggleAddMenu = (key: string, ev: Event): void => {
+    ev.stopPropagation();
+    this._openMenu = this._openMenu === key ? undefined : key;
+  };
+
+  private _renderAddMenu(sIdx: number): TemplateResult {
+    const key = `add-${sIdx}`;
+    const open = this._openMenu === key;
+    const options: Array<{ value: string; label: string }> = [
+      { value: "button", label: "Button" },
+      ...NAVBAR_STATUS_ITEM_TYPES.map((type) => ({ value: type, label: STATUS_ITEM_LABEL[type] })),
+    ];
+    return html`
+      <div class="add-menu">
+        <button
+          type="button"
+          class="add-btn ${open ? "open" : ""}"
+          aria-expanded=${open ? "true" : "false"}
+          @click=${(ev: Event) => this._toggleAddMenu(key, ev)}
+        >
+          + Add item
+        </button>
+        ${open
+          ? html`
+              <div class="add-menu-list" @click=${this._stop}>
+                ${options.map(
+                  (option) => html`
+                    <button
+                      type="button"
+                      class="add-menu-item"
+                      @click=${() => this._addItem(sIdx, option.value)}
+                    >
+                      ${option.label}
+                    </button>
+                  `,
+                )}
+              </div>
+            `
+          : nothing}
+      </div>
     `;
   }
 
@@ -459,13 +583,20 @@ export class TedNavbarCardEditor extends LitElement implements LovelaceCardEdito
     this._commit({ ...this._config, sections } as NavbarCardConfig);
   }
 
-  private _addButton(sIdx: number, ev: Event): void {
-    ev.stopPropagation();
-    const sections = [...this._sections()];
-    const section = sections[sIdx];
+  // --- Section / item mutations ---------------------------------------------
+
+  /** Dispatch the add-menu pick: a button or a status item of the given type. */
+  private _addItem(sIdx: number, value: string): void {
+    this._openMenu = undefined;
+    if (value === "button") this._addButton(sIdx);
+    else this._addStatusItem(sIdx, value as StatusItemType);
+  }
+
+  private _addButton(sIdx: number): void {
+    const section = this._sections()[sIdx];
     if (!section) return;
-    const buttons: NavButtonConfig[] = [
-      ...(section.buttons ?? []),
+    const items: NavItem[] = [
+      ...this._items(section),
       {
         type: `custom:${LABEL_BUTTON_CARD_TYPE}`,
         icon: "mdi:gesture-tap-button",
@@ -478,51 +609,64 @@ export class TedNavbarCardEditor extends LitElement implements LovelaceCardEdito
         tap_action: { action: "navigate", navigation_path: "/home" },
       },
     ];
-    sections[sIdx] = { ...section, buttons };
-    this._expanded = new Set([...this._expanded, `btn-${sIdx}-${buttons.length - 1}`]);
-    this._commit({ ...this._config, sections } as NavbarCardConfig);
+    this._expanded = new Set([...this._expanded, `btn-${sIdx}-${items.length - 1}`]);
+    this._commitItems(sIdx, items);
   }
 
-  private _removeButton(sIdx: number, bIdx: number, ev: Event): void {
-    ev.stopPropagation();
-    const sections = [...this._sections()];
-    const section = sections[sIdx];
+  private _addStatusItem(sIdx: number, type: StatusItemType): void {
+    const section = this._sections()[sIdx];
     if (!section) return;
-    const buttons = [...(section.buttons ?? [])];
-    buttons.splice(bIdx, 1);
-    sections[sIdx] = { ...section, buttons };
-    this._buttonEditors.clear();
-    this._commit({ ...this._config, sections } as NavbarCardConfig);
+    const items: NavItem[] = [...this._items(section), newStatusItem(type)];
+    this._expanded = new Set([...this._expanded, `item-${sIdx}-${items.length - 1}`]);
+    this._commitItems(sIdx, items);
   }
 
-  private _buttonMoved(sIdx: number, ev: CustomEvent): void {
+  private _removeItem(sIdx: number, idx: number, ev: Event): void {
+    ev.stopPropagation();
+    const section = this._sections()[sIdx];
+    if (!section) return;
+    const items = [...this._items(section)];
+    items.splice(idx, 1);
+    this._buttonEditors.clear();
+    this._commitItems(sIdx, items);
+  }
+
+  private _itemMoved(sIdx: number, ev: CustomEvent): void {
     ev.stopPropagation();
     const { oldIndex, newIndex } = ev.detail as { oldIndex: number; newIndex: number };
-    const sections = [...this._sections()];
-    const section = sections[sIdx];
+    const section = this._sections()[sIdx];
     if (!section) return;
-    const buttons = [...(section.buttons ?? [])];
-    buttons.splice(newIndex, 0, buttons.splice(oldIndex, 1)[0]);
-    sections[sIdx] = { ...section, buttons };
+    const items = [...this._items(section)];
+    items.splice(newIndex, 0, items.splice(oldIndex, 1)[0]);
     this._buttonEditors.clear();
-    this._commit({ ...this._config, sections } as NavbarCardConfig);
+    this._commitItems(sIdx, items);
   }
 
-  private _onButtonSizeChanged(sIdx: number, bIdx: number, ev: CustomEvent): void {
+  private _onButtonSizeChanged(sIdx: number, idx: number, ev: CustomEvent): void {
     ev.stopPropagation();
     const value = ev.detail.value as { nav_button_size?: NavButtonSize };
-    const sections = [...this._sections()];
-    const section = sections[sIdx];
+    const section = this._sections()[sIdx];
     if (!section) return;
-    const buttons = [...(section.buttons ?? [])];
-    const button = buttons[bIdx];
-    if (!button) return;
+    const items = [...this._items(section)];
+    const button = items[idx];
+    if (!button || !this._isButton(button)) return;
     const next = { ...button } as NavButtonConfig;
     if (value.nav_button_size && value.nav_button_size !== "normal") next.nav_button_size = value.nav_button_size;
     else delete next.nav_button_size;
-    buttons[bIdx] = next;
-    sections[sIdx] = { ...section, buttons };
-    this._commit({ ...this._config, sections } as NavbarCardConfig);
+    items[idx] = next;
+    this._commitItems(sIdx, items);
+  }
+
+  private _onStatusItemChanged(sIdx: number, idx: number, type: StatusItemType, ev: CustomEvent): void {
+    ev.stopPropagation();
+    const value = (ev.detail?.value ?? {}) as Record<string, unknown>;
+    const next = { ...value, type } as StatusItem;
+    if (next.display === STATUS_ITEM_DEFAULT_DISPLAY[type]) delete next.display;
+    const section = this._sections()[sIdx];
+    if (!section) return;
+    const items = [...this._items(section)];
+    items[idx] = next;
+    this._commitItems(sIdx, items);
   }
 
   // --- Embedded button editors (controlled child editors) -------------------
@@ -531,17 +675,18 @@ export class TedNavbarCardEditor extends LitElement implements LovelaceCardEdito
     if (!this.hass || !this._config) return;
     const wanted = new Set<string>();
     (this._config.sections ?? []).forEach((section, sIdx) => {
-      (section.buttons ?? []).forEach((button, bIdx) => {
-        const key = `${sIdx}:${bIdx}`;
+      this._items(section).forEach((item, idx) => {
+        if (!this._isButton(item)) return;
+        const key = `${sIdx}:${idx}`;
         wanted.add(key);
         const entry = this._buttonEditors.get(key);
-        if (entry && entry.type === button.type) {
+        if (entry && entry.type === item.type) {
           // Controlled child: keep hass fresh; never push setConfig here (an async
           // round-trip could revert fast typing). Structural changes clear the map.
           entry.el.hass = this.hass;
         } else {
           if (entry) this._buttonEditors.delete(key);
-          void this._createButtonEditor(key, button);
+          void this._createButtonEditor(key, item);
         }
       });
     });
@@ -577,12 +722,13 @@ export class TedNavbarCardEditor extends LitElement implements LovelaceCardEdito
   private _onButtonConfigChanged(key: string, ev: CustomEvent): void {
     const newCard = ev.detail?.config as NavButtonConfig | undefined;
     if (!newCard) return;
-    const [sIdx, bIdx] = key.split(":").map((part) => Number(part));
+    const [sIdx, idx] = key.split(":").map((part) => Number(part));
     const section = this._config?.sections?.[sIdx];
-    const oldButton = section?.buttons?.[bIdx];
+    const oldItem = section ? this._items(section)[idx] : undefined;
+    const oldSize = oldItem && this._isButton(oldItem) ? oldItem.nav_button_size : undefined;
     const newButton = {
       ...stripNavSize(newCard),
-      ...(oldButton?.nav_button_size ? { nav_button_size: oldButton.nav_button_size } : {}),
+      ...(oldSize ? { nav_button_size: oldSize } : {}),
     } as NavButtonConfig;
     const cardConfig = stripNavSize(newButton);
     const json = JSON.stringify(cardConfig);
@@ -593,11 +739,9 @@ export class TedNavbarCardEditor extends LitElement implements LovelaceCardEdito
       entry.el.setConfig(cardConfig);
     }
     if (!section) return;
-    const sections = [...(this._config?.sections ?? [])];
-    const buttons = [...(section.buttons ?? [])];
-    buttons[bIdx] = newButton;
-    sections[sIdx] = { ...section, buttons };
-    this._commit({ ...this._config, sections } as NavbarCardConfig);
+    const items = [...this._items(section)];
+    items[idx] = newButton;
+    this._commitItems(sIdx, items);
   }
 
   static styles = css`
@@ -657,6 +801,19 @@ export class TedNavbarCardEditor extends LitElement implements LovelaceCardEdito
       flex: 1 1 auto;
       font-weight: 500;
     }
+    .row-icon {
+      flex: none;
+      color: var(--secondary-text-color);
+      --mdc-icon-size: 20px;
+    }
+    .row-subtitle {
+      flex: 0 1 auto;
+      color: var(--secondary-text-color);
+      font-size: 0.85em;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
     .row-body {
       display: flex;
       flex-direction: column;
@@ -681,6 +838,37 @@ export class TedNavbarCardEditor extends LitElement implements LovelaceCardEdito
     .add-btn[disabled] {
       opacity: 0.5;
       cursor: default;
+    }
+    .add-menu {
+      position: relative;
+      align-self: flex-start;
+    }
+    .add-menu-list {
+      position: absolute;
+      z-index: 10;
+      top: calc(100% + 4px);
+      left: 0;
+      display: flex;
+      flex-direction: column;
+      min-width: 160px;
+      padding: 4px;
+      background: var(--card-background-color, #1c1c1c);
+      border: 1px solid var(--divider-color, rgba(255, 255, 255, 0.12));
+      border-radius: 6px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+    }
+    .add-menu-item {
+      background: none;
+      border: none;
+      border-radius: 4px;
+      color: inherit;
+      font: inherit;
+      text-align: left;
+      padding: 8px 10px;
+      cursor: pointer;
+    }
+    .add-menu-item:hover {
+      background: var(--secondary-background-color, rgba(255, 255, 255, 0.08));
     }
     .warning {
       color: var(--error-color, #db4437);

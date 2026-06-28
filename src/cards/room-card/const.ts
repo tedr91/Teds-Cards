@@ -1,5 +1,4 @@
 import { NAMESPACE } from "../../shared/const";
-import type { RoomStatusItemType, RoomStatusDisplay } from "./types";
 
 export const ROOM_CARD_TYPE = `${NAMESPACE}-room-card`;
 export const ROOM_CARD_EDITOR_TYPE = `${ROOM_CARD_TYPE}-editor`;
@@ -16,35 +15,16 @@ export const ROOM_BUTTON_CARD_TYPES = {
   spacer: `custom:${NAMESPACE}-spacer-card`,
 } as const;
 
-/** Default icon per status item type. */
-export const STATUS_ITEM_DEFAULT_ICON: Record<RoomStatusItemType, string> = {
-  temperature: "mdi:thermometer",
-  occupancy: "mdi:motion-sensor",
-  brightness: "mdi:brightness-6",
-  volume: "mdi:volume-high",
-  led: "mdi:led-on",
-  spacer: "mdi:arrow-expand-horizontal",
-};
-
-/** Human-readable label per status item type (used in editor menus). */
-export const STATUS_ITEM_LABEL: Record<RoomStatusItemType, string> = {
-  temperature: "Temperature",
-  occupancy: "Occupancy",
-  brightness: "Brightness control",
-  volume: "Volume control",
-  led: "Status LED",
-  spacer: "Spacer",
-};
-
-/** Default display mode per status item type (icon + state / icon only / state only). */
-export const STATUS_ITEM_DEFAULT_DISPLAY: Record<RoomStatusItemType, RoomStatusDisplay> = {
-  temperature: "both",
-  occupancy: "both",
-  brightness: "icon",
-  volume: "icon",
-  led: "icon",
-  spacer: "both",
-};
+/**
+ * Status-item icon/label/display defaults live in the shared `status-items`
+ * module; re-exported here so the Room Card runtime + editor keep importing them
+ * from "./const".
+ */
+export {
+  STATUS_ITEM_DEFAULT_ICON,
+  STATUS_ITEM_LABEL,
+  STATUS_ITEM_DEFAULT_DISPLAY,
+} from "../../shared/status-items/const";
 
 // --- Room photo -----------------------------------------------------------
 

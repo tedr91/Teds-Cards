@@ -22,7 +22,7 @@ After spending months attempting to find an "on/off/brightness" switch that I li
 | Remote Card | `custom:ted-remote-card` | Remote control for media devices (e.g. Apple TV and Kaleidescape). |
 | Room Card | `custom:ted-room-card` | Overview card for a Home Assistant area. |
 | Camera Card | `custom:ted-camera-card` | Camera feed (auto thumbnail or live stream), like Home Assistant's picture-glance. |
-| Navbar Card | `custom:ted-navbar-card` | Navigation bar pinned to the top or bottom, with buttons in left/center/right zones. |
+| Navbar Card | `custom:ted-navbar-card` | Navigation bar pinned to the top or bottom, with buttons and status items in left/center/right zones. |
 
 ---
 
@@ -695,10 +695,11 @@ double_tap_action:
 
 ### 🧭 Navbar Card
 
-A **navigation bar pinned to the top or bottom** of the dashboard. It holds buttons — each a full
-**Label / Button Card**, so they get icons, colors, actions, badges, and dynamic highlighting — arranged
-in **left / center / right** zones. The **center** zone stays pinned to the exact middle regardless of
-what's on the sides, so a "Home" button can sit perfectly centered.
+A **navigation bar pinned to the top or bottom** of the dashboard. Each section holds an ordered mix of
+**buttons** — each a full **Label / Button Card**, so they get icons, colors, actions, badges, and dynamic
+highlighting — and **status items** such as the **time**, **date**, **weather**, or a room's temperature,
+brightness and volume, arranged in **left / center / right** zones. The **center** zone stays pinned to the
+exact middle regardless of what's on the sides, so a "Home" button can sit perfectly centered.
 
 > ℹ️ The navbar overlays the dashboard and reserves space so your content isn't hidden underneath it.
 > It's brand new — please report any layout quirks.
@@ -709,7 +710,7 @@ Minimal config:
 type: custom:ted-navbar-card
 sections:
   - placement: center
-    buttons:
+    items:
       - type: custom:ted-label-button-card
         name: Home
         icon: mdi:home
@@ -732,21 +733,18 @@ sections:                 # up to 5 sections
   - placement: left       # left | center | right (which zone the section sits in)
     align: center         # left | center | right (alignment of items within the section)
     visible: true         # optional, show/hide the section
-    buttons:
-      - type: custom:ted-label-button-card
-        icon: mdi:calendar
-        name: Today
-        nav_button_size: normal   # normal (default) | wide
+    items:                # ordered mix of buttons and status items
+      - type: date                          # status item
+      - type: weather                       # status item (auto-picks a weather entity, or set entity:)
   - placement: center
-    buttons:
-      - type: custom:ted-label-button-card
+    items:
+      - type: custom:ted-label-button-card  # a button
         name: Home
         icon: mdi:home
+        nav_button_size: normal             # normal (default) | wide
   - placement: right
-    buttons:
-      - type: custom:ted-label-button-card
-        icon: mdi:clock-outline
-        nav_button_size: wide
+    items:
+      - type: time                          # status item — updates live
 ```
 
 - **Navbar alignment** — pin the bar to the **Bottom** (default) or **Top** edge.
@@ -754,11 +752,16 @@ sections:                 # up to 5 sections
 - **Minimum width** / **Maximum width** (float only) — the bounds the floating bar is sized within (defaults **16** and **920** px).
 - **Size** — the bar thickness in pixels; buttons size automatically from it.
 - **Sections** (up to **5**) — each sits in a **left / center / right** zone and has its own content
-  **alignment**. Sections, and the buttons inside them, are added and **dragged to reorder** in the
+  **alignment**. Sections, and the items inside them, are added and **dragged to reorder** in the
   editor. The **center** zone is pinned to the exact center of the bar, independent of the left/right
   content.
-- **Buttons** — each is a full **Label / Button Card** (entity, icon, colors, actions, badge, dynamic
+- **Items** — each section's **+ Add item** menu adds either a **button** or a **status item**, mixed in
+  any order and **dragged to reorder**.
+- **Buttons** — a full **Label / Button Card** (entity, icon, colors, actions, badge, dynamic
   highlighting). **Button size** is **Normal** (square) or **Wide**.
+- **Status items** — **Time**, **Date** and **Weather**, plus a room's **Temperature**, **Occupancy**,
+  **Brightness**, **Volume**, an entity **Status LED**, and a **Spacer**. Brightness and volume open a
+  slider on tap, and the clock updates live.
 
 </details>
 
@@ -769,18 +772,23 @@ sections:                 # up to 5 sections
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v2.0.100
+
+- **Navbar Card: status items.** A section can now show **status items** alongside (or instead of) buttons — **time**, **date** and **weather**, plus a room's **temperature**, **occupancy**, **brightness**, **volume**, an entity **status LED**, and a **spacer**. Mix them across the **left / center / right** zones — for example date & weather on the left, a **Home** button dead-center, and a live clock on the right. Brightness and volume keep their tap-to-open sliders, and each section's **+ Add item** menu adds a button or any status item, all **drag-to-reorder**.
+- Every card: the **Transparency** and **Background blur** controls are now **clearable number boxes** — leave a box empty for "no override" (the card keeps its normal background) instead of the old sliders that always forced a value.
+
 ### v2.0.99
 
 - **Every card: Transparency & Background blur.** A new **Appearance (general)** section lets you fade any card's background and **blur whatever's behind it** for a frosted-glass look — perfect for floating cards over a dashboard wallpaper. Available on the Light, Cover, Label / Button, Clock Weather, Remote, Room, Camera, and Navbar cards.
 - Navbar Card: a **floating** bar now **shrinks to fit its buttons** instead of always spanning the full width — unless it has left- or right-aligned items, in which case it stays full width. New **Minimum width** and **Maximum width** options let you tune the floating bar's limits.
 
+<details>
+<summary>Previous release notes</summary>
+
 ### v2.0.98
 
 - Label / Button Card: **fixed icon centering** in small buttons — in a small grid cell (like a navbar button) the icon was pushed below the middle; it now stays properly centered.
 - Navbar Card: new buttons now default to a full-size (**100%**) icon.
-
-<details>
-<summary>Previous release notes</summary>
 
 ### v2.0.97
 

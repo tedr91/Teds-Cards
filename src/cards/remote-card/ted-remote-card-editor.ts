@@ -57,8 +57,8 @@ export class TedRemoteCardEditor extends LitElement implements LovelaceCardEdito
     return {
       theme: "manufacturer",
       brushed: false,
-      transparency: 0,
-      blur: 0,
+      transparency: undefined,
+      blur: undefined,
       show_icon: true,
       icon_scale: 100,
       show_name: false,

@@ -54,8 +54,8 @@ export class TedCameraCardEditor extends LitElement implements LovelaceCardEdito
     return {
       theme: "ted-style",
       brushed: false,
-      transparency: 0,
-      blur: 0,
+      transparency: undefined,
+      blur: undefined,
       camera_view: "auto",
       fit_mode: "cover",
       show_name: false,

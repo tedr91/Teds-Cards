@@ -67,7 +67,12 @@ export function fadeColor(color: string, transparency?: number): string {
   return `color-mix(in srgb, ${color} ${100 - t}%, transparent)`;
 }
 
-/** ha-form schema grid for the Transparency + Background blur sliders. */
+/**
+ * ha-form schema grid for the Transparency + Background blur number boxes. They
+ * are plain number inputs (not sliders) so they can be left **empty** to mean
+ * "no override" — distinct from an explicit `0`, which a slider can't express
+ * (its thumb is always at some value).
+ */
 export function transparencyBlurSchema(): Record<string, unknown> {
   return {
     type: "grid",
@@ -75,11 +80,11 @@ export function transparencyBlurSchema(): Record<string, unknown> {
     schema: [
       {
         name: "transparency",
-        selector: { number: { min: 0, max: 100, step: 5, mode: "slider", unit_of_measurement: "%" } },
+        selector: { number: { min: 0, max: 100, step: 1, mode: "box", unit_of_measurement: "%" } },
       },
       {
         name: "blur",
-        selector: { number: { min: 0, max: 100, step: 5, mode: "slider", unit_of_measurement: "%" } },
+        selector: { number: { min: 0, max: 100, step: 1, mode: "box", unit_of_measurement: "%" } },
       },
     ],
   };

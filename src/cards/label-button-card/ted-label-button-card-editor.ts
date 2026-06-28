@@ -102,8 +102,8 @@ export class TedLabelButtonCardEditor extends LitElement implements LovelaceCard
       name_scale: 100,
       show_state: false,
       state_scale: 100,
-      transparency: 0,
-      blur: 0,
+      transparency: undefined,
+      blur: undefined,
     };
   }
 
