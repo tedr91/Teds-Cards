@@ -630,9 +630,32 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
       .zone.right {
         right: 10px;
       }
+      /* Center zone spans the bar as a 3-column grid so the center-aligned section
+         sits dead-center while right-/left-aligned sections flank it symmetrically
+         (the middle stays put regardless of how wide the side groups grow). */
       .zone.center {
-        left: 50%;
-        transform: translateX(-50%);
+        left: 0;
+        right: 0;
+        transform: none;
+        display: grid;
+        grid-template-columns: 1fr auto 1fr;
+        justify-items: center;
+        pointer-events: none;
+      }
+      .zone.center > .section {
+        pointer-events: auto;
+      }
+      .zone.center > .section.align-right {
+        grid-column: 1;
+        justify-self: end;
+      }
+      .zone.center > .section.align-center {
+        grid-column: 2;
+        justify-self: center;
+      }
+      .zone.center > .section.align-left {
+        grid-column: 3;
+        justify-self: start;
       }
 
       .section {
