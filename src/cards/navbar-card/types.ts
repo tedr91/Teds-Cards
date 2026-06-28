@@ -24,8 +24,21 @@ export type NavButtonConfig = LabelButtonCardConfig & {
   nav_button_size?: NavButtonSize;
 };
 
-/** An item in a navbar section: either a button or a status item. */
-export type NavItem = NavButtonConfig | StatusItem;
+/** A popup: a tappable icon that opens a popover holding more nav items. */
+export interface NavPopupConfig {
+  type: "popup";
+  /** Trigger icon (mdi:…). Defaults to a “⋯” glyph. */
+  icon?: string;
+  /** Accessible label / tooltip for the trigger. */
+  name?: string;
+  /** Trigger size, like a button. */
+  nav_button_size?: NavButtonSize;
+  /** Items shown inside the popover (buttons + status items). */
+  items?: NavItem[];
+}
+
+/** An item in a navbar section: a button, a status item, or a popup. */
+export type NavItem = NavButtonConfig | StatusItem | NavPopupConfig;
 
 /** A section of the navbar, placed in a zone and holding an ordered list of items. */
 export interface NavSection {

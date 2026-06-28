@@ -26,7 +26,7 @@ import {
   NAVBAR_CARD_TYPE,
 } from "./const";
 import { detectEditOrPreview, forceNavbarPadding, removeNavbarPadding } from "./navbar-dom";
-import type { NavButtonConfig, NavItem, NavSection, NavZone, NavbarCardConfig } from "./types";
+import type { NavButtonConfig, NavItem, NavPopupConfig, NavSection, NavZone, NavbarCardConfig } from "./types";
 
 interface CardHelpers {
   createCardElement(config: LovelaceCardConfig): LovelaceCard;
@@ -174,24 +174,33 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
     if (!this._helpers || !this._config) return;
     const next = new Map<string, ButtonEntry>();
     (this._config.sections ?? []).forEach((section, sIdx) => {
-      this._sectionItems(section).forEach((item, idx) => {
-        if (!this._isButton(item)) return;
-        const key = `${sIdx}:${idx}`;
-        const cardConfig = this._buttonCardConfig(item);
-        const json = JSON.stringify(cardConfig);
-        const existing = this._buttonEls.get(key);
-        if (existing && existing.json === json) {
-          next.set(key, existing);
-          return;
-        }
-        const el = this._helpers!.createCardElement(cardConfig);
-        // Render buttons as grid items so the embedded card fills its cell.
-        (el as unknown as { layout?: string }).layout = "grid";
-        if (this.hass) el.hass = this.hass;
-        next.set(key, { el, json });
-      });
+      this._collectButtonEls(this._sectionItems(section), `${sIdx}`, next);
     });
     this._buttonEls = next;
+  }
+
+  /** Recursively (re)build embedded button cards for items and popup sub-items. */
+  private _collectButtonEls(items: NavItem[], pathBase: string, next: Map<string, ButtonEntry>): void {
+    items.forEach((item, idx) => {
+      if (this._isPopup(item)) {
+        this._collectButtonEls(item.items ?? [], `${pathBase}:${idx}`, next);
+        return;
+      }
+      if (!this._isButton(item)) return;
+      const key = `${pathBase}:${idx}`;
+      const cardConfig = this._buttonCardConfig(item);
+      const json = JSON.stringify(cardConfig);
+      const existing = this._buttonEls.get(key);
+      if (existing && existing.json === json) {
+        next.set(key, existing);
+        return;
+      }
+      const el = this._helpers!.createCardElement(cardConfig);
+      // Render buttons as grid items so the embedded card fills its cell.
+      (el as unknown as { layout?: string }).layout = "grid";
+      if (this.hass) el.hass = this.hass;
+      next.set(key, { el, json });
+    });
   }
 
   /** Strip the nav-only sizing key so the embedded label-button card stays clean. */
@@ -211,10 +220,25 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
     return typeof item.type === "string" && item.type.startsWith("custom:");
   }
 
+  /** A nav item is a popup when its `type` is "popup". */
+  private _isPopup(item: NavItem): item is NavPopupConfig {
+    return item.type === "popup";
+  }
+
+  /** Flatten a section's items, recursively including popup sub-items. */
+  private _allItems(items: NavItem[]): NavItem[] {
+    const out: NavItem[] = [];
+    for (const item of items) {
+      out.push(item);
+      if (this._isPopup(item)) out.push(...this._allItems(item.items ?? []));
+    }
+    return out;
+  }
+
   /** Re-render once a second while any live time/date item is present. */
   private _syncClockTimer(): void {
     const ticking = (this._config?.sections ?? [])
-      .flatMap((s) => this._sectionItems(s))
+      .flatMap((s) => this._allItems(this._sectionItems(s)))
       .some((i) => i.type === "time" || i.type === "date");
     if (ticking && this._clockTimer === undefined) {
       this._clockTimer = window.setInterval(() => this.requestUpdate(), 1000);
@@ -292,29 +316,95 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
     const align = section.align ?? "center";
     return html`
       <div class="section align-${align}">
-        ${this._sectionItems(section).map((item, idx) =>
-          this._isButton(item)
-            ? this._renderButton(sIdx, idx, item)
-            : this._renderStatusItem(item as StatusItem, sIdx, idx),
-        )}
+        ${this._renderItems(this._sectionItems(section), `${sIdx}`, `nav-${sIdx}`)}
       </div>
     `;
   }
 
-  private _renderButton(sIdx: number, idx: number, button: NavButtonConfig): TemplateResult {
-    const entry = this._buttonEls.get(`${sIdx}:${idx}`);
+  /**
+   * Render an ordered list of nav items within a container (a section or a popup).
+   * `pathBase` keys embedded button cards; `idBase` namespaces popover ids.
+   */
+  private _renderItems(items: NavItem[], pathBase: string, idBase: string): TemplateResult[] {
+    return items.map((item, idx) => {
+      if (this._isButton(item)) return this._renderButton(`${pathBase}:${idx}`, item);
+      if (this._isPopup(item)) return this._renderPopup(item, pathBase, idBase, idx);
+      return this._renderStatusItem(item as StatusItem, idBase, idx);
+    });
+  }
+
+  private _renderButton(path: string, button: NavButtonConfig): TemplateResult {
+    const entry = this._buttonEls.get(path);
     const wide = button.nav_button_size === "wide";
     return html`<div class="nav-button ${wide ? "wide" : ""}">${entry ? entry.el : nothing}</div>`;
   }
 
-  private _renderStatusItem(item: StatusItem, sIdx: number, idx: number): TemplateResult {
+  private _renderStatusItem(item: StatusItem, keyPrefix: string, idx: number): TemplateResult {
     if (!this.hass) return html`<div class="nav-status"></div>`;
     const ctx: StatusItemContext = {
       hass: this.hass,
       slider: this._slider,
-      keyPrefix: `nav-${sIdx}`,
+      keyPrefix,
     };
     return html`<div class="nav-status">${renderStatusItem(item, ctx, idx)}</div>`;
+  }
+
+  /** A tappable icon that opens a native popover holding more nav items. */
+  private _renderPopup(popup: NavPopupConfig, pathBase: string, idBase: string, idx: number): TemplateResult {
+    const wide = popup.nav_button_size === "wide";
+    const popId = `${idBase}-popup-${idx}`;
+    const anchorId = `${popId}-btn`;
+    const label = popup.name ?? "More";
+    return html`
+      <button
+        id=${anchorId}
+        class="nav-button nav-popup ${wide ? "wide" : ""}"
+        popovertarget=${popId}
+        title=${label}
+        aria-label=${label}
+      >
+        <ha-icon .icon=${popup.icon ?? "mdi:dots-horizontal"}></ha-icon>
+      </button>
+      <div id=${popId} class="nav-popover" popover data-anchor=${anchorId} @toggle=${this._onPopoverToggle}>
+        <div class="nav-popover-body">
+          ${this._renderItems(popup.items ?? [], `${pathBase}:${idx}`, `${idBase}-${idx}`)}
+        </div>
+      </div>
+    `;
+  }
+
+  /** Reposition a popup popover against its trigger when it opens. */
+  private _onPopoverToggle = (ev: Event): void => {
+    const popover = ev.currentTarget as HTMLElement;
+    if ((ev as Event & { newState?: string }).newState !== "open") return;
+    const anchorId = popover.dataset.anchor;
+    const anchor = anchorId ? (this.renderRoot as ShadowRoot).getElementById(anchorId) : null;
+    this._positionPopover(popover, anchor ?? undefined);
+  };
+
+  /** Center a popover over its trigger, opening above a bottom bar / below a top bar. */
+  private _positionPopover(popover: HTMLElement, anchor?: HTMLElement): void {
+    const margin = 8;
+    const rect = popover.getBoundingClientRect();
+    popover.style.position = "fixed";
+    popover.style.margin = "0";
+    if (!anchor) {
+      popover.style.left = `${Math.round((window.innerWidth - rect.width) / 2)}px`;
+      popover.style.top = `${Math.round((window.innerHeight - rect.height) / 2)}px`;
+      return;
+    }
+    const a = anchor.getBoundingClientRect();
+    let left = a.left + a.width / 2 - rect.width / 2;
+    left = Math.max(margin, Math.min(left, window.innerWidth - rect.width - margin));
+    const preferAbove = this._alignment() === "bottom";
+    const fitsAbove = a.top - margin - rect.height >= margin;
+    const fitsBelow = a.bottom + margin + rect.height <= window.innerHeight - margin;
+    let top = preferAbove ? a.top - margin - rect.height : a.bottom + margin;
+    if (preferAbove && !fitsAbove && fitsBelow) top = a.bottom + margin;
+    else if (!preferAbove && !fitsBelow && fitsAbove) top = a.top - margin - rect.height;
+    top = Math.max(margin, Math.min(top, window.innerHeight - rect.height - margin));
+    popover.style.left = `${Math.round(left)}px`;
+    popover.style.top = `${Math.round(top)}px`;
   }
 
   static styles = [
@@ -428,6 +518,55 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
         align-items: center;
         height: 100%;
         flex: none;
+      }
+
+      /* Popup trigger: an icon button styled like a nav button. */
+      .nav-popup {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+        border: 1px solid var(--ted-style-divider);
+        border-radius: var(--ted-style-radius-sm, 10px);
+        background-color: var(--ted-style-surface);
+        background-image: linear-gradient(var(--ted-style-surface-2), var(--ted-style-surface-2));
+        color: var(--ted-style-muted);
+        cursor: pointer;
+        transition: color 0.18s ease, border-color 0.18s ease, transform 0.08s ease;
+        -webkit-tap-highlight-color: transparent;
+      }
+      .nav-popup ha-icon {
+        --mdc-icon-size: calc((var(--nav-size) - 12px) * 0.55);
+      }
+      .nav-popup:hover {
+        color: var(--ted-style-text);
+        border-color: color-mix(in srgb, var(--ted-style-accent) 50%, var(--ted-style-divider));
+      }
+      .nav-popup:active {
+        transform: scale(0.96);
+      }
+
+      /* Native popover holding a popup's (or the overflow's) items. */
+      .nav-popover {
+        position: fixed;
+        inset: auto;
+        margin: 0;
+        box-sizing: border-box;
+        padding: 10px;
+        background: var(--ted-style-surface);
+        border: 1px solid var(--ted-style-divider);
+        border-radius: var(--ted-style-radius-sm);
+        box-shadow: 0 18px 48px rgba(0, 0, 0, 0.45);
+      }
+      .nav-popover::backdrop {
+        background: transparent;
+      }
+      .nav-popover-body {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+        max-width: 80vw;
       }
     `,
   ];

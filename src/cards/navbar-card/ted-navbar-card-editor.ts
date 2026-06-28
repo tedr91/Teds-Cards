@@ -35,6 +35,7 @@ import type {
   NavButtonConfig,
   NavButtonSize,
   NavItem,
+  NavPopupConfig,
   NavSection,
   NavZone,
   NavbarCardConfig,
@@ -260,15 +261,43 @@ export class TedNavbarCardEditor extends LitElement implements LovelaceCardEdito
     return typeof item.type === "string" && item.type.startsWith("custom:");
   }
 
-  /** Write an items list to a section, dropping the legacy buttons key. */
-  private _commitItems(sIdx: number, items: NavItem[]): void {
+  /** A nav item is a popup when its `type` is "popup". */
+  private _isPopup(item: NavItem): item is NavPopupConfig {
+    return item.type === "popup";
+  }
+
+  /** The ordered item list of a container: a section ([sIdx]) or a popup ([sIdx, pIdx]). */
+  private _itemsAt(containerPath: number[]): NavItem[] {
+    const section = this._sections()[containerPath[0]];
+    if (!section) return [];
+    if (containerPath.length === 1) return this._items(section);
+    const popup = this._items(section)[containerPath[1]];
+    return popup && this._isPopup(popup) ? popup.items ?? [] : [];
+  }
+
+  /** Write an item list back to its container, dropping the section's legacy buttons key. */
+  private _commitItemList(containerPath: number[], items: NavItem[]): void {
     const sections = [...this._sections()];
-    const section = sections[sIdx];
+    const section = sections[containerPath[0]];
     if (!section) return;
     const { buttons, ...rest } = section;
     void buttons;
-    sections[sIdx] = { ...rest, items };
+    if (containerPath.length === 1) {
+      sections[containerPath[0]] = { ...rest, items };
+    } else {
+      const sectionItems = [...this._items(section)];
+      const popup = sectionItems[containerPath[1]];
+      if (!popup || !this._isPopup(popup)) return;
+      sectionItems[containerPath[1]] = { ...popup, items };
+      sections[containerPath[0]] = { ...rest, items: sectionItems };
+    }
     this._commit({ ...this._config, sections } as NavbarCardConfig);
+  }
+
+  /** Drag-handle class for a container's rows (distinct per nesting level so nested
+   *  ha-sortables don't grab each other's handles). */
+  private _handleClass(containerPath: number[]): string {
+    return containerPath.length <= 1 ? "drag-handle" : "subitem-drag-handle";
   }
 
   private _stop = (ev: Event): void => {
@@ -381,28 +410,39 @@ export class TedNavbarCardEditor extends LitElement implements LovelaceCardEdito
             @value-changed=${(ev: CustomEvent) => this._onSectionFieldsChanged(sIdx, ev)}
           ></ha-form>
           <div class="subgroup-label">Items</div>
-          <ha-sortable
-            handle-selector=".drag-handle"
-            @item-moved=${(ev: CustomEvent) => this._itemMoved(sIdx, ev)}
-          >
-            <div class="row-list">
-              ${items.map((item, idx) =>
-                this._isButton(item)
-                  ? this._renderButtonRow(sIdx, idx, item)
-                  : this._renderStatusItemRow(sIdx, idx, item as StatusItem),
-              )}
-            </div>
-          </ha-sortable>
-          ${this._renderAddMenu(sIdx)}
+          ${this._renderItemList([sIdx], items, true)}
         </div>
       </ha-expansion-panel>
     `;
   }
 
-  private _renderButtonRow(sIdx: number, idx: number, button: NavButtonConfig): TemplateResult {
-    const key = `btn-${sIdx}-${idx}`;
+  /** Render a container's sortable rows + add-menu (shared by sections and popups). */
+  private _renderItemList(containerPath: number[], items: NavItem[], allowPopup: boolean): TemplateResult {
+    const handle = this._handleClass(containerPath);
+    return html`
+      <ha-sortable
+        handle-selector=".${handle}"
+        @item-moved=${(ev: CustomEvent) => this._itemMoved(containerPath, ev)}
+      >
+        <div class="row-list">
+          ${items.map((item, idx) => this._renderItemRow(containerPath, idx, item))}
+        </div>
+      </ha-sortable>
+      ${this._renderAddMenu(containerPath, allowPopup)}
+    `;
+  }
+
+  private _renderItemRow(containerPath: number[], idx: number, item: NavItem): TemplateResult {
+    if (this._isButton(item)) return this._renderButtonRow(containerPath, idx, item);
+    if (this._isPopup(item)) return this._renderPopupRow(containerPath, idx, item);
+    return this._renderStatusItemRow(containerPath, idx, item as StatusItem);
+  }
+
+  private _renderButtonRow(containerPath: number[], idx: number, button: NavButtonConfig): TemplateResult {
+    const path = [...containerPath, idx];
+    const key = `btn-${path.join("-")}`;
     const expanded = this._expanded.has(key);
-    const entry = this._buttonEditors.get(`${sIdx}:${idx}`);
+    const entry = this._buttonEditors.get(path.join(":"));
     return html`
       <ha-expansion-panel
         outlined
@@ -411,7 +451,7 @@ export class TedNavbarCardEditor extends LitElement implements LovelaceCardEdito
         @expanded-changed=${(ev: CustomEvent) => this._onPanelToggle(key, ev)}
       >
         <div slot="header" class="row-header">
-          <div class="drag-handle" @click=${this._stop} title="Drag to reorder">
+          <div class="${this._handleClass(containerPath)}" @click=${this._stop} title="Drag to reorder">
             <ha-svg-icon .path=${GRIP_ICON_PATH}></ha-svg-icon>
           </div>
           <ha-icon class="row-icon" icon=${button.icon || "mdi:gesture-tap-button"}></ha-icon>
@@ -421,7 +461,7 @@ export class TedNavbarCardEditor extends LitElement implements LovelaceCardEdito
             class="warning"
             label="Delete button"
             .path=${DELETE_ICON_PATH}
-            @click=${(ev: Event) => this._removeItem(sIdx, idx, ev)}
+            @click=${(ev: Event) => this._removeItem(containerPath, idx, ev)}
           ></ha-icon-button>
         </div>
         <div class="row-body">
@@ -443,7 +483,7 @@ export class TedNavbarCardEditor extends LitElement implements LovelaceCardEdito
               },
             ]}
             .computeLabel=${this._computeLabel}
-            @value-changed=${(ev: CustomEvent) => this._onButtonSizeChanged(sIdx, idx, ev)}
+            @value-changed=${(ev: CustomEvent) => this._onButtonSizeChanged(containerPath, idx, ev)}
           ></ha-form>
           ${entry ? entry.el : html`<div class="loading">Loading…</div>`}
         </div>
@@ -451,8 +491,9 @@ export class TedNavbarCardEditor extends LitElement implements LovelaceCardEdito
     `;
   }
 
-  private _renderStatusItemRow(sIdx: number, idx: number, item: StatusItem): TemplateResult {
-    const key = `item-${sIdx}-${idx}`;
+  private _renderStatusItemRow(containerPath: number[], idx: number, item: StatusItem): TemplateResult {
+    const path = [...containerPath, idx];
+    const key = `item-${path.join("-")}`;
     const expanded = this._expanded.has(key);
     const subtitle = statusItemSubtitle(item, this.hass);
     return html`
@@ -463,7 +504,7 @@ export class TedNavbarCardEditor extends LitElement implements LovelaceCardEdito
         @expanded-changed=${(ev: CustomEvent) => this._onPanelToggle(key, ev)}
       >
         <div slot="header" class="row-header">
-          <div class="drag-handle" @click=${this._stop} title="Drag to reorder">
+          <div class="${this._handleClass(containerPath)}" @click=${this._stop} title="Drag to reorder">
             <ha-svg-icon .path=${GRIP_ICON_PATH}></ha-svg-icon>
           </div>
           <ha-icon class="row-icon" icon=${STATUS_ITEM_DEFAULT_ICON[item.type]}></ha-icon>
@@ -473,7 +514,7 @@ export class TedNavbarCardEditor extends LitElement implements LovelaceCardEdito
             class="warning"
             label="Delete item"
             .path=${DELETE_ICON_PATH}
-            @click=${(ev: Event) => this._removeItem(sIdx, idx, ev)}
+            @click=${(ev: Event) => this._removeItem(containerPath, idx, ev)}
           ></ha-icon-button>
         </div>
         <div class="row-body">
@@ -482,8 +523,52 @@ export class TedNavbarCardEditor extends LitElement implements LovelaceCardEdito
             .data=${statusItemData(item)}
             .schema=${statusItemSchema(item.type)}
             .computeLabel=${this._computeLabel}
-            @value-changed=${(ev: CustomEvent) => this._onStatusItemChanged(sIdx, idx, item.type, ev)}
+            @value-changed=${(ev: CustomEvent) => this._onStatusItemChanged(containerPath, idx, item.type, ev)}
           ></ha-form>
+        </div>
+      </ha-expansion-panel>
+    `;
+  }
+
+  private _renderPopupRow(containerPath: number[], idx: number, popup: NavPopupConfig): TemplateResult {
+    const path = [...containerPath, idx];
+    const key = `popup-${path.join("-")}`;
+    const expanded = this._expanded.has(key);
+    const count = (popup.items ?? []).length;
+    return html`
+      <ha-expansion-panel
+        outlined
+        class="row"
+        .expanded=${expanded}
+        @expanded-changed=${(ev: CustomEvent) => this._onPanelToggle(key, ev)}
+      >
+        <div slot="header" class="row-header">
+          <div class="${this._handleClass(containerPath)}" @click=${this._stop} title="Drag to reorder">
+            <ha-svg-icon .path=${GRIP_ICON_PATH}></ha-svg-icon>
+          </div>
+          <ha-icon class="row-icon" icon=${popup.icon || "mdi:dots-horizontal"}></ha-icon>
+          <span class="row-title">Popup</span>
+          <span class="row-subtitle">${popup.name || `${count} item${count === 1 ? "" : "s"}`}</span>
+          <ha-icon-button
+            class="warning"
+            label="Delete popup"
+            .path=${DELETE_ICON_PATH}
+            @click=${(ev: Event) => this._removeItem(containerPath, idx, ev)}
+          ></ha-icon-button>
+        </div>
+        <div class="row-body">
+          <ha-form
+            .hass=${this.hass}
+            .data=${{ icon: popup.icon ?? "", name: popup.name ?? "" }}
+            .schema=${[
+              { name: "icon", selector: { icon: {} } },
+              { name: "name", selector: { text: {} } },
+            ]}
+            .computeLabel=${this._computeLabel}
+            @value-changed=${(ev: CustomEvent) => this._onPopupFieldsChanged(containerPath, idx, ev)}
+          ></ha-form>
+          <div class="subgroup-label">Popup items</div>
+          ${this._renderItemList(path, popup.items ?? [], false)}
         </div>
       </ha-expansion-panel>
     `;
@@ -494,11 +579,12 @@ export class TedNavbarCardEditor extends LitElement implements LovelaceCardEdito
     this._openMenu = this._openMenu === key ? undefined : key;
   };
 
-  private _renderAddMenu(sIdx: number): TemplateResult {
-    const key = `add-${sIdx}`;
+  private _renderAddMenu(containerPath: number[], allowPopup: boolean): TemplateResult {
+    const key = `add-${containerPath.join("-")}`;
     const open = this._openMenu === key;
     const options: Array<{ value: string; label: string }> = [
       { value: "button", label: "Button" },
+      ...(allowPopup ? [{ value: "popup", label: "Popup menu" }] : []),
       ...NAVBAR_STATUS_ITEM_TYPES.map((type) => ({ value: type, label: STATUS_ITEM_LABEL[type] })),
     ];
     return html`
@@ -519,7 +605,7 @@ export class TedNavbarCardEditor extends LitElement implements LovelaceCardEdito
                     <button
                       type="button"
                       class="add-menu-item"
-                      @click=${() => this._addItem(sIdx, option.value)}
+                      @click=${() => this._addItem(containerPath, option.value)}
                     >
                       ${option.label}
                     </button>
@@ -585,18 +671,17 @@ export class TedNavbarCardEditor extends LitElement implements LovelaceCardEdito
 
   // --- Section / item mutations ---------------------------------------------
 
-  /** Dispatch the add-menu pick: a button or a status item of the given type. */
-  private _addItem(sIdx: number, value: string): void {
+  /** Dispatch the add-menu pick: a button, a popup, or a status item. */
+  private _addItem(containerPath: number[], value: string): void {
     this._openMenu = undefined;
-    if (value === "button") this._addButton(sIdx);
-    else this._addStatusItem(sIdx, value as StatusItemType);
+    if (value === "button") this._addButton(containerPath);
+    else if (value === "popup") this._addPopup(containerPath);
+    else this._addStatusItem(containerPath, value as StatusItemType);
   }
 
-  private _addButton(sIdx: number): void {
-    const section = this._sections()[sIdx];
-    if (!section) return;
+  private _addButton(containerPath: number[]): void {
     const items: NavItem[] = [
-      ...this._items(section),
+      ...this._itemsAt(containerPath),
       {
         type: `custom:${LABEL_BUTTON_CARD_TYPE}`,
         icon: "mdi:gesture-tap-button",
@@ -609,64 +694,75 @@ export class TedNavbarCardEditor extends LitElement implements LovelaceCardEdito
         tap_action: { action: "navigate", navigation_path: "/home" },
       },
     ];
-    this._expanded = new Set([...this._expanded, `btn-${sIdx}-${items.length - 1}`]);
-    this._commitItems(sIdx, items);
+    this._expanded = new Set([...this._expanded, `btn-${[...containerPath, items.length - 1].join("-")}`]);
+    this._commitItemList(containerPath, items);
   }
 
-  private _addStatusItem(sIdx: number, type: StatusItemType): void {
-    const section = this._sections()[sIdx];
-    if (!section) return;
-    const items: NavItem[] = [...this._items(section), newStatusItem(type)];
-    this._expanded = new Set([...this._expanded, `item-${sIdx}-${items.length - 1}`]);
-    this._commitItems(sIdx, items);
+  private _addPopup(containerPath: number[]): void {
+    const items: NavItem[] = [...this._itemsAt(containerPath), { type: "popup", icon: "mdi:dots-horizontal", items: [] }];
+    this._expanded = new Set([...this._expanded, `popup-${[...containerPath, items.length - 1].join("-")}`]);
+    this._commitItemList(containerPath, items);
   }
 
-  private _removeItem(sIdx: number, idx: number, ev: Event): void {
+  private _addStatusItem(containerPath: number[], type: StatusItemType): void {
+    const items: NavItem[] = [...this._itemsAt(containerPath), newStatusItem(type)];
+    this._expanded = new Set([...this._expanded, `item-${[...containerPath, items.length - 1].join("-")}`]);
+    this._commitItemList(containerPath, items);
+  }
+
+  private _removeItem(containerPath: number[], idx: number, ev: Event): void {
     ev.stopPropagation();
-    const section = this._sections()[sIdx];
-    if (!section) return;
-    const items = [...this._items(section)];
+    const items = [...this._itemsAt(containerPath)];
     items.splice(idx, 1);
     this._buttonEditors.clear();
-    this._commitItems(sIdx, items);
+    this._commitItemList(containerPath, items);
   }
 
-  private _itemMoved(sIdx: number, ev: CustomEvent): void {
+  private _itemMoved(containerPath: number[], ev: CustomEvent): void {
     ev.stopPropagation();
     const { oldIndex, newIndex } = ev.detail as { oldIndex: number; newIndex: number };
-    const section = this._sections()[sIdx];
-    if (!section) return;
-    const items = [...this._items(section)];
+    const items = [...this._itemsAt(containerPath)];
     items.splice(newIndex, 0, items.splice(oldIndex, 1)[0]);
     this._buttonEditors.clear();
-    this._commitItems(sIdx, items);
+    this._commitItemList(containerPath, items);
   }
 
-  private _onButtonSizeChanged(sIdx: number, idx: number, ev: CustomEvent): void {
+  private _onButtonSizeChanged(containerPath: number[], idx: number, ev: CustomEvent): void {
     ev.stopPropagation();
     const value = ev.detail.value as { nav_button_size?: NavButtonSize };
-    const section = this._sections()[sIdx];
-    if (!section) return;
-    const items = [...this._items(section)];
+    const items = [...this._itemsAt(containerPath)];
     const button = items[idx];
     if (!button || !this._isButton(button)) return;
     const next = { ...button } as NavButtonConfig;
     if (value.nav_button_size && value.nav_button_size !== "normal") next.nav_button_size = value.nav_button_size;
     else delete next.nav_button_size;
     items[idx] = next;
-    this._commitItems(sIdx, items);
+    this._commitItemList(containerPath, items);
   }
 
-  private _onStatusItemChanged(sIdx: number, idx: number, type: StatusItemType, ev: CustomEvent): void {
+  private _onStatusItemChanged(containerPath: number[], idx: number, type: StatusItemType, ev: CustomEvent): void {
     ev.stopPropagation();
     const value = (ev.detail?.value ?? {}) as Record<string, unknown>;
     const next = { ...value, type } as StatusItem;
     if (next.display === STATUS_ITEM_DEFAULT_DISPLAY[type]) delete next.display;
-    const section = this._sections()[sIdx];
-    if (!section) return;
-    const items = [...this._items(section)];
+    const items = [...this._itemsAt(containerPath)];
     items[idx] = next;
-    this._commitItems(sIdx, items);
+    this._commitItemList(containerPath, items);
+  }
+
+  private _onPopupFieldsChanged(containerPath: number[], idx: number, ev: CustomEvent): void {
+    ev.stopPropagation();
+    const value = (ev.detail?.value ?? {}) as { icon?: string; name?: string };
+    const items = [...this._itemsAt(containerPath)];
+    const popup = items[idx];
+    if (!popup || !this._isPopup(popup)) return;
+    const next: NavPopupConfig = { ...popup };
+    if (value.icon) next.icon = value.icon;
+    else delete next.icon;
+    if (value.name) next.name = value.name;
+    else delete next.name;
+    items[idx] = next;
+    this._commitItemList(containerPath, items);
   }
 
   // --- Embedded button editors (controlled child editors) -------------------
@@ -675,24 +771,33 @@ export class TedNavbarCardEditor extends LitElement implements LovelaceCardEdito
     if (!this.hass || !this._config) return;
     const wanted = new Set<string>();
     (this._config.sections ?? []).forEach((section, sIdx) => {
-      this._items(section).forEach((item, idx) => {
-        if (!this._isButton(item)) return;
-        const key = `${sIdx}:${idx}`;
-        wanted.add(key);
-        const entry = this._buttonEditors.get(key);
-        if (entry && entry.type === item.type) {
-          // Controlled child: keep hass fresh; never push setConfig here (an async
-          // round-trip could revert fast typing). Structural changes clear the map.
-          entry.el.hass = this.hass;
-        } else {
-          if (entry) this._buttonEditors.delete(key);
-          void this._createButtonEditor(key, item);
-        }
-      });
+      this._syncEditorsIn(this._items(section), [sIdx], wanted);
     });
     for (const key of [...this._buttonEditors.keys()]) {
       if (!wanted.has(key)) this._buttonEditors.delete(key);
     }
+  }
+
+  /** Recurse into items + popup sub-items, syncing a controlled editor for each button. */
+  private _syncEditorsIn(items: NavItem[], containerPath: number[], wanted: Set<string>): void {
+    items.forEach((item, idx) => {
+      if (this._isPopup(item)) {
+        this._syncEditorsIn(item.items ?? [], [...containerPath, idx], wanted);
+        return;
+      }
+      if (!this._isButton(item)) return;
+      const key = [...containerPath, idx].join(":");
+      wanted.add(key);
+      const entry = this._buttonEditors.get(key);
+      if (entry && entry.type === item.type) {
+        // Controlled child: keep hass fresh; never push setConfig here (an async
+        // round-trip could revert fast typing). Structural changes clear the map.
+        entry.el.hass = this.hass;
+      } else {
+        if (entry) this._buttonEditors.delete(key);
+        void this._createButtonEditor(key, item);
+      }
+    });
   }
 
   private async _createButtonEditor(key: string, button: NavButtonConfig): Promise<void> {
@@ -722,9 +827,11 @@ export class TedNavbarCardEditor extends LitElement implements LovelaceCardEdito
   private _onButtonConfigChanged(key: string, ev: CustomEvent): void {
     const newCard = ev.detail?.config as NavButtonConfig | undefined;
     if (!newCard) return;
-    const [sIdx, idx] = key.split(":").map((part) => Number(part));
-    const section = this._config?.sections?.[sIdx];
-    const oldItem = section ? this._items(section)[idx] : undefined;
+    const path = key.split(":").map((part) => Number(part));
+    const containerPath = path.slice(0, -1);
+    const idx = path[path.length - 1];
+    const items = this._itemsAt(containerPath);
+    const oldItem = items[idx];
     const oldSize = oldItem && this._isButton(oldItem) ? oldItem.nav_button_size : undefined;
     const newButton = {
       ...stripNavSize(newCard),
@@ -738,10 +845,10 @@ export class TedNavbarCardEditor extends LitElement implements LovelaceCardEdito
       entry.json = json;
       entry.el.setConfig(cardConfig);
     }
-    if (!section) return;
-    const items = [...this._items(section)];
-    items[idx] = newButton;
-    this._commitItems(sIdx, items);
+    if (idx >= items.length) return;
+    const nextItems = [...items];
+    nextItems[idx] = newButton;
+    this._commitItemList(containerPath, nextItems);
   }
 
   static styles = css`
@@ -786,7 +893,8 @@ export class TedNavbarCardEditor extends LitElement implements LovelaceCardEdito
       gap: 4px;
       width: 100%;
     }
-    .drag-handle {
+    .drag-handle,
+    .subitem-drag-handle {
       display: flex;
       align-items: center;
       padding: 4px;
@@ -794,7 +902,8 @@ export class TedNavbarCardEditor extends LitElement implements LovelaceCardEdito
       cursor: grab;
       touch-action: none;
     }
-    .drag-handle > * {
+    .drag-handle > *,
+    .subitem-drag-handle > * {
       pointer-events: none;
     }
     .row-title {
