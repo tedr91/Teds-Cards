@@ -16,6 +16,7 @@ import {
 import { registerCustomCard } from "../../shared/register-card";
 import { appearanceStyle } from "../../shared/appearance";
 import { brushedOverlay, tedCardThemeClass, tedStyleTheme } from "../../shared/theme";
+import { viewAssistNavigate } from "../../shared/view-assist";
 import {
   DEFAULT_LABEL_BUTTON_ICON,
   LABEL_BUTTON_CARD_DESCRIPTION,
@@ -24,7 +25,13 @@ import {
   LABEL_BUTTON_CARD_TYPE,
   entityDefaultButtonAction,
 } from "./const";
-import type { CardElement, HighlightConfig, HighlightRule, LabelButtonCardConfig } from "./types";
+import type {
+  CardElement,
+  HighlightConfig,
+  HighlightRule,
+  LabelButtonCardConfig,
+  ViewAssistNavigateActionConfig,
+} from "./types";
 
 const DOUBLE_CLICK_MS = 250;
 const LONG_PRESS_MS = 500;
@@ -493,7 +500,24 @@ export class TedLabelButtonCard extends LitElement implements LovelaceCard {
       return;
     }
 
+    // View Assist navigation: resolve the destination through the integration so it
+    // follows the device's configured screens. Opt-in via `view-assist-navigate`; any
+    // other action falls through to Home Assistant's standard handler untouched.
+    if (actionConfig && (actionConfig.action as string) === "view-assist-navigate") {
+      if (!this._confirmAction(actionConfig)) return;
+      this._vaNavigate((actionConfig as unknown as ViewAssistNavigateActionConfig).view);
+      forwardHaptic("success");
+      return;
+    }
+
     handleAction(this, this.hass, this._config, action);
+  }
+
+  /** Navigate via the View Assist integration so the destination honours the device's
+   *  configured screens (see shared/view-assist). Only ever invoked from a user tap —
+   *  never at load or render — so non-View-Assist cards are entirely unaffected. */
+  private _vaNavigate(view: string): void {
+    viewAssistNavigate(this.hass, view);
   }
 
   /** Mirror custom-card-helpers' confirmation gate so toggle confirmations still work. */

@@ -1,0 +1,316 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Ted's MessageBox Card — preview</title>
+    <style>
+      :root {
+        --ted-style-text: #ffffff;
+        --ted-style-on-accent: #000000;
+        --ted-style-accent: #4cc2ff;
+        --ted-style-success: #6ccb5f;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        padding: 0 0 64px;
+        color: #e9e9ec;
+        font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, sans-serif;
+        /* Vivid backdrop so the frosted blur/translucency is visible. */
+        background:
+          radial-gradient(1200px 600px at 12% -10%, #2a6cf6 0%, transparent 55%),
+          radial-gradient(1000px 700px at 100% 0%, #b14bff 0%, transparent 55%),
+          radial-gradient(900px 700px at 50% 120%, #16c79a 0%, transparent 55%),
+          #0e1016;
+        min-height: 100vh;
+      }
+      .wrap { max-width: 1060px; margin: 0 auto; padding: 32px 24px 0; }
+      header h1 { font-size: 24px; margin: 0 0 6px; color: #fff; }
+      header p { margin: 0; color: #c4c4cc; font-size: 13.5px; max-width: 820px; line-height: 1.55; }
+      header code { background: rgba(255,255,255,.12); padding: 1px 6px; border-radius: 5px; }
+      h2 {
+        font-size: 13px; text-transform: uppercase; letter-spacing: .08em;
+        color: #9fa6c0; margin: 40px 0 14px; border-bottom: 1px solid rgba(255,255,255,.12);
+        padding-bottom: 8px;
+      }
+      .caption { font-size: 12px; color: #aab; margin: 0 0 10px; }
+      .grid { display: grid; gap: 18px; }
+      .grid.two { grid-template-columns: 1fr 1fr; }
+      @media (max-width: 760px) { .grid.two { grid-template-columns: 1fr; } }
+      .stack { display: flex; flex-direction: column; gap: 14px; align-items: flex-start; }
+      .stack > .mb-box { width: 100%; }
+
+      /* ============================================================
+         The card itself — mirrors src/cards/messagebox-card styles
+         ============================================================ */
+      .mb-box {
+        --mb-surface: 28, 32, 44;
+        --mb-accent: var(--ted-style-accent, #4cc2ff);
+        box-sizing: border-box;
+        display: flex; gap: 14px; align-items: flex-start;
+        padding: 16px 18px; border-radius: 18px;
+        color: var(--ted-style-text, #fff);
+        background: rgba(var(--mb-surface), var(--mb-bg-alpha, 0.62));
+        backdrop-filter: blur(var(--mb-blur, 22px)) saturate(150%);
+        -webkit-backdrop-filter: blur(var(--mb-blur, 22px)) saturate(150%);
+        border: 1px solid rgba(255, 255, 255, 0.22);
+        border-left: 4px solid var(--mb-accent);
+        animation: mb-in .22s ease-out both;
+      }
+      .mb-box.mb-shadow {
+        box-shadow: 0 18px 48px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.16);
+      }
+      .mb-box.theme-ha {
+        color: #1c1c1c;
+        background: #ffffff;
+        border: 1px solid rgba(120,120,120,.22);
+        border-left: 4px solid var(--mb-accent);
+        backdrop-filter: none; -webkit-backdrop-filter: none;
+      }
+      .mb-sev-info    { --mb-accent: #4cc2ff; }
+      .mb-sev-success { --mb-accent: #6ccb5f; }
+      .mb-sev-warning { --mb-accent: #ffb454; }
+      .mb-sev-danger  { --mb-accent: #ff99a4; }
+      .mb-sev-tip     { --mb-accent: #9b6cff; }
+
+      .mb-icon { color: var(--mb-accent); flex: 0 0 auto; margin-top: 1px; }
+      .mb-icon svg { width: 26px; height: 26px; fill: currentColor; display: block; }
+      .mb-icon .emoji { font-size: 24px; line-height: 1; }
+      .mb-content { display: flex; flex-direction: column; gap: 6px; min-width: 0; flex: 1 1 auto; }
+      .mb-title { font-size: 1.1em; font-weight: 600; letter-spacing: .01em; }
+      .mb-message { font-size: .92em; line-height: 1.35; opacity: .92; }
+      .mb-docs { font-size: .9em; color: var(--mb-accent); text-decoration: none; width: max-content; }
+      .mb-docs:hover { text-decoration: underline; }
+      .mb-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+      .mb-btn {
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 7px 14px; border-radius: 10px; font: inherit; font-size: .9em; font-weight: 600;
+        cursor: pointer; border: 1px solid rgba(255,255,255,.22); color: inherit;
+        background: rgba(255,255,255,.08); transition: background .15s ease, transform .05s ease;
+      }
+      .mb-box.theme-ha .mb-btn { border-color: rgba(0,0,0,.18); background: rgba(0,0,0,.05); }
+      .mb-btn:hover { background: rgba(255,255,255,.16); }
+      .mb-btn:active { transform: translateY(1px); }
+      .mb-btn--primary { background: var(--mb-accent); border-color: transparent; color: var(--ted-style-on-accent,#000); }
+      .mb-btn--primary:hover { filter: brightness(1.08); }
+      .mb-btn svg { width: 18px; height: 18px; fill: currentColor; }
+
+      /* Pinned + modal shown inside a device frame for the preview. */
+      .frame {
+        position: relative; overflow: hidden; border-radius: 22px;
+        border: 1px solid rgba(255,255,255,.16); background: rgba(0,0,0,.28);
+        box-shadow: inset 0 0 0 1px rgba(255,255,255,.05);
+      }
+      .frame .wall {
+        position: absolute; inset: 0;
+        background:
+          radial-gradient(600px 300px at 20% 0%, #3b82f6 0%, transparent 60%),
+          radial-gradient(500px 400px at 100% 100%, #a855f7 0%, transparent 60%),
+          linear-gradient(160deg, #0b1220, #1a1030);
+      }
+      .frame .clock { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; }
+      .frame .clock .t { font-size: 56px; font-weight: 300; color: #fff; letter-spacing: 1px; }
+      .frame .clock .d { font-size: 15px; color: #cdd; margin-top: 4px; }
+      .frame.phone { width: 300px; height: 540px; margin: 0 auto; }
+      .frame.tablet { width: 100%; height: 360px; }
+      .frame .mb-pinned {
+        position: absolute; left: 50%; transform: translateX(-50%);
+        width: calc(100% - 24px); max-width: 680px; z-index: 5;
+      }
+      .frame .mb-pinned--top { top: 12px; }
+      .frame .mb-pinned--bottom { bottom: 12px; }
+      .frame .mb-backdrop {
+        position: absolute; inset: 0; z-index: 6; display: grid; place-items: center; padding: 16px;
+        background: rgba(0,0,0,.5); backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px);
+      }
+      .frame .mb-modal { width: min(92%, 460px); flex-direction: column; align-items: stretch; }
+      .frame .mb-modal .mb-actions { justify-content: flex-end; }
+
+      .tag { font-size: 11px; font-weight: 700; color: #fff; background: rgba(255,255,255,.14);
+        border-radius: 999px; padding: 3px 10px; display: inline-block; margin-bottom: 8px; letter-spacing: .03em; }
+
+      @keyframes mb-in { from { opacity: 0; transform: translateY(-6px) scale(.985); } to { opacity: 1; transform: none; } }
+    </style>
+  </head>
+  <body>
+    <!-- Reusable MDI icon symbols -->
+    <svg style="display:none" aria-hidden="true">
+      <symbol id="ic-info" viewBox="0 0 24 24"><path d="M11,9H13V7H11M12,20C7.59,20 4,16.41 4,12C4,7.59 7.59,4 12,4C16.41,4 20,7.59 20,12C20,16.41 16.41,20 12,20M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M11,17H13V11H11V17Z"/></symbol>
+      <symbol id="ic-check" viewBox="0 0 24 24"><path d="M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2M11,16.5L18,9.5L16.59,8.09L11,13.67L7.91,10.59L6.5,12L11,16.5Z"/></symbol>
+      <symbol id="ic-alert" viewBox="0 0 24 24"><path d="M13,14H11V10H13M13,18H11V16H13M1,21H23L12,2L1,21Z"/></symbol>
+      <symbol id="ic-alert-circle" viewBox="0 0 24 24"><path d="M13,13H11V7H13M13,17H11V15H13M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z"/></symbol>
+      <symbol id="ic-bulb" viewBox="0 0 24 24"><path d="M12,2A7,7 0 0,1 19,9C19,11.38 17.81,13.47 16,14.74V17A1,1 0 0,1 15,18H9A1,1 0 0,1 8,17V14.74C6.19,13.47 5,11.38 5,9A7,7 0 0,1 12,2M9,21V20H15V21A1,1 0 0,1 14,22H10A1,1 0 0,1 9,21M12,4A5,5 0 0,0 7,9C7,11.05 8.23,12.81 10,13.58V16H14V13.58C15.77,12.81 17,11.05 17,9A5,5 0 0,0 12,4Z"/></symbol>
+      <symbol id="ic-cellphone" viewBox="0 0 24 24"><path d="M17,19H7V5H17M17,1H7C5.89,1 5,1.89 5,3V21A2,2 0 0,0 7,23H17A2,2 0 0,0 19,21V3C19,1.89 18.1,1 17,1Z"/></symbol>
+      <symbol id="ic-monitor" viewBox="0 0 24 24"><path d="M21,16H3V4H21M21,2H3C1.89,2 1,2.89 1,4V16A2,2 0 0,0 3,18H10V20H8V22H16V20H14V18H21A2,2 0 0,0 23,16V4C23,2.89 22.1,2 21,2Z"/></symbol>
+      <symbol id="ic-tablet" viewBox="0 0 24 24"><path d="M19,18H5V6H19M21,4H3C1.89,4 1,4.89 1,6V18A2,2 0 0,0 3,20H21A2,2 0 0,0 23,18V6C23,4.89 22.1,4 21,4Z"/></symbol>
+      <symbol id="ic-home" viewBox="0 0 24 24"><path d="M10,20V14H14V20H19V12H22L12,3L2,12H5V20H10Z"/></symbol>
+    </svg>
+
+    <div class="wrap">
+      <header>
+        <h1>Ted's MessageBox Card <code>custom:ted-messagebox-card</code></h1>
+        <p>
+          A dismissible message banner with optional action buttons — shown inline, pinned to a
+          screen edge, or as a modal. Severity sets the accent; <code>show_if</code> gates visibility;
+          <code>dismiss</code>/<code>dismiss-session</code> persist a "never / not now" choice.
+          This is a static mock using the card's real CSS.
+        </p>
+      </header>
+
+      <h2>Severities</h2>
+      <p class="caption">info · success · warning · danger · tip — set via <code>severity:</code></p>
+      <div class="grid two">
+        <div class="mb-box mb-sev-info mb-shadow">
+          <span class="mb-icon"><svg><use href="#ic-info"/></svg></span>
+          <div class="mb-content"><div class="mb-title">Information</div>
+            <div class="mb-message">A neutral notice. Accent uses the Ted-style blue.</div></div>
+        </div>
+        <div class="mb-box mb-sev-success mb-shadow">
+          <span class="mb-icon"><svg><use href="#ic-check"/></svg></span>
+          <div class="mb-content"><div class="mb-title">Success</div>
+            <div class="mb-message">Everything's in order — e.g. all resources loaded.</div></div>
+        </div>
+        <div class="mb-box mb-sev-warning mb-shadow">
+          <span class="mb-icon"><svg><use href="#ic-alert"/></svg></span>
+          <div class="mb-content"><div class="mb-title">Warning</div>
+            <div class="mb-message">Something needs attention but isn't critical.</div></div>
+        </div>
+        <div class="mb-box mb-sev-danger mb-shadow">
+          <span class="mb-icon"><svg><use href="#ic-alert-circle"/></svg></span>
+          <div class="mb-content"><div class="mb-title">Danger</div>
+            <div class="mb-message">A problem that likely needs action.</div></div>
+        </div>
+        <div class="mb-box mb-sev-tip mb-shadow">
+          <span class="mb-icon"><svg><use href="#ic-bulb"/></svg></span>
+          <div class="mb-content"><div class="mb-title">Tip</div>
+            <div class="mb-message">A helpful suggestion — used by the home-layout nudges.</div></div>
+        </div>
+      </div>
+
+      <h2>Actions &amp; docs link</h2>
+      <p class="caption">primary + secondary buttons (<code>variant:</code>), plus an optional <code>docs_url</code></p>
+      <div class="stack">
+        <div class="mb-box mb-sev-tip mb-shadow">
+          <span class="mb-icon"><svg><use href="#ic-cellphone"/></svg></span>
+          <div class="mb-content">
+            <div class="mb-title">A better layout is available</div>
+            <div class="mb-message">You appear to be on a phone — the Home-Handheld view is a better fit.</div>
+            <a class="mb-docs" href="#">Learn more ›</a>
+            <div class="mb-actions">
+              <button class="mb-btn mb-btn--primary"><svg><use href="#ic-cellphone"/></svg><span>Use Home-Handheld</span></button>
+              <button class="mb-btn mb-btn--secondary"><span>Not now</span></button>
+              <button class="mb-btn mb-btn--secondary"><span>Never show again</span></button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <h2>Theme</h2>
+      <p class="caption"><code>theme: ted-style</code> (frosted dark) vs <code>theme: ha</code> (follows the HA theme)</p>
+      <div class="grid two">
+        <div>
+          <span class="tag">theme: ted-style</span>
+          <div class="mb-box mb-sev-info mb-shadow">
+            <span class="mb-icon"><svg><use href="#ic-info"/></svg></span>
+            <div class="mb-content"><div class="mb-title">Frosted translucency</div>
+              <div class="mb-message">Backdrop blur + saturation over whatever's behind it.</div></div>
+          </div>
+        </div>
+        <div>
+          <span class="tag">theme: ha (light)</span>
+          <div class="mb-box mb-sev-info mb-shadow theme-ha">
+            <span class="mb-icon"><svg><use href="#ic-info"/></svg></span>
+            <div class="mb-content"><div class="mb-title">Solid HA surface</div>
+              <div class="mb-message">Uses the active Home Assistant card background + text.</div></div>
+          </div>
+        </div>
+      </div>
+
+      <h2>Display modes</h2>
+      <p class="caption"><code>display: inline | pinned | modal</code> — shown here in mock device frames</p>
+      <div class="grid two">
+        <div>
+          <span class="tag">display: pinned (phone)</span>
+          <div class="frame phone">
+            <div class="wall"></div>
+            <div class="clock"><div class="t">7:24</div><div class="d">Mon, Jun 29</div></div>
+            <div class="mb-box mb-sev-tip mb-shadow mb-pinned mb-pinned--top">
+              <span class="mb-icon"><svg><use href="#ic-cellphone"/></svg></span>
+              <div class="mb-content">
+                <div class="mb-title">Better layout available</div>
+                <div class="mb-message">Try the Home-Handheld view.</div>
+                <div class="mb-actions">
+                  <button class="mb-btn mb-btn--primary"><span>Use it</span></button>
+                  <button class="mb-btn mb-btn--secondary"><span>Not now</span></button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <span class="tag">display: modal (tablet)</span>
+          <div class="frame tablet">
+            <div class="wall"></div>
+            <div class="clock"><div class="t">7:24</div><div class="d">Monday, June 29</div></div>
+            <div class="mb-backdrop">
+              <div class="mb-box mb-sev-info mb-shadow mb-modal">
+                <span class="mb-icon"><svg><use href="#ic-info"/></svg></span>
+                <div class="mb-content">
+                  <div class="mb-title">Heads up</div>
+                  <div class="mb-message">A modal centers over a dimmed backdrop until you choose an action.</div>
+                  <div class="mb-actions">
+                    <button class="mb-btn mb-btn--secondary"><span>Cancel</span></button>
+                    <button class="mb-btn mb-btn--primary"><span>OK</span></button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="caption" style="margin-top:14px"><code>display: inline</code> flows in the view like the cards in the sections above.</p>
+
+      <h2>In Ted's View Assist</h2>
+      <p class="caption">The three per-device home tips (one shows per form factor) and the welcome / resources banner.</p>
+      <div class="stack">
+        <div class="mb-box mb-sev-tip mb-shadow">
+          <span class="mb-icon"><svg><use href="#ic-monitor"/></svg></span>
+          <div class="mb-content">
+            <div class="mb-title">A better layout is available</div>
+            <div class="mb-message">This looks like a large landscape display — the Home-WallPanel view is a better fit.</div>
+            <div class="mb-actions">
+              <button class="mb-btn mb-btn--primary"><svg><use href="#ic-monitor"/></svg><span>Use Home-WallPanel</span></button>
+              <button class="mb-btn mb-btn--secondary"><span>Not now</span></button>
+              <button class="mb-btn mb-btn--secondary"><span>Never show again</span></button>
+            </div>
+          </div>
+        </div>
+        <div class="mb-box mb-sev-tip mb-shadow">
+          <span class="mb-icon"><svg><use href="#ic-tablet"/></svg></span>
+          <div class="mb-content">
+            <div class="mb-title">A better layout is available</div>
+            <div class="mb-message">This looks like a large portrait tablet — the Home-WallPanel (Portrait) view is a better fit.</div>
+            <div class="mb-actions">
+              <button class="mb-btn mb-btn--primary"><svg><use href="#ic-tablet"/></svg><span>Use Home-WallPanel (Portrait)</span></button>
+              <button class="mb-btn mb-btn--secondary"><span>Not now</span></button>
+              <button class="mb-btn mb-btn--secondary"><span>Never show again</span></button>
+            </div>
+          </div>
+        </div>
+        <div class="mb-box mb-sev-info mb-shadow">
+          <span class="mb-icon"><span class="emoji">👋</span></span>
+          <div class="mb-content">
+            <div class="mb-title">👋 Welcome to Ted's View Assist</div>
+            <div class="mb-message">These views are tuned for View Assist devices, so in a normal browser some things may look or behave differently. If anything appears missing, install the dependencies via HACS and refresh.</div>
+            <a class="mb-docs" href="#">Setup guide ›</a>
+            <div class="mb-actions">
+              <button class="mb-btn mb-btn--primary"><svg><use href="#ic-home"/></svg><span>Go to Home</span></button>
+              <button class="mb-btn mb-btn--secondary"><span>Dismiss</span></button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

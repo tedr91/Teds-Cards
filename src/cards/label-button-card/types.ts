@@ -33,6 +33,17 @@ export interface BadgeConfig {
   show_when_zero?: boolean;
 }
 
+/** Navigate using the View Assist integration's `view_assist.navigate` service so the
+ *  destination honours the device's configured screens. `view` is the logical name
+ *  `home` (resolved by the integration to the device's configured Home screen) or a
+ *  view slug such as `music` (navigated relative to the device's configured dashboard).
+ *  On a non-View-Assist browser the card falls back to a normal dashboard navigation.
+ *  Configure in YAML, e.g. `tap_action: { action: view-assist-navigate, view: home }`. */
+export interface ViewAssistNavigateActionConfig {
+  action: "view-assist-navigate";
+  view: string;
+}
+
 export interface LabelButtonCardConfig extends LovelaceCardConfig {
   type: string;
   entity?: string;

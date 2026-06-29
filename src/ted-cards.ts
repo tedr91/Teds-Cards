@@ -13,9 +13,12 @@ import "./cards/cover-card/ted-cover-card";
 import "./cards/remote-card/ted-remote-card";
 import "./cards/clock-weather-card/ted-clock-weather-card";
 import "./cards/label-button-card/ted-label-button-card";
+import "./cards/messagebox-card/ted-messagebox-card";
 import "./cards/room-card/ted-room-card";
 import "./cards/spacer-card/ted-spacer-card";
 import "./cards/camera-card/ted-camera-card";
 import "./cards/navbar-card/ted-navbar-card";
+import "./cards/alarm-card/ted-alarm-card";
+import "./cards/timer-card/ted-timer-card";
 
 printVersionBanner();
