@@ -784,16 +784,20 @@ sections:                 # up to 5 sections
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v2.2.3
+
+- **Navbar Card: center sections on a vertical bar follow their listed order.** On a **Left**/**Right** bar, sections placed in the **center** stack top→bottom in the order they're listed (section 2 above 3 above 4) rather than by alignment — so Home and its flanking buttons land where you arrange them.
+
 ### v2.2.2
 
 - **Navbar Card: vertical bars clear the header & honor section order.** A **Left**/**Right** bar now starts below the dashboard header, and a center zone with several sections stacks up→middle→down in order without overlapping.
 
+<details>
+<summary>Previous release notes</summary>
+
 ### v2.2.1
 
 - **Navbar Card: vertical bars no longer overlap.** A Left/Right bar now lays its sections out top→bottom (top, center grows, bottom) so the center **up**/**down** sections keep their order without colliding with the top/bottom sections or the header.
-
-<details>
-<summary>Previous release notes</summary>
 
 ### v2.2.0
 

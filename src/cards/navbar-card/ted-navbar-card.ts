@@ -754,18 +754,8 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
         flex: 1;
         display: flex;
         flex-direction: column;
-        justify-content: space-between;
+        justify-content: center;
         pointer-events: none;
-      }
-      .navbar.vertical .zone.center > .section.align-left {
-        order: 1;
-      }
-      .navbar.vertical .zone.center > .section.align-center {
-        order: 2;
-        margin: auto 0;
-      }
-      .navbar.vertical .zone.center > .section.align-right {
-        order: 3;
       }
       .zone.center > .section {
         pointer-events: auto;
