@@ -755,7 +755,7 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
         justify-items: center;
         pointer-events: none;
       }
-      .navbar.vertical .zone.center > .section.align-right {
+      .navbar.vertical .zone.center > .section.align-left {
         grid-row: 1;
         align-self: start;
       }
@@ -763,7 +763,7 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
         grid-row: 2;
         align-self: center;
       }
-      .navbar.vertical .zone.center > .section.align-left {
+      .navbar.vertical .zone.center > .section.align-right {
         grid-row: 3;
         align-self: end;
       }

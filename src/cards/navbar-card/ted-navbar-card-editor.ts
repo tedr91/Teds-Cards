@@ -117,6 +117,28 @@ export class TedNavbarCardEditor extends LitElement implements LovelaceCardEdito
     };
   }
 
+  /** Left/right bars are vertical, so zones read top→middle→bottom. */
+  private _vertical(): boolean {
+    const a = this._config?.alignment;
+    return a === "left" || a === "right";
+  }
+
+  /** Placement/align dropdown options; on a vertical bar, left/right read as up/down. */
+  private _zoneOptions() {
+    const v = this._vertical();
+    return [
+      { value: "left", label: v ? "Left (up)" : "Left" },
+      { value: "center", label: "Center" },
+      { value: "right", label: v ? "Right (down)" : "Right" },
+    ];
+  }
+
+  /** Section-row word for a zone/align value (up/down on a vertical bar). */
+  private _zoneWord(z: string): string {
+    if (!this._vertical()) return z;
+    return z === "left" ? "up" : z === "right" ? "down" : z;
+  }
+
   private _appearanceSchema() {
     const a = this._config?.alignment;
     const isVertical = a === "left" || a === "right";
@@ -369,7 +391,7 @@ export class TedNavbarCardEditor extends LitElement implements LovelaceCardEdito
           <div class="drag-handle section-drag-handle" @click=${this._stop} title="Drag to reorder">
             <ha-svg-icon .path=${GRIP_ICON_PATH}></ha-svg-icon>
           </div>
-          <span class="row-title">Section ${sIdx + 1} - ${section.placement ?? "left"} (${section.align ?? "center"} aligned)</span>
+          <span class="row-title">Section ${sIdx + 1} - ${this._zoneWord(section.placement ?? "left")} (${this._zoneWord(section.align ?? "center")} aligned)</span>
           <ha-switch
             .checked=${visible}
             @click=${this._stop}
@@ -397,11 +419,7 @@ export class TedNavbarCardEditor extends LitElement implements LovelaceCardEdito
                     selector: {
                       select: {
                         mode: "dropdown",
-                        options: [
-                          { value: "left", label: "Left" },
-                          { value: "center", label: "Center" },
-                          { value: "right", label: "Right" },
-                        ],
+                        options: this._zoneOptions(),
                       },
                     },
                   },
@@ -410,11 +428,7 @@ export class TedNavbarCardEditor extends LitElement implements LovelaceCardEdito
                     selector: {
                       select: {
                         mode: "dropdown",
-                        options: [
-                          { value: "left", label: "Left" },
-                          { value: "center", label: "Center" },
-                          { value: "right", label: "Right" },
-                        ],
+                        options: this._zoneOptions(),
                       },
                     },
                   },
