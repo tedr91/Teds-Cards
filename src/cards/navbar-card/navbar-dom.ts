@@ -65,10 +65,18 @@ export function removeNavbarPadding(): void {
   styleEl?.remove();
 }
 
-/** The dashboard content area's viewport rect (`hui-root`), used to inset the navbar
- *  horizontally so it clears the HA sidebar. Null when hui-root isn't found. */
+/** The dashboard content area's viewport rect (`hui-root`), used to inset the navbar so
+ *  it clears the HA sidebar. Null when hui-root isn't found. */
 export function navbarContentRect(): DOMRect | null {
   return findHuiRoot()?.getBoundingClientRect() ?? null;
+}
+
+/** Height of HA's app header (`.header` inside hui-root), so a vertical bar can start
+ *  below it. The content view itself spans under the header (padding-top), so its rect
+ *  top is 0 — measure the header element directly. 0 when not found. */
+export function navbarHeaderHeight(): number {
+  const header = findHuiRoot()?.shadowRoot?.querySelector<HTMLElement>(".header");
+  return header ? Math.round(header.getBoundingClientRect().height) : 0;
 }
 
 /** True when the card is currently inside a dashboard/card editor or a preview. */

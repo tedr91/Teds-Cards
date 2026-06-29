@@ -26,7 +26,7 @@ import {
   NAVBAR_CARD_TYPE,
   defaultNavButton,
 } from "./const";
-import { detectEditOrPreview, forceNavbarPadding, navbarContentRect, removeNavbarPadding } from "./navbar-dom";
+import { detectEditOrPreview, forceNavbarPadding, navbarContentRect, navbarHeaderHeight, removeNavbarPadding } from "./navbar-dom";
 import type { NavButtonConfig, NavItem, NavPopupConfig, NavSection, NavZone, NavbarAlignment, NavbarCardConfig } from "./types";
 
 interface CardHelpers {
@@ -291,8 +291,8 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
     // would push the bar in by the scrollbar width, leaving a gap on the right.
     const right = Math.max(0, Math.round(document.documentElement.clientWidth - rect.right));
     // Vertical insets (only used by a left/right bar): clear the HA header (top) and
-    // match the content bottom. clientHeight excludes any horizontal scrollbar.
-    const top = Math.max(0, Math.round(rect.top));
+    // match the content bottom. The header sits above the content, so add its height.
+    const top = Math.max(0, Math.round(rect.top) + navbarHeaderHeight());
     const bottom = Math.max(0, Math.round(document.documentElement.clientHeight - rect.bottom));
     if (
       left === this._navLeft &&
@@ -752,22 +752,20 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
       }
       .navbar.vertical .zone.center {
         flex: 1;
-        display: grid;
-        grid-template-rows: 1fr auto 1fr;
-        justify-items: center;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
         pointer-events: none;
       }
       .navbar.vertical .zone.center > .section.align-left {
-        grid-row: 1;
-        align-self: start;
+        order: 1;
       }
       .navbar.vertical .zone.center > .section.align-center {
-        grid-row: 2;
-        align-self: center;
+        order: 2;
+        margin: auto 0;
       }
       .navbar.vertical .zone.center > .section.align-right {
-        grid-row: 3;
-        align-self: end;
+        order: 3;
       }
       .zone.center > .section {
         pointer-events: auto;
