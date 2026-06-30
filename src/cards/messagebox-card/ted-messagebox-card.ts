@@ -238,7 +238,7 @@ export class TedMessageBoxCard extends LitElement implements LovelaceCard {
 
     const severity = cfg.severity ?? "info";
     const display = cfg.display ?? "inline";
-    const themeClass = tedCardThemeClass(cfg.theme);
+    const themeClass = tedCardThemeClass(cfg.theme ?? "ha");
     const actions = cfg.actions ?? [];
     const displayClass =
       display === "pinned"
@@ -322,7 +322,7 @@ export class TedMessageBoxCard extends LitElement implements LovelaceCard {
         gap: 14px;
         align-items: flex-start;
         padding: 16px 18px;
-        border-radius: 18px;
+        border-radius: var(--ted-style-radius);
         color: var(--ted-style-text, #fff);
         background: rgba(var(--mb-surface), var(--mb-bg-alpha, 0.62));
         backdrop-filter: blur(var(--mb-blur, 22px)) saturate(150%);
@@ -407,7 +407,7 @@ export class TedMessageBoxCard extends LitElement implements LovelaceCard {
         align-items: center;
         gap: 6px;
         padding: 7px 14px;
-        border-radius: 10px;
+        border-radius: var(--ted-style-radius-sm);
         font: inherit;
         font-size: 0.9em;
         font-weight: 600;
@@ -446,6 +446,10 @@ export class TedMessageBoxCard extends LitElement implements LovelaceCard {
       }
       .mb-pinned--top {
         top: 12px;
+      }
+      .mb-pinned--center {
+        top: 50%;
+        transform: translate(-50%, -50%);
       }
       .mb-pinned--bottom {
         bottom: 12px;

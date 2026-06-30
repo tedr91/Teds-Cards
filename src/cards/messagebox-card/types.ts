@@ -77,7 +77,7 @@ export interface MessageBoxCardConfig extends LovelaceCardConfig {
 
   display?: MessageBoxDisplay;
   /** Edge to pin to when `display: pinned`. Defaults to top. */
-  pinned_side?: "top" | "bottom";
+  pinned_side?: "top" | "center" | "bottom";
 
   /** Storage key used by `dismiss` (persistent) and `dismiss-session` actions.
    *  Without a key the dismiss actions only hide the card for the current view. */

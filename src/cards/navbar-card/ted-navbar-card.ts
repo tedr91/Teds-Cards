@@ -29,7 +29,7 @@ import {
   defaultNavButton,
 } from "./const";
 import { detectEditOrPreview, forceNavbarPadding, navbarContentRect, navbarHeaderHeight, removeNavbarPadding } from "./navbar-dom";
-import type { EntityAttrSource, NavButtonConfig, NavItem, NavPopupConfig, NavSection, NavZone, NavbarAlignment, NavbarCardConfig } from "./types";
+import type { EntityAttrSource, NavButtonConfig, NavItem, NavSection, NavZone, NavbarAlignment, NavbarCardConfig } from "./types";
 import { navItemKey, parseVaItem, vaSizeToThickness } from "./va-items";
 
 interface CardHelpers {
@@ -236,13 +236,9 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
     this._buttonEls = next;
   }
 
-  /** Recursively (re)build embedded button cards for items and popup sub-items. */
+  /** (Re)build embedded button cards for a section's items. */
   private _collectButtonEls(items: NavItem[], pathBase: string, next: Map<string, ButtonEntry>): void {
     items.forEach((item, idx) => {
-      if (this._isPopup(item)) {
-        this._collectButtonEls(item.items ?? [], `${pathBase}:${idx}`, next);
-        return;
-      }
       if (!this._isButton(item)) return;
       const key = `${pathBase}:${idx}`;
       const cardConfig = this._buttonCardConfig(item);
@@ -314,14 +310,12 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
     return out;
   }
 
-  /** True when any item (incl. popup children) carries `visible`/`visibility`. */
+  /** True when any item carries `visible`/`visibility`. */
   private _computeHasConditional(): boolean {
     const scan = (items: NavItem[]): boolean =>
       items.some(
         (i) =>
-          i.visible !== undefined ||
-          (Array.isArray(i.visibility) && i.visibility.length > 0) ||
-          (this._isPopup(i) && scan(i.items ?? [])),
+          i.visible !== undefined || (Array.isArray(i.visibility) && i.visibility.length > 0),
       );
     return (this._config?.sections ?? []).some((s) => scan(s.items ?? s.buttons ?? []));
   }
@@ -337,25 +331,10 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
     return typeof item.type === "string" && item.type.startsWith("custom:");
   }
 
-  /** A nav item is a popup when its `type` is "popup". */
-  private _isPopup(item: NavItem): item is NavPopupConfig {
-    return item.type === "popup";
-  }
-
-  /** Flatten a section's items, recursively including popup sub-items. */
-  private _allItems(items: NavItem[]): NavItem[] {
-    const out: NavItem[] = [];
-    for (const item of items) {
-      out.push(item);
-      if (this._isPopup(item)) out.push(...this._allItems(item.items ?? []));
-    }
-    return out;
-  }
-
   /** Re-render once a second while any live time/date item is present. */
   private _syncClockTimer(): void {
     const ticking = (this._config?.sections ?? [])
-      .flatMap((s) => this._allItems(this._sectionItems(s)))
+      .flatMap((s) => this._sectionItems(s))
       .some((i) => i.type === "time" || i.type === "date");
     if (ticking && this._clockTimer === undefined) {
       this._clockTimer = window.setInterval(() => this.requestUpdate(), 1000);
@@ -618,15 +597,14 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
   }
 
   /**
-   * Render an ordered list of nav items within a container (a section or a popup).
-   * `pathBase` keys embedded button cards; `idBase` namespaces popover ids; `offset`
-   * keeps absolute indices when rendering an overflowed tail.
+   * Render an ordered list of nav items within a section. `pathBase` keys embedded
+   * button cards; `idBase` namespaces status-item ids; `offset` keeps absolute indices
+   * when rendering an overflowed tail.
    */
   private _renderItems(items: NavItem[], pathBase: string, idBase: string, offset = 0): TemplateResult[] {
     return items.map((item, i) => {
       const idx = offset + i;
       if (this._isButton(item)) return this._renderButton(`${pathBase}:${idx}`, item);
-      if (this._isPopup(item)) return this._renderPopup(item, pathBase, idBase, idx);
       return this._renderStatusItem(item as StatusItem, idBase, idx);
     });
   }
@@ -647,52 +625,7 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
     return html`<div class="nav-status">${renderStatusItem(item, ctx, idx)}</div>`;
   }
 
-  /** A tappable icon that opens a native popover holding more nav items. */
-  private _renderPopup(popup: NavPopupConfig, pathBase: string, idBase: string, idx: number): TemplateResult {
-    const wide = popup.nav_button_size === "wide";
-    const popId = `${idBase}-popup-${idx}`;
-    const anchorId = `${popId}-btn`;
-    const label = popup.name ?? "More";
-    // Default trigger: a chevron pointing where the popup opens (up for a bottom bar,
-    // down for a top bar); it flips 180° while open (see CSS). A custom icon opts out.
-    const a = this._alignment();
-    const defaultChevron =
-      a === "bottom" ? "mdi:chevron-up" : a === "top" ? "mdi:chevron-down" : a === "left" ? "mdi:chevron-right" : "mdi:chevron-left";
-    const flip = popup.flip_icon !== false;
-    const items = popup.items ?? [];
-    const layout = popup.popup_layout === "list" ? "list" : "grid";
-    const maxCols =
-      typeof popup.popup_max_columns === "number" && popup.popup_max_columns > 0
-        ? popup.popup_max_columns
-        : undefined;
-    const cols = Math.max(1, maxCols ? Math.min(maxCols, items.length) : items.length || 1);
-    return html`
-      <button
-        id=${anchorId}
-        class="nav-button nav-popup ${wide ? "wide" : ""} ${popup.icon ? "" : "nav-popup-chevron"} ${flip ? "nav-popup-flip" : ""}"
-        popovertarget=${popId}
-        title=${label}
-        aria-label=${label}
-      >
-        <ha-icon .icon=${popup.icon ?? defaultChevron}></ha-icon>
-      </button>
-      <div
-        id=${popId}
-        class="nav-popover"
-        popover
-        data-anchor=${anchorId}
-        style=${styleMap({ "--nav-pop-cols": String(cols) })}
-        @toggle=${this._onPopoverToggle}
-      >
-        ${popup.popup_title ? html`<div class="nav-popover-title">${popup.popup_title}</div>` : nothing}
-        <div class="nav-popover-body ${layout}">
-          ${this._renderItems(items, `${pathBase}:${idx}`, `${idBase}-${idx}`)}
-        </div>
-      </div>
-    `;
-  }
-
-  /** Reposition a popup popover against its trigger when it opens. */
+  /** Reposition an overflow popover against its trigger when it opens. */
   private _onPopoverToggle = (ev: Event): void => {
     const popover = ev.currentTarget as HTMLElement;
     if ((ev as Event & { newState?: string }).newState !== "open") return;
@@ -950,10 +883,6 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
       .nav-popup-chevron:has(+ .nav-popover:popover-open) ha-icon {
         transform: rotate(180deg);
       }
-      /* Optional flip of any trigger icon while its popup is open (default on). */
-      .nav-popup-flip:has(+ .nav-popover:popover-open) ha-icon {
-        transform: rotate(180deg);
-      }
       .nav-popup:hover {
         color: color-mix(in srgb, var(--ted-style-accent) 75%, var(--ted-style-text));
       }
@@ -984,30 +913,12 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
       .nav-popover::backdrop {
         background: transparent;
       }
-      .nav-popover-title {
-        color: var(--ted-style-muted, var(--secondary-text-color));
-        font-size: 0.8rem;
-        font-weight: 600;
-        padding: 0 2px 8px;
-      }
       .nav-popover-body {
         display: flex;
         flex-wrap: wrap;
         align-items: center;
         gap: 8px;
         max-width: 80vw;
-      }
-      /* Popup layouts (the overflow popover keeps the default wrapping row). */
-      .nav-popover-body.grid {
-        display: grid;
-        grid-template-columns: repeat(var(--nav-pop-cols, 1), calc(var(--nav-size) - 12px));
-        flex-wrap: initial;
-        align-items: start;
-      }
-      .nav-popover-body.list {
-        flex-direction: column;
-        flex-wrap: initial;
-        align-items: stretch;
       }
     `,
   ];

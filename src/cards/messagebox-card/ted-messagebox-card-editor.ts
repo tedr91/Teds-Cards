@@ -29,7 +29,7 @@ export class TedMessageBoxCardEditor extends LitElement implements LovelaceCardE
       pinned_side: cfg.pinned_side ?? "top",
       dismiss_key: cfg.dismiss_key ?? "",
       docs_url: cfg.docs_url ?? "",
-      theme: cfg.theme ?? "ted-style",
+      theme: cfg.theme ?? "ha",
       shadow: cfg.shadow ?? true,
     };
     return html`
@@ -72,8 +72,8 @@ export class TedMessageBoxCardEditor extends LitElement implements LovelaceCardE
               select: {
                 mode: "dropdown",
                 options: [
-                  { value: "ted-style", label: "Ted style" },
-                  { value: "ha", label: "Home Assistant" },
+                  { value: "ted-style", label: "Ted's Style" },
+                  { value: "ha", label: "Home Assistant theme (default)" },
                 ],
               },
             },
@@ -91,6 +91,7 @@ export class TedMessageBoxCardEditor extends LitElement implements LovelaceCardE
                 mode: "dropdown",
                 options: [
                   { value: "top", label: "top" },
+                  { value: "center", label: "center" },
                   { value: "bottom", label: "bottom" },
                 ],
               },

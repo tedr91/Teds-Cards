@@ -30,12 +30,12 @@ import {
   NAVBAR_CARD_EDITOR_TYPE,
   defaultNavButton,
 } from "./const";
+import { EXPANDABLE_BUTTON_CARD_TYPE } from "../expandable-button-card/const";
 import type {
   NavAlign,
   NavButtonConfig,
   NavButtonSize,
   NavItem,
-  NavPopupConfig,
   NavSection,
   NavZone,
   NavbarCardConfig,
@@ -261,14 +261,6 @@ export class TedNavbarCardEditor extends LitElement implements LovelaceCardEdito
         return "Button size";
       case "visible":
         return "Visible";
-      case "popup_layout":
-        return "Popup layout";
-      case "popup_max_columns":
-        return "Max columns (optional)";
-      case "popup_title":
-        return "Popup title";
-      case "flip_icon":
-        return "Flip icon when open";
       default:
         return statusItemFieldLabel(schema.name) ?? schema.name;
     }
@@ -308,58 +300,24 @@ export class TedNavbarCardEditor extends LitElement implements LovelaceCardEdito
     return typeof item.type === "string" && item.type.startsWith("custom:");
   }
 
-  /** A nav item is a popup when its `type` is "popup". */
-  private _isPopup(item: NavItem): item is NavPopupConfig {
-    return item.type === "popup";
-  }
-
-  /** The ordered item list of a container: a section ([sIdx]) or a (possibly nested)
-   *  popup ([sIdx, pIdx, …]). */
+  /** The ordered item list of a section ([sIdx]). */
   private _itemsAt(containerPath: number[]): NavItem[] {
     const section = this._sections()[containerPath[0]];
-    if (!section) return [];
-    let items = this._items(section);
-    for (let i = 1; i < containerPath.length; i += 1) {
-      const popup = items[containerPath[i]];
-      if (!popup || !this._isPopup(popup)) return [];
-      items = popup.items ?? [];
-    }
-    return items;
+    return section ? this._items(section) : [];
   }
 
-  /** Write an item list back to its container, dropping the section's legacy buttons key. */
+  /** Write an item list back to its section, dropping the legacy buttons key. */
   private _commitItemList(containerPath: number[], items: NavItem[]): void {
     const sections = [...this._sections()];
     const section = sections[containerPath[0]];
     if (!section) return;
     const { buttons, ...rest } = section;
     void buttons;
-    if (containerPath.length === 1) {
-      sections[containerPath[0]] = { ...rest, items };
-    } else {
-      sections[containerPath[0]] = {
-        ...rest,
-        items: this._setNestedItems(this._items(section), containerPath.slice(1), items),
-      };
-    }
+    sections[containerPath[0]] = { ...rest, items };
     this._commit({ ...this._config, sections } as NavbarCardConfig);
   }
 
-  /** Immutably replace the item list of the (possibly nested) popup reached by `subPath`. */
-  private _setNestedItems(items: NavItem[], subPath: number[], newItems: NavItem[]): NavItem[] {
-    const idx = subPath[0];
-    const popup = items[idx];
-    if (!popup || !this._isPopup(popup)) return items;
-    const next = [...items];
-    next[idx] =
-      subPath.length === 1
-        ? { ...popup, items: newItems }
-        : { ...popup, items: this._setNestedItems(popup.items ?? [], subPath.slice(1), newItems) };
-    return next;
-  }
-
-  /** Drag-handle selector class for a container's rows (unique per nesting depth so
-   *  nested ha-sortables don't grab each other's handles). */
+  /** Drag-handle selector class for a container's rows. */
   private _handleClass(containerPath: number[]): string {
     return `lvl-${containerPath.length}-handle`;
   }
@@ -491,7 +449,6 @@ export class TedNavbarCardEditor extends LitElement implements LovelaceCardEdito
 
   private _renderItemRow(containerPath: number[], idx: number, item: NavItem): TemplateResult {
     if (this._isButton(item)) return this._renderButtonRow(containerPath, idx, item);
-    if (this._isPopup(item)) return this._renderPopupRow(containerPath, idx, item);
     return this._renderStatusItemRow(containerPath, idx, item as StatusItem);
   }
 
@@ -500,6 +457,7 @@ export class TedNavbarCardEditor extends LitElement implements LovelaceCardEdito
     const key = `btn-${path.join("-")}`;
     const expanded = this._expanded.has(key);
     const entry = this._buttonEditors.get(path.join(":"));
+    const isPopupMenu = button.type === `custom:${EXPANDABLE_BUTTON_CARD_TYPE}`;
     return html`
       <ha-expansion-panel
         outlined
@@ -512,7 +470,7 @@ export class TedNavbarCardEditor extends LitElement implements LovelaceCardEdito
             <ha-svg-icon .path=${GRIP_ICON_PATH}></ha-svg-icon>
           </div>
           <ha-icon class="row-icon" icon=${button.icon || "mdi:gesture-tap-button"}></ha-icon>
-          <span class="row-title">Button</span>
+          <span class="row-title">${isPopupMenu ? "Popup menu" : "Button"}</span>
           ${button.name ? html`<span class="row-subtitle">${button.name}</span>` : nothing}
           <ha-icon-button
             class="warning"
@@ -589,89 +547,6 @@ export class TedNavbarCardEditor extends LitElement implements LovelaceCardEdito
             .computeLabel=${this._computeLabel}
             @value-changed=${(ev: CustomEvent) => this._onStatusItemChanged(containerPath, idx, item.type, ev)}
           ></ha-form>
-        </div>
-      </ha-expansion-panel>
-    `;
-  }
-
-  private _renderPopupRow(containerPath: number[], idx: number, popup: NavPopupConfig): TemplateResult {
-    const path = [...containerPath, idx];
-    const key = `popup-${path.join("-")}`;
-    const expanded = this._expanded.has(key);
-    const count = (popup.items ?? []).length;
-    const layout = popup.popup_layout === "list" ? "list" : "grid";
-    return html`
-      <ha-expansion-panel
-        outlined
-        class="row"
-        .expanded=${expanded}
-        @expanded-changed=${(ev: CustomEvent) => this._onPanelToggle(key, ev)}
-      >
-        <div slot="header" class="row-header">
-          <div class="drag-handle ${this._handleClass(containerPath)}" @click=${this._stop} title="Drag to reorder">
-            <ha-svg-icon .path=${GRIP_ICON_PATH}></ha-svg-icon>
-          </div>
-          <ha-icon class="row-icon" icon=${popup.icon || (this._config?.alignment === "top" ? "mdi:chevron-down" : "mdi:chevron-up")}></ha-icon>
-          <span class="row-title">Popup menu</span>
-          <span class="row-subtitle">${popup.name || `${count} item${count === 1 ? "" : "s"}`}</span>
-          <ha-icon-button
-            class="warning"
-            label="Delete popup"
-            .path=${DELETE_ICON_PATH}
-            @click=${(ev: Event) => this._removeItem(containerPath, idx, ev)}
-          ></ha-icon-button>
-        </div>
-        <div class="row-body">
-          <ha-form
-            .hass=${this.hass}
-            .data=${{
-              icon: popup.icon ?? "",
-              name: popup.name ?? "",
-              popup_layout: layout,
-              popup_max_columns: popup.popup_max_columns,
-              popup_title: popup.popup_title ?? "",
-              flip_icon: popup.flip_icon !== false,
-            }}
-            .schema=${[
-              {
-                type: "grid",
-                name: "",
-                column_min_width: "120px",
-                schema: [
-                  { name: "icon", selector: { icon: {} } },
-                  { name: "name", selector: { text: {} } },
-                ],
-              },
-              {
-                type: "grid",
-                name: "",
-                column_min_width: "120px",
-                schema: [
-                  {
-                    name: "popup_layout",
-                    selector: {
-                      select: {
-                        mode: "dropdown",
-                        options: [
-                          { value: "grid", label: "Grid" },
-                          { value: "list", label: "List" },
-                        ],
-                      },
-                    },
-                  },
-                  ...(layout === "grid"
-                    ? [{ name: "popup_max_columns", selector: { number: { min: 1, max: 12, step: 1, mode: "box" } } }]
-                    : []),
-                ],
-              },
-              { name: "popup_title", selector: { text: {} } },
-              { name: "flip_icon", selector: { boolean: {} } },
-            ]}
-            .computeLabel=${this._computeLabel}
-            @value-changed=${(ev: CustomEvent) => this._onPopupFieldsChanged(containerPath, idx, ev)}
-          ></ha-form>
-          <div class="subgroup-label">Popup items</div>
-          ${this._renderItemList(path, popup.items ?? [], true)}
         </div>
       </ha-expansion-panel>
     `;
@@ -821,9 +696,14 @@ export class TedNavbarCardEditor extends LitElement implements LovelaceCardEdito
     this._commitItemList(containerPath, items);
   }
 
+  /** "Popup menu" adds an Expandable Button Card nav button — it renders as a normal
+   *  button tile and opens its own popover of child buttons (replacing the old bare
+   *  popup trigger). Edited inline via the embedded expandable-button editor. */
   private _addPopup(containerPath: number[]): void {
-    const items: NavItem[] = [...this._itemsAt(containerPath), { type: "popup", items: [] }];
-    this._expanded = new Set([...this._expanded, `popup-${[...containerPath, items.length - 1].join("-")}`]);
+    const icon = this._config?.alignment === "top" ? "mdi:chevron-down" : "mdi:chevron-up";
+    const expandable = { type: `custom:${EXPANDABLE_BUTTON_CARD_TYPE}`, icon, items: [] } as NavButtonConfig;
+    const items: NavItem[] = [...this._itemsAt(containerPath), expandable];
+    this._expanded = new Set([...this._expanded, `btn-${[...containerPath, items.length - 1].join("-")}`]);
     this._commitItemList(containerPath, items);
   }
 
@@ -881,37 +761,6 @@ export class TedNavbarCardEditor extends LitElement implements LovelaceCardEdito
     this._commitItemList(containerPath, items);
   }
 
-  private _onPopupFieldsChanged(containerPath: number[], idx: number, ev: CustomEvent): void {
-    ev.stopPropagation();
-    const value = (ev.detail?.value ?? {}) as {
-      icon?: string;
-      name?: string;
-      popup_layout?: string;
-      popup_max_columns?: number;
-      popup_title?: string;
-      flip_icon?: boolean;
-    };
-    const items = [...this._itemsAt(containerPath)];
-    const popup = items[idx];
-    if (!popup || !this._isPopup(popup)) return;
-    const next: NavPopupConfig = { ...popup };
-    if (value.icon) next.icon = value.icon;
-    else delete next.icon;
-    if (value.name) next.name = value.name;
-    else delete next.name;
-    if (value.popup_layout === "list") next.popup_layout = "list";
-    else delete next.popup_layout;
-    if (typeof value.popup_max_columns === "number" && value.popup_max_columns > 0)
-      next.popup_max_columns = value.popup_max_columns;
-    else delete next.popup_max_columns;
-    if (value.popup_title) next.popup_title = value.popup_title;
-    else delete next.popup_title;
-    if (value.flip_icon === false) next.flip_icon = false;
-    else delete next.flip_icon;
-    items[idx] = next;
-    this._commitItemList(containerPath, items);
-  }
-
   // --- Embedded button editors (controlled child editors) -------------------
 
   private _syncButtonEditors(): void {
@@ -928,10 +777,6 @@ export class TedNavbarCardEditor extends LitElement implements LovelaceCardEdito
   /** Recurse into items + popup sub-items, syncing a controlled editor for each button. */
   private _syncEditorsIn(items: NavItem[], containerPath: number[], wanted: Set<string>): void {
     items.forEach((item, idx) => {
-      if (this._isPopup(item)) {
-        this._syncEditorsIn(item.items ?? [], [...containerPath, idx], wanted);
-        return;
-      }
       if (!this._isButton(item)) return;
       const key = [...containerPath, idx].join(":");
       wanted.add(key);

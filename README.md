@@ -828,7 +828,9 @@ sections:                 # up to 5 sections
   - placement: right
     items:
       - type: time                          # status item — updates live
-      - type: popup                         # a popup: tap the icon to reveal more items
+      # A "popup menu" is an Expandable Button Card: a normal button tile that opens a
+      # popover of child buttons (configure layout / title / nesting on the card itself).
+      - type: custom:ted-expandable-button-card
         icon: mdi:dots-horizontal
         popup_layout: grid                  # grid (default) | list
         popup_max_columns: 3                # optional cap on grid columns (unset = fit items)
@@ -838,9 +840,6 @@ sections:                 # up to 5 sections
           - type: custom:ted-button-card
             name: Settings
             icon: mdi:cog
-          - type: popup                      # popups can be nested
-            icon: mdi:dots-vertical
-            items: []
 ```
 
 - **Navbar alignment** — pin the bar to the **Bottom** (default) or **Top** edge (horizontal), or the **Left** / **Right** edge for a **vertical** bar. A vertical bar is always snap (Float is hidden), clears the header & sidebar, and maps the section zones top→**left**, middle→**center**, bottom→**right**.
@@ -860,10 +859,10 @@ sections:                 # up to 5 sections
 - **Status items** — **Time**, **Date** and **Weather**, plus a room's **Temperature**, **Occupancy**,
   **Brightness**, **Volume**, an entity **Status LED**, and a **Spacer**. Brightness and volume open a
   slider on tap, and the clock updates live.
-- **Popups** — a **Popup menu** item is a tappable icon that opens a popover holding its own mix of
-  buttons, status items, and **nested popups**. The popover has a configurable **layout** (Grid with an
-  optional **Max columns**, or List), an optional **title**, and a **Flip icon when open** toggle
-  (default on) — handy for tucking extra controls behind one icon.
+- **Popups** — the **+ Add item** menu's **Popup menu** adds an **Expandable Button Card**: a normal
+  button tile that opens a popover of child buttons. Configure its layout (Grid with optional **Max
+  columns**, or List), an optional **title**, **Flip icon when open**, and nested menus on the card
+  itself — handy for tucking extra controls behind one button.
 - **Overflow** — when a section's items don't fit the bar, the extras **auto-collapse into a “…” popover**
   (turn **Auto-collapse overflow** off per section to keep them inline).
 
@@ -875,6 +874,11 @@ sections:                 # up to 5 sections
 
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
+
+### v1.0.10
+
+- **MessageBox Card** — border radii now follow the theme (no longer hard-coded); the **Visual styling** option defaults to **Home Assistant**; and **Pinned side** gains a **center** option.
+- **Navbar Card** — a **Popup menu** item is now an **Expandable Button Card**, so it renders as a normal button tile (with its own configurable popup) instead of a bare chevron. The old bespoke popup type was removed.
 
 ### v1.0.9
 

@@ -20,9 +20,6 @@ export type NavAlign = "left" | "center" | "right";
 /** Relative width of a nav button. */
 export type NavButtonSize = "normal" | "wide";
 
-/** How a popup's items are arranged inside its popover. */
-export type NavPopupLayout = "grid" | "list";
-
 /** A navbar button: a button card plus nav-only sizing and visibility. */
 export type NavButtonConfig = ButtonCardConfig & {
   nav_button_size?: NavButtonSize;
@@ -32,33 +29,9 @@ export type NavButtonConfig = ButtonCardConfig & {
   visibility?: Condition[];
 };
 
-/** A popup: a tappable icon that opens a popover holding more nav items. */
-export interface NavPopupConfig {
-  type: "popup";
-  /** Trigger icon (mdi:…). Defaults to a “⋯” glyph. */
-  icon?: string;
-  /** Accessible label / tooltip for the trigger. */
-  name?: string;
-  /** Trigger size, like a button. */
-  nav_button_size?: NavButtonSize;
-  /** Items shown inside the popover (buttons, status items, or nested popups). */
-  items?: NavItem[];
-  /** Popover arrangement: a grid of tiles (default) or a single vertical list. */
-  popup_layout?: NavPopupLayout;
-  /** Maximum columns in the grid layout. Unset = size to the number of items. */
-  popup_max_columns?: number;
-  /** Optional heading shown at the top of the popover. */
-  popup_title?: string;
-  /** Flip the trigger icon 180° while the popover is open. Defaults to true. */
-  flip_icon?: boolean;
-  /** Hide the popup outright (default true = shown). */
-  visible?: boolean;
-  /** Conditions (HA-style + `view-assist`) that gate the popup's visibility. */
-  visibility?: Condition[];
-}
-
-/** An item in a navbar section: a button, a status item, or a popup. */
-export type NavItem = NavButtonConfig | StatusItem | NavPopupConfig;
+/** An item in a navbar section: a button or a status item. (A "popup menu" is just a
+ *  nav button whose type is `custom:ted-expandable-button-card`.) */
+export type NavItem = NavButtonConfig | StatusItem;
 
 /** Binds to an entity attribute: a section's `items_source` (a list of View Assist
  *  status-icon / menu strings) or the card's `size_source` (a View Assist size value). */
