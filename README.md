@@ -328,7 +328,7 @@ icon_color: amber           # optional icon color (theme color name or #RRGGBB)
 background: '#1c1c1c'        # optional background color override
 brushed: false              # optional brushed-metal sheen over the background
 neumorphic: false           # raised tile when off/idle, pressed when the entity is active
-show_name: true             # show the name/label
+show_name: false            # show the name/label (default off)
 name_scale: 100             # name text size, % (10–300)
 show_icon: true             # show the icon
 icon_scale: 100             # icon size, % (10–300)
@@ -368,9 +368,9 @@ highlight:
 looks **raised** when the entity is off/idle (or has no entity) and **pressed in** when the entity is
 active (e.g. a light `on`, a cover `open`, a media player `playing`, a lock `unlocked`).
 
-In the **Appearance** section, `show_name` / `show_icon` / `show_state` (all default **on**) toggle the
-label, icon, and the entity-state line, and `name_scale` / `icon_scale` / `state_scale` (percent,
-default `100`) scale each of them.
+In the **Appearance** section, `show_icon` (default **on**) and `show_name` / `show_state` (default
+**off**) toggle the icon, label, and the entity-state line, and `name_scale` / `icon_scale` /
+`state_scale` (percent, default `100`) scale each of them.
 
 **Interactions** — the editor's **Interactions** section sets `tap_action`, `hold_action`, and (under
 **Add interaction**) `double_tap_action`, using Home Assistant's standard action picker (toggle,
@@ -428,7 +428,7 @@ icon: mdi:movie-open
 theme: ted-style
 # --- Popup ---
 popup_layout: grid          # grid (default) | list
-popup_columns: 3            # columns for the grid layout (ignored for list)
+popup_max_columns: 3        # optional cap on grid columns; unset = size to the button count
 popup_title: Scenes         # optional heading shown at the top of the popup
 flip_icon: true             # flip the trigger icon (e.g. a chevron) 180° while open (default true)
 items:                      # child buttons shown in the popup
@@ -448,11 +448,12 @@ items:                      # child buttons shown in the popup
 The trigger's own tap/hold/double-tap actions are ignored — tapping the trigger always opens the
 popup. Configure each child's actions on the child button itself.
 
-**Popup** (editor) — **Popup layout** is **Grid** (square tiles, with a **Columns** slider) or **List**
-(a single vertical column); **Popup title** adds an optional heading. **Flip icon when open** (default
-**on**) rotates the trigger icon 180° while the popup is open — handy for a chevron that flips to point
-the other way. The popover anchors to the trigger, opening downward (flipping up if there isn't room)
-and dismisses on outside-click or `Esc`.
+**Popup** (editor) — **Popup layout** is **Grid** (square tiles) or **List** (a single vertical column).
+For the grid, **Max columns** is optional — leave it empty and the grid sizes to the number of buttons
+(a single row); set it to wrap onto multiple rows after that many columns. **Popup title** adds an
+optional heading. **Flip icon when open** (default **on**) rotates the trigger icon 180° while the popup
+is open — handy for a chevron that flips to point the other way. The popover anchors to the trigger,
+opening downward (flipping up if there isn't room) and dismisses on outside-click or `Esc`.
 
 **Popup buttons** (editor) — add **Button** or **Expandable button** children, drag to reorder, and edit
 each inline with its own card editor. Nested expandable children open their own sub-popups, so you can
@@ -861,6 +862,11 @@ sections:                 # up to 5 sections
 
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
+
+### v1.0.7
+
+- **Button Card** — **Show name** now defaults to **off** (set `show_name: true` to show the label), so buttons are icon-only by default.
+- **Expandable Button Card** — the grid's **Columns** is now an optional **Max columns**: leave it empty and the popup grid sizes to the number of buttons (a single row); set it to wrap after that many columns. Also fixed the **Flip icon when open** option, which wasn't rotating a centered icon.
 
 ### v1.0.6
 

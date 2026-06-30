@@ -16,8 +16,9 @@ export interface ExpandableButtonCardConfig extends ButtonCardConfig {
   items?: ExpandableChildConfig[];
   /** Popup arrangement: a grid of square tiles (default) or a single vertical list. */
   popup_layout?: PopupLayout;
-  /** Columns in the grid layout. Ignored for the list layout. */
-  popup_columns?: number;
+  /** Maximum columns in the grid layout. Unset = no limit (the grid sizes to the number
+   *  of buttons, in a single row). Ignored for the list layout. */
+  popup_max_columns?: number;
   /** Optional heading shown at the top of the popup. */
   popup_title?: string;
   /** Flip the trigger icon (e.g. a chevron) 180° while the popup is open. Defaults to true. */

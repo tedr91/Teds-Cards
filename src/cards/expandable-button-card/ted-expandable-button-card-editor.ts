@@ -9,7 +9,6 @@ import {
 
 import { BUTTON_CARD_TYPE } from "../button-card/const";
 import {
-  DEFAULT_POPUP_COLUMNS,
   EXPANDABLE_BUTTON_CARD_EDITOR_TYPE,
   EXPANDABLE_BUTTON_CARD_TYPE,
   defaultChildButton,
@@ -98,7 +97,7 @@ export class TedExpandableButtonCardEditor extends LitElement implements Lovelac
           .hass=${this.hass}
           .data=${{
             popup_layout: layout,
-            popup_columns: this._config.popup_columns ?? DEFAULT_POPUP_COLUMNS,
+            popup_max_columns: this._config.popup_max_columns,
             popup_title: this._config.popup_title ?? "",
             flip_icon: this._config.flip_icon !== false,
           }}
@@ -140,8 +139,8 @@ export class TedExpandableButtonCardEditor extends LitElement implements Lovelac
           ...(layout === "grid"
             ? [
                 {
-                  name: "popup_columns",
-                  selector: { number: { min: 1, max: 8, step: 1, mode: "slider" } },
+                  name: "popup_max_columns",
+                  selector: { number: { min: 1, max: 12, step: 1, mode: "box" } },
                 },
               ]
             : []),
@@ -156,8 +155,8 @@ export class TedExpandableButtonCardEditor extends LitElement implements Lovelac
     switch (schema.name) {
       case "popup_layout":
         return "Popup layout";
-      case "popup_columns":
-        return "Columns";
+      case "popup_max_columns":
+        return "Max columns (optional)";
       case "popup_title":
         return "Popup title";
       case "flip_icon":
@@ -269,16 +268,16 @@ export class TedExpandableButtonCardEditor extends LitElement implements Lovelac
     ev.stopPropagation();
     const value = (ev.detail?.value ?? {}) as {
       popup_layout?: string;
-      popup_columns?: number;
+      popup_max_columns?: number;
       popup_title?: string;
       flip_icon?: boolean;
     };
     const next = { ...this._config } as ExpandableButtonCardConfig;
     if (value.popup_layout === "list") next.popup_layout = "list";
     else delete next.popup_layout;
-    if (typeof value.popup_columns === "number" && value.popup_columns !== DEFAULT_POPUP_COLUMNS)
-      next.popup_columns = value.popup_columns;
-    else delete next.popup_columns;
+    if (typeof value.popup_max_columns === "number" && value.popup_max_columns > 0)
+      next.popup_max_columns = value.popup_max_columns;
+    else delete next.popup_max_columns;
     if (value.popup_title) next.popup_title = value.popup_title;
     else delete next.popup_title;
     if (value.flip_icon === false) next.flip_icon = false;

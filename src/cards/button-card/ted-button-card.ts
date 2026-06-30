@@ -315,7 +315,7 @@ export class TedButtonCard extends LitElement implements LovelaceCard {
     const theme = this._config.theme === "ted-style" ? "ted-style" : "ha";
     const brushed = this._config.brushed === true;
     const showIcon = this._config.show_icon !== false;
-    const showName = this._config.show_name !== false;
+    const showName = this._config.show_name === true;
     const showState = this._config.show_state === true && !!this._stateObj();
     const iconScale = typeof this._config.icon_scale === "number" ? this._config.icon_scale : 100;
     const nameScale = typeof this._config.name_scale === "number" ? this._config.name_scale : 100;
@@ -606,6 +606,12 @@ export class TedButtonCard extends LitElement implements LovelaceCard {
         top: 50%;
         left: 50%;
         transform: translate(-50%, -50%);
+      }
+      /* A centered icon composes the centering translate with the optional rotation, so
+         an embedding card's --ted-icon-rotate still flips it (the plain .icon transform
+         below would otherwise be overridden by .slot-mid's translate). */
+      .lbc .slot-mid.icon {
+        transform: translate(-50%, -50%) rotate(var(--ted-icon-rotate, 0deg));
       }
 
       .icon {

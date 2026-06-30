@@ -13,7 +13,6 @@ import { registerCustomCard } from "../../shared/register-card";
 import { tedCardThemeClass, tedStyleTheme } from "../../shared/theme";
 import { BUTTON_CARD_TYPE } from "../button-card/const";
 import {
-  DEFAULT_POPUP_COLUMNS,
   EXPANDABLE_BUTTON_CARD_DESCRIPTION,
   EXPANDABLE_BUTTON_CARD_EDITOR_TYPE,
   EXPANDABLE_BUTTON_CARD_NAME,
@@ -167,11 +166,13 @@ export class TedExpandableButtonCard extends LitElement implements LovelaceCard 
     if (!this._config) return nothing;
     const theme = this._config.theme === "ted-style" ? "ted-style" : "ha";
     const layout = this._config.popup_layout === "list" ? "list" : "grid";
-    const cols =
-      typeof this._config.popup_columns === "number" && this._config.popup_columns > 0
-        ? this._config.popup_columns
-        : DEFAULT_POPUP_COLUMNS;
     const items = this._config.items ?? [];
+    // Grid columns size to the number of buttons (single row) unless a max is set.
+    const maxCols =
+      typeof this._config.popup_max_columns === "number" && this._config.popup_max_columns > 0
+        ? this._config.popup_max_columns
+        : undefined;
+    const cols = Math.max(1, maxCols ? Math.min(maxCols, items.length) : items.length);
     const flip = this._config.flip_icon !== false;
     return html`
       <button
@@ -209,12 +210,17 @@ export class TedExpandableButtonCard extends LitElement implements LovelaceCard 
     `;
   }
 
-  /** Position the popover over its trigger when it opens (centered, opening downward). */
+  /** Position the popover over its trigger when it opens; flip the trigger icon while open. */
   private _onPopoverToggle = (ev: Event): void => {
     const popover = ev.currentTarget as HTMLElement;
-    if ((ev as Event & { newState?: string }).newState !== "open") return;
-    const anchor = (this.renderRoot as ShadowRoot).getElementById(TRIGGER_ID);
-    this._positionPopover(popover, anchor ?? undefined);
+    const open = (ev as Event & { newState?: string }).newState === "open";
+    const trigger = (this.renderRoot as ShadowRoot).getElementById(TRIGGER_ID);
+    if (open) {
+      this._positionPopover(popover, trigger ?? undefined);
+      if (this._config?.flip_icon !== false) trigger?.style.setProperty("--ted-icon-rotate", "180deg");
+    } else {
+      trigger?.style.removeProperty("--ted-icon-rotate");
+    }
   };
 
   private _positionPopover(popover: HTMLElement, anchor?: HTMLElement): void {
@@ -313,7 +319,7 @@ export class TedExpandableButtonCard extends LitElement implements LovelaceCard 
       }
       .ebc-popover-body.grid {
         display: grid;
-        grid-template-columns: repeat(var(--ebc-cols, 3), 76px);
+        grid-template-columns: repeat(var(--ebc-cols, 1), 76px);
         gap: 8px;
       }
       .ebc-popover-body.list {

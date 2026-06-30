@@ -8,9 +8,6 @@ export const EXPANDABLE_BUTTON_CARD_NAME = "Ted Expandable Button Card";
 export const EXPANDABLE_BUTTON_CARD_DESCRIPTION =
   "A button that, on tap, opens a popup of child buttons (which may themselves be expandable).";
 
-/** Default number of columns in the popup's grid layout. */
-export const DEFAULT_POPUP_COLUMNS = 3;
-
 /** A freshly-added child: a plain Button Card, matching the editor's "Add button" action. */
 export function defaultChildButton(): ButtonCardConfig {
   return {

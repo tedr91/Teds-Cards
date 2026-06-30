@@ -119,7 +119,7 @@ export class TedButtonCardEditor extends LitElement implements LovelaceCardEdito
       neumorphic: false,
       show_icon: true,
       icon_scale: 100,
-      show_name: true,
+      show_name: false,
       name_scale: 100,
       show_state: false,
       state_scale: 100,
@@ -355,7 +355,7 @@ export class TedButtonCardEditor extends LitElement implements LovelaceCardEdito
       { label: string; showKey: keyof ButtonCardConfig; sizeKey: keyof ButtonCardConfig; colorKey: keyof ButtonCardConfig; defShow: boolean }
     > = {
       icon: { label: "Icon", showKey: "show_icon", sizeKey: "icon_scale", colorKey: "icon_color", defShow: true },
-      name: { label: "Name", showKey: "show_name", sizeKey: "name_scale", colorKey: "name_color", defShow: true },
+      name: { label: "Name", showKey: "show_name", sizeKey: "name_scale", colorKey: "name_color", defShow: false },
       state: { label: "State", showKey: "show_state", sizeKey: "state_scale", colorKey: "state_color", defShow: false },
     };
     return html`
