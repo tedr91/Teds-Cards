@@ -913,6 +913,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.13
+
+- **Alarm & Timer Cards** — fixed the **New alarm** / **New timer** (and **Edit timer**) popups, which could appear unstyled with unresponsive buttons on dashboards where Home Assistant hadn't yet loaded its dialog components. They're now a self-contained, themed pop-up that works reliably everywhere.
+
 ### v1.0.12
 
 - **Alarm Card** — redesigned: a **+** in the header opens a **New alarm** popup; alarms now **sort by time of day with enabled ones first**; each row shows a large **12-hour time**; and the per-row menu is replaced by a **delete** button that confirms via Home Assistant's standard dialog.

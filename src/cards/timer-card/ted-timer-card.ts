@@ -7,6 +7,7 @@ import type { HomeAssistant, LovelaceCard, LovelaceCardEditor } from "custom-car
 import { appearanceStyle } from "../../shared/appearance";
 import { brushedOverlay, tedCardThemeClass, tedStyleTheme } from "../../shared/theme";
 import { registerCustomCard } from "../../shared/register-card";
+import { modalStyles } from "../../shared/dialogs";
 import {
   TIMERS_SENSOR,
   TIMER_CARD_DESCRIPTION,
@@ -288,33 +289,39 @@ export class TedTimerCard extends LitElement implements LovelaceCard {
 
   private _renderDialog(): TemplateResult {
     const adding = this._dialog === "add";
+    const total = this._h * 3600 + this._m * 60 + this._s;
     return html`
-      <ha-dialog open heading=${adding ? "New timer" : "Edit timer"} @closed=${this._closeDialog}>
-        <div class="dlg">
-          <ha-textfield
-            .value=${this._name}
-            label="Name"
-            @input=${(e: Event) => (this._name = (e.target as HTMLInputElement).value)}
-            @keydown=${(e: KeyboardEvent) => e.key === "Enter" && this._submitDialog()}
-          ></ha-textfield>
-          <div class="hms">
-            ${this._numField("Hours", this._h, 0, 23, (v) => (this._h = v))}
-            ${this._numField("Minutes", this._m, 0, 59, (v) => (this._m = v))}
-            ${this._numField("Seconds", this._s, 0, 59, (v) => (this._s = v))}
+      <div
+        class="ted-modal"
+        @click=${this._closeDialog}
+        @keydown=${(e: KeyboardEvent) => e.key === "Escape" && this._closeDialog()}
+      >
+        <div class="ted-sheet" @click=${(e: Event) => e.stopPropagation()}>
+          <div class="ted-sheet-head">${adding ? "New timer" : "Edit timer"}</div>
+          <div class="ted-sheet-body">
+            <ha-textfield
+              label="Name"
+              .value=${this._name}
+              @input=${(e: Event) => (this._name = (e.target as HTMLInputElement).value)}
+              @keydown=${(e: KeyboardEvent) => e.key === "Enter" && this._submitDialog()}
+            ></ha-textfield>
+            <div class="ted-hms">
+              ${this._numField("Hours", this._h, 0, 23, (v) => (this._h = v))}
+              ${this._numField("Minutes", this._m, 0, 59, (v) => (this._m = v))}
+              ${this._numField("Seconds", this._s, 0, 59, (v) => (this._s = v))}
+            </div>
+          </div>
+          <div class="ted-sheet-foot">
+            ${adding
+              ? nothing
+              : html`<button class="ted-btn danger" @click=${this._deleteTimer}>Delete</button>`}
+            <button class="ted-btn" @click=${this._closeDialog}>Cancel</button>
+            <button class="ted-btn primary" ?disabled=${total <= 0} @click=${this._submitDialog}>
+              ${adding ? "Start" : "Save"}
+            </button>
           </div>
         </div>
-        <ha-button slot="secondaryAction" @click=${this._closeDialog}>Cancel</ha-button>
-        ${adding
-          ? nothing
-          : html`<ha-button slot="secondaryAction" class="danger" @click=${this._deleteTimer}>Delete</ha-button>`}
-        <ha-button
-          slot="primaryAction"
-          .disabled=${this._h * 3600 + this._m * 60 + this._s <= 0}
-          @click=${this._submitDialog}
-        >
-          ${adding ? "Start" : "Save"}
-        </ha-button>
-      </ha-dialog>
+      </div>
     `;
   }
 
@@ -325,19 +332,18 @@ export class TedTimerCard extends LitElement implements LovelaceCard {
     max: number,
     set: (v: number) => void,
   ): TemplateResult {
-    return html`<label class="num">
-      <input
-        type="number"
-        min=${min}
-        max=${max}
-        .value=${String(value)}
-        @input=${(e: Event) => {
-          const n = Number((e.target as HTMLInputElement).value);
-          set(Number.isFinite(n) ? Math.max(min, Math.min(max, Math.trunc(n))) : 0);
-        }}
-      />
-      <span>${label}</span>
-    </label>`;
+    return html`<ha-textfield
+      label=${label}
+      type="number"
+      min=${min}
+      max=${max}
+      no-spinner
+      .value=${String(value)}
+      @input=${(e: Event) => {
+        const n = Number((e.target as HTMLInputElement).value);
+        set(Number.isFinite(n) ? Math.max(min, Math.min(max, Math.trunc(n))) : 0);
+      }}
+    ></ha-textfield>`;
   }
 
   /** Seconds → "H:MM:SS" (drops the hours group when zero). */
@@ -351,6 +357,7 @@ export class TedTimerCard extends LitElement implements LovelaceCard {
 
   static styles = [
     tedStyleTheme,
+    modalStyles,
     css`
       :host {
         display: block;
@@ -486,38 +493,6 @@ export class TedTimerCard extends LitElement implements LovelaceCard {
         --mdc-text-field-fill-color: var(--ted-style-surface-2);
         --mdc-text-field-ink-color: var(--ted-style-text);
         --mdc-text-field-label-ink-color: var(--ted-style-muted);
-      }
-      .dlg {
-        display: flex;
-        flex-direction: column;
-        gap: 16px;
-        min-width: 260px;
-      }
-      .danger {
-        --mdc-theme-primary: var(--error-color, #db4437);
-      }
-      .hms {
-        display: flex;
-        gap: 10px;
-      }
-      .num {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 4px;
-        font-size: 0.72rem;
-        color: var(--secondary-text-color, var(--ted-style-muted));
-      }
-      .num input {
-        width: 64px;
-        appearance: none;
-        background: var(--secondary-background-color, var(--ted-style-surface-2));
-        color: var(--primary-text-color, var(--ted-style-text));
-        border: 1px solid var(--divider-color, var(--ted-style-divider));
-        border-radius: var(--ted-style-radius-sm);
-        padding: 9px 4px;
-        font: inherit;
-        text-align: center;
       }
     `,
   ];

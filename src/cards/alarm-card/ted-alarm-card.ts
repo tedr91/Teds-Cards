@@ -7,7 +7,7 @@ import type { HomeAssistant, LovelaceCard, LovelaceCardEditor } from "custom-car
 import { appearanceStyle } from "../../shared/appearance";
 import { brushedOverlay, tedCardThemeClass, tedStyleTheme } from "../../shared/theme";
 import { registerCustomCard } from "../../shared/register-card";
-import { showConfirmation } from "../../shared/dialogs";
+import { showConfirmation, modalStyles } from "../../shared/dialogs";
 import {
   ALARMS_SENSOR,
   ALARM_CARD_DESCRIPTION,
@@ -201,27 +201,33 @@ export class TedAlarmCard extends LitElement implements LovelaceCard {
 
   private _renderAddDialog(): TemplateResult {
     return html`
-      <ha-dialog open heading="New alarm" @closed=${this._closeAdd}>
-        <div class="dlg">
-          <ha-textfield
-            class="dlg-label"
-            .value=${this._label}
-            label="Label"
-            @input=${(e: Event) => (this._label = (e.target as HTMLInputElement).value)}
-            @keydown=${(e: KeyboardEvent) => e.key === "Enter" && this._submitAdd()}
-          ></ha-textfield>
-          <label class="dlg-time">
-            <span>Time</span>
-            <input
+      <div
+        class="ted-modal"
+        @click=${this._closeAdd}
+        @keydown=${(e: KeyboardEvent) => e.key === "Escape" && this._closeAdd()}
+      >
+        <div class="ted-sheet" @click=${(e: Event) => e.stopPropagation()}>
+          <div class="ted-sheet-head">New alarm</div>
+          <div class="ted-sheet-body">
+            <ha-textfield
+              label="Label"
+              .value=${this._label}
+              @input=${(e: Event) => (this._label = (e.target as HTMLInputElement).value)}
+              @keydown=${(e: KeyboardEvent) => e.key === "Enter" && this._submitAdd()}
+            ></ha-textfield>
+            <ha-textfield
+              label="Time"
               type="time"
               .value=${this._time}
               @input=${(e: Event) => (this._time = (e.target as HTMLInputElement).value)}
-            />
-          </label>
+            ></ha-textfield>
+          </div>
+          <div class="ted-sheet-foot">
+            <button class="ted-btn" @click=${this._closeAdd}>Cancel</button>
+            <button class="ted-btn primary" ?disabled=${!this._label} @click=${this._submitAdd}>Add</button>
+          </div>
         </div>
-        <ha-button slot="secondaryAction" @click=${this._closeAdd}>Cancel</ha-button>
-        <ha-button slot="primaryAction" .disabled=${!this._label} @click=${this._submitAdd}>Add</ha-button>
-      </ha-dialog>
+      </div>
     `;
   }
 
@@ -239,6 +245,7 @@ export class TedAlarmCard extends LitElement implements LovelaceCard {
 
   static styles = [
     tedStyleTheme,
+    modalStyles,
     css`
       :host {
         display: block;
@@ -344,28 +351,6 @@ export class TedAlarmCard extends LitElement implements LovelaceCard {
         --mdc-text-field-fill-color: var(--ted-style-surface-2);
         --mdc-text-field-ink-color: var(--ted-style-text);
         --mdc-text-field-label-ink-color: var(--ted-style-muted);
-      }
-      .dlg {
-        display: flex;
-        flex-direction: column;
-        gap: 16px;
-        min-width: 260px;
-      }
-      .dlg-time {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px;
-        color: var(--primary-text-color, var(--ted-style-text));
-      }
-      .dlg-time input {
-        appearance: none;
-        background: var(--secondary-background-color, var(--ted-style-surface-2));
-        color: var(--primary-text-color, var(--ted-style-text));
-        border: 1px solid var(--divider-color, var(--ted-style-divider));
-        border-radius: var(--ted-style-radius-sm);
-        padding: 9px 10px;
-        font: inherit;
       }
       ha-switch {
         --mdc-theme-secondary: var(--ted-style-accent);
