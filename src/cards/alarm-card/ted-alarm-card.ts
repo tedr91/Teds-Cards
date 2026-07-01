@@ -7,6 +7,7 @@ import type { HomeAssistant, LovelaceCard, LovelaceCardEditor } from "custom-car
 import { appearanceStyle } from "../../shared/appearance";
 import { brushedOverlay, tedCardThemeClass, tedStyleTheme } from "../../shared/theme";
 import { registerCustomCard } from "../../shared/register-card";
+import { showConfirmation } from "../../shared/dialogs";
 import {
   ALARMS_SENSOR,
   ALARM_CARD_DESCRIPTION,
@@ -60,6 +61,8 @@ export class TedAlarmCard extends LitElement implements LovelaceCard {
   @state() private _config?: AlarmCardConfig;
   @state() private _label = "";
   @state() private _time = "07:00";
+  /** Whether the "new alarm" dialog is open. */
+  @state() private _addOpen = false;
 
   public setConfig(config: AlarmCardConfig): void {
     if (!config) throw new Error("Invalid configuration");
@@ -82,14 +85,49 @@ export class TedAlarmCard extends LitElement implements LovelaceCard {
     return (this.hass?.states[this._sensor()]?.attributes.alarms as Alarm[]) ?? [];
   }
 
+  /** Minutes-since-midnight for a "HH:MM[:SS]" time, used for sorting. */
+  private _minutes(t: string): number {
+    const [h, m] = (t ?? "0:0").split(":").map(Number);
+    return (h || 0) * 60 + (m || 0);
+  }
+
+  /** Enabled alarms first, then earliest time of day first. */
+  private get _sortedAlarms(): Alarm[] {
+    return [...this._alarms].sort((a, b) => {
+      if (a.enabled !== b.enabled) return a.enabled ? -1 : 1;
+      return this._minutes(a.time) - this._minutes(b.time);
+    });
+  }
+
   private _call(service: string, data: Record<string, unknown>): void {
     this.hass?.callService(ALARM_DOMAIN, service, data);
   }
 
-  private _add(): void {
+  private _openAdd(): void {
+    this._label = "";
+    this._time = "07:00";
+    this._addOpen = true;
+  }
+
+  private _closeAdd(): void {
+    this._addOpen = false;
+  }
+
+  private _submitAdd(): void {
     if (!this._label) return;
     this._call("add_alarm", { label: this._label, time: this._time });
-    this._label = "";
+    this._closeAdd();
+  }
+
+  private async _confirmDelete(a: Alarm): Promise<void> {
+    const confirmed = await showConfirmation(this, {
+      title: "Delete alarm",
+      text: `Delete "${a.label}"?`,
+      confirmText: "Delete",
+      dismissText: "Cancel",
+      destructive: true,
+    });
+    if (confirmed) this._call("remove_alarm", { id: a.id });
   }
 
   protected render(): TemplateResult | typeof nothing {
@@ -100,7 +138,7 @@ export class TedAlarmCard extends LitElement implements LovelaceCard {
     const shadow = cfg.shadow !== false;
     const brushed = cfg.brushed === true;
     const missing = !this.hass.states[this._sensor()];
-    const alarms = this._alarms;
+    const alarms = this._sortedAlarms;
     const showAdd = cfg.show_add !== false;
 
     const cardClasses = {
@@ -116,6 +154,11 @@ export class TedAlarmCard extends LitElement implements LovelaceCard {
         <div class="head">
           <ha-icon icon="mdi:alarm"></ha-icon>
           <span>${cfg.title ?? "Alarms"}</span>
+          ${!missing && showAdd
+            ? html`<ha-icon-button class="add-hdr" label="New alarm" @click=${this._openAdd}>
+                <ha-icon icon="mdi:plus"></ha-icon>
+              </ha-icon-button>`
+            : nothing}
         </div>
         ${missing
           ? html`<div class="warn">Install the <b>Ted's Cards Backend</b> integration to use alarms.</div>`
@@ -125,21 +168,17 @@ export class TedAlarmCard extends LitElement implements LovelaceCard {
                   ? html`<div class="empty">No alarms yet.</div>`
                   : alarms.map((a) => this._renderAlarm(a))}
               </div>
-              ${showAdd ? this._renderAdd() : nothing}
             `}
       </ha-card>
+      ${this._addOpen ? this._renderAddDialog() : nothing}
     `;
   }
 
   private _renderAlarm(a: Alarm): TemplateResult {
     return html`
       <div class="row ${a.enabled ? "" : "off"}">
-        <ha-switch
-          .checked=${a.enabled}
-          @change=${(e: Event) =>
-            this._call("update_alarm", { id: a.id, enabled: (e.target as HTMLInputElement).checked })}
-        ></ha-switch>
         <div class="info">
+          <div class="time">${this._fmtTime(a.time)}</div>
           <div class="label">${a.label}</div>
           ${a.description ? html`<div class="desc">${a.description}</div>` : nothing}
           ${Array.isArray(a.days) && a.days.length
@@ -148,45 +187,54 @@ export class TedAlarmCard extends LitElement implements LovelaceCard {
               </div>`
             : nothing}
         </div>
-        <div class="time">${this._fmtTime(a.time)}</div>
-        <ha-icon-button
-          class="del"
-          .label=${`Delete ${a.label}`}
-          @click=${() => this._call("remove_alarm", { id: a.id })}
-        >
+        <ha-switch
+          .checked=${a.enabled}
+          @change=${(e: Event) =>
+            this._call("update_alarm", { id: a.id, enabled: (e.target as HTMLInputElement).checked })}
+        ></ha-switch>
+        <ha-icon-button class="del" .label=${`Delete ${a.label}`} @click=${() => this._confirmDelete(a)}>
           <ha-icon icon="mdi:delete-outline"></ha-icon>
         </ha-icon-button>
       </div>
     `;
   }
 
-  private _renderAdd(): TemplateResult {
+  private _renderAddDialog(): TemplateResult {
     return html`
-      <div class="add">
-        <ha-textfield
-          class="grow"
-          .value=${this._label}
-          label="Label"
-          @input=${(e: Event) => (this._label = (e.target as HTMLInputElement).value)}
-          @keydown=${(e: KeyboardEvent) => e.key === "Enter" && this._add()}
-        ></ha-textfield>
-        <input
-          class="time-input"
-          type="time"
-          .value=${this._time}
-          @input=${(e: Event) => (this._time = (e.target as HTMLInputElement).value)}
-        />
-        <ha-icon-button class="add-btn" .disabled=${!this._label} @click=${this._add} label="Add alarm">
-          <ha-icon icon="mdi:plus"></ha-icon>
-        </ha-icon-button>
-      </div>
+      <ha-dialog open heading="New alarm" @closed=${this._closeAdd}>
+        <div class="dlg">
+          <ha-textfield
+            class="dlg-label"
+            .value=${this._label}
+            label="Label"
+            @input=${(e: Event) => (this._label = (e.target as HTMLInputElement).value)}
+            @keydown=${(e: KeyboardEvent) => e.key === "Enter" && this._submitAdd()}
+          ></ha-textfield>
+          <label class="dlg-time">
+            <span>Time</span>
+            <input
+              type="time"
+              .value=${this._time}
+              @input=${(e: Event) => (this._time = (e.target as HTMLInputElement).value)}
+            />
+          </label>
+        </div>
+        <ha-button slot="secondaryAction" @click=${this._closeAdd}>Cancel</ha-button>
+        <ha-button slot="primaryAction" .disabled=${!this._label} @click=${this._submitAdd}>Add</ha-button>
+      </ha-dialog>
     `;
   }
 
-  /** Normalise a "HH:MM" or "HH:MM:SS" backend time to "HH:MM". */
+  /** Format a "HH:MM[:SS]" backend time as a 12-hour clock, e.g. "7:05am". */
   private _fmtTime(t: string): string {
-    const parts = (t ?? "").split(":");
-    return parts.length >= 2 ? `${parts[0]}:${parts[1]}` : t;
+    const [hStr, mStr] = (t ?? "").split(":");
+    let h = Number(hStr);
+    if (!Number.isFinite(h)) return t;
+    const m = (mStr ?? "00").padStart(2, "0");
+    const suffix = h >= 12 ? "pm" : "am";
+    h = h % 12;
+    if (h === 0) h = 12;
+    return `${h}:${m}${suffix}`;
   }
 
   static styles = [
@@ -222,6 +270,11 @@ export class TedAlarmCard extends LitElement implements LovelaceCard {
         color: var(--ted-style-accent);
         --mdc-icon-size: 22px;
       }
+      .add-hdr {
+        margin-left: auto;
+        color: var(--ted-style-accent);
+        flex: none;
+      }
       .warn {
         padding: 8px 16px 16px;
         color: var(--ted-style-muted);
@@ -239,7 +292,7 @@ export class TedAlarmCard extends LitElement implements LovelaceCard {
         display: flex;
         align-items: center;
         gap: 12px;
-        padding: 8px 8px 8px 12px;
+        padding: 10px 8px 10px 16px;
         border-top: 1px solid var(--ted-style-divider);
       }
       .row.off {
@@ -252,8 +305,14 @@ export class TedAlarmCard extends LitElement implements LovelaceCard {
         flex-direction: column;
         gap: 2px;
       }
+      .time {
+        font-size: 1.75rem;
+        font-weight: 600;
+        line-height: 1.1;
+        font-variant-numeric: tabular-nums;
+      }
       .label {
-        font-weight: 500;
+        color: var(--ted-style-muted);
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
@@ -276,25 +335,9 @@ export class TedAlarmCard extends LitElement implements LovelaceCard {
         background: var(--ted-style-surface-2);
         color: var(--ted-style-muted);
       }
-      .time {
-        font-size: 1.15rem;
-        font-weight: 600;
-        font-variant-numeric: tabular-nums;
-      }
       .del {
         color: var(--ted-style-muted);
         flex: none;
-      }
-      .add {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        padding: 12px 12px 2px;
-        margin-top: 4px;
-        border-top: 1px solid var(--ted-style-divider);
-      }
-      .add .grow {
-        flex: 1 1 auto;
       }
       ha-textfield {
         --mdc-theme-primary: var(--ted-style-accent);
@@ -302,18 +345,27 @@ export class TedAlarmCard extends LitElement implements LovelaceCard {
         --mdc-text-field-ink-color: var(--ted-style-text);
         --mdc-text-field-label-ink-color: var(--ted-style-muted);
       }
-      .time-input {
+      .dlg {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        min-width: 260px;
+      }
+      .dlg-time {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        color: var(--primary-text-color, var(--ted-style-text));
+      }
+      .dlg-time input {
         appearance: none;
-        background: var(--ted-style-surface-2);
-        color: var(--ted-style-text);
-        border: 1px solid var(--ted-style-divider);
+        background: var(--secondary-background-color, var(--ted-style-surface-2));
+        color: var(--primary-text-color, var(--ted-style-text));
+        border: 1px solid var(--divider-color, var(--ted-style-divider));
         border-radius: var(--ted-style-radius-sm);
         padding: 9px 10px;
         font: inherit;
-      }
-      .add-btn {
-        color: var(--ted-style-accent);
-        flex: none;
       }
       ha-switch {
         --mdc-theme-secondary: var(--ted-style-accent);

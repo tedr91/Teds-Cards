@@ -16,6 +16,6 @@ export interface AlarmCardConfig extends LovelaceCardConfig {
   brushed?: boolean;
   shadow?: boolean;
 
-  /** Show the "add alarm" form. Defaults to true. */
+  /** Show the header "+" button that opens the new-alarm dialog. Defaults to true. */
   show_add?: boolean;
 }

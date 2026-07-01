@@ -16,6 +16,13 @@ export interface TimerCardConfig extends LovelaceCardConfig {
   brushed?: boolean;
   shadow?: boolean;
 
-  /** Show the "start timer" form. Defaults to true. */
+  /** Show the "Current Running" list of active timers. Defaults to true. */
+  show_active?: boolean;
+  /** Show the "New Timer" start form. Defaults to true. */
   show_add?: boolean;
+  /** Show the "Recent Timers" quick-restart chips. Defaults to true. */
+  show_recent?: boolean;
+
+  /** Order of the card sections. Any of "active", "add", "recent". */
+  section_order?: string[];
 }

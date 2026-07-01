@@ -14,6 +14,7 @@ import {
   TIMER_CARD_NAME,
   TIMER_CARD_TYPE,
   TIMER_DOMAIN,
+  resolveTimerSectionOrder,
 } from "./const";
 import type { TimerCardConfig } from "./types";
 
@@ -21,6 +22,9 @@ interface ActiveTimer {
   id: string;
   name: string;
   ends: string;
+  duration: number;
+  remaining: number;
+  paused: boolean;
 }
 interface RecentTimer {
   name: string;
@@ -62,6 +66,8 @@ export class TedTimerCard extends LitElement implements LovelaceCard {
   @state() private _h = 0;
   @state() private _m = 5;
   @state() private _s = 0;
+  /** null = closed; "add" = new-timer dialog; otherwise the id of the timer being edited. */
+  @state() private _dialog: string | null = null;
   /** Ticks once a second while any timer is counting down. */
   private _tick?: number;
 
@@ -95,16 +101,62 @@ export class TedTimerCard extends LitElement implements LovelaceCard {
     this.hass?.callService(TIMER_DOMAIN, service, data);
   }
 
-  private _start(): void {
-    const total = this._h * 3600 + this._m * 60 + this._s;
-    if (total <= 0) return;
-    this._call("start_timer", {
-      name: this._name || "Timer",
-      hours: this._h,
-      minutes: this._m,
-      seconds: this._s,
-    });
+  /** Live seconds remaining: frozen value when paused, else derived from `ends`. */
+  private _remaining(t: ActiveTimer): number {
+    if (t.paused) return Math.max(0, Math.round(t.remaining ?? 0));
+    return Math.max(0, Math.round((new Date(t.ends).getTime() - Date.now()) / 1000));
+  }
+
+  private _openAdd(): void {
     this._name = "";
+    this._h = 0;
+    this._m = 5;
+    this._s = 0;
+    this._dialog = "add";
+  }
+
+  private _openEdit(t: ActiveTimer): void {
+    const rem = this._remaining(t);
+    this._name = t.name;
+    this._h = Math.floor(rem / 3600);
+    this._m = Math.floor((rem % 3600) / 60);
+    this._s = rem % 60;
+    this._dialog = t.id;
+  }
+
+  private _closeDialog(): void {
+    this._dialog = null;
+  }
+
+  private _submitDialog(): void {
+    const total = this._h * 3600 + this._m * 60 + this._s;
+    if (this._dialog === "add") {
+      if (total <= 0) return;
+      this._call("start_timer", {
+        name: this._name || "Timer",
+        hours: this._h,
+        minutes: this._m,
+        seconds: this._s,
+      });
+    } else if (this._dialog) {
+      this._call("update_timer", {
+        id: this._dialog,
+        name: this._name || "Timer",
+        hours: this._h,
+        minutes: this._m,
+        seconds: this._s,
+      });
+    }
+    this._closeDialog();
+  }
+
+  private _togglePause(t: ActiveTimer): void {
+    this._call(t.paused ? "resume_timer" : "pause_timer", { id: t.id });
+  }
+
+  private _deleteTimer(): void {
+    if (this._dialog && this._dialog !== "add") this._call("cancel_timer", { id: this._dialog });
+    this._closeDialog();
   }
 
   private _startTick(): void {
@@ -127,10 +179,12 @@ export class TedTimerCard extends LitElement implements LovelaceCard {
     const missing = !this.hass.states[this._sensor()];
     const active = this._attr<ActiveTimer>("active");
     const recent = this._attr<RecentTimer>("recent");
+    const showActive = cfg.show_active !== false;
     const showAdd = cfg.show_add !== false;
+    const showRecent = cfg.show_recent !== false;
 
-    // Keep the countdown live only while a timer is running.
-    if (active.length > 0) this._startTick();
+    // Keep the countdown live only while a running (non-paused) timer exists.
+    if (active.some((t) => !t.paused)) this._startTick();
     else this._stopTick();
 
     const cardClasses = {
@@ -140,69 +194,127 @@ export class TedTimerCard extends LitElement implements LovelaceCard {
     };
     const cardStyle = appearanceStyle({ transparency: cfg.transparency, blur: cfg.blur });
 
+    const sections = resolveTimerSectionOrder(cfg.section_order).map((section) => {
+      if (section === "active") {
+        if (!showActive) return nothing;
+        return html`
+          <div class="section">
+            <div class="section-label">Active</div>
+            ${active.length === 0
+              ? html`<div class="empty">No timers running.</div>`
+              : html`<div class="grid">${active.map((t) => this._renderActiveTile(t))}</div>`}
+          </div>
+        `;
+      }
+      if (section === "recent") {
+        if (!showRecent || !recent.length) return nothing;
+        return html`
+          <div class="section">
+            <div class="section-label">Recent</div>
+            <div class="grid">${recent.map((r) => this._renderRecentTile(r))}</div>
+          </div>
+        `;
+      }
+      return nothing;
+    });
+
     return html`
       <ha-card class=${classMap(cardClasses)} style=${styleMap(cardStyle)}>
         ${brushed ? brushedOverlay : nothing}
         <div class="head">
           <ha-icon icon="mdi:timer-outline"></ha-icon>
           <span>${cfg.title ?? "Timers"}</span>
+          ${!missing && showAdd
+            ? html`<ha-icon-button class="add-hdr" label="New timer" @click=${this._openAdd}>
+                <ha-icon icon="mdi:plus"></ha-icon>
+              </ha-icon-button>`
+            : nothing}
         </div>
         ${missing
           ? html`<div class="warn">Install the <b>Ted's Cards Backend</b> integration to use timers.</div>`
-          : html`
-              <div class="list">
-                ${active.length === 0
-                  ? html`<div class="empty">No timers running.</div>`
-                  : active.map((t) => this._renderTimer(t))}
-              </div>
-              ${showAdd ? this._renderAdd() : nothing}
-              ${recent.length ? this._renderRecent(recent) : nothing}
-            `}
+          : sections}
       </ha-card>
+      ${this._dialog ? this._renderDialog() : nothing}
     `;
   }
 
-  private _renderTimer(t: ActiveTimer): TemplateResult {
-    const remaining = Math.max(0, Math.round((new Date(t.ends).getTime() - Date.now()) / 1000));
+  private _renderActiveTile(t: ActiveTimer): TemplateResult {
+    const remaining = this._remaining(t);
+    const duration = t.duration || 0;
+    const frac = duration > 0 ? Math.max(0, Math.min(1, remaining / duration)) : 0;
     return html`
-      <div class="row">
-        <span class="name">${t.name}</span>
-        <span class="remaining">${this._fmtRemaining(remaining)}</span>
-        <ha-icon-button
-          class="cancel"
-          .label=${`Cancel ${t.name}`}
-          @click=${() => this._call("cancel_timer", { id: t.id })}
-        >
-          <ha-icon icon="mdi:close"></ha-icon>
-        </ha-icon-button>
-      </div>
-    `;
-  }
-
-  private _renderAdd(): TemplateResult {
-    return html`
-      <div class="add">
-        <ha-textfield
-          class="grow"
-          .value=${this._name}
-          label="Name"
-          @input=${(e: Event) => (this._name = (e.target as HTMLInputElement).value)}
-          @keydown=${(e: KeyboardEvent) => e.key === "Enter" && this._start()}
-        ></ha-textfield>
-        <div class="hms">
-          ${this._numField("H", this._h, 0, 23, (v) => (this._h = v))}
-          ${this._numField("M", this._m, 0, 59, (v) => (this._m = v))}
-          ${this._numField("S", this._s, 0, 59, (v) => (this._s = v))}
+      <div class="tile ${t.paused ? "paused" : ""}">
+        <div class="bar"><div class="bar-fill" style=${styleMap({ width: `${frac * 100}%` })}></div></div>
+        <div class="tile-body">
+          <div class="rem">${this._fmtRemaining(remaining)}</div>
+          <div class="tname" title=${t.name}>${t.name}</div>
         </div>
-        <ha-icon-button
-          class="add-btn"
-          .disabled=${this._h * 3600 + this._m * 60 + this._s <= 0}
-          @click=${this._start}
-          label="Start timer"
-        >
-          <ha-icon icon="mdi:play"></ha-icon>
-        </ha-icon-button>
+        <div class="tile-ctrl">
+          <ha-icon-button
+            class="play ${t.paused ? "accent" : ""}"
+            .label=${t.paused ? `Resume ${t.name}` : `Pause ${t.name}`}
+            @click=${() => this._togglePause(t)}
+          >
+            <ha-icon icon=${t.paused ? "mdi:play" : "mdi:pause"}></ha-icon>
+          </ha-icon-button>
+          <ha-icon-button class="gear" .label=${`Edit ${t.name}`} @click=${() => this._openEdit(t)}>
+            <ha-icon icon="mdi:cog"></ha-icon>
+          </ha-icon-button>
+        </div>
       </div>
+    `;
+  }
+
+  private _renderRecentTile(r: RecentTimer): TemplateResult {
+    const total = r.h * 3600 + r.m * 60 + r.s;
+    return html`
+      <div class="tile recent">
+        <div class="tile-body">
+          <div class="rem">${this._fmtRemaining(total)}</div>
+          <div class="tname" title=${r.name}>${r.name}</div>
+        </div>
+        <div class="tile-ctrl">
+          <ha-icon-button
+            class="play accent"
+            .label=${`Start ${r.name}`}
+            @click=${() => this._call("start_timer", { name: r.name, hours: r.h, minutes: r.m, seconds: r.s })}
+          >
+            <ha-icon icon="mdi:play"></ha-icon>
+          </ha-icon-button>
+        </div>
+      </div>
+    `;
+  }
+
+  private _renderDialog(): TemplateResult {
+    const adding = this._dialog === "add";
+    return html`
+      <ha-dialog open heading=${adding ? "New timer" : "Edit timer"} @closed=${this._closeDialog}>
+        <div class="dlg">
+          <ha-textfield
+            .value=${this._name}
+            label="Name"
+            @input=${(e: Event) => (this._name = (e.target as HTMLInputElement).value)}
+            @keydown=${(e: KeyboardEvent) => e.key === "Enter" && this._submitDialog()}
+          ></ha-textfield>
+          <div class="hms">
+            ${this._numField("Hours", this._h, 0, 23, (v) => (this._h = v))}
+            ${this._numField("Minutes", this._m, 0, 59, (v) => (this._m = v))}
+            ${this._numField("Seconds", this._s, 0, 59, (v) => (this._s = v))}
+          </div>
+        </div>
+        <ha-button slot="secondaryAction" @click=${this._closeDialog}>Cancel</ha-button>
+        ${adding
+          ? nothing
+          : html`<ha-button slot="secondaryAction" class="danger" @click=${this._deleteTimer}>Delete</ha-button>`}
+        <ha-button
+          slot="primaryAction"
+          .disabled=${this._h * 3600 + this._m * 60 + this._s <= 0}
+          @click=${this._submitDialog}
+        >
+          ${adding ? "Start" : "Save"}
+        </ha-button>
+      </ha-dialog>
     `;
   }
 
@@ -226,21 +338,6 @@ export class TedTimerCard extends LitElement implements LovelaceCard {
       />
       <span>${label}</span>
     </label>`;
-  }
-
-  private _renderRecent(recent: RecentTimer[]): TemplateResult {
-    return html`
-      <div class="recent">
-        ${recent.map(
-          (r) => html`<button
-            @click=${() =>
-              this._call("start_timer", { name: r.name, hours: r.h, minutes: r.m, seconds: r.s })}
-          >
-            <ha-icon icon="mdi:history"></ha-icon>${r.name}
-          </button>`,
-        )}
-      </div>
-    `;
   }
 
   /** Seconds → "H:MM:SS" (drops the hours group when zero). */
@@ -285,79 +382,104 @@ export class TedTimerCard extends LitElement implements LovelaceCard {
         color: var(--ted-style-accent);
         --mdc-icon-size: 22px;
       }
+      .add-hdr {
+        margin-left: auto;
+        color: var(--ted-style-accent);
+        flex: none;
+      }
       .warn {
         padding: 8px 16px 16px;
         color: var(--ted-style-muted);
       }
       .empty {
-        padding: 6px 16px 12px;
+        padding: 2px 4px 8px;
         color: var(--ted-style-muted);
         font-size: 0.9rem;
       }
-      .list {
+      .section {
+        padding: 4px 12px 8px;
+      }
+      .section + .section {
+        border-top: 1px solid var(--ted-style-divider);
+        margin-top: 2px;
+      }
+      .section-label {
+        font-size: 0.72rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--ted-style-muted);
+        padding: 6px 4px 8px;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: 8px;
+      }
+      .tile {
+        position: relative;
+        overflow: hidden;
         display: flex;
         flex-direction: column;
+        border: 1px solid var(--ted-style-divider);
+        border-radius: var(--ted-style-radius-sm);
+        background: var(--ted-style-surface-2);
       }
-      .row {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        padding: 8px 8px 8px 16px;
-        border-top: 1px solid var(--ted-style-divider);
+      .bar {
+        height: 3px;
+        background: var(--ted-style-divider);
       }
-      .name {
-        flex: 1 1 auto;
+      .bar-fill {
+        height: 100%;
+        background: var(--ted-style-accent);
+        transition: width 0.5s linear;
+      }
+      .tile.paused .bar-fill {
+        background: var(--ted-style-muted);
+      }
+      .tile-body {
+        padding: 8px 10px 2px;
         min-width: 0;
-        font-weight: 500;
+      }
+      .rem {
+        font-size: 1.35rem;
+        font-weight: 600;
+        line-height: 1.15;
+        font-variant-numeric: tabular-nums;
+        color: var(--ted-style-accent);
+      }
+      .tile.paused .rem {
+        color: var(--ted-style-muted);
+      }
+      .tname {
+        font-size: 0.8rem;
+        color: var(--ted-style-muted);
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
       }
-      .remaining {
-        font-size: 1.2rem;
-        font-weight: 600;
-        font-variant-numeric: tabular-nums;
-        color: var(--ted-style-accent);
-      }
-      .cancel {
-        color: var(--ted-style-muted);
-        flex: none;
-      }
-      .add {
+      .tile-ctrl {
         display: flex;
         align-items: center;
-        gap: 8px;
-        padding: 12px 12px 2px;
-        margin-top: 4px;
-        border-top: 1px solid var(--ted-style-divider);
-      }
-      .add .grow {
-        flex: 1 1 auto;
-        min-width: 60px;
-      }
-      .hms {
-        display: flex;
-        gap: 6px;
-        flex: none;
-      }
-      .num {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
+        justify-content: flex-end;
         gap: 2px;
-        font-size: 0.65rem;
+        padding: 2px 6px 6px;
+      }
+      .tile-ctrl ha-icon-button {
+        flex: none;
+        --mdc-icon-button-size: 40px;
+        --mdc-icon-size: 22px;
+        border-radius: var(--ted-style-radius-sm);
+      }
+      .play {
         color: var(--ted-style-muted);
       }
-      .num input {
-        width: 44px;
-        appearance: none;
-        background: var(--ted-style-surface-2);
-        color: var(--ted-style-text);
-        border: 1px solid var(--ted-style-divider);
-        border-radius: var(--ted-style-radius-sm);
-        padding: 8px 4px;
-        font: inherit;
-        text-align: center;
+      .play.accent {
+        color: var(--ted-style-on-accent);
+        background: var(--ted-style-accent);
+      }
+      .gear {
+        color: var(--ted-style-muted);
       }
       ha-textfield {
         --mdc-theme-primary: var(--ted-style-accent);
@@ -365,36 +487,37 @@ export class TedTimerCard extends LitElement implements LovelaceCard {
         --mdc-text-field-ink-color: var(--ted-style-text);
         --mdc-text-field-label-ink-color: var(--ted-style-muted);
       }
-      .add-btn {
-        color: var(--ted-style-accent);
-        flex: none;
-      }
-      .recent {
+      .dlg {
         display: flex;
-        flex-wrap: wrap;
-        gap: 6px;
-        padding: 10px 16px 2px;
+        flex-direction: column;
+        gap: 16px;
+        min-width: 260px;
       }
-      .recent button {
-        display: inline-flex;
+      .danger {
+        --mdc-theme-primary: var(--error-color, #db4437);
+      }
+      .hms {
+        display: flex;
+        gap: 10px;
+      }
+      .num {
+        display: flex;
+        flex-direction: column;
         align-items: center;
         gap: 4px;
-        border: 1px solid var(--ted-style-divider);
-        border-radius: var(--ted-style-pill);
-        padding: 5px 12px 5px 8px;
-        background: transparent;
-        color: var(--ted-style-text);
+        font-size: 0.72rem;
+        color: var(--secondary-text-color, var(--ted-style-muted));
+      }
+      .num input {
+        width: 64px;
+        appearance: none;
+        background: var(--secondary-background-color, var(--ted-style-surface-2));
+        color: var(--primary-text-color, var(--ted-style-text));
+        border: 1px solid var(--divider-color, var(--ted-style-divider));
+        border-radius: var(--ted-style-radius-sm);
+        padding: 9px 4px;
         font: inherit;
-        font-size: 0.85rem;
-        cursor: pointer;
-        transition: background 0.15s ease;
-      }
-      .recent button:hover {
-        background: var(--ted-style-surface-2);
-      }
-      .recent ha-icon {
-        --mdc-icon-size: 16px;
-        color: var(--ted-style-muted);
+        text-align: center;
       }
     `,
   ];

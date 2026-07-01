@@ -83,7 +83,7 @@ export class TedAlarmCardEditor extends LitElement implements LovelaceCardEditor
       case "entity":
         return "Alarms sensor (optional)";
       case "show_add":
-        return "Show add form";
+        return "Show add button";
       case "theme":
         return "Visual styling";
       case "transparency":

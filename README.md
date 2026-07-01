@@ -913,6 +913,12 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.12
+
+- **Alarm Card** — redesigned: a **+** in the header opens a **New alarm** popup; alarms now **sort by time of day with enabled ones first**; each row shows a large **12-hour time**; and the per-row menu is replaced by a **delete** button that confirms via Home Assistant's standard dialog.
+- **Timer Card** — redesigned as a **responsive grid of tiles** (column count adapts to the card width) split into **Active** and **Recent** sections. Active tiles show a **progress bar**, remaining time and name, with **pause / resume** and a **gear** to edit (rename, change duration, or delete). A **+** in the header opens a **New timer** popup. Requires **Ted's Cards Backend v1.0.1+** for pause/resume/edit.
+- **Editor sections** — the Timer editor's sections (Active / Recent) support **drag-to-reorder** and inline **show/hide** toggles, matching the other cards.
+
 ### v1.0.11
 
 - **Alarm & Timer Cards** — rebuilt on the same foundations as the other cards: a **Visual styling** option (ted-style / ha, default HA), **Appearance** controls (transparency, background blur, brushed sheen, subtle shadow), an optional **Title** and **sensor entity** override, and a **Show add form** toggle — all via a proper visual editor. Themed inputs throughout; the Timer card now shows a **live countdown** and starts timers with an **H / M / S** duration.
