@@ -913,6 +913,11 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.15
+
+- **Alarm Card** — the **New alarm** popup now has a **repeat-day picker** (Mon–Sun), and each alarm row shows a **gear** to edit it (label, time, and days). Day sets are summarised as **Every day**, **Weekdays**, or **Weekends** where they match, otherwise the individual days are listed. Requires **Ted's Cards Backend v1.0.2+** so newly added or edited alarms refresh the card immediately.
+- **Timer Card** — **Active** timers now span the **full width** of the card (one per row) instead of sitting in columns, and every tile's controls (pause / resume, edit, and a new **delete**) are **inline** with the time and name, in both the Active and Recent sections.
+
 ### v1.0.14
 
 - **Alarm & Timer Cards** — the **New alarm** / **New timer** / **Edit timer** popups no longer render with a blank body. Their fields were built on a Home Assistant component that is often not yet loaded when a card first appears; they now use self-contained native inputs so the form always shows. The popups also correctly follow the card's theme (border radii, surface, and accent colours) in both the HA and ted-style themes.

@@ -203,7 +203,7 @@ export class TedTimerCard extends LitElement implements LovelaceCard {
             <div class="section-label">Active</div>
             ${active.length === 0
               ? html`<div class="empty">No timers running.</div>`
-              : html`<div class="grid">${active.map((t) => this._renderActiveTile(t))}</div>`}
+              : html`<div class="grid grid-active">${active.map((t) => this._renderActiveTile(t))}</div>`}
           </div>
         `;
       }
@@ -260,6 +260,13 @@ export class TedTimerCard extends LitElement implements LovelaceCard {
           </ha-icon-button>
           <ha-icon-button class="gear" .label=${`Edit ${t.name}`} @click=${() => this._openEdit(t)}>
             <ha-icon icon="mdi:cog"></ha-icon>
+          </ha-icon-button>
+          <ha-icon-button
+            class="del"
+            .label=${`Delete ${t.name}`}
+            @click=${() => this._call("cancel_timer", { id: t.id })}
+          >
+            <ha-icon icon="mdi:delete-outline"></ha-icon>
           </ha-icon-button>
         </div>
       </div>
@@ -426,19 +433,28 @@ export class TedTimerCard extends LitElement implements LovelaceCard {
       }
       .grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
         gap: 8px;
+      }
+      .grid-active {
+        grid-template-columns: 1fr;
       }
       .tile {
         position: relative;
         overflow: hidden;
         display: flex;
-        flex-direction: column;
+        flex-direction: row;
+        align-items: center;
+        gap: 8px;
         border: 1px solid var(--ted-style-divider);
         border-radius: var(--ted-style-radius-sm);
         background: var(--ted-style-surface-2);
       }
       .bar {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
         height: 3px;
         background: var(--ted-style-divider);
       }
@@ -451,8 +467,9 @@ export class TedTimerCard extends LitElement implements LovelaceCard {
         background: var(--ted-style-muted);
       }
       .tile-body {
-        padding: 8px 10px 2px;
+        flex: 1 1 auto;
         min-width: 0;
+        padding: 8px 10px;
       }
       .rem {
         font-size: 1.35rem;
@@ -472,11 +489,12 @@ export class TedTimerCard extends LitElement implements LovelaceCard {
         white-space: nowrap;
       }
       .tile-ctrl {
+        flex: none;
         display: flex;
         align-items: center;
         justify-content: flex-end;
         gap: 2px;
-        padding: 2px 6px 6px;
+        padding: 0 6px;
       }
       .tile-ctrl ha-icon-button {
         flex: none;
@@ -492,6 +510,9 @@ export class TedTimerCard extends LitElement implements LovelaceCard {
         background: var(--ted-style-accent);
       }
       .gear {
+        color: var(--ted-style-muted);
+      }
+      .del {
         color: var(--ted-style-muted);
       }
       ha-textfield {

@@ -61,8 +61,12 @@ export class TedAlarmCard extends LitElement implements LovelaceCard {
   @state() private _config?: AlarmCardConfig;
   @state() private _label = "";
   @state() private _time = "07:00";
-  /** Whether the "new alarm" dialog is open. */
+  /** Selected repeat days (Python weekday convention, Mon = 0). */
+  @state() private _days: number[] = [0, 1, 2, 3, 4, 5, 6];
+  /** Whether the add/edit alarm dialog is open. */
   @state() private _addOpen = false;
+  /** null = adding a new alarm; otherwise the id of the alarm being edited. */
+  @state() private _editId: string | null = null;
 
   public setConfig(config: AlarmCardConfig): void {
     if (!config) throw new Error("Invalid configuration");
@@ -104,18 +108,44 @@ export class TedAlarmCard extends LitElement implements LovelaceCard {
   }
 
   private _openAdd(): void {
+    this._editId = null;
     this._label = "";
     this._time = "07:00";
+    this._days = [0, 1, 2, 3, 4, 5, 6];
+    this._addOpen = true;
+  }
+
+  private _openEdit(a: Alarm): void {
+    this._editId = a.id;
+    this._label = a.label ?? "";
+    this._time = (a.time ?? "07:00").slice(0, 5);
+    this._days = Array.isArray(a.days) ? [...a.days] : [];
     this._addOpen = true;
   }
 
   private _closeAdd(): void {
     this._addOpen = false;
+    this._editId = null;
+  }
+
+  private _toggleDay(d: number): void {
+    this._days = this._days.includes(d)
+      ? this._days.filter((x) => x !== d)
+      : [...this._days, d].sort((a, b) => a - b);
   }
 
   private _submitAdd(): void {
     if (!this._label) return;
-    this._call("add_alarm", { label: this._label, time: this._time });
+    if (this._editId) {
+      this._call("update_alarm", {
+        id: this._editId,
+        label: this._label,
+        time: this._time,
+        days: this._days,
+      });
+    } else {
+      this._call("add_alarm", { label: this._label, time: this._time, days: this._days });
+    }
     this._closeAdd();
   }
 
@@ -175,6 +205,7 @@ export class TedAlarmCard extends LitElement implements LovelaceCard {
   }
 
   private _renderAlarm(a: Alarm): TemplateResult {
+    const grouped = this._daysLabel(a.days);
     return html`
       <div class="row ${a.enabled ? "" : "off"}">
         <div class="info">
@@ -183,7 +214,9 @@ export class TedAlarmCard extends LitElement implements LovelaceCard {
           ${a.description ? html`<div class="desc">${a.description}</div>` : nothing}
           ${Array.isArray(a.days) && a.days.length
             ? html`<div class="days">
-                ${a.days.map((d) => html`<span>${DAY_LABELS[d] ?? d}</span>`)}
+                ${grouped
+                  ? html`<span>${grouped}</span>`
+                  : a.days.map((d) => html`<span>${DAY_LABELS[d] ?? d}</span>`)}
               </div>`
             : nothing}
         </div>
@@ -192,6 +225,9 @@ export class TedAlarmCard extends LitElement implements LovelaceCard {
           @change=${(e: Event) =>
             this._call("update_alarm", { id: a.id, enabled: (e.target as HTMLInputElement).checked })}
         ></ha-switch>
+        <ha-icon-button class="gear" .label=${`Edit ${a.label}`} @click=${() => this._openEdit(a)}>
+          <ha-icon icon="mdi:cog"></ha-icon>
+        </ha-icon-button>
         <ha-icon-button class="del" .label=${`Delete ${a.label}`} @click=${() => this._confirmDelete(a)}>
           <ha-icon icon="mdi:delete-outline"></ha-icon>
         </ha-icon-button>
@@ -208,7 +244,7 @@ export class TedAlarmCard extends LitElement implements LovelaceCard {
         @keydown=${(e: KeyboardEvent) => e.key === "Escape" && this._closeAdd()}
       >
         <div class="ted-sheet" @click=${(e: Event) => e.stopPropagation()}>
-          <div class="ted-sheet-head">New alarm</div>
+          <div class="ted-sheet-head">${this._editId ? "Edit alarm" : "New alarm"}</div>
           <div class="ted-sheet-body">
             <label class="ted-field">
               <span class="ted-field-label">Label</span>
@@ -228,14 +264,42 @@ export class TedAlarmCard extends LitElement implements LovelaceCard {
                 @input=${(e: Event) => (this._time = (e.target as HTMLInputElement).value)}
               />
             </label>
+            <div class="ted-field">
+              <span class="ted-field-label">Repeat</span>
+              <div class="ted-days">
+                ${DAY_LABELS.map(
+                  (label, d) => html`<button
+                    type="button"
+                    class="ted-daybtn ${this._days.includes(d) ? "on" : ""}"
+                    aria-pressed=${this._days.includes(d)}
+                    @click=${() => this._toggleDay(d)}
+                  >
+                    ${label}
+                  </button>`,
+                )}
+              </div>
+            </div>
           </div>
           <div class="ted-sheet-foot">
             <button class="ted-btn" @click=${this._closeAdd}>Cancel</button>
-            <button class="ted-btn primary" ?disabled=${!this._label} @click=${this._submitAdd}>Add</button>
+            <button class="ted-btn primary" ?disabled=${!this._label} @click=${this._submitAdd}>
+              ${this._editId ? "Save" : "Add"}
+            </button>
           </div>
         </div>
       </div>
     `;
+  }
+
+  /** Condense a day set into "Every day" / "Weekdays" / "Weekends", else null. */
+  private _daysLabel(days: number[] | undefined): string | null {
+    if (!Array.isArray(days)) return null;
+    const s = [...new Set(days)].sort((a, b) => a - b);
+    const eq = (arr: number[]) => s.length === arr.length && arr.every((v, i) => v === s[i]);
+    if (eq([0, 1, 2, 3, 4, 5, 6])) return "Every day";
+    if (eq([0, 1, 2, 3, 4])) return "Weekdays";
+    if (eq([5, 6])) return "Weekends";
+    return null;
   }
 
   /** Format a "HH:MM[:SS]" backend time as a 12-hour clock, e.g. "7:05am". */
@@ -350,6 +414,10 @@ export class TedAlarmCard extends LitElement implements LovelaceCard {
         color: var(--ted-style-muted);
       }
       .del {
+        color: var(--ted-style-muted);
+        flex: none;
+      }
+      .gear {
         color: var(--ted-style-muted);
         flex: none;
       }

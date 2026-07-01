@@ -116,6 +116,29 @@ export const modalStyles = css`
   .ted-hms .ted-field {
     flex: 1 1 0;
   }
+  .ted-days {
+    display: flex;
+    gap: 6px;
+  }
+  .ted-daybtn {
+    flex: 1 1 0;
+    min-width: 0;
+    appearance: none;
+    font: inherit;
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 8px 0;
+    cursor: pointer;
+    color: var(--ted-style-muted, var(--secondary-text-color, #6f6f6f));
+    background: var(--ted-style-surface-2, var(--secondary-background-color, rgba(0, 0, 0, 0.04)));
+    border: 1px solid var(--ted-style-divider, rgba(120, 120, 120, 0.22));
+    border-radius: var(--ted-style-radius-sm, 6px);
+  }
+  .ted-daybtn.on {
+    color: var(--ted-style-on-accent, var(--text-primary-color, #fff));
+    background: var(--ted-style-accent, var(--primary-color, #2196f3));
+    border-color: var(--ted-style-accent, var(--primary-color, #2196f3));
+  }
   .ted-sheet-foot {
     display: flex;
     justify-content: flex-end;
