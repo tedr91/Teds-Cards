@@ -263,11 +263,6 @@ export class TedTimerCard extends LitElement implements LovelaceCard {
             .label=${`Edit ${t.name}`}
             @click=${() => this._openEdit(t)}
           ></ted-icon-button>
-          <ted-icon-button
-            icon="mdi:delete-outline"
-            .label=${`Delete ${t.name}`}
-            @click=${() => this._call("cancel_timer", { id: t.id })}
-          ></ted-icon-button>
         </div>
       </div>
     `;

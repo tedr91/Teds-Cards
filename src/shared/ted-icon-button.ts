@@ -44,10 +44,6 @@ export class TedIconButton extends LitElement {
       border-radius: var(--ted-style-radius-sm, 6px);
       color: var(--ted-style-muted, var(--secondary-text-color, #6f6f6f));
     }
-    ha-icon {
-      /* Scale the glyph up relative to the (small) button footprint. */
-      transform: scale(1.35);
-    }
     :host([tone="accent"]) ha-icon-button {
       color: var(--ted-style-on-accent, var(--text-primary-color, #fff));
       background: var(--ted-style-accent, var(--primary-color, #2196f3));

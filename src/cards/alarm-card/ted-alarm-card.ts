@@ -150,15 +150,21 @@ export class TedAlarmCard extends LitElement implements LovelaceCard {
     this._closeAdd();
   }
 
-  private async _confirmDelete(a: Alarm): Promise<void> {
+  private async _deleteEditing(): Promise<void> {
+    const id = this._editId;
+    if (!id) return;
+    const a = this._alarms.find((x) => x.id === id);
     const confirmed = await showConfirmation(this, {
       title: "Delete alarm",
-      text: `Delete "${a.label}"?`,
+      text: a ? `Delete "${a.label}"?` : "Delete this alarm?",
       confirmText: "Delete",
       dismissText: "Cancel",
       destructive: true,
     });
-    if (confirmed) this._call("remove_alarm", { id: a.id });
+    if (confirmed) {
+      this._call("remove_alarm", { id });
+      this._closeAdd();
+    }
   }
 
   protected render(): TemplateResult | typeof nothing {
@@ -234,11 +240,6 @@ export class TedAlarmCard extends LitElement implements LovelaceCard {
             .label=${`Edit ${a.label}`}
             @click=${() => this._openEdit(a)}
           ></ted-icon-button>
-          <ted-icon-button
-            icon="mdi:delete-outline"
-            .label=${`Delete ${a.label}`}
-            @click=${() => this._confirmDelete(a)}
-          ></ted-icon-button>
         </div>
       </div>
     `;
@@ -290,6 +291,9 @@ export class TedAlarmCard extends LitElement implements LovelaceCard {
             </div>
           </div>
           <div class="ted-sheet-foot">
+            ${this._editId
+              ? html`<button class="ted-btn danger" @click=${this._deleteEditing}>Delete</button>`
+              : nothing}
             <button class="ted-btn" @click=${this._closeAdd}>Cancel</button>
             <button class="ted-btn primary" ?disabled=${!this._label} @click=${this._submitAdd}>
               ${this._editId ? "Save" : "Add"}
