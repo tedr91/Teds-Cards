@@ -25,9 +25,9 @@ export class TedIconButton extends LitElement {
 
   protected render(): TemplateResult {
     return html`
-      <ha-icon-button .label=${this.label} ?disabled=${this.disabled}>
+      <button type="button" aria-label=${this.label} title=${this.label} ?disabled=${this.disabled}>
         <ha-icon icon=${this.icon}></ha-icon>
-      </ha-icon-button>
+      </button>
     `;
   }
 
@@ -35,24 +35,49 @@ export class TedIconButton extends LitElement {
     :host {
       display: inline-flex;
       flex: none;
-      --ted-ib-size: 28px;
-      --ted-ib-icon: 24px;
+      --ted-ib-size: 32px;
+      --ted-ib-icon: 22px;
     }
-    ha-icon-button {
-      --mdc-icon-button-size: var(--ted-ib-size);
-      --mdc-icon-size: var(--ted-ib-icon);
+    button {
+      appearance: none;
+      margin: 0;
+      padding: 0;
+      border: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: var(--ted-ib-size);
+      height: var(--ted-ib-size);
       border-radius: var(--ted-style-radius-sm, 6px);
+      background: none;
       color: var(--ted-style-muted, var(--secondary-text-color, #6f6f6f));
+      cursor: pointer;
+      transition: background 0.15s ease;
     }
-    :host([tone="accent"]) ha-icon-button {
+    button:hover {
+      background: color-mix(in srgb, currentColor 14%, transparent);
+    }
+    ha-icon {
+      --mdc-icon-size: var(--ted-ib-icon);
+      width: var(--ted-ib-icon);
+      height: var(--ted-ib-icon);
+      display: inline-flex;
+    }
+    :host([tone="accent"]) button {
       color: var(--ted-style-on-accent, var(--text-primary-color, #fff));
       background: var(--ted-style-accent, var(--primary-color, #2196f3));
     }
-    :host([tone="danger"]) ha-icon-button {
+    :host([tone="accent"]) button:hover {
+      filter: brightness(1.06);
+    }
+    :host([tone="danger"]) button {
       color: var(--ted-style-danger, var(--error-color, #e5484d));
     }
     :host([disabled]) {
       opacity: 0.4;
+    }
+    button:disabled {
+      cursor: default;
     }
   `;
 }
