@@ -503,7 +503,7 @@ export class TedTimerCard extends LitElement implements LovelaceCard {
         }
         .tile-ctrl ted-icon-button {
           --ted-ib-size: 24px;
-          --ted-ib-icon: 15px;
+          --ted-ib-icon: 22px;
         }
       }
       ha-textfield {

@@ -36,7 +36,7 @@ export class TedIconButton extends LitElement {
       display: inline-flex;
       flex: none;
       --ted-ib-size: 28px;
-      --ted-ib-icon: 18px;
+      --ted-ib-icon: 24px;
     }
     ha-icon-button {
       --mdc-icon-button-size: var(--ted-ib-size);

@@ -442,7 +442,7 @@ export class TedAlarmCard extends LitElement implements LovelaceCard {
         }
         .ctrl ted-icon-button {
           --ted-ib-size: 24px;
-          --ted-ib-icon: 15px;
+          --ted-ib-icon: 22px;
         }
         .ctrl ha-switch {
           transform: scale(0.85);
