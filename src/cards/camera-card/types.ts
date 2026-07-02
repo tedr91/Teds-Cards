@@ -6,13 +6,37 @@ import type { TedStyleTheme } from "../../shared/types";
 /** Visual styling mode. `ted-style` = self-contained look; `ha` = follow HA theme. */
 export type CameraCardTheme = TedStyleTheme;
 
-export interface CameraCardConfig extends LovelaceCardConfig {
-  type: string;
+/**
+ * How the cameras are arranged.
+ * - `single`   — one feed filling the card.
+ * - `dual`     — two feeds side by side.
+ * - `quad`     — a 2×2 grid of feeds.
+ * - `big-small` — one large feed plus a strip of smaller feeds.
+ */
+export type CameraLayout = "single" | "dual" | "quad" | "big-small";
+
+/** Where the strip of small feeds sits in the `big-small` layout. */
+export type BigSmallPosition = "right" | "bottom";
+
+/** A single camera within the card. */
+export interface CameraItemConfig {
   /** A `camera.*` entity. */
   entity: string;
-  /** Overlay caption (defaults to the camera's friendly name when shown). */
+  /** Per-camera caption override (defaults to the camera's friendly name). */
   name?: string;
-  /** Show the caption overlay at the bottom of the feed. Defaults to false. */
+  /** When `false`, the camera is hidden from the layout. Defaults to true. */
+  enabled?: boolean;
+}
+
+export interface CameraCardConfig extends LovelaceCardConfig {
+  type: string;
+  /** The cameras shown in the card. */
+  cameras: CameraItemConfig[];
+  /** Arrangement of the feeds. Defaults to `single`. */
+  layout?: CameraLayout;
+  /** Placement of the small-feed strip in the `big-small` layout. Defaults to `right`. */
+  big_small_position?: BigSmallPosition;
+  /** Show the caption overlay at the bottom of each feed. Defaults to false. */
   show_name?: boolean;
   /** Periodic thumbnail (`auto`, default) vs. continuous live stream (`live`). */
   camera_view?: CameraView;

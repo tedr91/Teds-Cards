@@ -22,7 +22,7 @@ After spending months attempting to find an "on/off/brightness" switch that I li
 | Clock Weather Card | `custom:ted-clock-weather-card` | A large clock with the date and current weather. |
 | Remote Card | `custom:ted-remote-card` | Remote control for media devices (e.g. Apple TV and Kaleidescape). |
 | Room Card | `custom:ted-room-card` | Overview card for a Home Assistant area. |
-| Camera Card | `custom:ted-camera-card` | Camera feed (auto thumbnail or live stream), like Home Assistant's picture-glance. |
+| Camera Card | `custom:ted-camera-card` | One or more camera feeds (auto thumbnail or live stream) in single, dual, quad, or big+small layouts. |
 | Navbar Card | `custom:ted-navbar-card` | Navigation bar pinned to the top or bottom, with buttons and status items in left/center/right zones. |
 | Alarm Card | `custom:ted-alarm-card` | Add, view, and enable/disable alarms (requires the Ted's Cards Backend integration). |
 | Timer Card | `custom:ted-timer-card` | Start, view, and cancel countdown timers (requires the Ted's Cards Backend integration). |
@@ -724,15 +724,17 @@ px, matching a button).
 
 <a id="camera-card"></a>
 
-A single **camera feed**, rendered with Home Assistant's own picture-glance image element so it gets
-both **auto** thumbnail polling and **live** streaming for free. Use it on its own, as a Room Card
-button, or as a Room Card photo source.
+A **camera feed** — or **several** — rendered with Home Assistant's own picture-glance image element so
+each feed gets both **auto** thumbnail polling and **live** streaming for free. Show one camera, or lay
+out multiple in a **Dual**, **Quad**, or **Big + Small(s)** arrangement. Use it on its own, as a Room
+Card button, or as a Room Card photo source.
 
 Minimal config:
 
 ```yaml
 type: custom:ted-camera-card
-entity: camera.front_door
+cameras:
+  - entity: camera.front_door
 ```
 
 <details>
@@ -740,17 +742,22 @@ entity: camera.front_door
 
 ```yaml
 type: custom:ted-camera-card
-entity: camera.front_door   # the camera entity to show (required)
-name: Front Door            # optional caption text, defaults to the entity's name
-show_name: false            # optional, overlay the name along the bottom edge
+layout: single              # optional: single (default) | dual | quad | big-small
+big_small_position: right   # optional (big-small only): right (default) | bottom
+cameras:                    # required — one or more cameras, shown in order
+  - entity: camera.front_door
+    name: Front Door         # optional per-camera caption, defaults to the entity's name
+    enabled: true            # optional, set false to hide this camera from the layout
+  - entity: camera.back_yard
+show_name: false            # optional, overlay each camera's caption along the bottom edge
 camera_view: auto           # optional: auto (thumbnail, default) | live (stream)
 fit_mode: cover             # optional: cover (default) | contain | fill
 aspect_ratio: "16:9"        # optional, e.g. "16:9" or "1.78" (ignored in grid layout)
 theme: ted-style            # optional, visual styling: ted-style (default) | ha
 brushed: false              # optional brushed-metal sheen behind the feed
-width: 240                  # optional manual width (px), ignored in grid layout
-height: 135                 # optional manual height (px), ignored in grid layout
-tap_action:                 # optional, defaults to More Info
+width: 800                  # optional manual width (px), ignored in grid layout
+height: 450                 # optional manual height (px), ignored in grid layout
+tap_action:                 # optional, defaults to More Info of the tapped camera
   action: more-info
 hold_action:
   action: none
@@ -758,14 +765,20 @@ double_tap_action:
   action: none
 ```
 
+- **Cameras** — add one or more `camera.*` entities. In the editor, use **Auto populate cameras** to
+  add every camera at once, **drag** to reorder, the **switch** in each row header to show/hide a camera,
+  and the **trash** icon to remove one. Each camera has an optional per-feed **caption**.
+- **Layout** — **Single** (one feed), **Dual** (side by side), **Quad** (2×2), or **Big + Small(s)**
+  (one large feed plus a strip of smaller ones, positioned to the **right** or **bottom**). Slots with
+  no camera show an empty placeholder.
 - **Camera view** — **Auto thumbnail** (default; periodically refreshed still) or **Live stream**
-  (continuous video).
-- **Fit mode** — how the image fills its box: **Cover** (default), **Contain**, or **Fill**.
+  (continuous video). Applies to every feed.
+- **Fit mode** — how each image fills its box: **Cover** (default), **Contain**, or **Fill**.
 - **Aspect ratio** — optional, sets the card's shape when it isn't sized by the dashboard grid.
 - **Sizing** — in a **grid** (sections) layout the card fills its grid cell; otherwise it uses the
-  optional **Width** / **Height** (defaulting to 240×135). `theme` and `brushed` work as in the other
+  optional **Width** / **Height** (defaulting to 800×450). `theme` and `brushed` work as in the other
   cards (see the Light Card section).
-- **Interactions** — **Tap** defaults to **More Info** (the camera's live dialog); **Hold** and
+- **Interactions** — **Tap** defaults to **More Info** of the tapped camera; **Hold** and
   **Double tap** default to none. All accept the standard Home Assistant action options.
 
 </details>
@@ -912,6 +925,13 @@ options as the Alarm card apply.
 
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
+
+### v1.0.41
+
+- **Camera Card — multi-camera support** — a single card can now show **several cameras** in a **Single**, **Dual** (side by side), **Quad** (2×2), or **Big + Small(s)** layout (small feeds on the **right** or **bottom**).
+- **Camera editor** — new **Cameras** section: **drag to reorder**, a **show/hide** switch per camera, **add**/**remove** cameras, and an **Auto populate cameras** button that adds every camera and picks a best-fit layout.
+- **Bigger default size** — standalone cards now default to **800×450** (grid cells fill their cell as before).
+- ⚠️ **Breaking:** the old single `entity:` option is gone — cameras are now listed under `cameras:`. Existing camera cards need to be reconfigured.
 
 ### v1.0.40
 

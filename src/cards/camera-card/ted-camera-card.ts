@@ -20,7 +20,7 @@ import {
   CAMERA_CARD_NAME,
   CAMERA_CARD_TYPE,
 } from "./const";
-import type { CameraCardConfig } from "./types";
+import type { CameraCardConfig, CameraItemConfig, CameraLayout } from "./types";
 
 const DOUBLE_CLICK_MS = 250;
 const LONG_PRESS_MS = 500;
@@ -56,7 +56,7 @@ export class TedCameraCard extends LitElement implements LovelaceCard {
 
   public static getStubConfig(hass: HomeAssistant): Omit<CameraCardConfig, "type"> {
     const cameras = Object.keys(hass.states).filter((id) => id.startsWith("camera."));
-    return { entity: cameras[0] ?? "" };
+    return { cameras: cameras[0] ? [{ entity: cameras[0] }] : [] };
   }
 
   @property({ attribute: false }) public hass?: HomeAssistant;
@@ -72,12 +72,14 @@ export class TedCameraCard extends LitElement implements LovelaceCard {
     if (!config) {
       throw new Error("Invalid configuration");
     }
-    if (!config.entity) {
-      throw new Error("You must specify an entity");
+    if (!Array.isArray(config.cameras) || config.cameras.length === 0) {
+      throw new Error("You must specify at least one camera");
     }
-    const domain = config.entity.split(".")[0];
-    if (domain !== "camera") {
-      throw new Error(`ted-camera-card only supports camera entities (got '${domain}')`);
+    for (const cam of config.cameras) {
+      const domain = cam.entity?.split(".")[0];
+      if (cam.entity && domain !== "camera") {
+        throw new Error(`ted-camera-card only supports camera entities (got '${domain}')`);
+      }
     }
     this._config = { ...config };
   }
@@ -88,8 +90,8 @@ export class TedCameraCard extends LitElement implements LovelaceCard {
 
   public getGridOptions(): GridOptions {
     return {
-      columns: 6,
-      rows: 3,
+      columns: 12,
+      rows: 4,
       min_columns: 3,
       min_rows: 1,
     };
@@ -122,8 +124,8 @@ export class TedCameraCard extends LitElement implements LovelaceCard {
     // In a grid (Sections) view, honor the grid cell sizing. Everywhere else
     // (stacks, masonry, panel), render at the configured fixed size.
     const isGrid = this.layout === "grid";
-    const cardWidth = typeof this._config.width === "number" ? this._config.width : 240;
-    const cardHeight = typeof this._config.height === "number" ? this._config.height : 135;
+    const cardWidth = typeof this._config.width === "number" ? this._config.width : 800;
+    const cardHeight = typeof this._config.height === "number" ? this._config.height : 450;
     const cardStyle: Record<string, string> = appearanceStyle({
       background: cssColor(this._config.background),
       transparency: this._config.transparency,
@@ -135,43 +137,88 @@ export class TedCameraCard extends LitElement implements LovelaceCard {
       cardStyle.margin = "0 auto";
     }
 
-    const stateObj = this.hass.states[this._config.entity];
-    const clickable =
-      this._tapIsActive() ||
-      hasAction(this._config.hold_action) ||
-      hasAction(this._config.double_tap_action);
-    const showName = this._config.show_name === true;
-    const caption = this._config.name ?? stateObj?.attributes?.friendly_name ?? this._config.entity;
-    // hui-image ignores the ratio when laid out by a grid; let the cell decide.
-    const aspectRatio = isGrid ? undefined : this._config.aspect_ratio;
-
     return html`
       <ha-card class=${classMap(themeClasses)} style=${styleMap(cardStyle)}>
         ${this._config.brushed ? brushedOverlay : nothing}
-        <div
-          class=${classMap({ camera: true, clickable })}
-          @click=${this._onClick}
-          @pointerdown=${this._onPointerDown}
-          @pointerup=${this._onPointerUp}
-          @pointercancel=${this._onPointerUp}
-          @pointerleave=${this._onPointerUp}
-          role=${clickable ? "button" : nothing}
-          tabindex=${clickable ? "0" : nothing}
-        >
-          ${this._imageReady
-            ? html`<hui-image
-                .hass=${this.hass}
-                .cameraImage=${this._config.entity}
-                .cameraView=${this._config.camera_view ?? "auto"}
-                .fitMode=${this._config.fit_mode ?? "cover"}
-                .aspectRatio=${aspectRatio}
-              ></hui-image>`
-            : html`<div class="placeholder" aria-hidden="true"></div>`}
-          ${showName
-            ? html`<div class="box"><div class="title">${caption}</div></div>`
+        ${this._renderLayout(isGrid)}
+      </ha-card>
+    `;
+  }
+
+  /** The cameras that should appear in the layout, in order. */
+  private _enabledCameras(): CameraItemConfig[] {
+    return (this._config?.cameras ?? []).filter((cam) => cam.enabled !== false && cam.entity);
+  }
+
+  /** Build the tile grid for the configured layout. */
+  private _renderLayout(isGrid: boolean): TemplateResult {
+    const cameras = this._enabledCameras();
+    const layout: CameraLayout = this._config?.layout ?? "single";
+
+    if (layout === "big-small") {
+      const position = this._config?.big_small_position === "bottom" ? "bottom" : "right";
+      const [big, ...smalls] = cameras;
+      return html`
+        <div class=${classMap({ "big-small": true, [position]: true })}>
+          <div class="big">${this._renderTile(big ?? null, isGrid)}</div>
+          ${smalls.length
+            ? html`<div class="smalls">
+                ${smalls.map((cam) => this._renderTile(cam, isGrid))}
+              </div>`
             : nothing}
         </div>
-      </ha-card>
+      `;
+    }
+
+    const slots = layout === "quad" ? 4 : layout === "dual" ? 2 : 1;
+    const tiles: Array<CameraItemConfig | null> = [];
+    for (let i = 0; i < slots; i++) tiles.push(cameras[i] ?? null);
+    return html`
+      <div class=${classMap({ grid: true, [layout]: true })}>
+        ${tiles.map((cam) => this._renderTile(cam, isGrid))}
+      </div>
+    `;
+  }
+
+  /** Render a single camera tile, or an empty placeholder when `cam` is null. */
+  private _renderTile(cam: CameraItemConfig | null, isGrid: boolean): TemplateResult {
+    if (!cam) {
+      return html`<div class="tile"><div class="placeholder" aria-hidden="true"></div></div>`;
+    }
+    const stateObj = this.hass?.states[cam.entity];
+    const clickable =
+      this._tapIsActive() ||
+      hasAction(this._config?.hold_action) ||
+      hasAction(this._config?.double_tap_action);
+    const showName = this._config?.show_name === true;
+    const caption = cam.name ?? stateObj?.attributes?.friendly_name ?? cam.entity;
+    // hui-image ignores the ratio when laid out by a grid; let the cell decide.
+    const aspectRatio = isGrid ? undefined : this._config?.aspect_ratio;
+
+    return html`
+      <div
+        class=${classMap({ tile: true, clickable })}
+        @click=${() => this._onClick(cam.entity)}
+        @pointerdown=${() => this._onPointerDown(cam.entity)}
+        @pointerup=${this._onPointerUp}
+        @pointercancel=${this._onPointerUp}
+        @pointerleave=${this._onPointerUp}
+        role=${clickable ? "button" : nothing}
+        tabindex=${clickable ? "0" : nothing}
+      >
+        ${this._imageReady
+          ? html`<hui-image
+              .hass=${this.hass}
+              .cameraImage=${cam.entity}
+              .cameraView=${this._config?.camera_view ?? "auto"}
+              .fitMode=${this._config?.fit_mode ?? "cover"}
+              .aspectRatio=${aspectRatio}
+            ></hui-image>`
+          : html`<div class="placeholder" aria-hidden="true"></div>`}
+        ${showName
+          ? html`<div class="box"><div class="title">${caption}</div></div>`
+          : nothing}
+      </div>
     `;
   }
 
@@ -179,17 +226,17 @@ export class TedCameraCard extends LitElement implements LovelaceCard {
   private _tapIsActive(): boolean {
     const tap = this._config?.tap_action;
     if (tap) return hasAction(tap);
-    return Boolean(this._config?.entity);
+    return this._enabledCameras().length > 0;
   }
 
-  private _onPointerDown = (): void => {
+  private _onPointerDown = (entity: string): void => {
     this._longPressFired = false;
     if (!hasAction(this._config?.hold_action)) return;
     if (this._longPressTimer !== undefined) window.clearTimeout(this._longPressTimer);
     this._longPressTimer = window.setTimeout(() => {
       this._longPressTimer = undefined;
       this._longPressFired = true;
-      this._dispatch("hold");
+      this._dispatch("hold", entity);
     }, LONG_PRESS_MS);
   };
 
@@ -200,7 +247,7 @@ export class TedCameraCard extends LitElement implements LovelaceCard {
     }
   };
 
-  private _onClick = (): void => {
+  private _onClick = (entity: string): void => {
     // A long-press already fired — swallow the trailing click.
     if (this._longPressFired) {
       this._longPressFired = false;
@@ -211,24 +258,26 @@ export class TedCameraCard extends LitElement implements LovelaceCard {
       if (this._clickTimer !== undefined) {
         window.clearTimeout(this._clickTimer);
         this._clickTimer = undefined;
-        this._dispatch("double_tap");
+        this._dispatch("double_tap", entity);
         return;
       }
       this._clickTimer = window.setTimeout(() => {
         this._clickTimer = undefined;
-        this._dispatch("tap");
+        this._dispatch("tap", entity);
       }, DOUBLE_CLICK_MS);
       return;
     }
-    this._dispatch("tap");
+    this._dispatch("tap", entity);
   };
 
-  private _dispatch(action: "tap" | "hold" | "double_tap"): void {
+  private _dispatch(action: "tap" | "hold" | "double_tap", entity: string): void {
     if (!this.hass || !this._config) return;
     if (action === "tap" && !this._tapIsActive()) return;
     if (action === "hold" && !hasAction(this._config.hold_action)) return;
     if (action === "double_tap" && !hasAction(this._config.double_tap_action)) return;
-    handleAction(this, this.hass, this._config, action);
+    // Actions are card-wide, but the default more-info opens the tapped tile's
+    // camera, so run the action against a config scoped to that entity.
+    handleAction(this, this.hass, { ...this._config, entity }, action);
   }
 
   private _clearTimers(): void {
@@ -257,12 +306,67 @@ export class TedCameraCard extends LitElement implements LovelaceCard {
         box-sizing: border-box;
         padding: 0;
       }
-      .camera {
+      /* Layout containers all fill the card. */
+      .grid,
+      .big-small {
+        width: 100%;
+        height: 100%;
+        gap: 2px;
+      }
+      .grid {
+        display: grid;
+      }
+      .grid.single {
+        grid-template-columns: 1fr;
+        grid-template-rows: 1fr;
+      }
+      .grid.dual {
+        grid-template-columns: 1fr 1fr;
+        grid-template-rows: 1fr;
+      }
+      .grid.quad {
+        grid-template-columns: 1fr 1fr;
+        grid-template-rows: 1fr 1fr;
+      }
+      .big-small {
+        display: flex;
+      }
+      .big-small.right {
+        flex-direction: row;
+      }
+      .big-small.bottom {
+        flex-direction: column;
+      }
+      .big-small .big {
+        flex: 2 1 0;
+        min-width: 0;
+        min-height: 0;
+      }
+      .big-small .smalls {
+        flex: 1 1 0;
+        display: flex;
+        gap: 2px;
+        min-width: 0;
+        min-height: 0;
+      }
+      .big-small.right .smalls {
+        flex-direction: column;
+      }
+      .big-small.bottom .smalls {
+        flex-direction: row;
+      }
+      .big-small .smalls > .tile {
+        flex: 1 1 0;
+        min-width: 0;
+        min-height: 0;
+      }
+      .tile {
         position: relative;
         width: 100%;
         height: 100%;
+        overflow: hidden;
       }
-      .camera.clickable {
+      .tile.clickable {
         cursor: pointer;
       }
       hui-image {
