@@ -913,6 +913,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.33
+
+- **Timer Card** — **long-press** a **Recent** preset to open a **Delete** popup that removes it from the recent list. Requires **Ted's Cards Backend v1.0.5+**.
+
 ### v1.0.32
 
 - **Timer Card** — the completion message now reads "&lt;name&gt; (X min timer)" and stays for **60 seconds** before auto-dismissing (still closable anytime).

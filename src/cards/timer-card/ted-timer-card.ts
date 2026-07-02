@@ -83,8 +83,13 @@ export class TedTimerCard extends LitElement implements LovelaceCard {
   @state() private _s = 0;
   /** null = closed; "add" = new-timer dialog; otherwise the id of the timer being edited. */
   @state() private _dialog: string | null = null;
+  /** The recent preset whose long-press action menu is open (null = closed). */
+  @state() private _recentMenu: RecentTimer | null = null;
   /** Ticks once a second while any timer is counting down. */
   private _tick?: number;
+  /** Long-press detection for recent tiles. */
+  private _lpTimer?: number;
+  private _lpFired = false;
   /** Pending unsubscribe for the backend `timer_finished` event subscription. */
   private _finishedSub?: Promise<() => void>;
 
@@ -191,6 +196,46 @@ export class TedTimerCard extends LitElement implements LovelaceCard {
     this._s = r.s;
     this._dialog = "add";
   }
+
+  // ── recent tile: tap starts, long-press opens the Delete menu ──────────────
+  private _onRecentPointerDown(r: RecentTimer): void {
+    this._lpFired = false;
+    this._clearLongPress();
+    this._lpTimer = window.setTimeout(() => {
+      this._lpFired = true;
+      this._recentMenu = r;
+    }, 500);
+  }
+  private _clearLongPress = (): void => {
+    if (this._lpTimer !== undefined) {
+      window.clearTimeout(this._lpTimer);
+      this._lpTimer = undefined;
+    }
+  };
+  private _onRecentClick(r: RecentTimer): void {
+    // Suppress the click that follows a long-press.
+    if (this._lpFired) {
+      this._lpFired = false;
+      return;
+    }
+    this._openRecent(r);
+  }
+  private _closeRecentMenu = (): void => {
+    this._recentMenu = null;
+  };
+  private _deleteRecent = (): void => {
+    const r = this._recentMenu;
+    if (r) {
+      this._call("remove_recent", {
+        name: r.name,
+        hours: r.h,
+        minutes: r.m,
+        seconds: r.s,
+        ...(r.location ? { location: r.location } : {}),
+      });
+    }
+    this._closeRecentMenu();
+  };
 
   private _openEdit(t: ActiveTimer): void {
     const rem = this._remaining(t);
@@ -349,6 +394,7 @@ export class TedTimerCard extends LitElement implements LovelaceCard {
           : html`<div class="body">${sections}</div>`}
       </ha-card>
       ${this._dialog ? this._renderDialog() : nothing}
+      ${this._recentMenu ? this._renderRecentMenu() : nothing}
     `;
   }
 
@@ -390,11 +436,36 @@ export class TedTimerCard extends LitElement implements LovelaceCard {
       <button
         class="tile recent"
         title=${`Start ${r.name}`}
-        @click=${() => this._openRecent(r)}
+        @click=${() => this._onRecentClick(r)}
+        @pointerdown=${() => this._onRecentPointerDown(r)}
+        @pointerup=${this._clearLongPress}
+        @pointerleave=${this._clearLongPress}
+        @pointercancel=${this._clearLongPress}
+        @contextmenu=${(e: Event) => e.preventDefault()}
       >
         <span class="rem">${this._fmtRemaining(total)}</span>
         <span class="tname">(${r.name})${roomName ? html`<span class="room">${roomName}</span>` : nothing}</span>
       </button>
+    `;
+  }
+
+  private _renderRecentMenu(): TemplateResult {
+    const r = this._recentMenu!;
+    const theme = this._config?.theme === "ted-style" ? "ted-style" : "ha";
+    return html`
+      <div
+        class="ted-modal ${tedCardThemeClass(theme)}"
+        @click=${this._closeRecentMenu}
+        @keydown=${(e: KeyboardEvent) => e.key === "Escape" && this._closeRecentMenu()}
+      >
+        <div class="ted-sheet" @click=${(e: Event) => e.stopPropagation()}>
+          <div class="ted-sheet-head">${this._fmtRemaining(r.h * 3600 + r.m * 60 + r.s)} (${r.name})</div>
+          <div class="ted-sheet-foot">
+            <button class="ted-btn danger" @click=${this._deleteRecent}>Delete</button>
+            <button class="ted-btn" @click=${this._closeRecentMenu}>Cancel</button>
+          </div>
+        </div>
+      </div>
     `;
   }
 
@@ -620,6 +691,9 @@ export class TedTimerCard extends LitElement implements LovelaceCard {
         padding: 6px 12px;
         text-align: left;
         width: 100%;
+        user-select: none;
+        -webkit-user-select: none;
+        -webkit-touch-callout: none;
       }
       .tile.recent:hover {
         border-color: var(--ted-style-accent);
