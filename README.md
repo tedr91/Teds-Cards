@@ -913,6 +913,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.22
+
+- **Timer Card editor** — the **Appearance** section now appears above the elements list, and the **Sections** group is renamed to **Card Elements**.
+
 ### v1.0.21
 
 - **Alarm & Timer Cards** — the header **+** (add) button now uses the same themed button as the other controls, so its corners follow your theme.

@@ -56,7 +56,6 @@ export class TedTimerCardEditor extends LitElement implements LovelaceCardEditor
         .computeLabel=${this._computeLabel}
         @value-changed=${this._valueChanged}
       ></ha-form>
-      ${this._renderSections()}
       <ha-form
         .hass=${this.hass}
         .data=${data}
@@ -64,6 +63,7 @@ export class TedTimerCardEditor extends LitElement implements LovelaceCardEditor
         .computeLabel=${this._computeLabel}
         @value-changed=${this._valueChanged}
       ></ha-form>
+      ${this._renderSections()}
     `;
   }
 
@@ -137,7 +137,7 @@ export class TedTimerCardEditor extends LitElement implements LovelaceCardEditor
       <div class="sections-block">
         <div class="sections-label">
           <ha-svg-icon .path=${SECTIONS_ICON_PATH}></ha-svg-icon>
-          <span>Sections</span>
+          <span>Card Elements</span>
         </div>
         <ha-sortable handle-selector=".drag-handle" @item-moved=${this._sectionMoved}>
           <div class="sections">
