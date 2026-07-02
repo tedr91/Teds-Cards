@@ -35,6 +35,9 @@ export interface MessagePopupOptions {
   duration?: number;
   /** De-dupe key: a second call with the same key while one is showing is ignored. */
   key?: string;
+  /** Called when the user manually dismisses the toast (the ✕ button) — NOT on
+   *  auto-timeout or action-button dismissal. */
+  onDismiss?: () => void;
 }
 
 interface ActiveMessage extends MessagePopupOptions {
@@ -62,7 +65,8 @@ export class TedMessagePopupLayer extends LitElement {
     }
   }
 
-  private _dismiss(id: number): void {
+  private _dismiss(id: number, manual = false): void {
+    if (manual) this._msgs.find((m) => m.id === id)?.onDismiss?.();
     this._msgs = this._msgs.filter((m) => m.id !== id);
   }
 
@@ -95,7 +99,7 @@ export class TedMessagePopupLayer extends LitElement {
                     </div>`
                   : nothing}
               </div>
-              <button class="mb-close" aria-label="Dismiss" @click=${() => this._dismiss(m.id)}>
+              <button class="mb-close" aria-label="Dismiss" @click=${() => this._dismiss(m.id, true)}>
                 <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                   <path d="M19 6.4 17.6 5 12 10.6 6.4 5 5 6.4 10.6 12 5 17.6 6.4 19 12 13.4 17.6 19 19 17.6 13.4 12z" />
                 </svg>

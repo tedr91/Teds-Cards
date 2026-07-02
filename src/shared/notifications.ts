@@ -105,6 +105,8 @@ export class NotificationToastController implements ReactiveController {
       icon: n.icon,
       actions,
       duration: typeof n.timeout === "number" && n.timeout > 0 ? n.timeout * 1000 : 8000,
+      // Manually dismissing the toast marks the notification read (auto-timeout does not).
+      onDismiss: () => hass?.callService?.("teds_cards_backend", "mark_read", { id: n.id }),
     });
   }
 

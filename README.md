@@ -913,6 +913,11 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.40
+
+- **Notification toasts** — manually dismissing a toast (the ✕ button) now marks that notification as **read** (auto-timeout still leaves it unread).
+- **Notification Center card** — the **Clear all** and **dismiss** buttons now follow the card's theme instead of showing the default Material button styling.
+
 ### v1.0.39
 
 - **Navbar Notifications bell** — the bell popover now matches the Notification Center card: **Clear all** is an icon, each item shows a **“Xm ago”** timestamp, and items have a **read/unread** state (unread dot; click to mark read).

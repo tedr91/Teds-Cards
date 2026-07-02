@@ -220,9 +220,12 @@ export class TedNotificationCard extends LitElement implements LovelaceCard {
             : nothing}
           ${unread > 0 ? html`<span class="badge">${unread}</span>` : nothing}
           ${items.length
-            ? html`<ha-icon-button class="clear-hdr" label="Clear all" @click=${this._clearAll}>
-                <ha-icon icon="mdi:notification-clear-all"></ha-icon>
-              </ha-icon-button>`
+            ? html`<ted-icon-button
+                class="clear-hdr"
+                label="Clear all"
+                icon="mdi:notification-clear-all"
+                @click=${this._clearAll}
+              ></ted-icon-button>`
             : nothing}
         </div>
         ${missing
@@ -276,9 +279,12 @@ export class TedNotificationCard extends LitElement implements LovelaceCard {
               </div>`
             : nothing}
         </div>
-        <ha-icon-button class="row-close" label="Dismiss" @click=${() => this._dismiss(n.id)}>
-          <ha-icon icon="mdi:close"></ha-icon>
-        </ha-icon-button>
+        <ted-icon-button
+          class="row-close"
+          label="Dismiss"
+          icon="mdi:close"
+          @click=${() => this._dismiss(n.id)}
+        ></ted-icon-button>
       </div>
     `;
   }
@@ -337,8 +343,9 @@ export class TedNotificationCard extends LitElement implements LovelaceCard {
       }
       .clear-hdr {
         margin-left: auto;
-        color: var(--ted-style-muted);
         flex: none;
+        --ted-ib-size: 30px;
+        --ted-ib-icon: 22px;
       }
       .warn {
         padding: 8px 16px 16px;
@@ -445,9 +452,8 @@ export class TedNotificationCard extends LitElement implements LovelaceCard {
       }
       .row-close {
         flex: none;
-        color: var(--ted-style-muted);
-        --mdc-icon-button-size: 34px;
-        --mdc-icon-size: 18px;
+        --ted-ib-size: 34px;
+        --ted-ib-icon: 18px;
       }
       .foot {
         flex: none;
