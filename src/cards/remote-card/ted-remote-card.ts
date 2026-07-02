@@ -819,8 +819,6 @@ export class TedRemoteCard extends LitElement implements LovelaceCard {
       }
       .rbtn.lit {
         color: var(--ted-style-accent);
-        box-shadow: 0 0 0 1px var(--ted-style-accent),
-          0 0 calc(10px * var(--rc-scale)) rgba(76, 194, 255, 0.35);
       }
       .rbtn-text {
         font-size: calc(13px * var(--rc-scale));
@@ -1001,11 +999,6 @@ export class TedRemoteCard extends LitElement implements LovelaceCard {
         background: linear-gradient(180deg, #2a2a2f 0%, #232327 100%);
         box-shadow: inset 0 calc(0.14rem * var(--rc-scale)) calc(0.3rem * var(--rc-scale))
           rgb(0 0 0 / 55%);
-      }
-      .rc--apple-tv .row .rbtn.lit {
-        color: #c6c6c6;
-        box-shadow: 0 0 calc(0.857rem * var(--rc-scale)) calc(0.0714rem * var(--rc-scale))
-          rgb(171 253 255 / 15%);
       }
       /* Apple clickpad matches Firemote: flat #141414 disc with subtle quadrant
          outlines and a lighter center. Defined at the family level so the d-pad

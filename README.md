@@ -913,6 +913,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.29
+
+- **Remote Card** — removed the glow around the **play/pause** button while media is playing.
+
 ### v1.0.28
 
 - **Alarm & Timer Cards** — new **Area** option scopes a card to a room: when set, the card only shows alarms/timers for that area and tags anything created here with it (needs **Ted's Cards Backend v1.0.3+**). Leave it unset for a whole-home view, where each item shows a small **room label**. The redundant "sensor" option was removed.
