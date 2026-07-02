@@ -24,6 +24,8 @@ export interface CameraItemConfig {
   entity: string;
   /** Per-camera caption override (defaults to the camera's friendly name). */
   name?: string;
+  /** Periodic thumbnail (`auto`, default) vs. continuous live stream (`live`). */
+  camera_view?: CameraView;
   /** When `false`, the camera is hidden from the layout. Defaults to true. */
   enabled?: boolean;
 }
@@ -36,12 +38,10 @@ export interface CameraCardConfig extends LovelaceCardConfig {
   layout?: CameraLayout;
   /** Placement of the small-feed strip in the `big-small` layout. Defaults to `right`. */
   big_small_position?: BigSmallPosition;
-  /** Percentage of the card taken by the small-feed strip in the `big-small` layout. Defaults to 33. */
+  /** Percentage of the card taken by the small-feed strip in the `big-small` layout. Defaults to 25. */
   big_small_width?: number;
   /** Show the caption overlay at the bottom of each feed. Defaults to false. */
   show_name?: boolean;
-  /** Periodic thumbnail (`auto`, default) vs. continuous live stream (`live`). */
-  camera_view?: CameraView;
   /** How the feed fills its box. Defaults to `cover`. */
   fit_mode?: FitMode;
   /** Optional fixed aspect ratio (e.g. `16:9`). Ignored when in a grid with set rows. */
@@ -59,6 +59,5 @@ export interface CameraCardConfig extends LovelaceCardConfig {
   height?: number;
   /** Defaults to opening the more-info dialog. */
   tap_action?: ActionConfig;
-  hold_action?: ActionConfig;
   double_tap_action?: ActionConfig;
 }

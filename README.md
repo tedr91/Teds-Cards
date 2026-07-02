@@ -22,7 +22,7 @@ After spending months attempting to find an "on/off/brightness" switch that I li
 | Clock Weather Card | `custom:ted-clock-weather-card` | A large clock with the date and current weather. |
 | Remote Card | `custom:ted-remote-card` | Remote control for media devices (e.g. Apple TV and Kaleidescape). |
 | Room Card | `custom:ted-room-card` | Overview card for a Home Assistant area. |
-| Camera Card | `custom:ted-camera-card` | One or more camera feeds (auto thumbnail or live stream) in single, dual, quad, or big+small layouts. |
+| Camera Card | `custom:ted-camera-card` | One or more camera feeds (auto thumbnail or live stream) in single, quad, or multi layouts. |
 | Navbar Card | `custom:ted-navbar-card` | Navigation bar pinned to the top or bottom, with buttons and status items in left/center/right zones. |
 | Alarm Card | `custom:ted-alarm-card` | Add, view, and enable/disable alarms (requires the Ted's Cards Backend integration). |
 | Timer Card | `custom:ted-timer-card` | Start, view, and cancel countdown timers (requires the Ted's Cards Backend integration). |
@@ -726,7 +726,7 @@ px, matching a button).
 
 A **camera feed** — or **several** — rendered with Home Assistant's own picture-glance image element so
 each feed gets both **auto** thumbnail polling and **live** streaming for free. Show one camera, or lay
-out multiple in a **Dual**, **Quad**, or **Big + Small(s)** arrangement. Use it on its own, as a Room
+out multiple in a **Quad** (2×2) or **Multi** (one big feed plus a strip of smaller ones) arrangement. Use it on its own, as a Room
 Card button, or as a Room Card photo source.
 
 Minimal config:
@@ -742,15 +742,17 @@ cameras:
 
 ```yaml
 type: custom:ted-camera-card
-layout: single              # optional: single (default) | dual | quad | big-small
-big_small_position: right   # optional (big-small only): right (default) | bottom
+layout: single              # optional: single (default) | quad | big-small ("Multi")
+big_small_position: right   # optional (Multi only): right (default) | bottom
+big_small_width: 25         # optional (Multi only): small-feed strip width, % of the card
 cameras:                    # required — one or more cameras, shown in order
   - entity: camera.front_door
     name: Front Door         # optional per-camera caption, defaults to the entity's name
+    camera_view: auto        # optional per-camera: auto (thumbnail, default) | live (stream)
     enabled: true            # optional, set false to hide this camera from the layout
   - entity: camera.back_yard
+    camera_view: live
 show_name: false            # optional, overlay each camera's caption along the bottom edge
-camera_view: auto           # optional: auto (thumbnail, default) | live (stream)
 fit_mode: cover             # optional: cover (default) | contain | fill
 aspect_ratio: "16:9"        # optional, e.g. "16:9" or "1.78" (ignored in grid layout)
 theme: ted-style            # optional, visual styling: ted-style (default) | ha
@@ -759,27 +761,32 @@ width: 800                  # optional manual width (px), ignored in grid layout
 height: 450                 # optional manual height (px), ignored in grid layout
 tap_action:                 # optional, defaults to More Info of the tapped camera
   action: more-info
-hold_action:
-  action: none
 double_tap_action:
   action: none
 ```
 
 - **Cameras** — add one or more `camera.*` entities. In the editor, use **Auto populate cameras** to
   add every camera at once, **drag** to reorder, the **switch** in each row header to show/hide a camera,
-  and the **trash** icon to remove one. Each camera has an optional per-feed **caption**.
-- **Layout** — **Single** (one feed), **Dual** (side by side), **Quad** (2×2), or **Big + Small(s)**
-  (one large feed plus a strip of smaller ones, positioned to the **right** or **bottom**). Slots with
+  and the **trash** icon to remove one. Each camera has an optional per-feed **caption** and its own
+  **view** (auto thumbnail or live stream).
+- **Layout** — **Single** (one feed), **Quad** (2×2), or **Multi** (one large feed plus a strip of
+  smaller ones, positioned to the **right** or **bottom**, with an adjustable **Small feeds width**
+  that auto-sizes to keep every feed equal as you show/hide cameras). Slots with
   no camera show an empty placeholder.
-- **Camera view** — **Auto thumbnail** (default; periodically refreshed still) or **Live stream**
-  (continuous video). Applies to every feed.
+- **Per-camera view** — each feed is an **Auto thumbnail** (default; periodically refreshed still) or a
+  **Live stream** (continuous video), set in that camera's editor row.
+- **Long-press a feed** — opens a quick popup to switch **that** feed between **Auto thumbnail** and
+  **Live stream**, and (for any non-primary feed) **Make primary camera** to swap it into the big slot.
+  These are live-view tweaks only and reset on reload — the editor holds the saved defaults.
 - **Fit mode** — how each image fills its box: **Cover** (default), **Contain**, or **Fill**.
 - **Aspect ratio** — optional, sets the card's shape when it isn't sized by the dashboard grid.
 - **Sizing** — in a **grid** (sections) layout the card fills its grid cell; otherwise it uses the
   optional **Width** / **Height** (defaulting to 800×450). `theme` and `brushed` work as in the other
   cards (see the Light Card section).
-- **Interactions** — **Tap** defaults to **More Info** of the tapped camera; **Hold** and
-  **Double tap** default to none. All accept the standard Home Assistant action options.
+- **Interactions** — **Tap** defaults to **More Info** of the tapped camera; **Double tap** defaults to
+  none. Both accept the standard Home Assistant action options. (Long-press is reserved for the view popup.)
+- **Efficient** — feeds only stream while the card is on-screen and the browser tab is visible, and
+  hidden cameras use no bandwidth.
 
 </details>
 
@@ -925,6 +932,12 @@ options as the Alarm card apply.
 
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
+
+### v1.0.43
+
+- **Camera Card — per-camera view** — each feed now picks its own **Auto thumbnail** or **Live stream** in the editor (the old card-wide "Camera view" option is gone).
+- **Long-press a feed** — opens a quick popup to switch **that** feed between Auto/Live and, for any non-primary feed, **Make primary camera** to swap it into the big slot. These are live-view tweaks that reset on reload; the editor keeps the saved defaults. (Long-press replaces the old `hold_action`.)
+- **Bandwidth** — feeds now only stream while the card is on-screen and the browser tab is visible; live streams tear down when scrolled away or backgrounded, and hidden cameras use none.
 
 ### v1.0.42
 

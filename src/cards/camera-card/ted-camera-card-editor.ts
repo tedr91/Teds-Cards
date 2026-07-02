@@ -26,9 +26,8 @@ const INTERACTIONS_ICON_PATH =
 /** Layout options for the layout dropdown. */
 const LAYOUT_OPTIONS = [
   { value: "single", label: "Single" },
-  { value: "dual", label: "Dual (side by side)" },
   { value: "quad", label: "Quad (2×2)" },
-  { value: "big-small", label: "Big + Small(s)" },
+  { value: "big-small", label: "Multi" },
 ];
 
 /** Where the small-feed strip sits in the big-small layout. */
@@ -40,9 +39,14 @@ const POSITION_OPTIONS = [
 /** Pick the layout that best fits a given number of cameras. */
 function layoutForCount(n: number): CameraLayout {
   if (n <= 1) return "single";
-  if (n === 2) return "dual";
+  if (n <= 2) return "big-small";
   if (n <= 4) return "quad";
   return "big-small";
+}
+
+/** Auto small-feed strip width (% of card) for the Multi layout: even feeds. */
+function autoSmallWidth(visibleCount: number): number {
+  return Math.max(15, Math.min(60, Math.round(100 / visibleCount)));
 }
 
 /** Square size (px) used for width/height when embedded as a room-card button. */
@@ -118,46 +122,25 @@ export class TedCameraCardEditor extends LitElement implements LovelaceCardEdito
           ]
         : []),
       {
-        type: "grid",
-        name: "",
-        column_min_width: "100px",
-        schema: [
-          {
-            name: "camera_view",
-            required: true,
-            selector: {
-              select: {
-                mode: "dropdown",
-                options: [
-                  { value: "auto", label: "Auto thumbnail (default)" },
-                  { value: "live", label: "Live stream" },
-                ],
-              },
-            },
+        name: "fit_mode",
+        required: true,
+        selector: {
+          select: {
+            mode: "dropdown",
+            options: [
+              { value: "cover", label: "Cover (default)" },
+              { value: "contain", label: "Contain" },
+              { value: "fill", label: "Fill" },
+            ],
           },
-          {
-            name: "fit_mode",
-            required: true,
-            selector: {
-              select: {
-                mode: "dropdown",
-                options: [
-                  { value: "cover", label: "Cover (default)" },
-                  { value: "contain", label: "Contain" },
-                  { value: "fill", label: "Fill" },
-                ],
-              },
-            },
-          },
-        ],
+        },
       },
       { name: "aspect_ratio", selector: { text: {} } },
     ];
     const topData = {
       layout,
       big_small_position: this._config?.big_small_position ?? "right",
-      big_small_width: this._config?.big_small_width ?? 33,
-      camera_view: this._config?.camera_view ?? "auto",
+      big_small_width: this._config?.big_small_width ?? 25,
       fit_mode: this._config?.fit_mode ?? "cover",
       aspect_ratio: this._config?.aspect_ratio ?? "",
     };
@@ -239,10 +222,27 @@ export class TedCameraCardEditor extends LitElement implements LovelaceCardEdito
         <div class="row-body">
           <ha-form
             .hass=${this.hass}
-            .data=${{ entity: cam.entity ?? "", name: cam.name ?? "" }}
+            .data=${{
+              entity: cam.entity ?? "",
+              name: cam.name ?? "",
+              camera_view: cam.camera_view ?? "auto",
+            }}
             .schema=${[
               { name: "entity", required: true, selector: { entity: { domain: "camera" } } },
               { name: "name", selector: { text: {} } },
+              {
+                name: "camera_view",
+                required: true,
+                selector: {
+                  select: {
+                    mode: "dropdown",
+                    options: [
+                      { value: "auto", label: "Auto thumbnail (default)" },
+                      { value: "live", label: "Live stream" },
+                    ],
+                  },
+                },
+              },
             ]}
             .computeLabel=${this._computeLabel}
             @value-changed=${(ev: CustomEvent) => this._onCameraChanged(idx, ev)}
@@ -258,12 +258,11 @@ export class TedCameraCardEditor extends LitElement implements LovelaceCardEdito
       brushed: false,
       transparency: undefined,
       blur: undefined,
-      camera_view: "auto",
       fit_mode: "cover",
       show_name: false,
       layout: "single",
       big_small_position: "right",
-      big_small_width: 33,
+      big_small_width: 25,
       width: this.embedded ? EMBEDDED_BUTTON_SIZE : 800,
       height: this.embedded ? EMBEDDED_BUTTON_SIZE : 450,
     };
@@ -333,10 +332,6 @@ export class TedCameraCardEditor extends LitElement implements LovelaceCardEdito
             selector: { ui_action: { default_action: "more-info" } },
           },
           {
-            name: "hold_action",
-            selector: { ui_action: { default_action: "none" } },
-          },
-          {
             name: "",
             type: "optional_actions",
             flatten: true,
@@ -397,7 +392,6 @@ export class TedCameraCardEditor extends LitElement implements LovelaceCardEdito
       case "height":
         return "Height (px)";
       case "tap_action":
-      case "hold_action":
       case "double_tap_action": {
         const label =
           this.hass?.localize(`ui.panel.lovelace.editor.card.generic.${schema.name}`) || "";
@@ -438,13 +432,15 @@ export class TedCameraCardEditor extends LitElement implements LovelaceCardEdito
 
   private _onCameraChanged(idx: number, ev: CustomEvent): void {
     ev.stopPropagation();
-    const value = ev.detail.value as { entity?: string; name?: string };
+    const value = ev.detail.value as { entity?: string; name?: string; camera_view?: string };
     const cameras = [...this._cameras()];
     const next: CameraItemConfig = { ...cameras[idx], entity: value.entity ?? "" };
     if (value.name) next.name = value.name;
     else delete next.name;
+    if (value.camera_view === "live") next.camera_view = "live";
+    else delete next.camera_view;
     cameras[idx] = next;
-    this._commit({ ...this._config, cameras } as CameraCardConfig);
+    this._commit(this._withAutoWidth({ ...this._config, cameras } as CameraCardConfig));
   }
 
   private _toggleCamera(idx: number, ev: Event): void {
@@ -455,13 +451,13 @@ export class TedCameraCardEditor extends LitElement implements LovelaceCardEdito
     if (checked) delete next.enabled;
     else next.enabled = false;
     cameras[idx] = next;
-    this._commit({ ...this._config, cameras } as CameraCardConfig);
+    this._commit(this._withAutoWidth({ ...this._config, cameras } as CameraCardConfig));
   }
 
   private _addCamera = (): void => {
     const cameras = [...this._cameras(), { entity: "" } as CameraItemConfig];
     this._expanded = new Set(this._expanded).add(cameras.length - 1);
-    this._commit({ ...this._config, cameras } as CameraCardConfig);
+    this._commit(this._withAutoWidth({ ...this._config, cameras } as CameraCardConfig));
   };
 
   private _removeCamera(idx: number, ev: Event): void {
@@ -469,7 +465,7 @@ export class TedCameraCardEditor extends LitElement implements LovelaceCardEdito
     const cameras = [...this._cameras()];
     cameras.splice(idx, 1);
     this._expanded = new Set();
-    this._commit({ ...this._config, cameras } as CameraCardConfig);
+    this._commit(this._withAutoWidth({ ...this._config, cameras } as CameraCardConfig));
   }
 
   private _cameraMoved = (ev: CustomEvent): void => {
@@ -489,12 +485,27 @@ export class TedCameraCardEditor extends LitElement implements LovelaceCardEdito
     if (entities.length === 0) return;
     const cameras: CameraItemConfig[] = entities.map((entity) => ({ entity }));
     this._expanded = new Set();
-    this._commit({
-      ...this._config,
-      cameras,
-      layout: layoutForCount(cameras.length),
-    } as CameraCardConfig);
+    this._commit(
+      this._withAutoWidth({
+        ...this._config,
+        cameras,
+        layout: layoutForCount(cameras.length),
+      } as CameraCardConfig),
+    );
   };
+
+  /**
+   * In the Multi (big-small) layout, keep the small-feed strip width in sync with
+   * the number of visible cameras so every feed comes out the same size.
+   */
+  private _withAutoWidth(config: CameraCardConfig): CameraCardConfig {
+    if ((config.layout ?? "single") !== "big-small") return config;
+    const visible = (config.cameras ?? []).filter(
+      (cam) => cam.enabled !== false && cam.entity,
+    ).length;
+    if (visible < 2) return config;
+    return { ...config, big_small_width: autoSmallWidth(visible) };
+  }
 
   /** Strip values equal to their default and fire config-changed. */
   private _commit(raw: CameraCardConfig): void {
