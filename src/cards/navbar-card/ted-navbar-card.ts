@@ -31,7 +31,7 @@ import {
   NAVBAR_PILL_RESERVE,
   defaultNavButton,
 } from "./const";
-import { detectEditOrPreview, forceNavbarPadding, navbarContentRect, navbarHeaderHeight, removeNavbarPadding } from "./navbar-dom";
+import { detectEditOrPreview, forceNavbarPadding, navbarContentRect, navbarHeaderHeight, removeNavbarPadding, setNavbarBottomReserve } from "./navbar-dom";
 import type { EntityAttrSource, NavButtonConfig, NavItem, NavSection, NavZone, NavbarAlignment, NavbarCardConfig } from "./types";
 import { navItemKey, parseVaItem, vaSizeToThickness } from "./va-items";
 
@@ -119,7 +119,13 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
     // Pop toasts for backend notifications when a Notifications bell item is present.
     new NotificationToastController(this, () => {
       const it = this._notifItem();
-      return { hass: this.hass, area: it?.area, enabled: !!it };
+      return {
+        hass: this.hass,
+        area: it?.area,
+        enabled: !!it,
+        // A fired notification reveals an auto-hidden bar (only if it carries a bell item).
+        onNotify: it ? this._reveal : undefined,
+      };
     });
   }
 
@@ -165,6 +171,7 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
   public disconnectedCallback(): void {
     super.disconnectedCallback();
     removeNavbarPadding();
+    setNavbarBottomReserve(0);
     window.removeEventListener("resize", this._onResize);
     window.removeEventListener("location-changed", this._onVisibilityEvent);
     window.removeEventListener("popstate", this._onVisibilityEvent);
@@ -252,6 +259,7 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
 
   /** Reserve view padding so dashboard content isn't hidden under the bar. */
   private _applyPadding(): void {
+    this._publishBottomReserve();
     // Auto-hide bars only reserve room for the collapsed pill; the revealed bar
     // overlays the dashboard temporarily.
     if (this._autoHide()) {
@@ -268,6 +276,19 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
       px: this._thickness() + margin,
       enabled: !this._editMode,
     });
+  }
+
+  /** Publish how much space a bottom bar occupies so body-level fixed layers (the
+   *  MessageBox toast stack) sit above it instead of overlapping. */
+  private _publishBottomReserve(): void {
+    if (this._editMode || this._alignment() !== "bottom") {
+      setNavbarBottomReserve(0);
+      return;
+    }
+    // Reserve the full bar footprint even for auto-hide bars, so a revealed bar clears
+    // the toast (a fired notification reveals the bar anyway).
+    const margin = this._barType() === "float" ? 16 : 0;
+    setNavbarBottomReserve(this._thickness() + margin);
   }
 
   /** Whether auto-hide is active (configured on, and not in the editor/preview). */

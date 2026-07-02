@@ -913,6 +913,11 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.37
+
+- **Navbar Card** — a fired notification now **reveals an auto-hidden navbar** when that bar carries the Notifications bell item, so alerts aren't missed while the bar is collapsed.
+- **Notification toasts** — toasts no longer **overlap a bottom navbar**; they now stack neatly above it.
+
 ### v1.0.36
 
 - **Notification toasts** — toasts now show a **severity icon** and any **action buttons** the notification defines, and the **navbar Notifications bell** pops toasts too. The toast countdown bar is fully contained within the rounded corners.

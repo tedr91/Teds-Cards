@@ -115,7 +115,7 @@ export class TedMessagePopupLayer extends LitElement {
       position: fixed;
       left: 0;
       right: 0;
-      bottom: 0;
+      bottom: var(--ted-navbar-bottom-reserve, 0px);
       z-index: 10000;
       display: flex;
       justify-content: center;

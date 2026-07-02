@@ -44,6 +44,9 @@ export interface NotificationToastOptions {
   area?: string;
   /** When false, suppress toasts (e.g. a center card that lists but doesn't pop). */
   enabled?: boolean;
+  /** Called whenever a matching notification fires (after the area filter), even if
+   *  toasts are suppressed — e.g. to reveal an auto-hidden navbar. */
+  onNotify?: () => void;
 }
 
 /**
@@ -85,9 +88,10 @@ export class NotificationToastController implements ReactiveController {
 
   private _onEvent(n: TedNotification): void {
     if (!n) return;
-    const { area, enabled, hass } = this.opts();
-    if (enabled === false) return;
+    const { area, enabled, hass, onNotify } = this.opts();
     if (area && n.area !== area) return;
+    onNotify?.();
+    if (enabled === false) return;
     const actions: ToastAction[] = (Array.isArray(n.actions) ? n.actions : []).map((a) => ({
       label: a.label ?? "OK",
       primary: a.variant === "primary",

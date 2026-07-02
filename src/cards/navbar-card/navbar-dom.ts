@@ -65,6 +65,17 @@ export function removeNavbarPadding(): void {
   styleEl?.remove();
 }
 
+/** CSS var (on the document root) telling body-level fixed layers — e.g. the MessageBox
+ *  toast stack — how much space a bottom-aligned navbar reserves, so they clear it. */
+const BOTTOM_RESERVE_VAR = "--ted-navbar-bottom-reserve";
+
+/** Publish the space a bottom navbar occupies (px). Pass 0 / non-bottom to clear it. */
+export function setNavbarBottomReserve(px: number): void {
+  const root = document.documentElement;
+  if (px > 0) root.style.setProperty(BOTTOM_RESERVE_VAR, `${px}px`);
+  else root.style.removeProperty(BOTTOM_RESERVE_VAR);
+}
+
 /** The dashboard content area's viewport rect (`hui-root`), used to inset the navbar so
  *  it clears the HA sidebar. Null when hui-root isn't found. */
 export function navbarContentRect(): DOMRect | null {
