@@ -9,7 +9,7 @@ import { appearanceStyle, cssColor } from "../../shared/appearance";
 import { brushedOverlay, tedCardThemeClass, tedStyleTheme } from "../../shared/theme";
 import { registerCustomCard } from "../../shared/register-card";
 import { modalStyles } from "../../shared/dialogs";
-import { showMessageBox } from "../../shared/messagebox-popup";
+import { NotificationToastController } from "../../shared/notifications";
 import "../../shared/ted-icon-button";
 import {
   TIMERS_SENSOR,
@@ -37,15 +37,6 @@ interface RecentTimer {
   m: number;
   s: number;
   location?: string;
-}
-
-/** Payload of the backend `teds_cards_backend_timer_finished` event. */
-interface TimerFinishedEvent {
-  id: string;
-  name: string;
-  duration?: number;
-  location?: string;
-  area_name?: string;
 }
 
 /** Subset of Home Assistant's LovelaceGridOptions. */
@@ -90,8 +81,12 @@ export class TedTimerCard extends LitElement implements LovelaceCard {
   /** Long-press detection for recent tiles. */
   private _lpTimer?: number;
   private _lpFired = false;
-  /** Pending unsubscribe for the backend `timer_finished` event subscription. */
-  private _finishedSub?: Promise<() => void>;
+
+  public constructor() {
+    super();
+    // Pops toasts for backend notifications (timer completions route through these).
+    new NotificationToastController(this, () => ({ hass: this.hass, area: this._config?.area }));
+  }
 
   public setConfig(config: TimerCardConfig): void {
     if (!config) throw new Error("Invalid configuration");
@@ -106,54 +101,9 @@ export class TedTimerCard extends LitElement implements LovelaceCard {
     return { columns: 6, rows: "auto", min_columns: 4, min_rows: 2 };
   }
 
-  protected updated(): void {
-    this._ensureFinishedSub();
-  }
-
   public disconnectedCallback(): void {
     super.disconnectedCallback();
     this._stopTick();
-    this._finishedSub?.then((unsub) => unsub()).catch(() => undefined);
-    this._finishedSub = undefined;
-  }
-
-  /** Subscribe once (when the connection is ready) to backend timer-finished events
-   *  so we can pop a completion message. */
-  private _ensureFinishedSub(): void {
-    const conn = (this.hass as { connection?: { subscribeEvents: <T>(cb: (ev: T) => void, type: string) => Promise<() => void> } })?.connection;
-    if (this._finishedSub || !conn) return;
-    this._finishedSub = conn.subscribeEvents<{ data: TimerFinishedEvent }>(
-      (ev) => this._onTimerFinished(ev.data),
-      "teds_cards_backend_timer_finished",
-    );
-  }
-
-  private _onTimerFinished(data: TimerFinishedEvent): void {
-    if (!data) return;
-    const area = this._config?.area;
-    // Only announce timers this card would show (its area, or all when unset).
-    if (area && data.location !== area) return;
-    showMessageBox({
-      key: `timer-done-${data.id}`,
-      severity: "info",
-      title: "Timer complete",
-      emphasis: data.name || "Timer",
-      message: `(${this._fmtDuration(typeof data.duration === "number" ? data.duration : 0)} timer)`,
-      duration: 60000,
-    });
-  }
-
-  /** "5 min" / "1 hr, 30 min" — only the relevant h/m/s parts. */
-  private _fmtDuration(sec: number): string {
-    const h = Math.floor(sec / 3600);
-    const m = Math.floor((sec % 3600) / 60);
-    const s = sec % 60;
-    const parts: string[] = [];
-    if (h) parts.push(`${h} hr`);
-    if (m) parts.push(`${m} min`);
-    if (s) parts.push(`${s} sec`);
-    if (!parts.length) parts.push("0 sec");
-    return parts.join(", ");
   }
 
   private _sensor(): string {

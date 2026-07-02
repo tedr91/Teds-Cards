@@ -9,6 +9,7 @@ import { appearanceStyle, cssColor } from "../../shared/appearance";
 import { brushedOverlay, tedCardThemeClass, tedStyleTheme } from "../../shared/theme";
 import { registerCustomCard } from "../../shared/register-card";
 import { showConfirmation, modalStyles } from "../../shared/dialogs";
+import { NotificationToastController } from "../../shared/notifications";
 import "../../shared/ted-icon-button";
 import {
   ALARMS_SENSOR,
@@ -70,6 +71,12 @@ export class TedAlarmCard extends LitElement implements LovelaceCard {
   @state() private _addOpen = false;
   /** null = adding a new alarm; otherwise the id of the alarm being edited. */
   @state() private _editId: string | null = null;
+
+  public constructor() {
+    super();
+    // Pops toasts for backend notifications (alarm rings route through these).
+    new NotificationToastController(this, () => ({ hass: this.hass, area: this._config?.area }));
+  }
 
   public setConfig(config: AlarmCardConfig): void {
     if (!config) throw new Error("Invalid configuration");
