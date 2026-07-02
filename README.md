@@ -913,6 +913,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.39
+
+- **Navbar Notifications bell** — the bell popover now matches the Notification Center card: **Clear all** is an icon, each item shows a **“Xm ago”** timestamp, and items have a **read/unread** state (unread dot; click to mark read).
+
 ### v1.0.38
 
 - **Translucent themes (e.g. Windows 11 Mica)** — timer/alarm dialogs, notification toasts, and the bell / brightness / volume / overflow popovers no longer look **see-through**; they now pick up the theme's frosted-glass blur like regular cards do.

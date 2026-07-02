@@ -147,8 +147,12 @@ export const statusItemStyles = css`
     background: none;
     color: var(--ted-style-muted);
     font: inherit;
-    font-size: 0.8rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     cursor: pointer;
+    padding: 2px;
+    --mdc-icon-size: 20px;
   }
   .notif-clear:hover {
     color: var(--ted-style-text);
@@ -174,6 +178,9 @@ export const statusItemStyles = css`
   .notif-pop-row:first-child {
     border-top: none;
   }
+  .notif-pop-row.read {
+    opacity: 0.62;
+  }
   .notif-pop-row.sev-info {
     --nc-accent: #4cc2ff;
   }
@@ -196,9 +203,35 @@ export const statusItemStyles = css`
     flex-direction: column;
     gap: 2px;
   }
+  .notif-pop-row:not(.read) .notif-pop-body {
+    cursor: pointer;
+  }
+  .notif-pop-top {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+  }
+  .notif-unread-dot {
+    flex: none;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--nc-accent);
+    align-self: center;
+  }
+  .notif-pop-time {
+    margin-left: auto;
+    flex: none;
+    font-size: 0.7rem;
+    color: var(--ted-style-muted);
+  }
   .notif-pop-title {
     font-weight: 600;
     font-size: 0.85rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
   }
   .notif-pop-msg {
     font-size: 0.8rem;

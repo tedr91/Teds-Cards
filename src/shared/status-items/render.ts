@@ -279,6 +279,21 @@ interface NotifRow {
   severity?: string;
   area?: string;
   read?: boolean;
+  created?: string;
+}
+
+/** "just now" / "5m ago" / "2h ago" / "3d ago" — mirrors the Notification Center card. */
+function notifTimeAgo(iso?: string): string {
+  if (!iso) return "";
+  const t = new Date(iso).getTime();
+  if (!Number.isFinite(t)) return "";
+  const sec = Math.max(0, Math.round((Date.now() - t) / 1000));
+  if (sec < 45) return "just now";
+  const m = Math.round(sec / 60);
+  if (m < 60) return `${m}m ago`;
+  const h = Math.round(m / 60);
+  if (h < 24) return `${h}h ago`;
+  return `${Math.round(h / 24)}d ago`;
 }
 
 function renderNotificationsItem(
@@ -313,9 +328,11 @@ function renderNotificationsItem(
           ${items.length
             ? html`<button
                 class="notif-clear"
+                title="Clear all"
+                aria-label="Clear all"
                 @click=${() => svc("clear_notifications", item.area ? { area: item.area } : {})}
               >
-                Clear all
+                <ha-icon icon="mdi:notification-clear-all"></ha-icon>
               </button>`
             : nothing}
         </div>
@@ -324,9 +341,16 @@ function renderNotificationsItem(
             ? html`<div class="notif-empty">No notifications.</div>`
             : items.map(
                 (n) => html`
-                  <div class="notif-pop-row sev-${n.severity ?? "info"}">
-                    <div class="notif-pop-body">
-                      ${n.title ? html`<div class="notif-pop-title">${n.title}</div>` : nothing}
+                  <div class="notif-pop-row sev-${n.severity ?? "info"} ${n.read ? "read" : ""}">
+                    <div
+                      class="notif-pop-body"
+                      @click=${() => !n.read && svc("mark_read", { id: n.id })}
+                    >
+                      <div class="notif-pop-top">
+                        ${!n.read ? html`<span class="notif-unread-dot"></span>` : nothing}
+                        ${n.title ? html`<span class="notif-pop-title">${n.title}</span>` : nothing}
+                        <span class="notif-pop-time">${notifTimeAgo(n.created)}</span>
+                      </div>
                       <div class="notif-pop-msg">${n.message}</div>
                     </div>
                     <button
