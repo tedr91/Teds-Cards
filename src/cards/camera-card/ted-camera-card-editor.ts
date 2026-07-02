@@ -75,15 +75,22 @@ export class TedCameraCardEditor extends LitElement implements LovelaceCardEdito
     if (!this.hass || !this._config) return nothing;
 
     const data = { ...this._defaults(), ...this._config };
-    const schema = this._schema();
 
     return html`
       <div class="editor">
+        <ha-form
+          .hass=${this.hass}
+          .data=${data}
+          .schema=${this._appearanceSchema()}
+          .computeLabel=${this._computeLabel}
+          .computeHelper=${this._computeHelper}
+          @value-changed=${this._valueChanged}
+        ></ha-form>
         ${this._renderCameras()}
         <ha-form
           .hass=${this.hass}
           .data=${data}
-          .schema=${schema}
+          .schema=${this._interactionsSchema()}
           .computeLabel=${this._computeLabel}
           .computeHelper=${this._computeHelper}
           @value-changed=${this._valueChanged}
@@ -122,20 +129,27 @@ export class TedCameraCardEditor extends LitElement implements LovelaceCardEdito
           ]
         : []),
       {
-        name: "fit_mode",
-        required: true,
-        selector: {
-          select: {
-            mode: "dropdown",
-            options: [
-              { value: "cover", label: "Cover (default)" },
-              { value: "contain", label: "Contain" },
-              { value: "fill", label: "Fill" },
-            ],
+        type: "grid",
+        name: "",
+        column_min_width: "100px",
+        schema: [
+          {
+            name: "fit_mode",
+            required: true,
+            selector: {
+              select: {
+                mode: "dropdown",
+                options: [
+                  { value: "cover", label: "Cover (default)" },
+                  { value: "contain", label: "Contain" },
+                  { value: "fill", label: "Fill" },
+                ],
+              },
+            },
           },
-        },
+          { name: "aspect_ratio", selector: { text: {} } },
+        ],
       },
-      { name: "aspect_ratio", selector: { text: {} } },
     ];
     const topData = {
       layout,
@@ -268,7 +282,7 @@ export class TedCameraCardEditor extends LitElement implements LovelaceCardEdito
     };
   }
 
-  private _schema() {
+  private _appearanceSchema() {
     const inGrid = Boolean(this._config?.grid_options);
     return [
       {
@@ -320,6 +334,11 @@ export class TedCameraCardEditor extends LitElement implements LovelaceCardEdito
           },
         ],
       },
+    ];
+  }
+
+  private _interactionsSchema() {
+    return [
       {
         name: "",
         type: "expandable",

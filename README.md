@@ -933,6 +933,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.44
+
+- **Camera editor tidy-up** — the **Appearance (general)** section now sits at the top of the editor, and **Fit mode** and **Aspect ratio** share a row.
+
 ### v1.0.43
 
 - **Camera Card — per-camera view** — each feed now picks its own **Auto thumbnail** or **Live stream** in the editor (the old card-wide "Camera view" option is gone).
