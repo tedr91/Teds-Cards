@@ -14,6 +14,8 @@ const GRIP_ICON_PATH =
   "M7,19V17H9V19H7M11,19V17H13V19H11M15,19V17H17V19H15M7,15V13H9V15H7M11,15V13H13V15H11M15,15V13H17V15H15M7,11V9H9V11H7M11,11V9H13V11H11M15,11V9H17V11H15M7,7V5H9V7H7M11,7V5H13V7H11M15,7V5H17V7H15Z";
 // mdi:delete
 const DELETE_ICON_PATH = "M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z";
+// mdi:plus
+const PLUS_ICON_PATH = "M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z";
 // mdi:palette — Appearance section
 const VISUAL_ICON_PATH =
   "M17.5,12A1.5,1.5 0 0,1 16,10.5A1.5,1.5 0 0,1 17.5,9A1.5,1.5 0 0,1 19,10.5A1.5,1.5 0 0,1 17.5,12M14.5,8A1.5,1.5 0 0,1 13,6.5A1.5,1.5 0 0,1 14.5,5A1.5,1.5 0 0,1 16,6.5A1.5,1.5 0 0,1 14.5,8M9.5,8A1.5,1.5 0 0,1 8,6.5A1.5,1.5 0 0,1 9.5,5A1.5,1.5 0 0,1 11,6.5A1.5,1.5 0 0,1 9.5,8M6.5,12A1.5,1.5 0 0,1 5,10.5A1.5,1.5 0 0,1 6.5,9A1.5,1.5 0 0,1 8,10.5A1.5,1.5 0 0,1 6.5,12M12,3A9,9 0 0,0 3,12A9,9 0 0,0 12,21A1.5,1.5 0 0,0 13.5,19.5C13.5,19.11 13.35,18.76 13.11,18.5C12.88,18.23 12.73,17.88 12.73,17.5A1.5,1.5 0 0,1 14.23,16H16A5,5 0 0,0 21,11C21,6.58 16.97,3 12,3Z";
@@ -52,6 +54,8 @@ export class TedCameraCardEditor extends LitElement implements LovelaceCardEdito
   /** Set by the room card when this editor is embedded as a fixed-size button. */
   @property({ attribute: false }) public embedded = false;
   @state() private _config?: CameraCardConfig;
+  /** Whether the collapsible Cameras section is open. */
+  @state() private _groupOpen = true;
   /** Indices of camera panels that are expanded. */
   @state() private _expanded = new Set<number>();
 
@@ -95,18 +99,75 @@ export class TedCameraCardEditor extends LitElement implements LovelaceCardEdito
       ...(layout === "big-small"
         ? [
             {
-              name: "big_small_position",
-              selector: { select: { mode: "dropdown", options: POSITION_OPTIONS } },
+              type: "grid",
+              name: "",
+              column_min_width: "100px",
+              schema: [
+                {
+                  name: "big_small_position",
+                  selector: { select: { mode: "dropdown", options: POSITION_OPTIONS } },
+                },
+                {
+                  name: "big_small_width",
+                  selector: {
+                    number: { min: 15, max: 60, step: 1, mode: "slider", unit_of_measurement: "%" },
+                  },
+                },
+              ],
             },
           ]
         : []),
+      {
+        type: "grid",
+        name: "",
+        column_min_width: "100px",
+        schema: [
+          {
+            name: "camera_view",
+            required: true,
+            selector: {
+              select: {
+                mode: "dropdown",
+                options: [
+                  { value: "auto", label: "Auto thumbnail (default)" },
+                  { value: "live", label: "Live stream" },
+                ],
+              },
+            },
+          },
+          {
+            name: "fit_mode",
+            required: true,
+            selector: {
+              select: {
+                mode: "dropdown",
+                options: [
+                  { value: "cover", label: "Cover (default)" },
+                  { value: "contain", label: "Contain" },
+                  { value: "fill", label: "Fill" },
+                ],
+              },
+            },
+          },
+        ],
+      },
+      { name: "aspect_ratio", selector: { text: {} } },
     ];
     const topData = {
       layout,
       big_small_position: this._config?.big_small_position ?? "right",
+      big_small_width: this._config?.big_small_width ?? 33,
+      camera_view: this._config?.camera_view ?? "auto",
+      fit_mode: this._config?.fit_mode ?? "cover",
+      aspect_ratio: this._config?.aspect_ratio ?? "",
     };
     return html`
-      <ha-expansion-panel outlined class="group-panel" expanded>
+      <ha-expansion-panel
+        outlined
+        class="group-panel"
+        .expanded=${this._groupOpen}
+        @expanded-changed=${this._onGroupToggle}
+      >
         <div slot="header" class="group-header">
           <ha-svg-icon .path=${CAMERAS_ICON_PATH}></ha-svg-icon>
           <span>Cameras</span>
@@ -117,20 +178,27 @@ export class TedCameraCardEditor extends LitElement implements LovelaceCardEdito
             .data=${topData}
             .schema=${topSchema}
             .computeLabel=${this._computeLabel}
+            .computeHelper=${this._computeHelper}
             @value-changed=${this._onLayoutChanged}
           ></ha-form>
-          <div class="subgroup-label">Cameras</div>
+          <div class="feeds-header">
+            <span class="subgroup-label">Camera Feeds</span>
+            <div class="group-actions" @click=${this._stop}>
+              <button type="button" class="add-btn" @click=${this._autoPopulate}>
+                Auto populate
+              </button>
+              <ha-icon-button
+                label="Add camera"
+                .path=${PLUS_ICON_PATH}
+                @click=${this._addCamera}
+              ></ha-icon-button>
+            </div>
+          </div>
           <ha-sortable handle-selector=".camera-drag-handle" @item-moved=${this._cameraMoved}>
             <div class="row-list">
               ${cameras.map((cam, idx) => this._renderCameraRow(cam, idx))}
             </div>
           </ha-sortable>
-          <div class="btn-row">
-            <button type="button" class="add-btn" @click=${this._addCamera}>+ Add camera</button>
-            <button type="button" class="add-btn" @click=${this._autoPopulate}>
-              Auto populate cameras
-            </button>
-          </div>
         </div>
       </ha-expansion-panel>
     `;
@@ -195,6 +263,7 @@ export class TedCameraCardEditor extends LitElement implements LovelaceCardEdito
       show_name: false,
       layout: "single",
       big_small_position: "right",
+      big_small_width: 33,
       width: this.embedded ? EMBEDDED_BUTTON_SIZE : 800,
       height: this.embedded ? EMBEDDED_BUTTON_SIZE : 450,
     };
@@ -204,44 +273,9 @@ export class TedCameraCardEditor extends LitElement implements LovelaceCardEdito
     const inGrid = Boolean(this._config?.grid_options);
     return [
       {
-        type: "grid",
-        name: "",
-        column_min_width: "100px",
-        schema: [
-          {
-            name: "camera_view",
-            required: true,
-            selector: {
-              select: {
-                mode: "dropdown",
-                options: [
-                  { value: "auto", label: "Auto thumbnail (default)" },
-                  { value: "live", label: "Live stream" },
-                ],
-              },
-            },
-          },
-          {
-            name: "fit_mode",
-            required: true,
-            selector: {
-              select: {
-                mode: "dropdown",
-                options: [
-                  { value: "cover", label: "Cover (default)" },
-                  { value: "contain", label: "Contain" },
-                  { value: "fill", label: "Fill" },
-                ],
-              },
-            },
-          },
-        ],
-      },
-      { name: "aspect_ratio", selector: { text: {} } },
-      {
         name: "",
         type: "expandable",
-        title: "Appearance",
+        title: "Appearance (general)",
         iconPath: VISUAL_ICON_PATH,
         flatten: true,
         schema: [
@@ -334,6 +368,8 @@ export class TedCameraCardEditor extends LitElement implements LovelaceCardEdito
         return "Layout";
       case "big_small_position":
         return "Small feeds position";
+      case "big_small_width":
+        return "Small feeds width";
       case "entity":
         return "Camera entity";
       case "name":
@@ -382,6 +418,10 @@ export class TedCameraCardEditor extends LitElement implements LovelaceCardEdito
 
   private _stop = (ev: Event): void => {
     ev.stopPropagation();
+  };
+
+  private _onGroupToggle = (ev: CustomEvent): void => {
+    this._groupOpen = ev.detail.expanded;
   };
 
   private _onPanelToggle(idx: number, ev: CustomEvent): void {
@@ -487,10 +527,24 @@ export class TedCameraCardEditor extends LitElement implements LovelaceCardEdito
       display: flex;
       align-items: center;
       gap: 8px;
+      width: 100%;
       font-weight: 500;
+    }
+    .group-header > span {
+      flex: 1 1 auto;
     }
     .group-header ha-svg-icon {
       color: var(--secondary-text-color);
+    }
+    .group-actions {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .group-actions ha-icon-button {
+      --mdc-icon-button-size: 36px;
+      --mdc-icon-size: 22px;
+      color: var(--primary-text-color);
     }
     .group-body {
       display: flex;
@@ -502,6 +556,16 @@ export class TedCameraCardEditor extends LitElement implements LovelaceCardEdito
       font-weight: 500;
       color: var(--secondary-text-color);
       margin-top: 4px;
+    }
+    .feeds-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-top: 4px;
+    }
+    .feeds-header .subgroup-label {
+      margin-top: 0;
     }
     .row-list {
       display: flex;
@@ -516,6 +580,7 @@ export class TedCameraCardEditor extends LitElement implements LovelaceCardEdito
       align-items: center;
       gap: 4px;
       width: 100%;
+      min-width: 0;
     }
     .drag-handle {
       display: flex;
@@ -535,6 +600,7 @@ export class TedCameraCardEditor extends LitElement implements LovelaceCardEdito
     }
     .row-title {
       flex: 1 1 auto;
+      min-width: 0;
       font-weight: 500;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -549,13 +615,7 @@ export class TedCameraCardEditor extends LitElement implements LovelaceCardEdito
     .warning {
       color: var(--error-color, #db4437);
     }
-    .btn-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-    }
     .add-btn {
-      align-self: flex-start;
       background: none;
       border: 1px solid var(--divider-color, rgba(255, 255, 255, 0.12));
       border-radius: 6px;
@@ -563,6 +623,7 @@ export class TedCameraCardEditor extends LitElement implements LovelaceCardEdito
       font: inherit;
       padding: 6px 12px;
       cursor: pointer;
+      white-space: nowrap;
     }
     .add-btn[disabled] {
       opacity: 0.5;

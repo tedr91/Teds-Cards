@@ -926,6 +926,12 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.42
+
+- **Camera editor polish** — the camera list is now a **Camera Feeds** group with the **Auto populate** and **+** (add) buttons in its header; long camera names truncate cleanly so each row's toggle, delete, and expand controls stay aligned.
+- **Big + Small layout** — new **Small feeds width** slider controls how much of the card the small-feed strip takes (works for both **right** and **bottom** positions).
+- **Editor layout** — **Camera view**, **Fit mode**, and **Aspect ratio** moved up into the Cameras section; the appearance panel is now **Appearance (general)** at the top.
+
 ### v1.0.41
 
 - **Camera Card — multi-camera support** — a single card can now show **several cameras** in a **Single**, **Dual** (side by side), **Quad** (2×2), or **Big + Small(s)** layout (small feeds on the **right** or **bottom**).

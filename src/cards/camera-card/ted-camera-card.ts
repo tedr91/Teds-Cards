@@ -158,11 +158,13 @@ export class TedCameraCard extends LitElement implements LovelaceCard {
     if (layout === "big-small") {
       const position = this._config?.big_small_position === "bottom" ? "bottom" : "right";
       const [big, ...smalls] = cameras;
+      const pct = Math.min(60, Math.max(15, this._config?.big_small_width ?? 33));
+      const smallsBasis = position === "bottom" ? { height: `${pct}%` } : { width: `${pct}%` };
       return html`
         <div class=${classMap({ "big-small": true, [position]: true })}>
           <div class="big">${this._renderTile(big ?? null, isGrid)}</div>
           ${smalls.length
-            ? html`<div class="smalls">
+            ? html`<div class="smalls" style=${styleMap({ flex: `0 0 ${pct}%`, ...smallsBasis })}>
                 ${smalls.map((cam) => this._renderTile(cam, isGrid))}
               </div>`
             : nothing}
@@ -338,7 +340,7 @@ export class TedCameraCard extends LitElement implements LovelaceCard {
         flex-direction: column;
       }
       .big-small .big {
-        flex: 2 1 0;
+        flex: 1 1 0;
         min-width: 0;
         min-height: 0;
       }

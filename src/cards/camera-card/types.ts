@@ -36,6 +36,8 @@ export interface CameraCardConfig extends LovelaceCardConfig {
   layout?: CameraLayout;
   /** Placement of the small-feed strip in the `big-small` layout. Defaults to `right`. */
   big_small_position?: BigSmallPosition;
+  /** Percentage of the card taken by the small-feed strip in the `big-small` layout. Defaults to 33. */
+  big_small_width?: number;
   /** Show the caption overlay at the bottom of each feed. Defaults to false. */
   show_name?: boolean;
   /** Periodic thumbnail (`auto`, default) vs. continuous live stream (`live`). */
