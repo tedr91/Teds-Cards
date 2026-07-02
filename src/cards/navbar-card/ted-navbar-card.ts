@@ -872,6 +872,14 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
       .navbar.collapsed.top .navbar-card {
         transform: translateY(-100%);
       }
+      /* Float bars sit 8px in from the edge (container padding), so slide them the
+         extra 8px too or a sliver of the bar stays visible when collapsed. */
+      .navbar.float.collapsed.bottom .navbar-card {
+        transform: translateY(calc(100% + 8px));
+      }
+      .navbar.float.collapsed.top .navbar-card {
+        transform: translateY(calc(-100% - 8px));
+      }
       .navbar.collapsed.left .navbar-card {
         transform: translateX(-100%);
       }

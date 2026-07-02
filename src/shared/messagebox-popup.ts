@@ -141,6 +141,11 @@ export class TedMessagePopupLayer extends LitElement {
       border-radius: 14px;
       color: var(--primary-text-color, #fff);
       background: var(--ha-card-background, var(--card-background-color, rgba(28, 32, 44, 0.92)));
+      /* Match translucent themes (e.g. Windows 11 Mica): their card fill is
+         semi-transparent and expects a backdrop blur, else the toast looks
+         see-through. Opaque themes leave the var unset -> no-op. */
+      backdrop-filter: var(--ha-card-backdrop-filter);
+      -webkit-backdrop-filter: var(--ha-card-backdrop-filter);
       border: 1px solid var(--divider-color, rgba(255, 255, 255, 0.22));
       border-left: 4px solid var(--mb-accent);
       box-shadow: 0 18px 48px rgba(0, 0, 0, 0.45);

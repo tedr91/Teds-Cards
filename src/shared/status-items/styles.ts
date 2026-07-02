@@ -102,7 +102,10 @@ export const statusItemStyles = css`
     pointer-events: none;
   }
 
-  /* Notifications popover (bell). */
+  /* Notifications popover (bell). Opt into the theme's card frost so on translucent
+     themes (Mica/glass) the surface blurs the dashboard behind it instead of showing it
+     straight through — a plain [popover] isn't an ha-card, so it doesn't get that blur
+     automatically. Falls back to none on opaque/flat themes. */
   .notif-popover {
     position: fixed;
     inset: auto;
@@ -113,6 +116,8 @@ export const statusItemStyles = css`
     overflow: auto;
     padding: 0;
     background: var(--ted-style-surface);
+    -webkit-backdrop-filter: var(--ha-card-backdrop-filter, none);
+    backdrop-filter: var(--ha-card-backdrop-filter, none);
     border: 1px solid var(--ted-style-divider);
     border-radius: var(--ted-style-radius-sm);
     box-shadow: 0 18px 48px rgba(0, 0, 0, 0.45);
@@ -215,7 +220,9 @@ export const statusItemStyles = css`
     color: var(--ted-style-text);
   }
 
-  /* Slider popover (brightness / volume). */
+  /* Slider popover (brightness / volume). Opt into the theme's card frost so on
+     translucent themes the surface blurs the dashboard behind it instead of showing it
+     straight through; falls back to none on opaque/flat themes. */
   .slider-popover {
     position: fixed;
     inset: auto;
@@ -223,6 +230,8 @@ export const statusItemStyles = css`
     box-sizing: border-box;
     padding: 14px 12px;
     background: var(--ted-style-surface);
+    -webkit-backdrop-filter: var(--ha-card-backdrop-filter, none);
+    backdrop-filter: var(--ha-card-backdrop-filter, none);
     border: 1px solid var(--ted-style-divider);
     border-radius: var(--ted-style-radius-sm);
     box-shadow: 0 18px 48px rgba(0, 0, 0, 0.45);

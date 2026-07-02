@@ -342,8 +342,10 @@ export class TedMessageBoxCard extends LitElement implements LovelaceCard {
         background: var(--ha-card-background, var(--card-background-color, #fff));
         border: 1px solid var(--divider-color, rgba(120, 120, 120, 0.22));
         border-left: 4px solid var(--mb-accent);
-        backdrop-filter: none;
-        -webkit-backdrop-filter: none;
+        /* Use the theme's own card frost: translucent HA themes (Win11 Mica) blur the
+           backdrop; opaque themes leave it unset -> no blur. */
+        backdrop-filter: var(--ha-card-backdrop-filter, none);
+        -webkit-backdrop-filter: var(--ha-card-backdrop-filter, none);
       }
 
       /* Severity accents */

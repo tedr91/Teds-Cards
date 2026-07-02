@@ -59,6 +59,11 @@ export const modalStyles = css`
     overflow: auto;
     box-sizing: border-box;
     background: var(--ted-style-surface, var(--ha-card-background, var(--card-background-color, #fff)));
+    /* Translucent themes (e.g. Windows 11 Mica) expose their surface fill as a
+       semi-transparent colour and rely on a backdrop blur; apply it so the sheet
+       isn't see-through. Opaque themes leave the var unset -> no-op. */
+    backdrop-filter: var(--ha-dialog-surface-backdrop-filter, var(--ha-card-backdrop-filter));
+    -webkit-backdrop-filter: var(--ha-dialog-surface-backdrop-filter, var(--ha-card-backdrop-filter));
     color: var(--ted-style-text, var(--primary-text-color, #111));
     border: 1px solid var(--ted-style-divider, rgba(120, 120, 120, 0.22));
     border-radius: var(--ted-style-radius, 12px);
