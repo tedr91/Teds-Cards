@@ -12,6 +12,7 @@ import type {
 import { appearanceStyle, cssColor } from "../../shared/appearance";
 import { isVisible } from "../../shared/conditions";
 import { registerCustomCard } from "../../shared/register-card";
+import { NotificationToastController } from "../../shared/notifications";
 import { viewAssistSensor } from "../../shared/view-assist";
 import { tedCardThemeClass, tedStyleTheme } from "../../shared/theme";
 import { renderStatusItem, type StatusItemContext } from "../../shared/status-items/render";
@@ -112,6 +113,26 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
   @state() private _collapsed = false;
   /** Pending re-collapse timeout while an auto-hide bar is revealed. */
   private _hideTimer?: number;
+
+  public constructor() {
+    super();
+    // Pop toasts for backend notifications when a Notifications bell item is present.
+    new NotificationToastController(this, () => {
+      const it = this._notifItem();
+      return { hass: this.hass, area: it?.area, enabled: !!it };
+    });
+  }
+
+  /** The first "notifications" status item across all sections (if any). */
+  private _notifItem(): { area?: string } | undefined {
+    for (const section of this._config?.sections ?? []) {
+      const items = (section.items ?? section.buttons ?? []) as Array<{ type?: string; area?: string }>;
+      for (const it of items) {
+        if (it.type === "notifications") return it;
+      }
+    }
+    return undefined;
+  }
 
   public setConfig(config: NavbarCardConfig): void {
     if (!config) throw new Error("Invalid configuration");
@@ -891,6 +912,11 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
         box-sizing: border-box;
         border-radius: 0;
         overflow: visible;
+        /* Shrink embedded button-card count badges so they stay proportionate on the
+           small navbar buttons (inherits through the shadow boundary to .lbc-badge). */
+        --lbc-badge-size: clamp(13px, calc(var(--nav-size, 48px) * 0.3), 20px);
+        --lbc-badge-font: clamp(8px, calc(var(--nav-size, 48px) * 0.18), 12px);
+        --lbc-badge-inset: clamp(1px, calc(var(--nav-size, 48px) * 0.06), 5px);
       }
       .navbar:not(.vertical) .navbar-card {
         height: var(--nav-size);

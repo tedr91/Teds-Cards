@@ -913,6 +913,12 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.36
+
+- **Notification toasts** — toasts now show a **severity icon** and any **action buttons** the notification defines, and the **navbar Notifications bell** pops toasts too. The toast countdown bar is fully contained within the rounded corners.
+- **Notification Center card** — **mark individual items as read** (unread dot + click the row) in addition to Mark all read, and the navbar bell gains a **Hide when empty** option.
+- **Navbar Card** — count **badges** on navbar buttons are now sized proportionally to the button (they scale with the navbar size) instead of a fixed, oversized dot.
+
 ### v1.0.35
 
 - **New: Notification Center card** — a bell with an unread badge over a scrollable list of notifications (severity accents, per-item dismiss, actions, time-ago, room labels), with **Mark all read** / **Clear all**. Has an **Area** filter and can pop toasts. Reads `sensor.teds_notifications` (needs **Ted's Cards Backend v1.0.6+**).

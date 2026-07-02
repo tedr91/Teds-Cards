@@ -658,19 +658,19 @@ export class TedButtonCard extends LitElement implements LovelaceCard {
 
       .lbc-badge {
         position: absolute;
-        top: 6px;
-        right: 6px;
+        top: var(--lbc-badge-inset, 6px);
+        right: var(--lbc-badge-inset, 6px);
         z-index: 2;
         box-sizing: border-box;
-        min-width: 18px;
-        height: 18px;
-        padding: 0 5px;
+        min-width: var(--lbc-badge-size, 18px);
+        height: var(--lbc-badge-size, 18px);
+        padding: 0 0.36em;
         border-radius: 999px;
         background: #f44336;
         color: #fff;
-        font-size: 11px;
+        font-size: var(--lbc-badge-font, 11px);
         font-weight: 700;
-        line-height: 18px;
+        line-height: var(--lbc-badge-size, 18px);
         text-align: center;
         pointer-events: none;
       }

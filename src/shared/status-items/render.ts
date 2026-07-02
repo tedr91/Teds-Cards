@@ -288,6 +288,7 @@ function renderNotificationsItem(
 ): TemplateResult {
   const all = (ctx.hass.states["sensor.teds_notifications"]?.attributes?.notifications ?? []) as NotifRow[];
   const items = item.area ? all.filter((n) => n.area === item.area) : all;
+  if (item.hide_when_empty && items.length === 0) return html``;
   const unread = items.filter((n) => !n.read).length;
   const icon = item.icon ?? (unread > 0 ? "mdi:bell-badge" : STATUS_ITEM_DEFAULT_ICON.notifications);
   const anchorId = `${ctx.keyPrefix}-notif-anchor-${index}`;

@@ -1,6 +1,18 @@
 import type { ReactiveController, ReactiveControllerHost } from "lit";
 
-import { showMessageBox, type MessagePopupSeverity } from "./messagebox-popup";
+import { showMessageBox, type MessagePopupSeverity, type ToastAction } from "./messagebox-popup";
+
+/** An action button attached to a notification. */
+export interface NotifAction {
+  label?: string;
+  action?: "dismiss" | "navigate" | "call-service" | "more-info" | "url";
+  navigation_path?: string;
+  service?: string;
+  service_data?: Record<string, unknown>;
+  entity?: string;
+  url?: string;
+  variant?: "primary" | "default";
+}
 
 /** A notification as delivered by the backend `teds_cards_backend_notification` event. */
 export interface TedNotification {
@@ -16,13 +28,14 @@ export interface TedNotification {
   sticky?: boolean;
   timeout?: number | null;
   source?: string;
-  actions?: unknown[];
+  actions?: NotifAction[];
 }
 
 interface HassLike {
   connection?: {
     subscribeEvents: <T>(cb: (ev: T) => void, type: string) => Promise<() => void>;
   };
+  callService?: (domain: string, service: string, data?: Record<string, unknown>) => void;
 }
 
 export interface NotificationToastOptions {
@@ -72,15 +85,54 @@ export class NotificationToastController implements ReactiveController {
 
   private _onEvent(n: TedNotification): void {
     if (!n) return;
-    const { area, enabled } = this.opts();
+    const { area, enabled, hass } = this.opts();
     if (enabled === false) return;
     if (area && n.area !== area) return;
+    const actions: ToastAction[] = (Array.isArray(n.actions) ? n.actions : []).map((a) => ({
+      label: a.label ?? "OK",
+      primary: a.variant === "primary",
+      handler: () => this._runAction(hass, n, a),
+    }));
     showMessageBox({
       key: `notif-${n.id}`,
       severity: n.severity ?? "info",
       title: n.title,
       message: n.message,
+      icon: n.icon,
+      actions,
       duration: typeof n.timeout === "number" && n.timeout > 0 ? n.timeout * 1000 : 8000,
     });
+  }
+
+  /** Run a notification action, then dismiss the notification everywhere. */
+  private _runAction(hass: HassLike | undefined, n: TedNotification, a: NotifAction): void {
+    switch (a.action) {
+      case "navigate":
+        if (a.navigation_path) {
+          history.pushState(null, "", a.navigation_path);
+          window.dispatchEvent(new Event("location-changed"));
+        }
+        break;
+      case "call-service":
+        if (a.service) {
+          const [domain, srv] = a.service.split(".");
+          if (domain && srv) hass?.callService?.(domain, srv, a.service_data ?? {});
+        }
+        break;
+      case "more-info":
+        if (a.entity) {
+          document.body.dispatchEvent(
+            new CustomEvent("hass-more-info", { bubbles: true, composed: true, detail: { entityId: a.entity } }),
+          );
+        }
+        break;
+      case "url":
+        if (a.url) window.open(a.url, "_blank", "noopener");
+        break;
+      case "dismiss":
+      default:
+        break;
+    }
+    hass?.callService?.("teds_cards_backend", "dismiss_notification", { id: n.id });
   }
 }

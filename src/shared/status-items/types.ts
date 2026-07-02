@@ -119,6 +119,8 @@ export interface NotificationsStatusItem extends StatusItemBase {
   icon?: string;
   /** Only count/show notifications for this area (unset = all). */
   area?: string;
+  /** Hide the bell entirely when there are no notifications. Defaults to false. */
+  hide_when_empty?: boolean;
 }
 
 export type StatusItem =

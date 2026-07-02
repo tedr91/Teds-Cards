@@ -116,7 +116,12 @@ export function statusItemSchema(type: StatusItemType): unknown[] {
         NAME_FIELD,
       ];
     case "notifications":
-      return [{ name: "area", selector: { area: {} } }, ICON_FIELD, NAME_FIELD];
+      return [
+        { name: "area", selector: { area: {} } },
+        { name: "hide_when_empty", selector: { boolean: {} } },
+        ICON_FIELD,
+        NAME_FIELD,
+      ];
   }
 }
 
@@ -165,9 +170,10 @@ export function statusItemFieldLabel(name: string): string | undefined {
       return "Entity";
     case "area":
       return "Area (optional — scopes to a room)";
+    case "hide_when_empty":
+      return "Hide when there are no notifications";
     case "display":
-      return "Display";
-    case "icon":
+      return "Display";    case "icon":
       return "Icon";
     case "name":
       return "Name";

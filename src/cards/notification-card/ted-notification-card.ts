@@ -122,6 +122,9 @@ export class TedNotificationCard extends LitElement implements LovelaceCard {
   private _dismiss(id: string): void {
     this._call("dismiss_notification", { id });
   }
+  private _markRead(id: string): void {
+    this._call("mark_read", { id });
+  }
   private _clearAll(): void {
     this._call("clear_notifications", this._config?.area ? { area: this._config.area } : {});
   }
@@ -252,8 +255,9 @@ export class TedNotificationCard extends LitElement implements LovelaceCard {
     return html`
       <div class="row sev-${sev} ${n.read ? "read" : ""}">
         <ha-icon class="row-icon" icon=${icon}></ha-icon>
-        <div class="row-body">
+        <div class="row-body" @click=${() => !n.read && this._markRead(n.id)}>
           <div class="row-top">
+            ${!n.read ? html`<span class="unread-dot"></span>` : nothing}
             ${n.title ? html`<span class="row-title">${n.title}</span>` : nothing}
             <span class="row-time">${this._timeAgo(n.created)}</span>
           </div>
@@ -392,10 +396,21 @@ export class TedNotificationCard extends LitElement implements LovelaceCard {
         flex-direction: column;
         gap: 3px;
       }
+      .row:not(.read) .row-body {
+        cursor: pointer;
+      }
       .row-top {
         display: flex;
         align-items: baseline;
         gap: 8px;
+      }
+      .unread-dot {
+        flex: none;
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: var(--nc-accent);
+        align-self: center;
       }
       .row-title {
         font-weight: 600;

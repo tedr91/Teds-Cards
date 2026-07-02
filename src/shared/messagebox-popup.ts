@@ -4,6 +4,21 @@ import { customElement, state } from "lit/decorators.js";
 /** Severity looks mirror the MessageBox card's accent stripe. */
 export type MessagePopupSeverity = "info" | "success" | "warning" | "danger" | "tip";
 
+const SEVERITY_ICON: Record<MessagePopupSeverity, string> = {
+  info: "mdi:information-outline",
+  success: "mdi:check-circle-outline",
+  warning: "mdi:alert-outline",
+  danger: "mdi:alert-circle-outline",
+  tip: "mdi:lightbulb-on-outline",
+};
+
+/** A button rendered on a toast; `handler` runs, then the toast is dismissed. */
+export interface ToastAction {
+  label: string;
+  handler: () => void;
+  primary?: boolean;
+}
+
 export interface MessagePopupOptions {
   /** Bold heading line. */
   title?: string;
@@ -12,6 +27,10 @@ export interface MessagePopupOptions {
   /** The message body. */
   message: string;
   severity?: MessagePopupSeverity;
+  /** MDI icon; defaults to a severity-appropriate icon. */
+  icon?: string;
+  /** Action buttons. */
+  actions?: ToastAction[];
   /** Auto-dismiss after this many ms (default 10000). 0 = stay until dismissed. */
   duration?: number;
   /** De-dupe key: a second call with the same key while one is showing is ignored. */
@@ -54,16 +73,27 @@ export class TedMessagePopupLayer extends LitElement {
         ${this._msgs.map(
           (m) => html`
             <div class="mb-box mb-sev-${m.severity ?? "info"}" role="status">
-              <svg class="mb-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                <path
-                  d="M12 20a8 8 0 1 1 0-16 8 8 0 0 1 0 16m0-18a10 10 0 1 0 0 20 10 10 0 0 0 0-20m-1.3 13.4-3.5-3.5 1.4-1.4 2.1 2.1 4.8-4.8 1.4 1.4z"
-                />
-              </svg>
+              <ha-icon class="mb-icon" .icon=${m.icon ?? SEVERITY_ICON[m.severity ?? "info"]}></ha-icon>
               <div class="mb-content">
                 ${m.title ? html`<div class="mb-title">${m.title}</div>` : nothing}
                 <div class="mb-message">
                   ${m.emphasis ? html`<b class="mb-em">${m.emphasis}</b> ` : nothing}${m.message}
                 </div>
+                ${m.actions?.length
+                  ? html`<div class="mb-actions">
+                      ${m.actions.map(
+                        (a) => html`<button
+                          class="mb-abtn ${a.primary ? "primary" : ""}"
+                          @click=${() => {
+                            a.handler();
+                            this._dismiss(m.id);
+                          }}
+                        >
+                          ${a.label}
+                        </button>`,
+                      )}
+                    </div>`
+                  : nothing}
               </div>
               <button class="mb-close" aria-label="Dismiss" @click=${() => this._dismiss(m.id)}>
                 <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
@@ -102,6 +132,7 @@ export class TedMessagePopupLayer extends LitElement {
     .mb-box {
       --mb-accent: #4cc2ff;
       position: relative;
+      overflow: hidden;
       pointer-events: auto;
       display: flex;
       gap: 14px;
@@ -132,8 +163,7 @@ export class TedMessagePopupLayer extends LitElement {
     }
     .mb-icon {
       flex: 0 0 auto;
-      width: 26px;
-      height: 26px;
+      --mdc-icon-size: 24px;
       color: var(--mb-accent);
       margin-top: 1px;
     }
@@ -157,6 +187,32 @@ export class TedMessagePopupLayer extends LitElement {
     .mb-em {
       color: var(--mb-accent);
       font-weight: 600;
+    }
+    .mb-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 4px;
+    }
+    .mb-abtn {
+      appearance: none;
+      font: inherit;
+      font-size: 0.85em;
+      font-weight: 600;
+      padding: 6px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      color: inherit;
+      border: 1px solid var(--divider-color, rgba(127, 127, 127, 0.4));
+      background: rgba(127, 127, 127, 0.14);
+    }
+    .mb-abtn:hover {
+      background: rgba(127, 127, 127, 0.26);
+    }
+    .mb-abtn.primary {
+      color: #fff;
+      background: var(--mb-accent);
+      border-color: var(--mb-accent);
     }
     .mb-close {
       flex: 0 0 auto;
