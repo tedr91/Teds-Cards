@@ -249,6 +249,7 @@ export class TedCameraCard extends LitElement implements LovelaceCard {
     // Long-press always opens the view popover, so every real tile is interactive.
     const clickable = true;
     const showName = this._config?.show_name === true;
+    const nameSize = typeof this._config?.name_size === "number" ? this._config.name_size : 14;
     const caption = cam.name ?? stateObj?.attributes?.friendly_name ?? cam.entity;
     // hui-image ignores the ratio when laid out by a grid; let the cell decide.
     const aspectRatio = isGrid ? undefined : this._config?.aspect_ratio;
@@ -275,7 +276,9 @@ export class TedCameraCard extends LitElement implements LovelaceCard {
             ></hui-image>`
           : html`<div class="placeholder" aria-hidden="true"></div>`}
         ${showName
-          ? html`<div class="box"><div class="title">${caption}</div></div>`
+          ? html`<div class="box">
+              <div class="title" style=${styleMap({ fontSize: `${nameSize}px` })}>${caption}</div>
+            </div>`
           : nothing}
       </div>
     `;

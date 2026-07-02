@@ -150,6 +150,20 @@ export class TedCameraCardEditor extends LitElement implements LovelaceCardEdito
           { name: "aspect_ratio", selector: { text: {} } },
         ],
       },
+      {
+        type: "grid",
+        name: "",
+        column_min_width: "100px",
+        schema: [
+          { name: "show_name", selector: { boolean: {} } },
+          {
+            name: "name_size",
+            selector: {
+              number: { min: 8, max: 48, step: 1, mode: "slider", unit_of_measurement: "px" },
+            },
+          },
+        ],
+      },
     ];
     const topData = {
       layout,
@@ -157,6 +171,8 @@ export class TedCameraCardEditor extends LitElement implements LovelaceCardEdito
       big_small_width: this._config?.big_small_width ?? 25,
       fit_mode: this._config?.fit_mode ?? "cover",
       aspect_ratio: this._config?.aspect_ratio ?? "",
+      show_name: this._config?.show_name ?? false,
+      name_size: this._config?.name_size ?? 14,
     };
     return html`
       <ha-expansion-panel
@@ -259,6 +275,7 @@ export class TedCameraCardEditor extends LitElement implements LovelaceCardEdito
               },
             ]}
             .computeLabel=${this._computeLabel}
+            .computeHelper=${this._computeHelper}
             @value-changed=${(ev: CustomEvent) => this._onCameraChanged(idx, ev)}
           ></ha-form>
         </div>
@@ -274,6 +291,7 @@ export class TedCameraCardEditor extends LitElement implements LovelaceCardEdito
       blur: undefined,
       fit_mode: "cover",
       show_name: false,
+      name_size: 14,
       layout: "single",
       big_small_position: "right",
       big_small_width: 25,
@@ -305,15 +323,7 @@ export class TedCameraCardEditor extends LitElement implements LovelaceCardEdito
             },
           },
           { name: "background", selector: { ui_color: {} } },
-          {
-            type: "grid",
-            name: "",
-            column_min_width: "100px",
-            schema: [
-              { name: "show_name", selector: { boolean: {} } },
-              { name: "brushed", selector: { boolean: {} } },
-            ],
-          },
+          { name: "brushed", selector: { boolean: {} } },
           transparencyBlurSchema(this._config?.transparency),
           {
             type: "grid",
@@ -373,6 +383,9 @@ export class TedCameraCardEditor extends LitElement implements LovelaceCardEdito
     if (schema.name === "aspect_ratio") {
       return "e.g. 16:9. Ignored in a grid (Sections) view with set rows.";
     }
+    if (schema.name === "name") {
+      return "Defaults to the camera's friendly name.";
+    }
     return undefined;
   };
 
@@ -387,9 +400,11 @@ export class TedCameraCardEditor extends LitElement implements LovelaceCardEdito
       case "entity":
         return "Camera entity";
       case "name":
-        return "Caption (optional)";
+        return "Camera Name";
       case "show_name":
-        return "Show caption";
+        return "Show Camera Name";
+      case "name_size":
+        return "Camera name size";
       case "camera_view":
         return "Camera view";
       case "fit_mode":

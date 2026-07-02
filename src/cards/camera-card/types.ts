@@ -42,6 +42,8 @@ export interface CameraCardConfig extends LovelaceCardConfig {
   big_small_width?: number;
   /** Show the caption overlay at the bottom of each feed. Defaults to false. */
   show_name?: boolean;
+  /** Font size (px) of the camera-name overlay. Defaults to 14. */
+  name_size?: number;
   /** How the feed fills its box. Defaults to `cover`. */
   fit_mode?: FitMode;
   /** Optional fixed aspect ratio (e.g. `16:9`). Ignored when in a grid with set rows. */

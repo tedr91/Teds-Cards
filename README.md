@@ -747,12 +747,13 @@ big_small_position: right   # optional (Multi only): right (default) | bottom
 big_small_width: 25         # optional (Multi only): small-feed strip width, % of the card
 cameras:                    # required — one or more cameras, shown in order
   - entity: camera.front_door
-    name: Front Door         # optional per-camera caption, defaults to the entity's name
+    name: Front Door         # optional camera name, defaults to the entity's friendly name
     camera_view: auto        # optional per-camera: auto (thumbnail, default) | live (stream)
     enabled: true            # optional, set false to hide this camera from the layout
   - entity: camera.back_yard
     camera_view: live
-show_name: false            # optional, overlay each camera's caption along the bottom edge
+show_name: false            # optional, overlay each camera's name along the bottom edge
+name_size: 14               # optional, camera-name font size in px (default 14)
 fit_mode: cover             # optional: cover (default) | contain | fill
 aspect_ratio: "16:9"        # optional, e.g. "16:9" or "1.78" (ignored in grid layout)
 theme: ted-style            # optional, visual styling: ted-style (default) | ha
@@ -767,14 +768,16 @@ double_tap_action:
 
 - **Cameras** — add one or more `camera.*` entities. In the editor, use **Auto populate cameras** to
   add every camera at once, **drag** to reorder, the **switch** in each row header to show/hide a camera,
-  and the **trash** icon to remove one. Each camera has an optional per-feed **caption** and its own
-  **view** (auto thumbnail or live stream).
+  and the **trash** icon to remove one. Each camera has an optional **Camera Name** (defaults to the
+  entity's friendly name) and its own **view** (auto thumbnail or live stream).
 - **Layout** — **Single** (one feed), **Quad** (2×2), or **Multi** (one large feed plus a strip of
   smaller ones, positioned to the **right** or **bottom**, with an adjustable **Small feeds width**
   that auto-sizes to keep every feed equal as you show/hide cameras). Slots with
   no camera show an empty placeholder.
 - **Per-camera view** — each feed is an **Auto thumbnail** (default; periodically refreshed still) or a
   **Live stream** (continuous video), set in that camera's editor row.
+- **Camera name overlay** — **Show Camera Name** overlays each feed's name along the bottom edge, with a
+  configurable **Camera name size**.
 - **Long-press a feed** — opens a quick popup to switch **that** feed between **Auto thumbnail** and
   **Live stream**, and (for any non-primary feed) **Make primary camera** to swap it into the big slot.
   These are live-view tweaks only and reset on reload — the editor holds the saved defaults.
@@ -932,6 +935,10 @@ options as the Alarm card apply.
 
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
+
+### v1.0.45
+
+- **Camera Card — "Camera Name"** — the caption is now called **Camera Name** (defaults to the entity's friendly name). The **Show Camera Name** toggle moved into the Cameras section next to a new **Camera name size** control.
 
 ### v1.0.44
 
