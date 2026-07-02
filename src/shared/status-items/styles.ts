@@ -78,6 +78,142 @@ export const statusItemStyles = css`
   .status-icon-button.is-active {
     color: var(--ted-style-danger);
   }
+  .status-icon-button.notif-btn {
+    position: relative;
+    overflow: visible;
+  }
+  .status-badge {
+    position: absolute;
+    top: -3px;
+    right: -3px;
+    min-width: 14px;
+    height: 14px;
+    padding: 0 3px;
+    box-sizing: border-box;
+    border-radius: 999px;
+    background: var(--ted-style-accent);
+    color: var(--ted-style-on-accent);
+    font-size: 9px;
+    font-weight: 700;
+    line-height: 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+  }
+
+  /* Notifications popover (bell). */
+  .notif-popover {
+    position: fixed;
+    inset: auto;
+    margin: 0;
+    box-sizing: border-box;
+    width: min(320px, 92vw);
+    max-height: 60vh;
+    overflow: auto;
+    padding: 0;
+    background: var(--ted-style-surface);
+    border: 1px solid var(--ted-style-divider);
+    border-radius: var(--ted-style-radius-sm);
+    box-shadow: 0 18px 48px rgba(0, 0, 0, 0.45);
+    color: var(--ted-style-text);
+  }
+  .notif-popover:popover-open {
+    display: block;
+  }
+  .notif-popover::backdrop {
+    background: transparent;
+  }
+  .notif-pop-head {
+    position: sticky;
+    top: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 10px 12px;
+    font-weight: 600;
+    background: var(--ted-style-surface);
+    border-bottom: 1px solid var(--ted-style-divider);
+  }
+  .notif-clear {
+    appearance: none;
+    border: none;
+    background: none;
+    color: var(--ted-style-muted);
+    font: inherit;
+    font-size: 0.8rem;
+    cursor: pointer;
+  }
+  .notif-clear:hover {
+    color: var(--ted-style-text);
+  }
+  .notif-pop-list {
+    display: flex;
+    flex-direction: column;
+  }
+  .notif-empty {
+    padding: 14px 12px;
+    color: var(--ted-style-muted);
+    font-size: 0.85rem;
+  }
+  .notif-pop-row {
+    --nc-accent: var(--ted-style-accent);
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+    padding: 8px 10px 8px 12px;
+    border-top: 1px solid var(--ted-style-divider);
+    border-left: 3px solid var(--nc-accent);
+  }
+  .notif-pop-row:first-child {
+    border-top: none;
+  }
+  .notif-pop-row.sev-info {
+    --nc-accent: #4cc2ff;
+  }
+  .notif-pop-row.sev-success {
+    --nc-accent: #6ccb5f;
+  }
+  .notif-pop-row.sev-warning {
+    --nc-accent: #ffb454;
+  }
+  .notif-pop-row.sev-danger {
+    --nc-accent: #ff99a4;
+  }
+  .notif-pop-row.sev-tip {
+    --nc-accent: #9b6cff;
+  }
+  .notif-pop-body {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .notif-pop-title {
+    font-weight: 600;
+    font-size: 0.85rem;
+  }
+  .notif-pop-msg {
+    font-size: 0.8rem;
+    color: var(--ted-style-muted);
+    overflow-wrap: anywhere;
+  }
+  .notif-pop-x {
+    flex: none;
+    appearance: none;
+    border: none;
+    background: none;
+    color: var(--ted-style-muted);
+    cursor: pointer;
+    font-size: 13px;
+    line-height: 1;
+    padding: 2px 4px;
+  }
+  .notif-pop-x:hover {
+    color: var(--ted-style-text);
+  }
 
   /* Slider popover (brightness / volume). */
   .slider-popover {

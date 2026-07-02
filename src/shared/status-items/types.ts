@@ -17,7 +17,8 @@ export type StatusItemType =
   | "spacer"
   | "time"
   | "date"
-  | "weather";
+  | "weather"
+  | "notifications";
 
 /** How a status item displays: icon + state, just the icon, or just the state. */
 export type StatusDisplay = "both" | "icon" | "state";
@@ -112,6 +113,14 @@ export interface WeatherStatusItem extends StatusItemBase {
   icon?: string;
 }
 
+/** A bell with an unread badge; tapping opens a popover list of notifications. */
+export interface NotificationsStatusItem extends StatusItemBase {
+  type: "notifications";
+  icon?: string;
+  /** Only count/show notifications for this area (unset = all). */
+  area?: string;
+}
+
 export type StatusItem =
   | SensorStatusItem
   | BrightnessStatusItem
@@ -120,7 +129,8 @@ export type StatusItem =
   | SpacerStatusItem
   | TimeStatusItem
   | DateStatusItem
-  | WeatherStatusItem;
+  | WeatherStatusItem
+  | NotificationsStatusItem;
 
 /** Resolved slider bounds + current value for a brightness / volume control. */
 export interface SliderModel {

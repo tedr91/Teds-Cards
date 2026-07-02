@@ -27,6 +27,7 @@ import type {
   BrightnessStatusItem,
   DateStatusItem,
   LedStatusItem,
+  NotificationsStatusItem,
   SensorStatusItem,
   SliderModel,
   SpacerStatusItem,
@@ -71,6 +72,8 @@ export function renderStatusItem(item: StatusItem, ctx: StatusItemContext, index
       return renderDateItem(item, ctx);
     case "weather":
       return renderWeatherItem(item, ctx);
+    case "notifications":
+      return renderNotificationsItem(item, ctx, index);
   }
 }
 
@@ -265,6 +268,78 @@ function renderWeatherItem(item: WeatherStatusItem, ctx: StatusItemContext): Tem
       ${show.state
         ? html`<span class="status-text">${temp ?? (stateObj ? capitalize(stateObj.state) : "—")}</span>`
         : nothing}
+    </div>
+  `;
+}
+
+interface NotifRow {
+  id: string;
+  title?: string;
+  message: string;
+  severity?: string;
+  area?: string;
+  read?: boolean;
+}
+
+function renderNotificationsItem(
+  item: NotificationsStatusItem,
+  ctx: StatusItemContext,
+  index: number,
+): TemplateResult {
+  const all = (ctx.hass.states["sensor.teds_notifications"]?.attributes?.notifications ?? []) as NotifRow[];
+  const items = item.area ? all.filter((n) => n.area === item.area) : all;
+  const unread = items.filter((n) => !n.read).length;
+  const icon = item.icon ?? (unread > 0 ? "mdi:bell-badge" : STATUS_ITEM_DEFAULT_ICON.notifications);
+  const anchorId = `${ctx.keyPrefix}-notif-anchor-${index}`;
+  const popId = `${ctx.keyPrefix}-notif-pop-${index}`;
+  const svc = (service: string, data: Record<string, unknown>) =>
+    ctx.hass.callService("teds_cards_backend", service, data);
+  return html`
+    <div class="status-item">
+      <button
+        id=${anchorId}
+        class="status-icon-button notif-btn"
+        popovertarget=${popId}
+        title=${String(item.name ?? "Notifications")}
+        aria-label="Notifications"
+      >
+        <ha-icon .icon=${icon}></ha-icon>
+        ${unread > 0 ? html`<span class="status-badge">${unread > 99 ? "99+" : unread}</span>` : nothing}
+      </button>
+      <div id=${popId} class="notif-popover" popover data-anchor=${anchorId} @toggle=${ctx.slider.onPopoverToggle}>
+        <div class="notif-pop-head">
+          <span>Notifications</span>
+          ${items.length
+            ? html`<button
+                class="notif-clear"
+                @click=${() => svc("clear_notifications", item.area ? { area: item.area } : {})}
+              >
+                Clear all
+              </button>`
+            : nothing}
+        </div>
+        <div class="notif-pop-list">
+          ${items.length === 0
+            ? html`<div class="notif-empty">No notifications.</div>`
+            : items.map(
+                (n) => html`
+                  <div class="notif-pop-row sev-${n.severity ?? "info"}">
+                    <div class="notif-pop-body">
+                      ${n.title ? html`<div class="notif-pop-title">${n.title}</div>` : nothing}
+                      <div class="notif-pop-msg">${n.message}</div>
+                    </div>
+                    <button
+                      class="notif-pop-x"
+                      aria-label="Dismiss"
+                      @click=${() => svc("dismiss_notification", { id: n.id })}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                `,
+              )}
+        </div>
+      </div>
     </div>
   `;
 }

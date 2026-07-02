@@ -115,6 +115,8 @@ export function statusItemSchema(type: StatusItemType): unknown[] {
         ICON_FIELD,
         NAME_FIELD,
       ];
+    case "notifications":
+      return [{ name: "area", selector: { area: {} } }, ICON_FIELD, NAME_FIELD];
   }
 }
 
@@ -142,6 +144,8 @@ export function newStatusItem(
       return { type: "date" };
     case "weather":
       return { type: "weather" };
+    case "notifications":
+      return { type: "notifications" };
   }
 }
 
@@ -159,6 +163,8 @@ export function statusItemFieldLabel(name: string): string | undefined {
   switch (name) {
     case "entity":
       return "Entity";
+    case "area":
+      return "Area (optional — scopes to a room)";
     case "display":
       return "Display";
     case "icon":

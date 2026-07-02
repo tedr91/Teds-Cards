@@ -913,6 +913,11 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.35
+
+- **New: Notification Center card** — a bell with an unread badge over a scrollable list of notifications (severity accents, per-item dismiss, actions, time-ago, room labels), with **Mark all read** / **Clear all**. Has an **Area** filter and can pop toasts. Reads `sensor.teds_notifications` (needs **Ted's Cards Backend v1.0.6+**).
+- **Navbar Card** — new **Notifications bell** status item: a bell + unread badge that opens a popover list of notifications (dismiss / clear all), with an optional **Area** filter.
+
 ### v1.0.34
 
 - **Notifications (foundation)** — the Timer and Alarm cards now show **toast notifications** driven by Ted's Cards Backend: finished timers and ringing alarms pop a dismissable message, and any `teds_cards_backend.notify` service call does too. Toasts respect the card's **Area**. Requires **Ted's Cards Backend v1.0.6+**. (A dedicated Notification Center card and navbar bell are coming next.)

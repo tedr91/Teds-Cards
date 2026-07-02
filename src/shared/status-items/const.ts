@@ -11,6 +11,7 @@ export const STATUS_ITEM_DEFAULT_ICON: Record<StatusItemType, string> = {
   time: "mdi:clock-outline",
   date: "mdi:calendar",
   weather: "mdi:weather-partly-cloudy",
+  notifications: "mdi:bell-outline",
 };
 
 /** Human-readable label per status item type (used in editor menus). */
@@ -24,6 +25,7 @@ export const STATUS_ITEM_LABEL: Record<StatusItemType, string> = {
   time: "Time",
   date: "Date",
   weather: "Weather",
+  notifications: "Notifications bell",
 };
 
 /** Default display mode per status item type (icon + state / icon only / state only). */
@@ -37,6 +39,7 @@ export const STATUS_ITEM_DEFAULT_DISPLAY: Record<StatusItemType, StatusDisplay> 
   time: "state",
   date: "state",
   weather: "both",
+  notifications: "icon",
 };
 
 /** Status item types offered by the Room Card (a subset of the full set). */
@@ -60,6 +63,7 @@ export const NAVBAR_STATUS_ITEM_TYPES: StatusItemType[] = [
   "volume",
   "led",
   "spacer",
+  "notifications",
 ];
 
 /** MDI icon per Home Assistant weather condition. */
