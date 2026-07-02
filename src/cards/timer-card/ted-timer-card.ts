@@ -133,12 +133,13 @@ export class TedTimerCard extends LitElement implements LovelaceCard {
       severity: "info",
       title: "Timer complete",
       emphasis: data.name || "Timer",
-      message: this._fmtCompleted(typeof data.duration === "number" ? data.duration : 0),
+      message: `(${this._fmtDuration(typeof data.duration === "number" ? data.duration : 0)} timer)`,
+      duration: 60000,
     });
   }
 
-  /** "5 min completed!" / "1 hr, 30 min completed!" — only the relevant h/m/s parts. */
-  private _fmtCompleted(sec: number): string {
+  /** "5 min" / "1 hr, 30 min" — only the relevant h/m/s parts. */
+  private _fmtDuration(sec: number): string {
     const h = Math.floor(sec / 3600);
     const m = Math.floor((sec % 3600) / 60);
     const s = sec % 60;
@@ -147,7 +148,7 @@ export class TedTimerCard extends LitElement implements LovelaceCard {
     if (m) parts.push(`${m} min`);
     if (s) parts.push(`${s} sec`);
     if (!parts.length) parts.push("0 sec");
-    return `${parts.join(", ")} completed!`;
+    return parts.join(", ");
   }
 
   private _sensor(): string {

@@ -913,6 +913,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.32
+
+- **Timer Card** — the completion message now reads "&lt;name&gt; (X min timer)" and stays for **60 seconds** before auto-dismissing (still closable anytime).
+
 ### v1.0.31
 
 - **Timer Card** — when a timer finishes it now pops a dismissable **completion message** (styled like Ted's MessageBox) reading "&lt;name&gt; — X hr, Y min, Z sec completed!", with a close button and a ~10s auto-dismiss. Respects the card's **Area** so each room only announces its own timers. Requires **Ted's Cards Backend v1.0.4+**.

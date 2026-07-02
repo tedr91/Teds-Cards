@@ -62,7 +62,7 @@ export class TedMessagePopupLayer extends LitElement {
               <div class="mb-content">
                 ${m.title ? html`<div class="mb-title">${m.title}</div>` : nothing}
                 <div class="mb-message">
-                  ${m.emphasis ? html`<b class="mb-em">${m.emphasis}</b> — ` : nothing}${m.message}
+                  ${m.emphasis ? html`<b class="mb-em">${m.emphasis}</b> ` : nothing}${m.message}
                 </div>
               </div>
               <button class="mb-close" aria-label="Dismiss" @click=${() => this._dismiss(m.id)}>
