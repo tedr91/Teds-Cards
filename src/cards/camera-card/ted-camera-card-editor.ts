@@ -449,10 +449,13 @@ export class TedCameraCardEditor extends LitElement implements LovelaceCardEdito
   };
 
   private _onGroupToggle = (ev: CustomEvent): void => {
+    // Ignore expanded-changed events bubbling up from the camera row panels.
+    if (ev.target !== ev.currentTarget) return;
     this._groupOpen = ev.detail.expanded;
   };
 
   private _onPanelToggle(idx: number, ev: CustomEvent): void {
+    ev.stopPropagation();
     const expanded = new Set(this._expanded);
     if (ev.detail.expanded) expanded.add(idx);
     else expanded.delete(idx);
