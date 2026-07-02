@@ -17,6 +17,12 @@ export const DEFAULT_NAVBAR_MIN_WIDTH = 16;
 /** Default maximum bar width (px) in float mode. */
 export const DEFAULT_NAVBAR_MAX_WIDTH = 920;
 
+/** Default seconds before an auto-hide bar re-collapses after being revealed. */
+export const DEFAULT_NAVBAR_AUTOHIDE_DELAY = 5;
+
+/** Padding (px) reserved for the collapsed auto-hide pill, so content stops just short of it. */
+export const NAVBAR_PILL_RESERVE = 12;
+
 /** Maximum number of NavSections a navbar can hold. */
 export const MAX_NAV_SECTIONS = 5;
 

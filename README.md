@@ -913,6 +913,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.30
+
+- **Navbar Card** — new **Auto-hide** option: the bar collapses into its edge, leaving a small **pill** you tap (or hover) to reveal it. It re-hides after a configurable delay (default 5s) or when you interact with anything outside the bar, and dashboard content reclaims the space while it's hidden. Works on all four edges.
+
 ### v1.0.29
 
 - **Remote Card** — removed the glow around the **play/pause** button while media is playing.

@@ -87,6 +87,10 @@ export interface NavbarCardConfig extends LovelaceCardConfig {
   transparency?: number;
   /** Background blur override, 0–100% (unset = no override). */
   blur?: number;
+  /** Auto-hide: collapse the bar into its edge (a small pill remains) until revealed. */
+  auto_hide?: boolean;
+  /** Seconds before an auto-hide bar re-collapses after being revealed. Default 5. */
+  auto_hide_delay?: number;
   /** Drive the bar thickness from an entity attribute holding a View Assist size
    *  ("6vw"/"7vw"/"8vw" → 35/42/50 px). Overrides `size` when it resolves; View Assist's
    *  own vw rendering is intentionally not used. */

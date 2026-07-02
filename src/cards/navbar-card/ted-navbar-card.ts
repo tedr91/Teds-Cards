@@ -19,6 +19,7 @@ import { StatusSliderController } from "../../shared/status-items/slider-control
 import { statusItemStyles } from "../../shared/status-items/styles";
 import type { StatusItem } from "../../shared/status-items/types";
 import {
+  DEFAULT_NAVBAR_AUTOHIDE_DELAY,
   DEFAULT_NAVBAR_MAX_WIDTH,
   DEFAULT_NAVBAR_MIN_WIDTH,
   DEFAULT_NAVBAR_SIZE,
@@ -26,6 +27,7 @@ import {
   NAVBAR_CARD_EDITOR_TYPE,
   NAVBAR_CARD_NAME,
   NAVBAR_CARD_TYPE,
+  NAVBAR_PILL_RESERVE,
   defaultNavButton,
 } from "./const";
 import { detectEditOrPreview, forceNavbarPadding, navbarContentRect, navbarHeaderHeight, removeNavbarPadding } from "./navbar-dom";
@@ -106,6 +108,10 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
   /** Vertical insets (px) so a left/right bar clears the HA header / content top & bottom. */
   private _navTop = 0;
   private _navBottom = 0;
+  /** Auto-hide: whether the bar is currently collapsed into its edge (pill showing). */
+  @state() private _collapsed = false;
+  /** Pending re-collapse timeout while an auto-hide bar is revealed. */
+  private _hideTimer?: number;
 
   public setConfig(config: NavbarCardConfig): void {
     if (!config) throw new Error("Invalid configuration");
@@ -124,6 +130,7 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
   public connectedCallback(): void {
     super.connectedCallback();
     this._editMode = detectEditOrPreview(this);
+    this._collapsed = this._autoHide();
     void this._loadHelpers();
     this._applyPadding();
     this._syncClockTimer();
@@ -131,6 +138,7 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
     window.addEventListener("location-changed", this._onVisibilityEvent);
     window.addEventListener("popstate", this._onVisibilityEvent);
     window.addEventListener("view-assist-responsive-change", this._onVisibilityEvent);
+    document.addEventListener("pointerdown", this._onDocPointerDown, true);
   }
 
   public disconnectedCallback(): void {
@@ -140,6 +148,8 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
     window.removeEventListener("location-changed", this._onVisibilityEvent);
     window.removeEventListener("popstate", this._onVisibilityEvent);
     window.removeEventListener("view-assist-responsive-change", this._onVisibilityEvent);
+    document.removeEventListener("pointerdown", this._onDocPointerDown, true);
+    this._clearHide();
     if (this._resizeRaf) cancelAnimationFrame(this._resizeRaf);
     if (this._clockTimer !== undefined) {
       window.clearInterval(this._clockTimer);
@@ -156,6 +166,9 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
       this._applyPadding();
       this._lastThickness = this._thickness();
       this._syncClockTimer();
+      // Re-collapse (or fully show) when the auto-hide setting changes.
+      this._collapsed = this._autoHide();
+      if (!this._autoHide()) this._clearHide();
     } else if (changed.has("hass") && (this._hasConditional || this._hasSource)) {
       // Visibility conditions and sourced items may depend on entity state; rebuild so
       // newly hidden/shown/sourced items update (elements reuse by config = cheap).
@@ -218,6 +231,16 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
 
   /** Reserve view padding so dashboard content isn't hidden under the bar. */
   private _applyPadding(): void {
+    // Auto-hide bars only reserve room for the collapsed pill; the revealed bar
+    // overlays the dashboard temporarily.
+    if (this._autoHide()) {
+      forceNavbarPadding({
+        alignment: this._alignment(),
+        px: NAVBAR_PILL_RESERVE,
+        enabled: !this._editMode,
+      });
+      return;
+    }
     const margin = this._barType() === "float" ? 16 : 0;
     forceNavbarPadding({
       alignment: this._alignment(),
@@ -225,6 +248,60 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
       enabled: !this._editMode,
     });
   }
+
+  /** Whether auto-hide is active (configured on, and not in the editor/preview). */
+  private _autoHide(): boolean {
+    return this._config?.auto_hide === true && !this._editMode;
+  }
+
+  private _autoHideDelay(): number {
+    const d = this._config?.auto_hide_delay;
+    return (typeof d === "number" && d >= 0 ? d : DEFAULT_NAVBAR_AUTOHIDE_DELAY) * 1000;
+  }
+
+  /** Reveal the collapsed bar and (re)start the auto-collapse countdown. */
+  private _reveal = (): void => {
+    if (!this._autoHide()) return;
+    if (this._collapsed) this._collapsed = false;
+    this._scheduleHide();
+  };
+
+  private _collapse = (): void => {
+    if (!this._autoHide()) return;
+    this._clearHide();
+    if (!this._collapsed) this._collapsed = true;
+  };
+
+  private _scheduleHide(): void {
+    this._clearHide();
+    this._hideTimer = window.setTimeout(() => this._collapse(), this._autoHideDelay());
+  }
+
+  private _clearHide(): void {
+    if (this._hideTimer !== undefined) {
+      window.clearTimeout(this._hideTimer);
+      this._hideTimer = undefined;
+    }
+  }
+
+  /** Collapse when a pointer press lands anywhere outside the navbar. */
+  private _onDocPointerDown = (ev: PointerEvent): void => {
+    if (!this._autoHide() || this._collapsed) return;
+    if (ev.composedPath().includes(this)) return;
+    this._collapse();
+  };
+
+  /** Hovering the revealed bar keeps it open; leaving restarts the countdown. */
+  private _onBarEnter = (): void => {
+    if (this._autoHide() && !this._collapsed) this._clearHide();
+  };
+  private _onBarLeave = (): void => {
+    if (this._autoHide() && !this._collapsed) this._scheduleHide();
+  };
+  /** A tap on a nav item resets the countdown so it doesn't vanish mid-interaction. */
+  private _onBarPointerDown = (): void => {
+    if (this._autoHide() && !this._collapsed) this._scheduleHide();
+  };
 
   /** (Re)build cached embedded button cards, reusing those whose config is unchanged. */
   private _buildButtonElements(): void {
@@ -537,7 +614,11 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
       [this._barType()]: true,
       vertical: this._isVertical(),
       "edit-mode": this._editMode,
+      "auto-hide": this._autoHide(),
+      collapsed: this._autoHide() && this._collapsed,
     };
+
+    const autoHide = this._autoHide();
 
     return html`
       <div
@@ -550,7 +631,21 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
           "--ted-nav-bottom": `${this._navBottom}px`,
         })}
       >
-        <ha-card class="navbar-card ${tedCardThemeClass(theme)}${hug ? " hug" : ""}" style=${styleMap(cardStyle)}>
+        ${autoHide
+          ? html`<button
+              class="nav-pill"
+              aria-label="Show navigation"
+              @click=${this._reveal}
+              @pointerenter=${this._reveal}
+            ></button>`
+          : nothing}
+        <ha-card
+          class="navbar-card ${tedCardThemeClass(theme)}${hug ? " hug" : ""}"
+          style=${styleMap(cardStyle)}
+          @pointerenter=${this._onBarEnter}
+          @pointerleave=${this._onBarLeave}
+          @pointerdown=${this._onBarPointerDown}
+        >
           ${ZONES.map(
             (zone) => html`
               <div class="zone ${zone}">
@@ -719,6 +814,75 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
       /* In the editor / card picker preview, sit inline instead of overlaying. */
       .navbar.edit-mode {
         position: static;
+      }
+
+      /* Auto-hide: the bar slides fully off its edge when collapsed; the pill remains. */
+      .navbar.auto-hide .navbar-card {
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        will-change: transform;
+      }
+      .navbar.collapsed .navbar-card {
+        pointer-events: none;
+      }
+      .navbar.collapsed.bottom .navbar-card {
+        transform: translateY(100%);
+      }
+      .navbar.collapsed.top .navbar-card {
+        transform: translateY(-100%);
+      }
+      .navbar.collapsed.left .navbar-card {
+        transform: translateX(-100%);
+      }
+      .navbar.collapsed.right .navbar-card {
+        transform: translateX(100%);
+      }
+      /* The pill handle: a small rounded bar centered on the aligned edge. */
+      .nav-pill {
+        position: absolute;
+        z-index: 1;
+        border: none;
+        padding: 0;
+        cursor: pointer;
+        pointer-events: none;
+        background: color-mix(in srgb, var(--ted-style-text, #888) 45%, transparent);
+        opacity: 0;
+        transition: opacity 0.25s ease;
+        border-radius: 999px;
+      }
+      .navbar.collapsed .nav-pill {
+        opacity: 0.85;
+        pointer-events: auto;
+      }
+      .navbar.collapsed .nav-pill:hover {
+        opacity: 1;
+      }
+      /* Horizontal bars: a wide, short pill centered on the top/bottom edge. */
+      .navbar.bottom .nav-pill,
+      .navbar.top .nav-pill {
+        left: 50%;
+        transform: translateX(-50%);
+        width: 46px;
+        height: 5px;
+      }
+      .navbar.bottom .nav-pill {
+        bottom: 4px;
+      }
+      .navbar.top .nav-pill {
+        top: 4px;
+      }
+      /* Vertical bars: a tall, thin pill centered on the left/right edge. */
+      .navbar.left .nav-pill,
+      .navbar.right .nav-pill {
+        top: 50%;
+        transform: translateY(-50%);
+        width: 5px;
+        height: 46px;
+      }
+      .navbar.left .nav-pill {
+        left: 4px;
+      }
+      .navbar.right .nav-pill {
+        right: 4px;
       }
 
       .navbar-card {

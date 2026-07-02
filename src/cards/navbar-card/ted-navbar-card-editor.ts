@@ -23,6 +23,7 @@ import {
 } from "../../shared/status-items/editor";
 import type { StatusItem, StatusItemType } from "../../shared/status-items/types";
 import {
+  DEFAULT_NAVBAR_AUTOHIDE_DELAY,
   DEFAULT_NAVBAR_MAX_WIDTH,
   DEFAULT_NAVBAR_MIN_WIDTH,
   DEFAULT_NAVBAR_SIZE,
@@ -114,6 +115,8 @@ export class TedNavbarCardEditor extends LitElement implements LovelaceCardEdito
       max_width: DEFAULT_NAVBAR_MAX_WIDTH,
       transparency: undefined,
       blur: undefined,
+      auto_hide: false,
+      auto_hide_delay: DEFAULT_NAVBAR_AUTOHIDE_DELAY,
     };
   }
 
@@ -226,6 +229,19 @@ export class TedNavbarCardEditor extends LitElement implements LovelaceCardEdito
             selector: { number: { min: 40, max: 120, step: 2, mode: "slider", unit_of_measurement: "px" } },
           },
           transparencyBlurSchema(this._config?.transparency),
+          {
+            type: "grid",
+            name: "",
+            column_min_width: "120px",
+            schema: [
+              { name: "auto_hide", selector: { boolean: {} } },
+              {
+                name: "auto_hide_delay",
+                disabled: this._config?.auto_hide !== true,
+                selector: { number: { min: 1, max: 60, step: 1, mode: "box", unit_of_measurement: "s" } },
+              },
+            ],
+          },
         ],
       },
     ];
@@ -251,6 +267,10 @@ export class TedNavbarCardEditor extends LitElement implements LovelaceCardEdito
         return "Transparency";
       case "blur":
         return "Background blur";
+      case "auto_hide":
+        return "Auto-hide";
+      case "auto_hide_delay":
+        return "Auto-hide delay";
       case "placement":
         return "Placement";
       case "align":
