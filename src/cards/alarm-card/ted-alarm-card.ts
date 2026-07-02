@@ -27,6 +27,7 @@ interface Alarm {
   days: number[];
   description?: string;
   enabled: boolean;
+  location?: string;
 }
 
 /** Backend day indices (0–6) → short labels. Python weekday convention (Mon = 0). */
@@ -84,11 +85,20 @@ export class TedAlarmCard extends LitElement implements LovelaceCard {
   }
 
   private _sensor(): string {
-    return this._config?.entity ?? ALARMS_SENSOR;
+    return ALARMS_SENSOR;
   }
 
   private get _alarms(): Alarm[] {
-    return (this.hass?.states[this._sensor()]?.attributes.alarms as Alarm[]) ?? [];
+    const all = (this.hass?.states[this._sensor()]?.attributes.alarms as Alarm[]) ?? [];
+    const area = this._config?.area;
+    return area ? all.filter((a) => a.location === area) : all;
+  }
+
+  /** Friendly name of an HA area_id, via the frontend area registry. */
+  private _areaName(id?: string): string | undefined {
+    if (!id) return undefined;
+    const areas = (this.hass as { areas?: Record<string, { name?: string }> } | undefined)?.areas;
+    return areas?.[id]?.name;
   }
 
   /** Minutes-since-midnight for a "HH:MM[:SS]" time, used for sorting. */
@@ -147,7 +157,12 @@ export class TedAlarmCard extends LitElement implements LovelaceCard {
         enabled: true,
       });
     } else {
-      this._call("add_alarm", { label: this._label, time: this._time, days: this._days });
+      this._call("add_alarm", {
+        label: this._label,
+        time: this._time,
+        days: this._days,
+        ...(this._config?.area ? { location: this._config.area } : {}),
+      });
     }
     this._closeAdd();
   }
@@ -242,12 +257,15 @@ export class TedAlarmCard extends LitElement implements LovelaceCard {
 
   private _renderAlarm(a: Alarm): TemplateResult {
     const grouped = this._daysLabel(a.days);
+    // In the whole-home (area-unset) view, label each alarm with its room.
+    const roomName = this._config?.area ? undefined : this._areaName(a.location);
     return html`
       <div class="row ${a.enabled ? "" : "off"}">
         <div class="info">
           <div class="time">${this._fmtTime(a.time)}</div>
           <div class="label-row">
             <div class="label">${a.label}</div>
+            ${roomName ? html`<div class="room">${roomName}</div>` : nothing}
             ${Array.isArray(a.days) && a.days.length
               ? html`<div class="days">
                   ${grouped
@@ -468,6 +486,15 @@ export class TedAlarmCard extends LitElement implements LovelaceCard {
         border-radius: var(--ted-style-radius-sm);
         background: var(--ted-style-surface-2);
         color: var(--ted-style-muted);
+      }
+      .room {
+        flex: none;
+        font-size: 0.7rem;
+        line-height: 1;
+        padding: 3px 6px;
+        border-radius: var(--ted-style-radius-sm);
+        background: color-mix(in srgb, var(--ted-style-accent) 22%, transparent);
+        color: var(--ted-style-text);
       }
       .ctrl {
         flex: none;

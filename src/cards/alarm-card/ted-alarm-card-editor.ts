@@ -55,7 +55,7 @@ export class TedAlarmCardEditor extends LitElement implements LovelaceCardEditor
   private _schema() {
     return [
       { name: "title", selector: { text: {} } },
-      { name: "entity", selector: { entity: { domain: "sensor" } } },
+      { name: "area", selector: { area: {} } },
       {
         name: "",
         type: "expandable",
@@ -129,8 +129,8 @@ export class TedAlarmCardEditor extends LitElement implements LovelaceCardEditor
     switch (schema.name) {
       case "title":
         return "Title";
-      case "entity":
-        return "Alarms sensor (optional)";
+      case "area":
+        return "Area (optional — scopes this card to a room)";
       case "show_add":
         return "Show add button";
       case "theme":
@@ -169,7 +169,7 @@ export class TedAlarmCardEditor extends LitElement implements LovelaceCardEditor
       if (config[key] === defaults[key]) delete config[key];
     }
     if (!config.title) delete config.title;
-    if (!config.entity) delete config.entity;
+    if (!config.area) delete config.area;
     fireEvent(this, "config-changed", { config });
   };
 

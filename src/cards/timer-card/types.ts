@@ -6,8 +6,9 @@ export interface TimerCardConfig extends LovelaceCardConfig {
   type: string;
   /** Header text. Defaults to "Timers". */
   title?: string;
-  /** Timers sensor entity. Defaults to `sensor.teds_timers`. */
-  entity?: string;
+  /** Optional area to scope this card to. When set, only timers tagged with this
+   *  area are shown, and new timers started here are tagged with it. Unset = all. */
+  area?: string;
 
   // Visual
   theme?: TedStyleTheme;

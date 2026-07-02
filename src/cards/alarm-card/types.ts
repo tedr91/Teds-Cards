@@ -6,8 +6,9 @@ export interface AlarmCardConfig extends LovelaceCardConfig {
   type: string;
   /** Header text. Defaults to "Alarms". */
   title?: string;
-  /** Alarms sensor entity. Defaults to `sensor.teds_alarms`. */
-  entity?: string;
+  /** Optional area to scope this card to. When set, only alarms tagged with this
+   *  area are shown, and new alarms created here are tagged with it. Unset = all. */
+  area?: string;
 
   // Visual
   theme?: TedStyleTheme;

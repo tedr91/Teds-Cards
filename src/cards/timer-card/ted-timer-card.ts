@@ -28,12 +28,14 @@ interface ActiveTimer {
   duration: number;
   remaining: number;
   paused: boolean;
+  location?: string;
 }
 interface RecentTimer {
   name: string;
   h: number;
   m: number;
   s: number;
+  location?: string;
 }
 
 /** Subset of Home Assistant's LovelaceGridOptions. */
@@ -93,7 +95,14 @@ export class TedTimerCard extends LitElement implements LovelaceCard {
   }
 
   private _sensor(): string {
-    return this._config?.entity ?? TIMERS_SENSOR;
+    return TIMERS_SENSOR;
+  }
+
+  /** Friendly name of an HA area_id, via the frontend area registry. */
+  private _areaName(id?: string): string | undefined {
+    if (!id) return undefined;
+    const areas = (this.hass as { areas?: Record<string, { name?: string }> } | undefined)?.areas;
+    return areas?.[id]?.name;
   }
 
   private _attr<T>(key: string): T[] {
@@ -148,6 +157,7 @@ export class TedTimerCard extends LitElement implements LovelaceCard {
         hours: this._h,
         minutes: this._m,
         seconds: this._s,
+        ...(this._config?.area ? { location: this._config.area } : {}),
       });
     } else if (this._dialog) {
       this._call("update_timer", {
@@ -188,8 +198,9 @@ export class TedTimerCard extends LitElement implements LovelaceCard {
     const shadow = cfg.shadow !== false;
     const brushed = cfg.brushed === true;
     const missing = !this.hass.states[this._sensor()];
-    const active = this._attr<ActiveTimer>("active");
-    const recent = this._attr<RecentTimer>("recent");
+    const area = cfg.area;
+    const active = this._attr<ActiveTimer>("active").filter((t) => !area || t.location === area);
+    const recent = this._attr<RecentTimer>("recent").filter((r) => !area || r.location === area);
     const showActive = cfg.show_active !== false;
     const showAdd = cfg.show_add !== false;
     const showRecent = cfg.show_recent !== false;
@@ -288,12 +299,15 @@ export class TedTimerCard extends LitElement implements LovelaceCard {
     const remaining = this._remaining(t);
     const duration = t.duration || 0;
     const frac = duration > 0 ? Math.max(0, Math.min(1, remaining / duration)) : 0;
+    const roomName = this._config?.area ? undefined : this._areaName(t.location);
     return html`
       <div class="tile ${t.paused ? "paused" : ""}">
         <div class="bar"><div class="bar-fill" style=${styleMap({ width: `${frac * 100}%` })}></div></div>
         <div class="tile-body">
           <div class="rem">${this._fmtRemaining(remaining)}</div>
-          <div class="tname" title=${t.name}>${t.name}</div>
+          <div class="tname" title=${t.name}>
+            ${t.name}${roomName ? html`<span class="room">${roomName}</span>` : nothing}
+          </div>
         </div>
         <div class="tile-ctrl">
           <ted-icon-button
@@ -314,6 +328,7 @@ export class TedTimerCard extends LitElement implements LovelaceCard {
 
   private _renderRecentTile(r: RecentTimer): TemplateResult {
     const total = r.h * 3600 + r.m * 60 + r.s;
+    const roomName = this._config?.area ? undefined : this._areaName(r.location);
     return html`
       <button
         class="tile recent"
@@ -321,7 +336,7 @@ export class TedTimerCard extends LitElement implements LovelaceCard {
         @click=${() => this._openRecent(r)}
       >
         <span class="rem">${this._fmtRemaining(total)}</span>
-        <span class="tname">(${r.name})</span>
+        <span class="tname">(${r.name})${roomName ? html`<span class="room">${roomName}</span>` : nothing}</span>
       </button>
     `;
   }
@@ -528,6 +543,15 @@ export class TedTimerCard extends LitElement implements LovelaceCard {
         color: var(--ted-style-muted);
         overflow: hidden;
         text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .room {
+        margin-left: 6px;
+        font-size: 0.62rem;
+        padding: 2px 5px;
+        border-radius: var(--ted-style-radius-sm);
+        background: color-mix(in srgb, var(--ted-style-accent) 22%, transparent);
+        color: var(--ted-style-text);
         white-space: nowrap;
       }
       .tile.recent {

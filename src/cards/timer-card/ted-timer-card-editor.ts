@@ -78,7 +78,7 @@ export class TedTimerCardEditor extends LitElement implements LovelaceCardEditor
   private _topSchema() {
     return [
       { name: "title", selector: { text: {} } },
-      { name: "entity", selector: { entity: { domain: "sensor" } } },
+      { name: "area", selector: { area: {} } },
     ];
   }
 
@@ -213,8 +213,8 @@ export class TedTimerCardEditor extends LitElement implements LovelaceCardEditor
     switch (schema.name) {
       case "title":
         return "Title";
-      case "entity":
-        return "Timers sensor (optional)";
+      case "area":
+        return "Area (optional — scopes this card to a room)";
       case "show_add":
         return "Show add button";
       case "theme":
@@ -257,7 +257,7 @@ export class TedTimerCardEditor extends LitElement implements LovelaceCardEditor
       if (next[key] === defaults[key]) delete next[key];
     }
     if (!next.title) delete next.title;
-    if (!next.entity) delete next.entity;
+    if (!next.area) delete next.area;
     if (Array.isArray(next.section_order) && this._isDefaultSectionOrder(next.section_order)) {
       delete next.section_order;
     }
