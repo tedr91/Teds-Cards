@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Timer complete — MessageBox severity options</title>
+    <style>
+      :root {
+        --ted-style-radius: 14px;
+        --ted-style-radius-sm: 8px;
+        --ted-style-text: #ffffff;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 30px;
+        padding: 48px 20px 64px;
+        font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, sans-serif;
+        color: #fff;
+        background:
+          radial-gradient(1200px 600px at 20% -10%, #3a2a5a 0%, transparent 60%),
+          radial-gradient(1000px 700px at 100% 100%, #542a52 0%, transparent 55%),
+          #14141a;
+      }
+      h1 {
+        font-weight: 600;
+        font-size: 1.15rem;
+        opacity: 0.85;
+        margin: 0 0 4px;
+      }
+      .variant {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+      }
+      .variant .tag {
+        font-size: 0.8rem;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        opacity: 0.6;
+      }
+
+      /* --- MessageBox toast (mirrors ted-messagebox-card .mb-box) --- */
+      .mb-box {
+        position: relative;
+        width: min(420px, 92vw);
+        display: flex;
+        gap: 14px;
+        align-items: flex-start;
+        padding: 16px 18px;
+        border-radius: var(--ted-style-radius);
+        color: var(--ted-style-text);
+        background: rgba(28, 32, 44, 0.62);
+        backdrop-filter: blur(22px) saturate(150%);
+        -webkit-backdrop-filter: blur(22px) saturate(150%);
+        border: 1px solid rgba(255, 255, 255, 0.22);
+        border-left: 4px solid var(--mb-accent);
+        box-shadow: 0 18px 48px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.16);
+        overflow: hidden;
+      }
+      .mb-sev-success {
+        --mb-accent: #6ccb5f;
+      }
+      .mb-sev-info {
+        --mb-accent: #4cc2ff;
+      }
+      .mb-sev-tip {
+        --mb-accent: #9b6cff;
+      }
+      .mb-icon {
+        flex: 0 0 auto;
+        width: 26px;
+        height: 26px;
+        color: var(--mb-accent);
+        margin-top: 1px;
+      }
+      .mb-content {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        min-width: 0;
+        flex: 1 1 auto;
+      }
+      .mb-title {
+        font-size: 1.1em;
+        font-weight: 600;
+        letter-spacing: 0.01em;
+      }
+      .mb-message {
+        font-size: 0.92em;
+        line-height: 1.35;
+        opacity: 0.92;
+      }
+      .mb-message b {
+        color: var(--mb-accent);
+        font-weight: 600;
+      }
+      .mb-close {
+        flex: 0 0 auto;
+        width: 30px;
+        height: 30px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: var(--ted-style-radius-sm);
+        border: 1px solid rgba(255, 255, 255, 0.22);
+        background: rgba(255, 255, 255, 0.08);
+        color: inherit;
+        cursor: pointer;
+      }
+      .mb-close:hover {
+        background: rgba(255, 255, 255, 0.16);
+      }
+      .mb-close svg {
+        width: 16px;
+        height: 16px;
+      }
+      /* auto-dismiss progress bar */
+      .mb-bar {
+        position: absolute;
+        left: 0;
+        bottom: 0;
+        height: 3px;
+        width: 100%;
+        transform-origin: left;
+        background: var(--mb-accent);
+        opacity: 0.85;
+        animation: mb-count 10s linear forwards;
+      }
+      @keyframes mb-count {
+        from {
+          transform: scaleX(1);
+        }
+        to {
+          transform: scaleX(0);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Timer complete — pick a look</h1>
+
+    <div class="variant">
+      <span class="tag">Success (green)</span>
+      <div class="mb-box mb-sev-success">
+        <svg class="mb-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M12 20a8 8 0 1 1 0-16 8 8 0 0 1 0 16m0-18a10 10 0 1 0 0 20 10 10 0 0 0 0-20m-1.3 13.4-3.5-3.5 1.4-1.4 2.1 2.1 4.8-4.8 1.4 1.4z" />
+        </svg>
+        <div class="mb-content">
+          <div class="mb-title">Timer complete</div>
+          <div class="mb-message"><b>test2 from surface</b> — 5 min completed!</div>
+        </div>
+        <button class="mb-close" aria-label="Dismiss">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.4 17.6 5 12 10.6 6.4 5 5 6.4 10.6 12 5 17.6 6.4 19 12 13.4 17.6 19 19 17.6 13.4 12z"/></svg>
+        </button>
+        <div class="mb-bar"></div>
+      </div>
+    </div>
+
+    <div class="variant">
+      <span class="tag">Info (blue / accent)</span>
+      <div class="mb-box mb-sev-info">
+        <svg class="mb-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M12 20a8 8 0 1 1 0-16 8 8 0 0 1 0 16m0-18a10 10 0 1 0 0 20 10 10 0 0 0 0-20m-1.3 13.4-3.5-3.5 1.4-1.4 2.1 2.1 4.8-4.8 1.4 1.4z" />
+        </svg>
+        <div class="mb-content">
+          <div class="mb-title">Timer complete</div>
+          <div class="mb-message"><b>test2 from surface</b> — 5 min completed!</div>
+        </div>
+        <button class="mb-close" aria-label="Dismiss">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.4 17.6 5 12 10.6 6.4 5 5 6.4 10.6 12 5 17.6 6.4 19 12 13.4 17.6 19 19 17.6 13.4 12z"/></svg>
+        </button>
+        <div class="mb-bar"></div>
+      </div>
+    </div>
+
+    <div class="variant">
+      <span class="tag">Tip (purple)</span>
+      <div class="mb-box mb-sev-tip">
+        <svg class="mb-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M12 20a8 8 0 1 1 0-16 8 8 0 0 1 0 16m0-18a10 10 0 1 0 0 20 10 10 0 0 0 0-20m-1.3 13.4-3.5-3.5 1.4-1.4 2.1 2.1 4.8-4.8 1.4 1.4z" />
+        </svg>
+        <div class="mb-content">
+          <div class="mb-title">Timer complete</div>
+          <div class="mb-message"><b>test2 from surface</b> — 5 min completed!</div>
+        </div>
+        <button class="mb-close" aria-label="Dismiss">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.4 17.6 5 12 10.6 6.4 5 5 6.4 10.6 12 5 17.6 6.4 19 12 13.4 17.6 19 19 17.6 13.4 12z"/></svg>
+        </button>
+        <div class="mb-bar"></div>
+      </div>
+    </div>
+  </body>
+</html>
