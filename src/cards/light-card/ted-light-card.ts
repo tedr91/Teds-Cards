@@ -145,9 +145,9 @@ export class TedLightCard extends LitElement implements LovelaceCard {
   public getGridOptions(): GridOptions {
     if (this._config?.orientation === "horizontal") {
       return {
-        columns: 6,
+        columns: 3,
         rows: 1,
-        min_columns: 4,
+        min_columns: 3,
         min_rows: 1,
       };
     }

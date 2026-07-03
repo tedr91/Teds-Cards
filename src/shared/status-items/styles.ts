@@ -47,9 +47,16 @@ export const statusItemStyles = css`
     align-items: center;
     justify-content: center;
     flex: none;
-    width: 28px;
-    height: 28px;
-    padding: 0;
+    /* Size the LAYOUT box to the icon (matching .status-icon) so brightness/volume/
+       notifications line up exactly with the plain status items in every align mode.
+       The 6px padding grows the circular tap/hover target back to 28px, and the matching
+       negative vertical margin pulls that extra height back out of layout so the button
+       contributes the same height as a bare icon. content-box keeps width/height = icon. */
+    box-sizing: content-box;
+    width: var(--ted-status-icon-size, 16px);
+    height: var(--ted-status-icon-size, 16px);
+    padding: 6px;
+    margin-block: -6px;
     border: none;
     border-radius: 50%;
     background: transparent;

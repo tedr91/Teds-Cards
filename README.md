@@ -936,6 +936,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.47
+
+- **Status item alignment fix** — brightness, volume, and notification icons (which are clickable buttons) now match the exact height of the other status items, so every item lines up in all alignment modes. Their tap targets are unchanged.
+
 ### v1.0.46
 
 - **Camera editor fix** — collapsing an expanded camera feed no longer collapses the whole **Cameras** section.
