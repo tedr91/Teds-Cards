@@ -936,6 +936,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.49
+
+- **Notification toasts fixed on kiosk dashboards** — toasts now subscribe via the backend's `teds_cards_backend/subscribe_notifications` WebSocket command instead of the raw event, resolving the "Unauthorized"/refused-subscription errors that non-admin (e.g. Wallpanel) users hit. Requires Ted's Cards Backend v1.0.7+.
+
 ### v1.0.48
 
 - **Room Card — Triple & Quad button sizes** — section button **Width** and **Height** now offer **Triple** (3×) and **Quad** (4×) footprints in addition to Half / Normal / Double.

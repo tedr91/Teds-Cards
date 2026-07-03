@@ -14,7 +14,7 @@ export interface NotifAction {
   variant?: "primary" | "default";
 }
 
-/** A notification as delivered by the backend `teds_cards_backend_notification` event. */
+/** A notification as delivered by the backend `teds_cards_backend/subscribe_notifications` command. */
 export interface TedNotification {
   id: string;
   title?: string;
@@ -33,7 +33,7 @@ export interface TedNotification {
 
 interface HassLike {
   connection?: {
-    subscribeEvents: <T>(cb: (ev: T) => void, type: string) => Promise<() => void>;
+    subscribeMessage: <T>(cb: (ev: T) => void, msg: { type: string }) => Promise<() => void>;
   };
   callService?: (domain: string, service: string, data?: Record<string, unknown>) => void;
 }
@@ -50,9 +50,11 @@ export interface NotificationToastOptions {
 }
 
 /**
- * Subscribes to the backend `teds_cards_backend_notification` event and pops a
- * MessageBox-style toast for each notification (area-filtered). Deduped by id via
- * the shared popup layer, so multiple subscribing cards won't double-toast.
+ * Subscribes to backend notifications via the `teds_cards_backend/subscribe_notifications`
+ * WebSocket command and pops a MessageBox-style toast for each notification (area-filtered).
+ * A dedicated command is used instead of `subscribe_events` because non-admin (kiosk) users
+ * are not allowed to subscribe to custom HA events. Deduped by id via the shared popup layer,
+ * so multiple subscribing cards won't double-toast.
  */
 export class NotificationToastController implements ReactiveController {
   private _sub?: Promise<() => void>;
@@ -80,9 +82,9 @@ export class NotificationToastController implements ReactiveController {
   private _ensure(): void {
     const conn = this.opts().hass?.connection;
     if (this._sub || !conn) return;
-    this._sub = conn.subscribeEvents<{ data: TedNotification }>(
-      (ev) => this._onEvent(ev.data),
-      "teds_cards_backend_notification",
+    this._sub = conn.subscribeMessage<TedNotification>(
+      (n) => this._onEvent(n),
+      { type: "teds_cards_backend/subscribe_notifications" },
     );
   }
 
