@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Ted's Cards — Silhouette Logo Concepts</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin:0; font-family:-apple-system,"Segoe UI",Roboto,sans-serif; background:#14161a; color:#e8eaed; padding:40px; }
+  h1 { font-weight:600; margin:0 0 4px; }
+  .sub { color:#9aa0a6; margin:0 0 28px; font-size:14px; }
+  .grid { display:grid; grid-template-columns:1fr; gap:18px; max-width:600px; }
+  .tile { background:#1c1f24; border:1px solid #2a2e35; border-radius:20px; padding:22px 24px; }
+  .swatches { display:flex; gap:16px; align-items:center; margin-bottom:14px; }
+  .swatch { display:flex; flex-direction:column; align-items:center; gap:6px; }
+  .bg-dark,.bg-light { width:104px; height:104px; border-radius:20px; display:flex; align-items:center; justify-content:center; }
+  .bg-dark { background:#14161a; } .bg-light { background:#eef1f5; }
+  .sm.bg-dark,.sm.bg-light { width:56px; height:56px; border-radius:12px; }
+  .swatch small { color:#9aa0a6; font-size:11px; }
+  .name { font-size:15px; font-weight:600; }
+  .desc { font-size:12px; color:#9aa0a6; margin-top:4px; line-height:1.4; }
+</style>
+</head>
+<body>
+  <h1>Ted's Cards — Silhouette Concepts</h1>
+  <p class="sub">Stylized from your profile photo (cap + head). Dark, light, and a small size each. Pick a number.</p>
+
+  <!-- ===== shared defs ===== -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+    <linearGradient id="grad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#5a97dd"/><stop offset="1" stop-color="#8a5fd0"/>
+    </linearGradient>
+    <linearGradient id="gradSoft" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#6ba3e6"/><stop offset="1" stop-color="#9a72d8"/>
+    </linearGradient>
+    <filter id="soft" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="5" stdDeviation="6" flood-color="#000" flood-opacity="0.4"/>
+    </filter>
+
+    <!-- Profile silhouette, facing LEFT (head + baseball cap + shoulders). -->
+    <path id="silProfile" d="
+      M112 82
+      C92 71 64 74 58 98
+      C64 104 90 103 108 105
+      C99 114 93 122 95 129
+      C98 136 103 139 102 143
+      C110 151 117 153 123 157
+      L121 169
+      C119 179 117 187 131 191
+      L74 209 L74 217 L196 217 L196 200
+      C196 181 181 171 173 163
+      C170 151 179 141 185 129
+      C191 117 191 101 187 89
+      C182 80 170 72 150 70
+      C133 68 119 74 112 82 Z" />
+
+    <!-- Cap-only silhouette (baseball cap, brim to the left). -->
+    <path id="capOnly" d="
+      M60 150
+      c-4 -2 -4 -8 2 -10
+      c20 -6 40 -10 60 -12
+      c4 -30 30 -46 58 -40
+      c30 6 44 34 40 62
+      c-1 6 -6 10 -12 10
+      l-108 0
+      c-14 0 -30 -2 -40 -8 Z" />
+  </defs></svg>
+
+  <div class="grid">
+
+    <!-- 1. Profile on a playing card -->
+    <div class="tile"><div class="swatches">
+      <div class="swatch"><div class="bg-dark"><svg width="88" height="88" viewBox="0 0 256 256">
+        <g filter="url(#soft)"><rect x="70" y="46" width="116" height="164" rx="18" fill="#fcfdff" stroke="#d7dde4" stroke-width="1.5"/></g>
+        <g transform="translate(-4 -14) scale(0.82)" transform-origin="128 128"><use href="#silProfile" fill="url(#grad)"/></g>
+        <text x="84" y="74" font-family="Georgia,serif" font-weight="700" font-size="20" fill="#3f7fc4">T</text>
+      </svg></div><small>dark</small></div>
+      <div class="swatch"><div class="bg-light"><svg width="88" height="88" viewBox="0 0 256 256">
+        <g filter="url(#soft)"><rect x="70" y="46" width="116" height="164" rx="18" fill="#fcfdff" stroke="#d7dde4" stroke-width="1.5"/></g>
+        <g transform="translate(-4 -14) scale(0.82)" transform-origin="128 128"><use href="#silProfile" fill="url(#grad)"/></g>
+        <text x="84" y="74" font-family="Georgia,serif" font-weight="700" font-size="20" fill="#3f7fc4">T</text>
+      </svg></div><small>light</small></div>
+      <div class="swatch"><div class="sm bg-dark"><svg width="46" height="46" viewBox="0 0 256 256">
+        <rect x="70" y="46" width="116" height="164" rx="18" fill="#fcfdff"/>
+        <g transform="translate(-4 -14) scale(0.82)" transform-origin="128 128"><use href="#silProfile" fill="url(#grad)"/></g>
+      </svg></div><small>40</small></div>
+    </div>
+      <div class="name">1 · Profile on a Card</div>
+      <div class="desc">Your capped profile as the "face" of a playing card, with a T corner index.</div>
+    </div>
+
+    <!-- 2. Gradient circle badge -->
+    <div class="tile"><div class="swatches">
+      <div class="swatch"><div class="bg-dark"><svg width="88" height="88" viewBox="0 0 256 256">
+        <circle cx="128" cy="128" r="92" fill="url(#grad)" filter="url(#soft)"/>
+        <g transform="translate(0 6) scale(0.92)" transform-origin="128 128"><use href="#silProfile" fill="#fff"/></g>
+      </svg></div><small>dark</small></div>
+      <div class="swatch"><div class="bg-light"><svg width="88" height="88" viewBox="0 0 256 256">
+        <circle cx="128" cy="128" r="92" fill="url(#grad)" filter="url(#soft)"/>
+        <g transform="translate(0 6) scale(0.92)" transform-origin="128 128"><use href="#silProfile" fill="#fff"/></g>
+      </svg></div><small>light</small></div>
+      <div class="swatch"><div class="sm bg-dark"><svg width="46" height="46" viewBox="0 0 256 256">
+        <circle cx="128" cy="128" r="92" fill="url(#grad)"/>
+        <g transform="translate(0 6) scale(0.92)" transform-origin="128 128"><use href="#silProfile" fill="#fff"/></g>
+      </svg></div><small>40</small></div>
+    </div>
+      <div class="name">2 · Circle Badge</div>
+      <div class="desc">White capped silhouette knocked out of a blue→purple gradient coin. Classic avatar.</div>
+    </div>
+
+    <!-- 3. Cap only in squircle -->
+    <div class="tile"><div class="swatches">
+      <div class="swatch"><div class="bg-dark"><svg width="88" height="88" viewBox="0 0 256 256">
+        <rect x="34" y="34" width="188" height="188" rx="46" fill="#20242b" stroke="#333842" stroke-width="1.5" filter="url(#soft)"/>
+        <g transform="translate(6 4)"><use href="#capOnly" fill="url(#gradSoft)"/></g>
+      </svg></div><small>dark</small></div>
+      <div class="swatch"><div class="bg-light"><svg width="88" height="88" viewBox="0 0 256 256">
+        <rect x="34" y="34" width="188" height="188" rx="46" fill="#20242b" filter="url(#soft)"/>
+        <g transform="translate(6 4)"><use href="#capOnly" fill="url(#gradSoft)"/></g>
+      </svg></div><small>light</small></div>
+      <div class="swatch"><div class="sm bg-dark"><svg width="46" height="46" viewBox="0 0 256 256">
+        <rect x="34" y="34" width="188" height="188" rx="46" fill="#20242b"/>
+        <g transform="translate(6 4)"><use href="#capOnly" fill="url(#gradSoft)"/></g>
+      </svg></div><small>40</small></div>
+    </div>
+      <div class="name">3 · Cap Only</div>
+      <div class="desc">Just the baseball cap — the most memorable single element. Minimal &amp; scalable.</div>
+    </div>
+
+    <!-- 4. Line-art profile in circle -->
+    <div class="tile"><div class="swatches">
+      <div class="swatch"><div class="bg-dark"><svg width="88" height="88" viewBox="0 0 256 256">
+        <circle cx="128" cy="128" r="92" fill="none" stroke="url(#grad)" stroke-width="7"/>
+        <g transform="translate(0 6) scale(0.9)" transform-origin="128 128"><use href="#silProfile" fill="none" stroke="url(#grad)" stroke-width="7" stroke-linejoin="round"/></g>
+      </svg></div><small>dark</small></div>
+      <div class="swatch"><div class="bg-light"><svg width="88" height="88" viewBox="0 0 256 256">
+        <circle cx="128" cy="128" r="92" fill="none" stroke="url(#grad)" stroke-width="7"/>
+        <g transform="translate(0 6) scale(0.9)" transform-origin="128 128"><use href="#silProfile" fill="none" stroke="url(#grad)" stroke-width="7" stroke-linejoin="round"/></g>
+      </svg></div><small>light</small></div>
+      <div class="swatch"><div class="sm bg-dark"><svg width="46" height="46" viewBox="0 0 256 256">
+        <circle cx="128" cy="128" r="92" fill="none" stroke="url(#grad)" stroke-width="9"/>
+        <g transform="translate(0 6) scale(0.9)" transform-origin="128 128"><use href="#silProfile" fill="none" stroke="url(#grad)" stroke-width="9" stroke-linejoin="round"/></g>
+      </svg></div><small>40</small></div>
+    </div>
+      <div class="name">4 · Line-Art Profile</div>
+      <div class="desc">Outlined capped profile inside a ring. Lighter, modern, works as an outline icon.</div>
+    </div>
+
+    <!-- 5. Profile silhouette solid squircle -->
+    <div class="tile"><div class="swatches">
+      <div class="swatch"><div class="bg-dark"><svg width="88" height="88" viewBox="0 0 256 256">
+        <rect x="34" y="34" width="188" height="188" rx="46" fill="url(#grad)" filter="url(#soft)"/>
+        <g transform="translate(0 8) scale(0.9)" transform-origin="128 128"><use href="#silProfile" fill="#fff"/></g>
+      </svg></div><small>dark</small></div>
+      <div class="swatch"><div class="bg-light"><svg width="88" height="88" viewBox="0 0 256 256">
+        <rect x="34" y="34" width="188" height="188" rx="46" fill="url(#grad)" filter="url(#soft)"/>
+        <g transform="translate(0 8) scale(0.9)" transform-origin="128 128"><use href="#silProfile" fill="#fff"/></g>
+      </svg></div><small>light</small></div>
+      <div class="swatch"><div class="sm bg-dark"><svg width="46" height="46" viewBox="0 0 256 256">
+        <rect x="34" y="34" width="188" height="188" rx="46" fill="url(#grad)"/>
+        <g transform="translate(0 8) scale(0.9)" transform-origin="128 128"><use href="#silProfile" fill="#fff"/></g>
+      </svg></div><small>40</small></div>
+    </div>
+      <div class="name">5 · Silhouette Tile</div>
+      <div class="desc">White capped profile on a gradient squircle — app-icon shaped, matches your cards.</div>
+    </div>
+
+    <!-- 6. Profile + fan of cards -->
+    <div class="tile"><div class="swatches">
+      <div class="swatch"><div class="bg-dark"><svg width="88" height="88" viewBox="0 0 256 256">
+        <g filter="url(#soft)">
+          <g transform="rotate(18 150 210)"><rect x="120" y="120" width="60" height="86" rx="9" fill="#efe8fb" stroke="#d5c9e8" stroke-width="1.5"/></g>
+          <g transform="rotate(8 150 210)"><rect x="120" y="120" width="60" height="86" rx="9" fill="#e9f1fc" stroke="#cbd6ea" stroke-width="1.5"/></g>
+          <g transform="rotate(-2 150 210)"><rect x="120" y="120" width="60" height="86" rx="9" fill="#fcfdff" stroke="#d7dde4" stroke-width="1.5"/></g>
+        </g>
+        <g transform="translate(-34 -6) scale(0.86)" transform-origin="128 128"><use href="#silProfile" fill="url(#grad)"/></g>
+      </svg></div><small>dark</small></div>
+      <div class="swatch"><div class="bg-light"><svg width="88" height="88" viewBox="0 0 256 256">
+        <g filter="url(#soft)">
+          <g transform="rotate(18 150 210)"><rect x="120" y="120" width="60" height="86" rx="9" fill="#efe8fb" stroke="#d5c9e8" stroke-width="1.5"/></g>
+          <g transform="rotate(8 150 210)"><rect x="120" y="120" width="60" height="86" rx="9" fill="#e9f1fc" stroke="#cbd6ea" stroke-width="1.5"/></g>
+          <g transform="rotate(-2 150 210)"><rect x="120" y="120" width="60" height="86" rx="9" fill="#fcfdff" stroke="#d7dde4" stroke-width="1.5"/></g>
+        </g>
+        <g transform="translate(-34 -6) scale(0.86)" transform-origin="128 128"><use href="#silProfile" fill="url(#grad)"/></g>
+      </svg></div><small>light</small></div>
+      <div class="swatch"><div class="sm bg-dark"><svg width="46" height="46" viewBox="0 0 256 256">
+        <g transform="rotate(8 150 210)"><rect x="120" y="120" width="60" height="86" rx="9" fill="#e9f1fc"/></g>
+        <g transform="rotate(-2 150 210)"><rect x="120" y="120" width="60" height="86" rx="9" fill="#fcfdff"/></g>
+        <g transform="translate(-34 -6) scale(0.86)" transform-origin="128 128"><use href="#silProfile" fill="url(#grad)"/></g>
+      </svg></div><small>40</small></div>
+    </div>
+      <div class="name">6 · Player + Hand of Cards</div>
+      <div class="desc">Your capped profile "holding" a fanned hand of cards. Literal Ted + Cards.</div>
+    </div>
+
+  </div>
+</body>
+</html>

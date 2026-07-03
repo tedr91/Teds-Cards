@@ -1,3 +1,10 @@
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="images/logo4/logo-ondark-512.png">
+    <img src="images/logo4/logo-512.png" alt="Ted's Cards" width="320">
+  </picture>
+</p>
+
 [![hacs_badge](https://img.shields.io/badge/HACS-Default-orange.svg)](https://github.com/hacs/integration) ![GitHub Release](https://img.shields.io/github/v/release/tedr91/Teds-Cards) ![GitHub Issues or Pull Requests](https://img.shields.io/github/issues/tedr91/Teds-Cards) ![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/tedr91/Teds-Cards/total) ![GitHub Repo stars](https://img.shields.io/github/stars/tedr91/Teds-Cards) [![GitHub License](https://img.shields.io/github/license/tedr91/Teds-Cards)](LICENSE)
 
 > **⚠️ Interim release — testing only.** This is a pre-release build published for testing purposes only and is not intended for production use. Features may change or break without notice.
@@ -935,6 +942,11 @@ options as the Alarm card apply.
 
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
+
+### v1.0.50
+
+- **Room Card — Full width/height & renamed button sizes** — section button **Width** and **Height** options are now **2x / 3x / 4x** (renamed from Double/Triple/Quad) and add a new **Full width** / **Full height** option that spans the entire section grid. Note: the old `double`/`triple`/`quad` values are no longer recognized — re-pick the size in the editor for any buttons that used them.
+- **New project logo** — added a **Ted's Cards** wordmark logo to the README.
 
 ### v1.0.49
 

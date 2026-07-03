@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Ted's Cards — Logo Concepts</title>
+<style>
+  :root {
+    --accent-blue: #4c8dd6;
+    --accent-blue-2: #2f6fb8;
+    --accent-purple: #a06cd5;
+    --accent-purple-2: #7b4bc0;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: #14161a;
+    color: #e8eaed;
+    padding: 40px;
+  }
+  h1 { font-weight: 600; letter-spacing: .2px; margin: 0 0 4px; }
+  .sub { color: #9aa0a6; margin: 0 0 32px; font-size: 14px; }
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 18px;
+    max-width: 560px;
+  }
+  .tile {
+    background: #1c1f24;
+    border: 1px solid #2a2e35;
+    border-radius: 20px;
+    padding: 26px 26px 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .swatches { display: flex; gap: 16px; align-items: center; margin-bottom: 16px; }
+  .swatch { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .swatch .bg-dark, .swatch .bg-light {
+    width: 112px; height: 112px; border-radius: 22px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .swatch .bg-dark { background: #14161a; }
+  .swatch .bg-light { background: #eef1f5; }
+  .swatch small { color: #9aa0a6; font-size: 11px; }
+  .name { font-size: 15px; font-weight: 600; margin-top: 6px; }
+  .desc { font-size: 12px; color: #9aa0a6; text-align: center; margin-top: 4px; line-height: 1.4; }
+  svg { display: block; }
+</style>
+</head>
+<body>
+  <h1>Ted's Cards — Logomark Concepts</h1>
+  <p class="sub">Each concept shown on dark and light backgrounds at 96px. Pick a number.</p>
+  <div class="grid">
+
+    <!-- ============ 1. FANNED CARDS ============ -->
+    <div class="tile">
+      <div class="swatches">
+        <div class="swatch"><div class="bg-dark">
+          <svg width="96" height="96" viewBox="0 0 256 256">
+            <defs>
+              <linearGradient id="c1a" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="#3a3f47"/><stop offset="1" stop-color="#23272d"/>
+              </linearGradient>
+              <linearGradient id="c1b" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="#5a97dd"/><stop offset="1" stop-color="#2f6fb8"/>
+              </linearGradient>
+              <filter id="s1" x="-20%" y="-20%" width="140%" height="140%">
+                <feDropShadow dx="0" dy="5" stdDeviation="6" flood-color="#000" flood-opacity="0.45"/>
+              </filter>
+            </defs>
+            <g filter="url(#s1)">
+              <rect x="60" y="66" width="112" height="150" rx="20" transform="rotate(-18 116 141)" fill="url(#c1a)" stroke="#4a4f57" stroke-width="2"/>
+              <rect x="86" y="58" width="112" height="150" rx="20" transform="rotate(-4 142 133)" fill="url(#c1a)" stroke="#4a4f57" stroke-width="2"/>
+              <rect x="78" y="52" width="112" height="150" rx="20" transform="rotate(10 134 127)" fill="url(#c1b)"/>
+            </g>
+            <g transform="rotate(10 134 127)">
+              <path d="M134 92 l30 26 v40 a10 10 0 0 1 -10 10 h-40 a10 10 0 0 1 -10 -10 v-40 z" fill="#fff" opacity="0.95"/>
+            </g>
+          </svg>
+        </div><small>dark</small></div>
+        <div class="swatch"><div class="bg-light">
+          <svg width="96" height="96" viewBox="0 0 256 256">
+            <use href="#___" />
+            <g filter="url(#s1)">
+              <rect x="60" y="66" width="112" height="150" rx="20" transform="rotate(-18 116 141)" fill="url(#c1a)" stroke="#4a4f57" stroke-width="2"/>
+              <rect x="86" y="58" width="112" height="150" rx="20" transform="rotate(-4 142 133)" fill="url(#c1a)" stroke="#4a4f57" stroke-width="2"/>
+              <rect x="78" y="52" width="112" height="150" rx="20" transform="rotate(10 134 127)" fill="url(#c1b)"/>
+            </g>
+            <g transform="rotate(10 134 127)">
+              <path d="M134 92 l30 26 v40 a10 10 0 0 1 -10 10 h-40 a10 10 0 0 1 -10 -10 v-40 z" fill="#fff" opacity="0.95"/>
+            </g>
+          </svg>
+        </div><small>light</small></div>
+      </div>
+      <div class="name">1 · Fanned Cards + Home</div>
+      <div class="desc">Three fanned cards; front card carries a home glyph. Plays on "cards" directly.</div>
+    </div>
+
+    <!-- ============ 2. NEUMORPHIC SQUIRCLE "T" ============ -->
+    <div class="tile">
+      <div class="swatches">
+        <div class="swatch"><div class="bg-dark">
+          <svg width="96" height="96" viewBox="0 0 256 256">
+            <defs>
+              <linearGradient id="c2bg" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="#30343b"/><stop offset="1" stop-color="#1e2127"/>
+              </linearGradient>
+              <linearGradient id="c2t" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="#6aa6e6"/><stop offset="1" stop-color="#8a5fd0"/>
+              </linearGradient>
+              <filter id="s2" x="-30%" y="-30%" width="160%" height="160%">
+                <feDropShadow dx="-6" dy="-6" stdDeviation="7" flood-color="#4a505a" flood-opacity="0.5"/>
+                <feDropShadow dx="7" dy="8" stdDeviation="9" flood-color="#000" flood-opacity="0.55"/>
+              </filter>
+            </defs>
+            <rect x="40" y="40" width="176" height="176" rx="46" fill="url(#c2bg)" filter="url(#s2)" stroke="#3b3f47" stroke-width="1.5"/>
+            <path d="M92 96 h72 a6 6 0 0 1 6 6 v10 a6 6 0 0 1 -6 6 h-22 v50 a6 6 0 0 1 -6 6 h-12 a6 6 0 0 1 -6 -6 v-50 h-22 a6 6 0 0 1 -6 -6 v-10 a6 6 0 0 1 6 -6 z" fill="url(#c2t)"/>
+          </svg>
+        </div><small>dark</small></div>
+        <div class="swatch"><div class="bg-light">
+          <svg width="96" height="96" viewBox="0 0 256 256">
+            <rect x="40" y="40" width="176" height="176" rx="46" fill="url(#c2bg)" filter="url(#s2)" stroke="#3b3f47" stroke-width="1.5"/>
+            <path d="M92 96 h72 a6 6 0 0 1 6 6 v10 a6 6 0 0 1 -6 6 h-22 v50 a6 6 0 0 1 -6 6 h-12 a6 6 0 0 1 -6 -6 v-50 h-22 a6 6 0 0 1 -6 -6 v-10 a6 6 0 0 1 6 -6 z" fill="url(#c2t)"/>
+          </svg>
+        </div><small>light</small></div>
+      </div>
+      <div class="name">2 · Neumorphic Tile "T"</div>
+      <div class="desc">A soft dual-shadow tile — literally one of your cards — holding a gradient "T".</div>
+    </div>
+
+    <!-- ============ 3. STACKED CARDS + TOGGLE ============ -->
+    <div class="tile">
+      <div class="swatches">
+        <div class="swatch"><div class="bg-dark">
+          <svg width="96" height="96" viewBox="0 0 256 256">
+            <defs>
+              <linearGradient id="c3a" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="#3a3f47"/><stop offset="1" stop-color="#23272d"/>
+              </linearGradient>
+              <filter id="s3" x="-25%" y="-25%" width="150%" height="150%">
+                <feDropShadow dx="0" dy="6" stdDeviation="7" flood-color="#000" flood-opacity="0.5"/>
+              </filter>
+            </defs>
+            <g filter="url(#s3)">
+              <rect x="58" y="52" width="140" height="96" rx="18" fill="#20242a" stroke="#3a3f47" stroke-width="2"/>
+              <rect x="50" y="84" width="140" height="96" rx="18" fill="#2b3037" stroke="#454a53" stroke-width="2"/>
+              <rect x="66" y="116" width="140" height="96" rx="18" fill="url(#c3a)" stroke="#4a4f57" stroke-width="2"/>
+            </g>
+            <!-- rocker toggle on front card -->
+            <rect x="86" y="150" width="100" height="30" rx="15" fill="#171a1f"/>
+            <circle cx="164" cy="165" r="13" fill="#5a97dd"/>
+          </svg>
+        </div><small>dark</small></div>
+        <div class="swatch"><div class="bg-light">
+          <svg width="96" height="96" viewBox="0 0 256 256">
+            <g filter="url(#s3)">
+              <rect x="58" y="52" width="140" height="96" rx="18" fill="#20242a" stroke="#3a3f47" stroke-width="2"/>
+              <rect x="50" y="84" width="140" height="96" rx="18" fill="#2b3037" stroke="#454a53" stroke-width="2"/>
+              <rect x="66" y="116" width="140" height="96" rx="18" fill="url(#c3a)" stroke="#4a4f57" stroke-width="2"/>
+            </g>
+            <rect x="86" y="150" width="100" height="30" rx="15" fill="#171a1f"/>
+            <circle cx="164" cy="165" r="13" fill="#5a97dd"/>
+          </svg>
+        </div><small>light</small></div>
+      </div>
+      <div class="name">3 · Stacked Cards + Rocker</div>
+      <div class="desc">Stacked tiles with the rocker switch that started it all — a nod to the origin story.</div>
+    </div>
+
+    <!-- ============ 4. GRADIENT SQUIRCLE "TC" ============ -->
+    <div class="tile">
+      <div class="swatches">
+        <div class="swatch"><div class="bg-dark">
+          <svg width="96" height="96" viewBox="0 0 256 256">
+            <defs>
+              <linearGradient id="c4" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="#5a97dd"/><stop offset="0.55" stop-color="#6f6fd6"/><stop offset="1" stop-color="#a06cd5"/>
+              </linearGradient>
+              <filter id="s4" x="-25%" y="-25%" width="150%" height="150%">
+                <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#000" flood-opacity="0.5"/>
+              </filter>
+            </defs>
+            <rect x="40" y="40" width="176" height="176" rx="48" fill="url(#c4)" filter="url(#s4)"/>
+            <text x="128" y="168" font-family="'Segoe UI',sans-serif" font-weight="700" font-size="118" fill="#fff" text-anchor="middle">TC</text>
+          </svg>
+        </div><small>dark</small></div>
+        <div class="swatch"><div class="bg-light">
+          <svg width="96" height="96" viewBox="0 0 256 256">
+            <rect x="40" y="40" width="176" height="176" rx="48" fill="url(#c4)" filter="url(#s4)"/>
+            <text x="128" y="168" font-family="'Segoe UI',sans-serif" font-weight="700" font-size="118" fill="#fff" text-anchor="middle">TC</text>
+          </svg>
+        </div><small>light</small></div>
+      </div>
+      <div class="name">4 · Gradient "TC" Monogram</div>
+      <div class="desc">Clean blue→purple squircle with a bold TC. Simplest, scales tiny very well.</div>
+    </div>
+
+    <!-- ============ 5. CARD WITH DIM BAR ============ -->
+    <div class="tile">
+      <div class="swatches">
+        <div class="swatch"><div class="bg-dark">
+          <svg width="96" height="96" viewBox="0 0 256 256">
+            <defs>
+              <linearGradient id="c5" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="#343a42"/><stop offset="1" stop-color="#22262c"/>
+              </linearGradient>
+              <linearGradient id="c5bar" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0" stop-color="#5a97dd"/><stop offset="1" stop-color="#a06cd5"/>
+              </linearGradient>
+              <filter id="s5" x="-25%" y="-25%" width="150%" height="150%">
+                <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#000" flood-opacity="0.5"/>
+              </filter>
+            </defs>
+            <rect x="56" y="44" width="144" height="168" rx="26" fill="url(#c5)" filter="url(#s5)" stroke="#42474f" stroke-width="2"/>
+            <!-- bulb glyph -->
+            <path d="M128 78 a34 34 0 0 1 20 61 c-4 3 -6 7 -6 12 h-28 c0 -5 -2 -9 -6 -12 a34 34 0 0 1 20 -61 z" fill="#f0c34a"/>
+            <rect x="114" y="156" width="28" height="8" rx="4" fill="#8a6d1e"/>
+            <!-- indicator bar -->
+            <rect x="80" y="182" width="96" height="14" rx="7" fill="#171a1f"/>
+            <rect x="80" y="182" width="62" height="14" rx="7" fill="url(#c5bar)"/>
+          </svg>
+        </div><small>dark</small></div>
+        <div class="swatch"><div class="bg-light">
+          <svg width="96" height="96" viewBox="0 0 256 256">
+            <rect x="56" y="44" width="144" height="168" rx="26" fill="url(#c5)" filter="url(#s5)" stroke="#42474f" stroke-width="2"/>
+            <path d="M128 78 a34 34 0 0 1 20 61 c-4 3 -6 7 -6 12 h-28 c0 -5 -2 -9 -6 -12 a34 34 0 0 1 20 -61 z" fill="#f0c34a"/>
+            <rect x="114" y="156" width="28" height="8" rx="4" fill="#8a6d1e"/>
+            <rect x="80" y="182" width="96" height="14" rx="7" fill="#171a1f"/>
+            <rect x="80" y="182" width="62" height="14" rx="7" fill="url(#c5bar)"/>
+          </svg>
+        </div><small>light</small></div>
+      </div>
+      <div class="name">5 · The Light Card</div>
+      <div class="desc">Your signature light tile: bulb + indicator bar. Represents the very first card.</div>
+    </div>
+
+    <!-- ============ 6. CARD-SUIT "T" ============ -->
+    <div class="tile">
+      <div class="swatches">
+        <div class="swatch"><div class="bg-dark">
+          <svg width="96" height="96" viewBox="0 0 256 256">
+            <defs>
+              <linearGradient id="c6" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="#f4f6f9"/><stop offset="1" stop-color="#d9dee6"/>
+              </linearGradient>
+              <linearGradient id="c6t" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="#5a97dd"/><stop offset="1" stop-color="#7b4bc0"/>
+              </linearGradient>
+              <filter id="s6" x="-25%" y="-25%" width="150%" height="150%">
+                <feDropShadow dx="0" dy="7" stdDeviation="9" flood-color="#000" flood-opacity="0.55"/>
+              </filter>
+            </defs>
+            <rect x="66" y="40" width="124" height="176" rx="22" fill="url(#c6)" filter="url(#s6)"/>
+            <!-- corner index Ts -->
+            <text x="82" y="76" font-family="Georgia,serif" font-weight="700" font-size="34" fill="url(#c6t)">T</text>
+            <g transform="rotate(180 174 180)"><text x="160" y="188" font-family="Georgia,serif" font-weight="700" font-size="34" fill="url(#c6t)">T</text></g>
+            <!-- center big T -->
+            <text x="128" y="158" font-family="Georgia,serif" font-weight="700" font-size="96" fill="url(#c6t)" text-anchor="middle">T</text>
+          </svg>
+        </div><small>dark</small></div>
+        <div class="swatch"><div class="bg-light">
+          <svg width="96" height="96" viewBox="0 0 256 256">
+            <rect x="66" y="40" width="124" height="176" rx="22" fill="url(#c6)" filter="url(#s6)"/>
+            <text x="82" y="76" font-family="Georgia,serif" font-weight="700" font-size="34" fill="url(#c6t)">T</text>
+            <g transform="rotate(180 174 180)"><text x="160" y="188" font-family="Georgia,serif" font-weight="700" font-size="34" fill="url(#c6t)">T</text></g>
+            <text x="128" y="158" font-family="Georgia,serif" font-weight="700" font-size="96" fill="url(#c6t)" text-anchor="middle">T</text>
+          </svg>
+        </div><small>light</small></div>
+      </div>
+      <div class="name">6 · Playing Card "T"</div>
+      <div class="desc">A literal playing card with corner indices and a big center "T" as the suit.</div>
+    </div>
+
+  </div>
+</body>
+</html>

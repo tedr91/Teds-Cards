@@ -20,3 +20,7 @@ Thumbs.db
 # Env
 .env
 .env.local
+
+# Logo source photo + working intermediates (kept local, not shipped)
+images/TedR_Pumpkin.jpg
+images/_logo-work/

@@ -58,14 +58,16 @@ const BUTTON_TYPE_META: Record<string, { label: string; icon: string }> = {
   [ROOM_BUTTON_CARD_TYPES.spacer]: { label: "Spacer", icon: "mdi:arrow-expand-horizontal" },
 };
 
-/** Width / height footprint options for a section button. */
-const BUTTON_SIZE_OPTIONS = [
+/** Shared width / height footprint options for a section button. */
+const BUTTON_SIZE_BASE = [
   { value: "half", label: "Half" },
   { value: "normal", label: "Normal (default)" },
-  { value: "double", label: "Double" },
-  { value: "triple", label: "Triple" },
-  { value: "quad", label: "Quad" },
+  { value: "2x", label: "2x" },
+  { value: "3x", label: "3x" },
+  { value: "4x", label: "4x" },
 ];
+const BUTTON_WIDTH_OPTIONS = [...BUTTON_SIZE_BASE, { value: "full", label: "Full width" }];
+const BUTTON_HEIGHT_OPTIONS = [...BUTTON_SIZE_BASE, { value: "full", label: "Full height" }];
 
 /** Remove the room-only sizing keys so the embedded sub-card editor stays clean. */
 function stripButtonSize(button: RoomButtonConfig): LovelaceCardConfig {
@@ -473,8 +475,8 @@ export class TedRoomCardEditor extends LitElement implements LovelaceCardEditor 
                 name: "",
                 column_min_width: "100px",
                 schema: [
-                  { name: "ted_button_width", selector: { select: { mode: "dropdown", options: BUTTON_SIZE_OPTIONS } } },
-                  { name: "ted_button_height", selector: { select: { mode: "dropdown", options: BUTTON_SIZE_OPTIONS } } },
+                  { name: "ted_button_width", selector: { select: { mode: "dropdown", options: BUTTON_WIDTH_OPTIONS } } },
+                  { name: "ted_button_height", selector: { select: { mode: "dropdown", options: BUTTON_HEIGHT_OPTIONS } } },
                 ],
               },
             ]}

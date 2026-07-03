@@ -107,7 +107,7 @@ function num(value: unknown, fallback: number): number {
 }
 
 /** Number of half-unit grid tracks a button size occupies. */
-const SIZE_SPAN: Record<ButtonSize, number> = { half: 1, normal: 2, double: 4, triple: 6, quad: 8 };
+const SIZE_SPAN: Record<ButtonSize, number> = { half: 1, normal: 2, "2x": 4, "3x": 6, "4x": 8, full: 10 };
 /** Width of the section grid in half-unit columns (5 normal buttons across). */
 const GRID_COLS = 10;
 
@@ -180,7 +180,11 @@ function packButtons(
   };
   const placements: GridPos[] = [];
   let frontier = 0;
-  for (const { w, h } of items) {
+  for (const item of items) {
+    // A "full"-width button (10) can exceed a narrower grid (e.g. the 8-col
+    // overflow); clamp so it fills the width instead of never fitting (hang).
+    const w = Math.min(item.w, cols);
+    const h = item.h;
     let pos: GridPos | undefined;
     // 1) Fill a gap within the current height — left-most column first, then
     //    top-most row — so short buttons tuck under taller neighbours.
@@ -545,10 +549,12 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
 
   // --- Button sections ------------------------------------------------------
 
-  private _renderButtonCell(sIdx: number, bIdx: number, pos?: GridPos): TemplateResult {
+  private _renderButtonCell(sIdx: number, bIdx: number, pos?: GridPos, cols = GRID_COLS): TemplateResult {
     const entry = this._buttonEls.get(`${sIdx}:${bIdx}`);
     const button = this._config?.sections?.[sIdx]?.buttons?.[bIdx];
-    const { w, h } = buttonSpans(button);
+    const spans = buttonSpans(button);
+    const w = Math.min(spans.w, cols);
+    const h = spans.h;
     return html`
       <div
         class="button-cell"
@@ -578,7 +584,7 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
     const { placements } = packButtons(hiddenSizes, OVERFLOW_COLS);
     const hidden: TemplateResult[] = [];
     for (let i = 0, bIdx = fromIdx; bIdx < total; bIdx += 1, i += 1) {
-      hidden.push(this._renderButtonCell(sIdx, bIdx, placements[i]));
+      hidden.push(this._renderButtonCell(sIdx, bIdx, placements[i], OVERFLOW_COLS));
     }
     return html`
       <button

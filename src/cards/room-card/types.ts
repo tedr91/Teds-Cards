@@ -58,7 +58,7 @@ export type RoomButtonConfig = (
   RoomButtonSizing;
 
 /** Footprint size of a button in its section grid. */
-export type ButtonSize = "half" | "normal" | "double" | "triple" | "quad";
+export type ButtonSize = "half" | "normal" | "2x" | "3x" | "4x" | "full";
 
 /**
  * Per-button layout footprint in a section grid. These reserved keys are stripped
@@ -66,9 +66,9 @@ export type ButtonSize = "half" | "normal" | "double" | "triple" | "quad";
  * the sub-card config. Omitted when "normal" (the default).
  */
 export interface RoomButtonSizing {
-  /** Width footprint: half / normal / double / triple / quad. Defaults to "normal". */
+  /** Width footprint: half / normal / 2x / 3x / 4x / full. Defaults to "normal". */
   ted_button_width?: ButtonSize;
-  /** Height footprint: half / normal / double / triple / quad. Defaults to "normal". */
+  /** Height footprint: half / normal / 2x / 3x / 4x / full. Defaults to "normal". */
   ted_button_height?: ButtonSize;
 }
 

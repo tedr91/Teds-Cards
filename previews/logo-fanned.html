@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Ted's Cards — Fanned Cards Logo</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, "Segoe UI", Roboto, sans-serif; background: #14161a; color: #e8eaed; padding: 40px; }
+  h1 { font-weight: 600; margin: 0 0 24px; }
+  .row { display: flex; gap: 28px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 36px; }
+  .cell { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .cell small { color: #9aa0a6; font-size: 12px; }
+  .bg-dark, .bg-light { border-radius: 26px; display: flex; align-items: center; justify-content: center; }
+  .bg-dark { background: #14161a; }
+  .bg-light { background: #eef1f5; }
+  .big { width: 220px; height: 220px; }
+  .med { width: 128px; height: 128px; border-radius: 18px; }
+  .sm  { width: 64px;  height: 64px;  border-radius: 12px; }
+  .xs  { width: 40px;  height: 40px;  border-radius: 9px; }
+  h2 { font-size: 14px; font-weight: 600; color: #b8bdc4; margin: 0 0 14px; }
+</style>
+</head>
+<body>
+  <h1>Ted's Cards — Fanned Playing Cards (concepts 1 + 6)</h1>
+
+  <!-- Reusable symbol -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <linearGradient id="homeGrad" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#5a97dd"/>
+        <stop offset="1" stop-color="#8a5fd0"/>
+      </linearGradient>
+      <linearGradient id="tGrad" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#3f7fc4"/>
+        <stop offset="1" stop-color="#6b57c0"/>
+      </linearGradient>
+      <filter id="fanShadow" x="-25%" y="-25%" width="150%" height="150%">
+        <feDropShadow dx="0" dy="5" stdDeviation="6" flood-color="#000" flood-opacity="0.42"/>
+      </filter>
+      <clipPath id="cardClip"><rect x="70" y="72" width="100" height="142" rx="14"/></clipPath>
+      <pattern id="backBlue" width="13" height="13" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+        <path d="M6.5 0 V13 M0 6.5 H13" stroke="#c3d5f0" stroke-width="1.1" fill="none"/>
+      </pattern>
+      <pattern id="backPurple" width="13" height="13" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+        <path d="M6.5 0 V13 M0 6.5 H13" stroke="#d3c3f0" stroke-width="1.1" fill="none"/>
+      </pattern>
+
+      <symbol id="fanLogo" viewBox="0 0 256 256">
+        <g filter="url(#fanShadow)">
+          <!-- back card B (furthest, fanned most to the right) -->
+          <g transform="rotate(25 120 214)">
+            <rect x="70" y="72" width="100" height="142" rx="14" fill="#f1eafc"/>
+            <g clip-path="url(#cardClip)"><rect x="70" y="72" width="100" height="142" fill="url(#backPurple)"/></g>
+            <rect x="70" y="72" width="100" height="142" rx="14" fill="none" stroke="#d5c9e8" stroke-width="1.5"/>
+          </g>
+          <!-- back card A -->
+          <g transform="rotate(11 120 214)">
+            <rect x="70" y="72" width="100" height="142" rx="14" fill="#e9f1fc"/>
+            <g clip-path="url(#cardClip)"><rect x="70" y="72" width="100" height="142" fill="url(#backBlue)"/></g>
+            <rect x="70" y="72" width="100" height="142" rx="14" fill="none" stroke="#cbd6ea" stroke-width="1.5"/>
+          </g>
+          <!-- front card (decorated) -->
+          <g transform="rotate(-7 120 214)">
+            <rect x="70" y="72" width="100" height="142" rx="14" fill="#fcfdff" stroke="#d7dde4" stroke-width="1.5"/>
+            <!-- corner indices -->
+            <text x="82" y="102" font-family="Georgia, 'Times New Roman', serif" font-weight="700" font-size="24" fill="url(#tGrad)">T</text>
+            <g transform="rotate(180 152 190)">
+              <text x="144" y="198" font-family="Georgia, 'Times New Roman', serif" font-weight="700" font-size="24" fill="url(#tGrad)">T</text>
+            </g>
+            <!-- home glyph -->
+            <path d="M120 110 L152 146 H88 Z" fill="url(#homeGrad)"/>
+            <rect x="98" y="144" width="44" height="34" rx="4" fill="url(#homeGrad)"/>
+            <rect x="112" y="158" width="14" height="20" rx="2.5" fill="#fcfdff"/>
+          </g>
+        </g>
+      </symbol>
+    </defs>
+  </svg>
+
+  <h2>Full size (220px / 128px) on dark &amp; light</h2>
+  <div class="row">
+    <div class="cell"><div class="bg-dark big"><svg width="180" height="180"><use href="#fanLogo"/></svg></div><small>dark · 180</small></div>
+    <div class="cell"><div class="bg-light big"><svg width="180" height="180"><use href="#fanLogo"/></svg></div><small>light · 180</small></div>
+    <div class="cell"><div class="bg-dark med"><svg width="104" height="104"><use href="#fanLogo"/></svg></div><small>dark · 104</small></div>
+    <div class="cell"><div class="bg-light med"><svg width="104" height="104"><use href="#fanLogo"/></svg></div><small>light · 104</small></div>
+  </div>
+
+  <h2>Small sizes (favicon / HACS list) — legibility check</h2>
+  <div class="row">
+    <div class="cell"><div class="bg-dark sm"><svg width="56" height="56"><use href="#fanLogo"/></svg></div><small>64</small></div>
+    <div class="cell"><div class="bg-light sm"><svg width="56" height="56"><use href="#fanLogo"/></svg></div><small>64</small></div>
+    <div class="cell"><div class="bg-dark xs"><svg width="34" height="34"><use href="#fanLogo"/></svg></div><small>40</small></div>
+    <div class="cell"><div class="bg-light xs"><svg width="34" height="34"><use href="#fanLogo"/></svg></div><small>40</small></div>
+  </div>
+</body>
+</html>
