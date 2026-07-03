@@ -63,6 +63,8 @@ const BUTTON_SIZE_OPTIONS = [
   { value: "half", label: "Half" },
   { value: "normal", label: "Normal (default)" },
   { value: "double", label: "Double" },
+  { value: "triple", label: "Triple" },
+  { value: "quad", label: "Quad" },
 ];
 
 /** Remove the room-only sizing keys so the embedded sub-card editor stays clean. */

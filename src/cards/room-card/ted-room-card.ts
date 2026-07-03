@@ -107,7 +107,7 @@ function num(value: unknown, fallback: number): number {
 }
 
 /** Number of half-unit grid tracks a button size occupies. */
-const SIZE_SPAN: Record<ButtonSize, number> = { half: 1, normal: 2, double: 4 };
+const SIZE_SPAN: Record<ButtonSize, number> = { half: 1, normal: 2, double: 4, triple: 6, quad: 8 };
 /** Width of the section grid in half-unit columns (5 normal buttons across). */
 const GRID_COLS = 10;
 
