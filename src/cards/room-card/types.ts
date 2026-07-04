@@ -75,6 +75,8 @@ export interface RoomButtonSizing {
 /** A reorderable section of square buttons (NovaStar Presets layout). */
 export interface RoomButtonSection {
   title?: string;
+  /** Optional icon shown next to the section title in its tab (tabbed layout). */
+  icon?: string;
   /** Whether the section title is shown in the rendered card. Defaults to false. */
   show_title?: boolean;
   /** Horizontal alignment of the section title. Defaults to "left". */
@@ -153,4 +155,6 @@ export interface RoomCardConfig extends LovelaceCardConfig {
   status_items?: RoomStatusItem[];
   /** Button sections rendered below the status strip. */
   sections?: RoomButtonSection[];
+  /** How button sections are laid out: stacked vertically (default) or as switchable tabs. */
+  section_layout?: "stacked" | "tabbed";
 }

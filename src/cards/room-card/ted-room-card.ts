@@ -259,6 +259,8 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
   @state() private _headerBottom = 0;
   /** Measured rendered height (px) of the photo layer, for the "shift buttons" pad. */
   @state() private _photoHeight = 0;
+  /** Index of the active section in the tabbed layout. */
+  @state() private _activeTab = 0;
   private _layoutObserver?: ResizeObserver;
 
   /** Lazily-loaded Lovelace card helpers (for embedding the button sub-cards). */
@@ -273,6 +275,36 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
       throw new Error("Invalid configuration");
     }
     this._config = { ...config };
+    // Restore the last-selected tab for this card (tabbed layout).
+    const stored = this._readStoredTab();
+    if (stored !== undefined) this._activeTab = stored;
+  }
+
+  /** localStorage key for persisting the active tab, derived from the card identity. */
+  private _tabStorageKey(): string {
+    const c = this._config;
+    const id = c?.area || c?.name || "room";
+    return `ted-room-card:tab:${id}`;
+  }
+
+  private _readStoredTab(): number | undefined {
+    try {
+      const raw = window.localStorage.getItem(this._tabStorageKey());
+      if (raw === null) return undefined;
+      const n = Number.parseInt(raw, 10);
+      return Number.isFinite(n) && n >= 0 ? n : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
+  private _selectTab(index: number): void {
+    this._activeTab = index;
+    try {
+      window.localStorage.setItem(this._tabStorageKey(), String(index));
+    } catch {
+      // Ignore storage failures (private mode / quota).
+    }
   }
 
   public getCardSize(): number {
@@ -609,6 +641,34 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
     `;
   }
 
+  /** Render all button sections as switchable tabs (one visible at a time). */
+  private _renderTabbedSections(
+    sections: RoomButtonSection[],
+    bodyStyle: Record<string, string>,
+  ): TemplateResult {
+    const activeIdx = Math.min(Math.max(this._activeTab, 0), sections.length - 1);
+    return html`
+      <div class="sections tabbed" style=${styleMap(bodyStyle)}>
+        <div class="section-tabs" role="tablist">
+          ${sections.map((section, sIdx) => {
+            const label = section.title || `Section ${sIdx + 1}`;
+            return html`<button
+              type="button"
+              role="tab"
+              class="section-tab${sIdx === activeIdx ? " active" : ""}"
+              aria-selected=${sIdx === activeIdx ? "true" : "false"}
+              @click=${() => this._selectTab(sIdx)}
+            >
+              ${section.icon ? html`<ha-icon .icon=${section.icon}></ha-icon>` : nothing}
+              <span>${label}</span>
+            </button>`;
+          })}
+        </div>
+        ${this._renderSection(sections[activeIdx], activeIdx)}
+      </div>
+    `;
+  }
+
   private _renderSection(section: RoomButtonSection, sIdx: number): TemplateResult {
     const buttons = section.buttons ?? [];
     const maxRows = num(section.max_rows, 0);
@@ -651,7 +711,7 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
 
     return html`
       <div class="button-section">
-        ${section.title && section.show_title === true
+        ${section.title && section.show_title === true && this._config?.section_layout !== "tabbed"
           ? html`<div class="section-title" style=${styleMap({ textAlign: section.title_align ?? "left" })}>${section.title}</div>`
           : nothing}
         <div class="button-grid">
@@ -867,7 +927,7 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
     const bodyShift = shiftButtons
       ? Math.max(0, photoTop + this._photoHeight - this._headerBottom - HEADER_GAP + CARD_PADDING)
       : 0;
-    const bodyStyle = bodyShift ? { marginTop: `${bodyShift}px` } : {};
+    const bodyStyle: Record<string, string> = bodyShift ? { marginTop: `${bodyShift}px` } : {};
     const appearance = appearanceStyle({
       background: cssColor(this._config.background),
       transparency: this._config.transparency,
@@ -904,9 +964,11 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
           </div>
         </div>
         ${hasBody
-          ? html`<div class="sections" style=${styleMap(bodyStyle)}>
-              ${sections.map((section, sIdx) => this._renderSection(section, sIdx))}
-            </div>`
+          ? this._config.section_layout === "tabbed"
+            ? this._renderTabbedSections(sections, bodyStyle)
+            : html`<div class="sections" style=${styleMap(bodyStyle)}>
+                ${sections.map((section, sIdx) => this._renderSection(section, sIdx))}
+              </div>`
           : statusItems.length === 0
             ? html`<div class="placeholder" style=${styleMap(bodyStyle)}>Add status items and button sections in the editor.</div>`
             : nothing}
@@ -1041,6 +1103,47 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
         color: var(--ted-style-muted);
         font-size: 0.95rem;
         font-weight: 500;
+      }
+      /* Tabbed section layout: underline tab bar. */
+      .section-tabs {
+        display: flex;
+        gap: 4px;
+        overflow-x: auto;
+        scrollbar-width: none;
+        border-bottom: 1px solid var(--ted-style-divider);
+      }
+      .section-tabs::-webkit-scrollbar {
+        display: none;
+      }
+      .section-tab {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 12px 9px;
+        font: inherit;
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: var(--ted-style-muted);
+        background: transparent;
+        border: none;
+        border-bottom: 2px solid transparent;
+        margin-bottom: -1px;
+        cursor: pointer;
+        white-space: nowrap;
+        transition:
+          color 0.16s ease,
+          border-color 0.16s ease;
+      }
+      .section-tab ha-icon {
+        --mdc-icon-size: 18px;
+        flex: none;
+      }
+      .section-tab:hover {
+        color: var(--ted-style-text);
+      }
+      .section-tab.active {
+        color: var(--ted-style-accent);
+        border-bottom-color: var(--ted-style-accent);
       }
       .button-grid {
         display: grid;

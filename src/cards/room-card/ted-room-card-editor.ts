@@ -122,6 +122,7 @@ const FIELD_LABELS: Record<string, string> = {
   size: "Size (px)",
   ted_button_width: "Width",
   ted_button_height: "Height",
+  section_layout: "Section layout",
 };
 
 /** Order-independent equality for two edge-gradient sets. */
@@ -509,9 +510,17 @@ export class TedRoomCardEditor extends LitElement implements LovelaceCardEditor 
         <div class="panel-content">
           <ha-form
             .hass=${this.hass}
-            .data=${{ title: section.title ?? "", show_title: section.show_title === true, title_align: section.title_align ?? "left", max_rows: section.max_rows ?? 0 }}
+            .data=${{ title: section.title ?? "", icon: section.icon ?? "", show_title: section.show_title === true, title_align: section.title_align ?? "left", max_rows: section.max_rows ?? 0 }}
             .schema=${[
-              { name: "title", selector: { text: {} } },
+              {
+                type: "grid",
+                name: "",
+                column_min_width: "140px",
+                schema: [
+                  { name: "title", selector: { text: {} } },
+                  { name: "icon", label: "Tab icon", selector: { icon: {} } },
+                ],
+              },
               {
                 type: "grid",
                 name: "",
@@ -669,6 +678,26 @@ export class TedRoomCardEditor extends LitElement implements LovelaceCardEditor 
             <ha-icon icon="mdi:view-dashboard-outline"></ha-icon><span>Button sections</span>
           </div>
           <div class="panel-content">
+            <ha-form
+              .hass=${this.hass}
+              .data=${{ section_layout: this._config?.section_layout ?? "stacked" }}
+              .schema=${[
+                {
+                  name: "section_layout",
+                  selector: {
+                    select: {
+                      mode: "dropdown",
+                      options: [
+                        { value: "stacked", label: "Stacked (default)" },
+                        { value: "tabbed", label: "Tabbed" },
+                      ],
+                    },
+                  },
+                },
+              ]}
+              .computeLabel=${this._computeLabel}
+              @value-changed=${this._onSectionLayoutChanged}
+            ></ha-form>
             <ha-sortable handle-selector=".section-drag-handle" @item-moved=${this._sectionMoved}>
               <div class="row-list">
                 ${sections.map((section, sIdx) => this._renderSectionRow(section, sIdx))}
@@ -932,8 +961,8 @@ export class TedRoomCardEditor extends LitElement implements LovelaceCardEditor 
     return schema;
   }
 
-  private _computeLabel = (schema: { name: string }): string =>
-    FIELD_LABELS[schema.name] ?? schema.name;
+  private _computeLabel = (schema: { name: string; label?: string }): string =>
+    schema.label ?? FIELD_LABELS[schema.name] ?? schema.name;
 
   // --- Mutations ------------------------------------------------------------
 
@@ -979,6 +1008,16 @@ export class TedRoomCardEditor extends LitElement implements LovelaceCardEditor 
       photo_off_opacity: value.photo_off_opacity,
       status_items: this._config?.status_items,
       sections: this._config?.sections,
+    });
+  };
+
+  private _onSectionLayoutChanged = (ev: CustomEvent): void => {
+    ev.stopPropagation();
+    const value = ev.detail.value as { section_layout?: "stacked" | "tabbed" };
+    this._commit({
+      ...this._config,
+      type: this._type(),
+      section_layout: value.section_layout === "tabbed" ? "tabbed" : undefined,
     });
   };
 
@@ -1032,6 +1071,7 @@ export class TedRoomCardEditor extends LitElement implements LovelaceCardEditor 
     ev.stopPropagation();
     const value = (ev.detail?.value ?? {}) as {
       title?: string;
+      icon?: string;
       show_title?: boolean;
       title_align?: "left" | "center" | "right";
       max_rows?: number;
@@ -1042,6 +1082,7 @@ export class TedRoomCardEditor extends LitElement implements LovelaceCardEditor 
     sections[sIdx] = {
       ...section,
       title: value.title,
+      icon: value.icon || undefined,
       show_title: value.show_title,
       title_align: value.title_align,
       max_rows: value.max_rows,

@@ -943,6 +943,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.51
+
+- **Room Card — Tabbed button sections** — a new **Section layout** option (Stacked / Tabbed) lets you show one button section at a time behind a tab bar instead of stacking them all. Each section gets an optional **Tab icon** shown next to its title in the tab, and the last-selected tab is remembered per card across reloads.
+
 ### v1.0.50
 
 - **Room Card — Full width/height & renamed button sizes** — section button **Width** and **Height** options are now **2x / 3x / 4x** (renamed from Double/Triple/Quad) and add a new **Full width** / **Full height** option that spans the entire section grid. Note: the old `double`/`triple`/`quad` values are no longer recognized — re-pick the size in the editor for any buttons that used them.
