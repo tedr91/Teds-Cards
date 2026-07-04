@@ -521,28 +521,32 @@ export class TedRoomCardEditor extends LitElement implements LovelaceCardEditor 
                   { name: "icon", label: "Tab icon", selector: { icon: {} } },
                 ],
               },
-              {
-                type: "grid",
-                name: "",
-                column_min_width: "100px",
-                schema: [
-                  { name: "show_title", selector: { boolean: {} } },
-                  {
-                    name: "title_align",
-                    disabled: section.show_title !== true,
-                    selector: {
-                      select: {
-                        mode: "dropdown",
-                        options: [
-                          { value: "left", label: "Left (default)" },
-                          { value: "center", label: "Center" },
-                          { value: "right", label: "Right" },
-                        ],
-                      },
+              ...(this._config?.section_layout === "tabbed"
+                ? []
+                : [
+                    {
+                      type: "grid",
+                      name: "",
+                      column_min_width: "100px",
+                      schema: [
+                        { name: "show_title", selector: { boolean: {} } },
+                        {
+                          name: "title_align",
+                          disabled: section.show_title !== true,
+                          selector: {
+                            select: {
+                              mode: "dropdown",
+                              options: [
+                                { value: "left", label: "Left (default)" },
+                                { value: "center", label: "Center" },
+                                { value: "right", label: "Right" },
+                              ],
+                            },
+                          },
+                        },
+                      ],
                     },
-                  },
-                ],
-              },
+                  ]),
               { name: "max_rows", selector: { number: { min: 0, max: 20, step: 1, mode: "box" } } },
             ]}
             .computeLabel=${this._computeLabel}
