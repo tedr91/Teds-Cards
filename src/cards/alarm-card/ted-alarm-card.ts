@@ -47,7 +47,7 @@ registerCustomCard({
   name: ALARM_CARD_NAME,
   description: ALARM_CARD_DESCRIPTION,
   preview: true,
-  documentationURL: "https://github.com/tedr91/HA-Teds-Cards#alarm-card",
+  documentationURL: "https://github.com/tedr91/Teds-Cards#alarm-card",
 });
 
 @customElement(ALARM_CARD_TYPE)

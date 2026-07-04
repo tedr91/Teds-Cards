@@ -56,7 +56,7 @@ registerCustomCard({
   name: NAVBAR_CARD_NAME,
   description: NAVBAR_CARD_DESCRIPTION,
   preview: true,
-  documentationURL: "https://github.com/tedr91/HA-Teds-Cards#navbar-card",
+  documentationURL: "https://github.com/tedr91/Teds-Cards#navbar-card",
 });
 
 @customElement(NAVBAR_CARD_TYPE)

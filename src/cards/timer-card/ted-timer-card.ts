@@ -52,7 +52,7 @@ registerCustomCard({
   name: TIMER_CARD_NAME,
   description: TIMER_CARD_DESCRIPTION,
   preview: true,
-  documentationURL: "https://github.com/tedr91/HA-Teds-Cards#timer-card",
+  documentationURL: "https://github.com/tedr91/Teds-Cards#timer-card",
 });
 
 @customElement(TIMER_CARD_TYPE)

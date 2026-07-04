@@ -224,7 +224,7 @@ registerCustomCard({
   name: ROOM_CARD_NAME,
   description: ROOM_CARD_DESCRIPTION,
   preview: true,
-  documentationURL: "https://github.com/tedr91/HA-Teds-Cards#room-card",
+  documentationURL: "https://github.com/tedr91/Teds-Cards#room-card",
   // Suggest a Room Card for the area that the picked entity belongs to.
   getEntitySuggestion: (hass, entityId) => {
     const h = hass as HassWithRegistries;

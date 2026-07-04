@@ -95,7 +95,7 @@ registerCustomCard({
   name: LIGHT_CARD_NAME,
   description: LIGHT_CARD_DESCRIPTION,
   preview: true,
-  documentationURL: "https://github.com/tedr91/HA-Teds-Cards#light-card",
+  documentationURL: "https://github.com/tedr91/Teds-Cards#light-card",
   getEntitySuggestion: (_hass, entityId) =>
     entityId.startsWith("light.")
       ? { config: { type: `custom:${LIGHT_CARD_TYPE}`, entity: entityId } }

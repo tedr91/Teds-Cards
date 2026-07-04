@@ -178,7 +178,7 @@ registerCustomCard({
   name: BUTTON_CARD_NAME,
   description: BUTTON_CARD_DESCRIPTION,
   preview: true,
-  documentationURL: "https://github.com/tedr91/HA-Teds-Cards#button-card",
+  documentationURL: "https://github.com/tedr91/Teds-Cards#button-card",
   getEntitySuggestion: (_hass, entityId) => ({
     config: { type: `custom:${BUTTON_CARD_TYPE}`, entity: entityId },
   }),

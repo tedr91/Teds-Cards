@@ -50,7 +50,7 @@ registerCustomCard({
   name: EXPANDABLE_BUTTON_CARD_NAME,
   description: EXPANDABLE_BUTTON_CARD_DESCRIPTION,
   preview: true,
-  documentationURL: "https://github.com/tedr91/HA-Teds-Cards#expandable-button-card",
+  documentationURL: "https://github.com/tedr91/Teds-Cards#expandable-button-card",
 });
 
 @customElement(EXPANDABLE_BUTTON_CARD_TYPE)

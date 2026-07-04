@@ -943,6 +943,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.52
+
+- **Room Card — Fixed broken bundled photos** — the built-in room photos are now served from the current repository tag again. They had stopped loading after the repository was renamed, because the image URL still pointed at an old tag that no longer exists. Documentation links across the cards were also updated to the current repository name.
+
 ### v1.0.51
 
 - **Room Card — Tabbed button sections** — a new **Section layout** option (Stacked / Tabbed) lets you show one button section at a time behind a tab bar instead of stacking them all. Each section gets an optional **Tab icon** shown next to its title in the tab, and the last-selected tab is remembered per card across reloads.

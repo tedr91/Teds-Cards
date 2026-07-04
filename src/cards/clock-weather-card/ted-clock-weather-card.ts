@@ -193,7 +193,7 @@ registerCustomCard({
   name: CLOCK_WEATHER_CARD_NAME,
   description: CLOCK_WEATHER_CARD_DESCRIPTION,
   preview: true,
-  documentationURL: "https://github.com/tedr91/HA-Teds-Cards#clock-weather-card",
+  documentationURL: "https://github.com/tedr91/Teds-Cards#clock-weather-card",
   getEntitySuggestion: (_hass, entityId) =>
     entityId.startsWith("weather.")
       ? { config: { type: `custom:${CLOCK_WEATHER_CARD_TYPE}`, weather_entity: entityId } }

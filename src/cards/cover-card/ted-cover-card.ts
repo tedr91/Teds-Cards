@@ -103,7 +103,7 @@ registerCustomCard({
   name: COVER_CARD_NAME,
   description: COVER_CARD_DESCRIPTION,
   preview: true,
-  documentationURL: "https://github.com/tedr91/HA-Teds-Cards#cover-card",
+  documentationURL: "https://github.com/tedr91/Teds-Cards#cover-card",
   getEntitySuggestion: (_hass, entityId) =>
     entityId.startsWith("cover.")
       ? { config: { type: `custom:${COVER_CARD_TYPE}`, entity: entityId } }

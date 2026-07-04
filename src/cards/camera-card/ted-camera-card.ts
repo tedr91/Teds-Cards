@@ -46,7 +46,7 @@ registerCustomCard({
   name: CAMERA_CARD_NAME,
   description: CAMERA_CARD_DESCRIPTION,
   preview: true,
-  documentationURL: "https://github.com/tedr91/HA-Teds-Cards#camera-card",
+  documentationURL: "https://github.com/tedr91/Teds-Cards#camera-card",
   getEntitySuggestion: (_hass, entityId) =>
     entityId.startsWith("camera.")
       ? { config: { type: `custom:${CAMERA_CARD_TYPE}`, entity: entityId } }

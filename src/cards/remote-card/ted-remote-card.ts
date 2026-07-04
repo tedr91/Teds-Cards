@@ -146,7 +146,7 @@ registerCustomCard({
   name: REMOTE_CARD_NAME,
   description: REMOTE_CARD_DESCRIPTION,
   preview: true,
-  documentationURL: "https://github.com/tedr91/HA-Teds-Cards#remote-card",
+  documentationURL: "https://github.com/tedr91/Teds-Cards#remote-card",
   getEntitySuggestion: (_hass, entityId) =>
     entityId.startsWith("remote.")
       ? { config: { type: `custom:${REMOTE_CARD_TYPE}`, remote_entity: entityId } }
