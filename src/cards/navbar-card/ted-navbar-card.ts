@@ -749,7 +749,15 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
   private _renderButton(path: string, button: NavButtonConfig): TemplateResult {
     const entry = this._buttonEls.get(path);
     const wide = button.nav_button_size === "wide";
-    return html`<div class="nav-button ${wide ? "wide" : ""}">${entry ? entry.el : nothing}</div>`;
+    // Native hover tooltip + a11y label from the button's name (bar buttons are usually icon-only).
+    const label = typeof button.name === "string" ? button.name.trim() : "";
+    return html`<div
+      class="nav-button ${wide ? "wide" : ""}"
+      title=${label || nothing}
+      aria-label=${label || nothing}
+    >
+      ${entry ? entry.el : nothing}
+    </div>`;
   }
 
   private _renderStatusItem(item: StatusItem, keyPrefix: string, idx: number): TemplateResult {

@@ -943,6 +943,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.54
+
+- **Navbar Card — button hover tooltips** — navbar buttons now show a native **tooltip** (and expose an accessibility **aria-label**) with the button's **name** when you hover, so icon-only bars are easier to learn at a glance. No layout change; names still don't render inline unless you enable **Show name**.
+
 ### v1.0.53
 
 - **Room Card editor — tidier tabbed options** — when **Section layout** is set to **Tabbed**, the now-irrelevant per-section **Show title in card** and **Title alignment** fields are hidden (the tab already shows the section title).
