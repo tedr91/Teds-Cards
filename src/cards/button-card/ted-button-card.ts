@@ -631,6 +631,7 @@ export class TedButtonCard extends LitElement implements LovelaceCard {
          element order) instead of the vertical top/center/bottom slot placement. */
       .lbc.horizontal {
         flex-direction: row;
+        justify-content: center;
         gap: 8px;
       }
       .lbc.horizontal .slot-top,

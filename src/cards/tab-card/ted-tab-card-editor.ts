@@ -169,6 +169,9 @@ export class TedTabCardEditor extends LitElement implements LovelaceCardEditor {
   }
 
   private _onPanelToggle(key: string, ev: CustomEvent): void {
+    // Ignore `expanded-changed` bubbling up from a NESTED expansion panel (e.g. an
+    // expandable section inside the embedded card editor) — only react to this panel's own.
+    if (ev.target !== ev.currentTarget) return;
     const expanded = (ev.detail as { expanded: boolean }).expanded;
     const next = new Set(this._expanded);
     if (expanded) next.add(key);

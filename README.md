@@ -943,6 +943,11 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.58
+
+- **Button Card — horizontal orientation centering** — fixed the icon / name / state not centering in **Horizontal** orientation (they were left-aligned).
+- **Tab Card editor — nested collapse fix** — collapsing a section inside a tab's card editor no longer collapses the whole tab panel.
+
 ### v1.0.57
 
 - **Button Card — orientation** — a new **Orientation** option (**Vertical**, the default, or **Horizontal**) lays the icon / name / state out stacked or side-by-side.
