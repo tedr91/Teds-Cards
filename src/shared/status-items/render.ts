@@ -277,9 +277,24 @@ interface NotifRow {
   title?: string;
   message: string;
   severity?: string;
+  icon?: string;
   area?: string;
   read?: boolean;
   created?: string;
+}
+
+/** Severity → default icon (mirrors the toast) when a notification has no explicit icon. */
+const NOTIF_SEVERITY_ICON: Record<string, string> = {
+  info: "mdi:information-outline",
+  success: "mdi:check-circle-outline",
+  warning: "mdi:alert-outline",
+  danger: "mdi:alert-circle-outline",
+  tip: "mdi:lightbulb-on-outline",
+};
+
+/** The icon to show for a notification: its own icon, else a severity default. */
+function notifIcon(n: NotifRow): string {
+  return n.icon || NOTIF_SEVERITY_ICON[n.severity ?? "info"] || "mdi:bell-outline";
 }
 
 /** "just now" / "5m ago" / "2h ago" / "3d ago" — mirrors the Notification Center card. */
@@ -343,6 +358,7 @@ function renderNotificationsItem(
             : items.map(
                 (n) => html`
                   <div class="notif-pop-row sev-${n.severity ?? "info"} ${n.read ? "read" : ""}">
+                    <ha-icon class="notif-pop-icon" .icon=${notifIcon(n)}></ha-icon>
                     <div
                       class="notif-pop-body"
                       @click=${() => {
@@ -387,6 +403,10 @@ function renderNotifDetail(ctx: StatusItemContext, detailPopId: string): Templat
   return html`
     <div class="notif-detail sev-${d?.severity ?? "info"}">
       <div class="notif-detail-head">
+        <ha-icon
+          class="notif-detail-icon"
+          .icon=${d ? notifIcon(d as NotifRow) : "mdi:bell-outline"}
+        ></ha-icon>
         ${d?.title ? html`<span class="notif-detail-title">${d.title}</span>` : nothing}
         <button
           class="notif-detail-x"

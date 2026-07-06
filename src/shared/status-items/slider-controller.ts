@@ -21,6 +21,7 @@ export interface NotifDetail {
   title?: string;
   message: string;
   severity?: string;
+  icon?: string;
   created?: string;
 }
 

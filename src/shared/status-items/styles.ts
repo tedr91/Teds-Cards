@@ -211,6 +211,12 @@ export const statusItemStyles = css`
     gap: 2px;
     cursor: pointer;
   }
+  .notif-pop-icon {
+    flex: none;
+    --mdc-icon-size: 20px;
+    color: var(--nc-accent);
+    margin-top: 1px;
+  }
   .notif-pop-top {
     display: flex;
     align-items: baseline;
@@ -322,6 +328,12 @@ export const statusItemStyles = css`
     align-items: flex-start;
     gap: 8px;
     padding: 12px 12px 4px 14px;
+  }
+  .notif-detail-icon {
+    flex: none;
+    --mdc-icon-size: 22px;
+    color: var(--nc-accent);
+    margin-top: 1px;
   }
   .notif-detail-title {
     font-weight: 600;

@@ -943,6 +943,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.61
+
+- **Notifications — icons in the popover & detail view** — a notification's icon now shows in the navbar bell dropdown and the full-notification popup (not just the pop-up toast), falling back to a severity icon when none is set.
+
 ### v1.0.60
 
 - **Notifications popover — reliable two-line clamp** — hardened the message truncation so it consistently wraps to **two lines** and then shows an ellipsis, with a fallback for browsers that don't support line-clamp.
