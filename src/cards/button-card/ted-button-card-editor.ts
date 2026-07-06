@@ -126,6 +126,7 @@ export class TedButtonCardEditor extends LitElement implements LovelaceCardEdito
       name_scale: 100,
       show_state: false,
       state_scale: 100,
+      orientation: "vertical",
       width: 100,
       height: 120,
       transparency: undefined,
@@ -288,6 +289,8 @@ export class TedButtonCardEditor extends LitElement implements LovelaceCardEdito
         return "Show entity state";
       case "state_scale":
         return "State size";
+      case "orientation":
+        return "Orientation";
       case "width":
         return "Width (px)";
       case "height":
@@ -378,6 +381,15 @@ export class TedButtonCardEditor extends LitElement implements LovelaceCardEdito
     this._commit(next);
   };
 
+  private _onOrientationChanged = (ev: CustomEvent): void => {
+    ev.stopPropagation();
+    const orientation = ev.detail.value?.orientation as "vertical" | "horizontal" | undefined;
+    const next = { ...this._config } as ButtonCardConfig;
+    if (orientation === "horizontal") next.orientation = "horizontal";
+    else delete next.orientation;
+    this._commit(next);
+  };
+
   private _renderElements(): TemplateResult {
     const order = this._elementOrder().filter((el) => !(this.trim?.state && el === "state"));
     const meta: Record<
@@ -393,6 +405,28 @@ export class TedButtonCardEditor extends LitElement implements LovelaceCardEdito
         <div slot="header" class="elements-header">
           <ha-svg-icon .path=${ELEMENTS_ICON_PATH}></ha-svg-icon>
           <span>${this.trim?.state ? "Icon / Name" : "Icon / Name / State"}</span>
+        </div>
+        <div class="elements-orientation">
+          <ha-form
+            .hass=${this.hass}
+            .data=${{ orientation: this._config?.orientation ?? "vertical" }}
+            .schema=${[
+              {
+                name: "orientation",
+                selector: {
+                  select: {
+                    mode: "dropdown",
+                    options: [
+                      { value: "vertical", label: "Vertical (icon above)" },
+                      { value: "horizontal", label: "Horizontal (icon beside)" },
+                    ],
+                  },
+                },
+              },
+            ]}
+            .computeLabel=${this._computeLabel}
+            @value-changed=${this._onOrientationChanged}
+          ></ha-form>
         </div>
         <ha-sortable handle-selector=".drag-handle" @item-moved=${this._elementMoved}>
           <div class="elements">
@@ -762,6 +796,9 @@ export class TedButtonCardEditor extends LitElement implements LovelaceCardEdito
     }
     .elements-header ha-svg-icon {
       color: var(--secondary-text-color);
+    }
+    .elements-orientation {
+      padding: 12px 16px 0;
     }
     .elements {
       display: flex;

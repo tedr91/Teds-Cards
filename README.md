@@ -943,6 +943,11 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.57
+
+- **Button Card — orientation** — a new **Orientation** option (**Vertical**, the default, or **Horizontal**) lays the icon / name / state out stacked or side-by-side.
+- **Room Card — header icon modes** — the header icon toggle is now a **None / Standard Icon / Watermark** choice. **Watermark** shows a large room icon tucked into the top-left corner (clipped by the card edge) as a subtle background emblem, with adjustable **Icon transparency** and **Icon background transparency**.
+
 ### v1.0.56
 
 - **Tab Card — child card popups no longer clipped** — dialogs opened by a card placed inside a **Tab Card** (e.g. the Alarm/Timer **add** dialog) now cover the full screen again instead of being trapped and cut off inside the tab card. On translucent (glass/Mica) themes the tab card's frosted surface was acting as a boundary for those pop-ups; the surface is now painted as a separate layer so it stays pretty without constraining the cards inside it.

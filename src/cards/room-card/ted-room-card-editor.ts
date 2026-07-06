@@ -88,7 +88,10 @@ const FIELD_LABELS: Record<string, string> = {
   transparency: "Transparency",
   blur: "Background blur",
   show_header_icon: "Display icon in header",
+  header_icon: "Header icon",
   header_icon_size: "Icon size override",
+  icon_transparency: "Icon transparency",
+  icon_bg_transparency: "Icon background transparency",
   show_header_name: "Display name in header",
   header_name_size: "Name size override",
   header_divider: "Display header divider line",
@@ -581,6 +584,11 @@ export class TedRoomCardEditor extends LitElement implements LovelaceCardEditor 
     if (!this.hass || !this._config) return nothing;
 
     const placement = (this._config.photo_placement as PhotoPlacement) ?? "top";
+    const headerIconMode = !this._config.show_header_icon
+      ? "none"
+      : this._config.header_icon_style === "watermark"
+        ? "watermark"
+        : "standard";
     const data = {
       theme: "ted-style",
       brushed: false,
@@ -590,6 +598,8 @@ export class TedRoomCardEditor extends LitElement implements LovelaceCardEditor 
       show_header_name: true,
       header_divider: false,
       header_align: "top",
+      icon_transparency: 0,
+      icon_bg_transparency: 80,
       show_photo: true,
       photo_source: "bundled",
       photo: "auto",
@@ -600,6 +610,7 @@ export class TedRoomCardEditor extends LitElement implements LovelaceCardEditor 
       photo_off_grayscale: false,
       photo_off_opacity: 25,
       ...this._config,
+      header_icon: headerIconMode,
       photo_edge_gradient: this._config.photo_edge_gradient ?? defaultEdgeGradient(placement),
     };
     const statusItems = this._config.status_items ?? [];
@@ -769,18 +780,45 @@ export class TedRoomCardEditor extends LitElement implements LovelaceCardEditor 
         flatten: true,
         schema: [
           {
-            type: "grid",
-            name: "",
-            column_min_width: "100px",
-            schema: [
-              { name: "show_header_icon", selector: { boolean: {} } },
-              {
-                name: "header_icon_size",
-                disabled: this._config?.show_header_icon !== true,
-                selector: { number: { min: 10, max: 400, step: 5, mode: "box", unit_of_measurement: "%" } },
+            name: "header_icon",
+            selector: {
+              select: {
+                mode: "dropdown",
+                options: [
+                  { value: "none", label: "None (default)" },
+                  { value: "standard", label: "Standard Icon" },
+                  { value: "watermark", label: "Watermark" },
+                ],
               },
-            ],
+            },
           },
+          ...(this._config?.show_header_icon === true
+            ? [
+                {
+                  name: "header_icon_size",
+                  selector: { number: { min: 10, max: 400, step: 5, mode: "box", unit_of_measurement: "%" } },
+                },
+              ]
+            : []),
+          ...(this._config?.show_header_icon === true && this._config?.header_icon_style === "watermark"
+            ? [
+                {
+                  type: "grid",
+                  name: "",
+                  column_min_width: "100px",
+                  schema: [
+                    {
+                      name: "icon_transparency",
+                      selector: { number: { min: 0, max: 100, step: 1, mode: "box", unit_of_measurement: "%" } },
+                    },
+                    {
+                      name: "icon_bg_transparency",
+                      selector: { number: { min: 0, max: 100, step: 1, mode: "box", unit_of_measurement: "%" } },
+                    },
+                  ],
+                },
+              ]
+            : []),
           {
             type: "grid",
             name: "",
@@ -976,7 +1014,21 @@ export class TedRoomCardEditor extends LitElement implements LovelaceCardEditor 
 
   private _onBaseChanged = (ev: CustomEvent): void => {
     ev.stopPropagation();
-    const value = ev.detail.value as Partial<RoomCardConfig>;
+    const value = ev.detail.value as Partial<RoomCardConfig> & { header_icon?: "none" | "standard" | "watermark" };
+    // The synthetic "header_icon" select maps to show_header_icon + header_icon_style.
+    const mode = value.header_icon ?? "none";
+    const prevMode = !this._config?.show_header_icon
+      ? "none"
+      : this._config?.header_icon_style === "watermark"
+        ? "watermark"
+        : "standard";
+    const showHeaderIcon = mode !== "none";
+    const headerIconStyle = mode === "watermark" ? "watermark" : undefined;
+    // Entering watermark seeds the 250% size called for by that mode.
+    let headerIconSize = value.header_icon_size;
+    if (mode === "watermark" && prevMode !== "watermark") {
+      headerIconSize = 250;
+    }
     this._commit({
       ...this._config,
       type: this._type(),
@@ -988,8 +1040,11 @@ export class TedRoomCardEditor extends LitElement implements LovelaceCardEditor 
       background: value.background,
       transparency: value.transparency,
       blur: value.blur,
-      show_header_icon: value.show_header_icon,
-      header_icon_size: value.header_icon_size,
+      show_header_icon: showHeaderIcon,
+      header_icon_style: headerIconStyle,
+      header_icon_size: headerIconSize,
+      icon_transparency: value.icon_transparency,
+      icon_bg_transparency: value.icon_bg_transparency,
       show_header_name: value.show_header_name,
       header_name_size: value.header_name_size,
       header_divider: value.header_divider,
@@ -1180,7 +1235,14 @@ export class TedRoomCardEditor extends LitElement implements LovelaceCardEditor 
     if (!next.name) delete next.name;
     if (!next.icon) delete next.icon;
     if (!next.show_header_icon) delete next.show_header_icon;
-    if (typeof next.header_icon_size !== "number") delete next.header_icon_size;
+    if (next.header_icon_style !== "watermark") delete next.header_icon_style;
+    if (typeof next.header_icon_size !== "number" || !next.show_header_icon) delete next.header_icon_size;
+    if (next.header_icon_style !== "watermark" || next.icon_transparency === 0 || typeof next.icon_transparency !== "number") {
+      delete next.icon_transparency;
+    }
+    if (next.header_icon_style !== "watermark" || next.icon_bg_transparency === 80 || typeof next.icon_bg_transparency !== "number") {
+      delete next.icon_bg_transparency;
+    }
     if (next.show_header_name !== false) delete next.show_header_name;
     if (typeof next.header_name_size !== "number") delete next.header_name_size;
     if (next.header_divider !== true) delete next.header_divider;

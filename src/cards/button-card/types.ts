@@ -78,6 +78,8 @@ export interface ButtonCardConfig extends LovelaceCardConfig {
   state_scale?: number;
   /** Order the name / icon / state stack is laid out in. Defaults to icon, name, state. */
   element_order?: CardElement[];
+  /** Layout direction of the icon / name / state elements. Defaults to `vertical`. */
+  orientation?: "vertical" | "horizontal";
   /** Fixed width (px) when the card isn't a direct item in a grid (Sections) view. Defaults to 100. */
   width?: number;
   /** Fixed height (px) when the card isn't a direct item in a grid (Sections) view. Defaults to 120. */

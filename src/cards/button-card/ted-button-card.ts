@@ -393,6 +393,8 @@ export class TedButtonCard extends LitElement implements LovelaceCard {
     const badgeFg = cssColor(this._config.badge?.text_color);
     if (badgeFg) badgeStyle.color = badgeFg;
 
+    const horizontal = this._config.orientation === "horizontal";
+
     return html`
       <ha-card
         class=${classMap(cardClasses)}
@@ -407,7 +409,7 @@ export class TedButtonCard extends LitElement implements LovelaceCard {
         ${neumorphic
           ? html`<div class="ted-neu full ${isActive ? "pressed" : "raised"}" aria-hidden="true"></div>`
           : nothing}
-        <div class="lbc">${visible.map((el) => tpls[el])}</div>
+        <div class=${classMap({ lbc: true, horizontal })}>${visible.map((el) => tpls[el])}</div>
         ${badgeText !== undefined
           ? html`<div class="lbc-badge" style=${styleMap(badgeStyle)}>${badgeText}</div>`
           : nothing}
@@ -623,6 +625,23 @@ export class TedButtonCard extends LitElement implements LovelaceCard {
          below would otherwise be overridden by .slot-mid's translate). */
       .lbc .slot-mid.icon {
         transform: translate(-50%, -50%) rotate(var(--ted-icon-rotate, 0deg));
+      }
+
+      /* Horizontal orientation: lay the icon / name / state out in a centered row (in
+         element order) instead of the vertical top/center/bottom slot placement. */
+      .lbc.horizontal {
+        flex-direction: row;
+        gap: 8px;
+      }
+      .lbc.horizontal .slot-top,
+      .lbc.horizontal .slot-mid,
+      .lbc.horizontal .slot-bot {
+        position: static;
+        transform: none;
+        margin: 0;
+      }
+      .lbc.horizontal .slot-mid.icon {
+        transform: rotate(var(--ted-icon-rotate, 0deg));
       }
 
       .icon {

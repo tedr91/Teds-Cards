@@ -879,6 +879,37 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
     return !!this._resolvePhotoUrl() && !this._photoError;
   }
 
+  /** Watermark: a large room icon anchored to the top-left corner, its rounded
+   *  "button" background clipped off the card's top-left edges. */
+  private _renderWatermark(): TemplateResult {
+    const cfg = this._config!;
+    const size = typeof cfg.header_icon_size === "number" ? cfg.header_icon_size : 250;
+    const iconPx = (22 * size) / 100;
+    const boxPx = iconPx * 2;
+    const clampPct = (v: unknown, d: number): number =>
+      typeof v === "number" && Number.isFinite(v) ? Math.min(100, Math.max(0, v)) : d;
+    const iconOpacity = (100 - clampPct(cfg.icon_transparency, 0)) / 100;
+    const bgAlpha = 100 - clampPct(cfg.icon_bg_transparency, 80);
+    return html`<div
+      class="header-watermark"
+      style=${styleMap({
+        width: `${boxPx}px`,
+        height: `${boxPx}px`,
+        background: `color-mix(in srgb, var(--ted-style-accent) ${bgAlpha}%, transparent)`,
+      })}
+      aria-hidden="true"
+    >
+      <ha-icon
+        .icon=${cfg.icon || this._areaIcon() || "mdi:home"}
+        style=${styleMap({
+          "--mdc-icon-size": `${iconPx}px`,
+          color: "var(--ted-style-accent)",
+          opacity: String(iconOpacity),
+        })}
+      ></ha-icon>
+    </div>`;
+  }
+
   protected render(): TemplateResult | typeof nothing {
     if (!this._config || !this.hass) return nothing;
 
@@ -890,7 +921,9 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
     };
 
     const title = this._config.name || this._areaName();
-    const showHeaderIcon = this._config.show_header_icon === true;
+    const iconShown = this._config.show_header_icon === true;
+    const watermark = iconShown && this._config.header_icon_style === "watermark";
+    const showHeaderIcon = iconShown && !watermark;
     const showHeaderName = this._config.show_header_name !== false;
     const headerDivider = this._config.header_divider === true;
     const headerIconSize =
@@ -938,6 +971,7 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
       <ha-card class=${classMap(themeClasses)} style=${styleMap(appearance)}>
         ${this._config.brushed ? brushedOverlay : nothing}
         ${this._renderPhoto()}
+        ${watermark ? this._renderWatermark() : nothing}
         <div
           class="status-bar align-${statusAlign} header-align-${headerAlign}${headerDivider ? "" : " no-divider"}"
           style=${styleMap({ "--ted-status-icon-size": `calc(16px * ${statusIconSize} / 100)` })}
@@ -1005,6 +1039,20 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
         position: absolute;
         z-index: -2;
         overflow: hidden;
+        pointer-events: none;
+      }
+      /* Watermark icon: a large rounded "button" anchored to the top-left, translated so
+         its top-left edges are clipped off the card. Sits above the photo, below the UI. */
+      .header-watermark {
+        position: absolute;
+        top: 0;
+        left: 0;
+        z-index: -1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: var(--ted-style-radius, 12px);
+        transform: translate(-30%, -30%);
         pointer-events: none;
       }
       .room-photo img {

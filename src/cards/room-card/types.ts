@@ -104,8 +104,14 @@ export interface RoomCardConfig extends LovelaceCardConfig {
   blur?: number;
   /** Header: show the icon. Defaults to false. */
   show_header_icon?: boolean;
+  /** Header: icon style when shown — "standard" (default) or "watermark" (large corner emblem). */
+  header_icon_style?: "standard" | "watermark";
   /** Header: icon size override in px. */
   header_icon_size?: number;
+  /** Watermark: icon glyph transparency (0–100%). Defaults to 0 (opaque). */
+  icon_transparency?: number;
+  /** Watermark: icon background transparency (0–100%). Defaults to 80. */
+  icon_bg_transparency?: number;
   /** Header: show the name. Defaults to true. */
   show_header_name?: boolean;
   /** Header: name size override in px. */
