@@ -308,6 +308,7 @@ function renderNotificationsItem(
   const icon = item.icon ?? (unread > 0 ? "mdi:bell-badge" : STATUS_ITEM_DEFAULT_ICON.notifications);
   const anchorId = `${ctx.keyPrefix}-notif-anchor-${index}`;
   const popId = `${ctx.keyPrefix}-notif-pop-${index}`;
+  const detailPopId = `${popId}-detail`;
   const svc = (service: string, data: Record<string, unknown>) =>
     ctx.hass.callService("teds_cards_backend", service, data);
   return html`
@@ -344,7 +345,10 @@ function renderNotificationsItem(
                   <div class="notif-pop-row sev-${n.severity ?? "info"} ${n.read ? "read" : ""}">
                     <div
                       class="notif-pop-body"
-                      @click=${() => !n.read && svc("mark_read", { id: n.id })}
+                      @click=${() => {
+                        if (!n.read) svc("mark_read", { id: n.id });
+                        ctx.slider.openNotifDetail(n, detailPopId);
+                      }}
                     >
                       <div class="notif-pop-top">
                         ${!n.read ? html`<span class="notif-unread-dot"></span>` : nothing}
@@ -365,6 +369,35 @@ function renderNotificationsItem(
               )}
         </div>
       </div>
+      <div
+        id=${detailPopId}
+        class="notif-detail-popover"
+        popover
+        @toggle=${ctx.slider.onNotifDetailToggle}
+      >
+        ${renderNotifDetail(ctx, detailPopId)}
+      </div>
+    </div>
+  `;
+}
+
+/** Full-notification content for the centered detail modal. */
+function renderNotifDetail(ctx: StatusItemContext, detailPopId: string): TemplateResult {
+  const d = ctx.slider.notifDetail;
+  return html`
+    <div class="notif-detail sev-${d?.severity ?? "info"}">
+      <div class="notif-detail-head">
+        ${d?.title ? html`<span class="notif-detail-title">${d.title}</span>` : nothing}
+        <button
+          class="notif-detail-x"
+          aria-label="Close"
+          @click=${() => ctx.slider.closeNotifDetail(detailPopId)}
+        >
+          ✕
+        </button>
+      </div>
+      ${d?.created ? html`<div class="notif-detail-time">${notifTimeAgo(d.created)}</div>` : nothing}
+      <div class="notif-detail-msg">${d?.message ?? ""}</div>
     </div>
   `;
 }

@@ -943,6 +943,11 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.56
+
+- **Tab Card — child card popups no longer clipped** — dialogs opened by a card placed inside a **Tab Card** (e.g. the Alarm/Timer **add** dialog) now cover the full screen again instead of being trapped and cut off inside the tab card. On translucent (glass/Mica) themes the tab card's frosted surface was acting as a boundary for those pop-ups; the surface is now painted as a separate layer so it stays pretty without constraining the cards inside it.
+- **Notifications popover — easier to read** — each notification's message now wraps to **two lines** before truncating, and **tapping a notification opens the full text** in a centered pop-up (and marks it read).
+
 ### v1.0.55
 
 - **New — Tab Card** — a new **Ted's Tab Card** that organises any cards into **tabs** within a single card. Each tab has its own label, icon and card, edited with a full visual editor (add, reorder and remove tabs; pick and configure each tab's card with the standard card editor). The active tab can be **deep-linked** with a URL query parameter (e.g. `?tab=timers`), so a button or notification can open straight to the right tab.

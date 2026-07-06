@@ -15,6 +15,15 @@ interface SliderHost extends ReactiveControllerHost {
   hass?: HomeAssistant;
 }
 
+/** A notification opened in the centered detail modal. */
+export interface NotifDetail {
+  id: string;
+  title?: string;
+  message: string;
+  severity?: string;
+  created?: string;
+}
+
 /** Reopen guard: ignore a volume re-open within this long after a close. */
 const VOLUME_REOPEN_GUARD_MS = 350;
 
@@ -26,6 +35,8 @@ export class StatusSliderController implements ReactiveController {
   private readonly host: SliderHost;
   /** Live drag value, while the user drags a slider (keyed per item). */
   active?: { key: string; value: number };
+  /** The notification currently shown in the centered detail modal (if any). */
+  notifDetail?: NotifDetail;
   private volumeClickTimer?: number;
   private volumeClosedAt = 0;
 
@@ -106,6 +117,35 @@ export class StatusSliderController implements ReactiveController {
     if (Date.now() - this.volumeClosedAt < VOLUME_REOPEN_GUARD_MS) return;
     popover.showPopover?.();
   }
+
+  /** Open a notification in the centered detail modal (rendered after state updates). */
+  openNotifDetail(row: NotifDetail, detailPopId: string): void {
+    this.notifDetail = row;
+    this.host.requestUpdate();
+    void this.host.updateComplete.then(() => {
+      const pop = (this.host.renderRoot as ShadowRoot).getElementById?.(detailPopId) as
+        | (HTMLElement & { showPopover?: () => void; matches?: (s: string) => boolean })
+        | null;
+      if (pop && !pop.matches?.(":popover-open")) pop.showPopover?.();
+    });
+  }
+
+  /** Close the detail modal (its `toggle` handler clears `notifDetail`). */
+  closeNotifDetail(detailPopId: string): void {
+    const pop = (this.host.renderRoot as ShadowRoot).getElementById?.(detailPopId) as
+      | (HTMLElement & { hidePopover?: () => void })
+      | null;
+    pop?.hidePopover?.();
+  }
+
+  /** Clear the detail state when the modal is dismissed (backdrop / Esc / close). */
+  onNotifDetailToggle = (ev: Event): void => {
+    const newState = (ev as Event & { newState?: string }).newState;
+    if (newState === "closed" && this.notifDetail) {
+      this.notifDetail = undefined;
+      this.host.requestUpdate();
+    }
+  };
 
   onPopoverToggle = (ev: Event): void => {
     const popover = ev.currentTarget as HTMLElement;

@@ -1,6 +1,5 @@
 import { LitElement, css, html, nothing, type PropertyValues, type TemplateResult } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
-import { classMap } from "lit/directives/class-map.js";
 import { styleMap } from "lit/directives/style-map.js";
 import type { HomeAssistant, LovelaceCard, LovelaceCardConfig, LovelaceCardEditor } from "custom-card-helpers";
 
@@ -191,21 +190,25 @@ export class TedTabCard extends LitElement implements LovelaceCard {
     const showTabs = cfg.show_tabs !== false && tabs.length > 0;
     const scale = typeof cfg.scale === "number" ? cfg.scale : 100;
 
-    const cardClasses = {
-      "ted-card": true,
-      [tedCardThemeClass(theme)]: true,
-      "no-shadow": !shadow,
-    };
-    const cardStyle = appearanceStyle({
+    // The frosted surface is painted as an isolated background LAYER (a sibling of the
+    // tab strip + panels), NOT as an ancestor of the child cards. A backdrop-filter on an
+    // ancestor would become the containing block for a child card's position:fixed dialog
+    // (trapping/clipping it inside the tab card); keeping it off the child chain lets those
+    // modals cover the viewport. The theme-var class goes on the root (custom properties
+    // don't establish a containing block).
+    const rootStyle: Record<string, string> = {};
+    if (scale !== 100) rootStyle.zoom = String(scale / 100);
+    const surfaceStyle = appearanceStyle({
       background: cssColor(cfg.background),
       transparency: cfg.transparency,
       blur: cfg.blur,
     });
-    if (scale !== 100) cardStyle.zoom = String(scale / 100);
 
     return html`
-      <ha-card class=${classMap(cardClasses)} style=${styleMap(cardStyle)}>
-        ${brushed ? brushedOverlay : nothing}
+      <div class="tab-root ${tedCardThemeClass(theme)}" style=${styleMap(rootStyle)}>
+        <div class="tab-surface ${shadow ? "" : "no-shadow"}" style=${styleMap(surfaceStyle)}>
+          ${brushed ? brushedOverlay : nothing}
+        </div>
         ${showTabs
           ? html`<div class="tab-strip" role="tablist">
               ${tabs.map((tab, idx) => {
@@ -228,7 +231,7 @@ export class TedTabCard extends LitElement implements LovelaceCard {
             ? html`<div class="empty">No tabs configured.</div>`
             : tabs.map((tab, idx) => this._renderPanel(tab, idx, idx === activeIdx))}
         </div>
-      </ha-card>
+      </div>
     `;
   }
 
@@ -249,20 +252,42 @@ export class TedTabCard extends LitElement implements LovelaceCard {
       :host {
         display: block;
       }
-      ha-card {
+      /* Root is a plain flow container: NO backdrop-filter / transform / contain, so it
+         never becomes the containing block for a child card's position:fixed dialog. */
+      .tab-root {
         position: relative;
         display: flex;
         flex-direction: column;
-        overflow: hidden;
         height: 100%;
         box-sizing: border-box;
         padding: 12px;
         gap: 12px;
       }
-      ha-card.no-shadow {
+      /* Frosted surface painted as an isolated layer behind the content — the only place
+         the backdrop-filter lives, and it has no child-card descendants to trap. */
+      .tab-surface {
+        position: absolute;
+        inset: 0;
+        z-index: 0;
+        pointer-events: none;
+        overflow: hidden;
+        border: 1px solid var(--ted-style-divider, var(--divider-color));
+        border-radius: var(--ted-style-radius, 12px);
+        background: color-mix(
+          in srgb,
+          var(--ted-style-surface, var(--ha-card-background, #fff)) var(--ted-card-bg-alpha, 100%),
+          transparent
+        );
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+        -webkit-backdrop-filter: var(--ha-card-backdrop-filter, none);
+        backdrop-filter: var(--ha-card-backdrop-filter, none);
+      }
+      .tab-surface.no-shadow {
         box-shadow: none;
       }
       .tab-strip {
+        position: relative;
+        z-index: 1;
         display: flex;
         gap: 4px;
         overflow-x: auto;
@@ -304,6 +329,8 @@ export class TedTabCard extends LitElement implements LovelaceCard {
         border-bottom-color: var(--ted-style-accent, var(--primary-color));
       }
       .panels {
+        position: relative;
+        z-index: 1;
         flex: 1 1 auto;
         min-height: 0;
         display: flex;
