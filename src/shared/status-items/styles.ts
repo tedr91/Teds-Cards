@@ -240,13 +240,19 @@ export const statusItemStyles = css`
   }
   .notif-pop-msg {
     font-size: 0.8rem;
+    line-height: 1.3;
     color: var(--ted-style-muted);
     overflow-wrap: anywhere;
+    word-break: break-word;
+    white-space: normal;
     display: -webkit-box;
     -webkit-line-clamp: 2;
     line-clamp: 2;
     -webkit-box-orient: vertical;
+    /* Fallback clamp for engines that ignore -webkit-line-clamp: cap at two lines. */
+    max-height: calc(2 * 1.3em);
     overflow: hidden;
+    text-overflow: ellipsis;
   }
   .notif-pop-x {
     flex: none;
