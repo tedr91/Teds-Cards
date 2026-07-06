@@ -627,22 +627,21 @@ export class TedButtonCard extends LitElement implements LovelaceCard {
         transform: translate(-50%, -50%) rotate(var(--ted-icon-rotate, 0deg));
       }
 
-      /* Horizontal orientation: lay the icon / name / state out in a centered row (in
-         element order) instead of the vertical top/center/bottom slot placement. */
+      /* Horizontal orientation: the SAME 1st/2nd/3rd → start / exact-center / end slot
+         logic as the vertical layout, but along the ROW axis (left / center / right),
+         with every element vertically centered. The middle slot keeps the shared
+         absolute both-axis centering; the ends are pushed out with auto margins. Drop the
+         vertical stack's min-height so a short horizontal button centers within its height. */
       .lbc.horizontal {
         flex-direction: row;
-        justify-content: center;
-        gap: 8px;
+        align-items: center;
+        min-height: 0;
       }
-      .lbc.horizontal .slot-top,
-      .lbc.horizontal .slot-mid,
+      .lbc.horizontal .slot-top {
+        margin: 0 auto 0 0;
+      }
       .lbc.horizontal .slot-bot {
-        position: static;
-        transform: none;
-        margin: 0;
-      }
-      .lbc.horizontal .slot-mid.icon {
-        transform: rotate(var(--ted-icon-rotate, 0deg));
+        margin: 0 0 0 auto;
       }
 
       .icon {

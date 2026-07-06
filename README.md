@@ -943,6 +943,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.59
+
+- **Button Card — horizontal orientation layout** — horizontal orientation now positions the icon / name / state by their order (1st = left, 2nd = center, 3rd = right) and centers content vertically, matching the vertical layout's slot logic. Fixes off-center content on short horizontal buttons.
+
 ### v1.0.58
 
 - **Button Card — horizontal orientation centering** — fixed the icon / name / state not centering in **Horizontal** orientation (they were left-aligned).
