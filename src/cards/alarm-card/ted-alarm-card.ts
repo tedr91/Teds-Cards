@@ -91,6 +91,25 @@ export class TedAlarmCard extends LitElement implements LovelaceCard {
     return { columns: 6, rows: "auto", min_columns: 4, min_rows: 2 };
   }
 
+  public connectedCallback(): void {
+    super.connectedCallback();
+    window.addEventListener("ll-custom", this._onExternalAdd);
+  }
+
+  public disconnectedCallback(): void {
+    super.disconnectedCallback();
+    window.removeEventListener("ll-custom", this._onExternalAdd);
+  }
+
+  /** Open the add dialog when an external button fires `ll-custom` with
+   *  `ted_add: "alarm"` (optionally scoped to this card's area). */
+  private _onExternalAdd = (ev: Event): void => {
+    const detail = (ev as CustomEvent).detail as { ted_add?: string; area?: string } | undefined;
+    if (!detail || detail.ted_add !== "alarm") return;
+    if (detail.area && this._config?.area && detail.area !== this._config.area) return;
+    this._openAdd();
+  };
+
   private _sensor(): string {
     return ALARMS_SENSOR;
   }

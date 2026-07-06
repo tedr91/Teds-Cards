@@ -943,6 +943,11 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.55
+
+- **New — Tab Card** — a new **Ted's Tab Card** that organises any cards into **tabs** within a single card. Each tab has its own label, icon and card, edited with a full visual editor (add, reorder and remove tabs; pick and configure each tab's card with the standard card editor). The active tab can be **deep-linked** with a URL query parameter (e.g. `?tab=timers`), so a button or notification can open straight to the right tab.
+- **Alarm & Timer cards — external "Add" buttons** — the Alarm and Timer cards now open their **add** dialog in response to an external `fire-dom-event` action (`ted_add: alarm` / `ted_add: timer`), so a prominent Add button placed anywhere on the dashboard can start a new alarm or timer while the card's own **+** stays hidden.
+
 ### v1.0.54
 
 - **Navbar Card — button hover tooltips** — navbar buttons now show a native **tooltip** (and expose an accessibility **aria-label**) with the button's **name** when you hover, so icon-only bars are easier to learn at a glance. No layout change; names still don't render inline unless you enable **Show name**.

@@ -22,5 +22,6 @@ import "./cards/navbar-card/ted-navbar-card";
 import "./cards/alarm-card/ted-alarm-card";
 import "./cards/timer-card/ted-timer-card";
 import "./cards/notification-card/ted-notification-card";
+import "./cards/tab-card/ted-tab-card";
 
 printVersionBanner();
