@@ -13,6 +13,7 @@ import { appearanceStyle, cssColor } from "../../shared/appearance";
 import { isVisible } from "../../shared/conditions";
 import { registerCustomCard } from "../../shared/register-card";
 import { NotificationToastController } from "../../shared/notifications";
+import { resolveDeviceArea } from "../../shared/device-area";
 import { viewAssistSensor } from "../../shared/view-assist";
 import { tedCardThemeClass, tedStyleTheme } from "../../shared/theme";
 import { renderStatusItem, type StatusItemContext } from "../../shared/status-items/render";
@@ -121,7 +122,9 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
       const it = this._notifItem();
       return {
         hass: this.hass,
-        area: it?.area,
+        // Resolve the device's area (config override → View Assist → browser_mod →
+        // localStorage) so a shared navbar only toasts this device's area + house-wide.
+        area: this.hass ? resolveDeviceArea(this.hass, it?.area).area : it?.area,
         enabled: !!it,
         // A fired notification reveals an auto-hidden bar (only if it carries a bell item).
         onNotify: it ? this._reveal : undefined,

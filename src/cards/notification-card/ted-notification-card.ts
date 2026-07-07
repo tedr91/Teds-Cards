@@ -9,6 +9,7 @@ import { appearanceStyle, cssColor } from "../../shared/appearance";
 import { brushedOverlay, tedCardThemeClass, tedStyleTheme } from "../../shared/theme";
 import { registerCustomCard } from "../../shared/register-card";
 import { NotificationToastController, type TedNotification } from "../../shared/notifications";
+import { resolveDeviceArea } from "../../shared/device-area";
 import "../../shared/ted-icon-button";
 import {
   NOTIFICATIONS_SENSOR,
@@ -73,7 +74,7 @@ export class TedNotificationCard extends LitElement implements LovelaceCard {
     super();
     new NotificationToastController(this, () => ({
       hass: this.hass,
-      area: this._config?.area,
+      area: this._effectiveArea(),
       enabled: this._config?.show_toasts !== false,
     }));
   }
@@ -93,10 +94,15 @@ export class TedNotificationCard extends LitElement implements LovelaceCard {
 
   private get _all(): TedNotification[] {
     const list = (this.hass?.states[NOTIFICATIONS_SENSOR]?.attributes.notifications as TedNotification[]) ?? [];
-    const area = this._config?.area;
-    const filtered = area ? list.filter((n) => n.area === area) : list;
+    const area = this._effectiveArea();
+    const filtered = area ? list.filter((n) => !n.area || n.area === area) : list;
     const max = typeof this._config?.max_items === "number" ? this._config.max_items : 50;
     return filtered.slice(0, max);
+  }
+
+  /** This device's effective area (config override → View Assist → browser_mod → localStorage). */
+  private _effectiveArea(): string | undefined {
+    return resolveDeviceArea(this.hass, this._config?.area).area;
   }
 
   private _areaName(id?: string): string | undefined {
@@ -115,7 +121,8 @@ export class TedNotificationCard extends LitElement implements LovelaceCard {
     const unread = this._all.filter((n) => !n.read).length;
     if (unread > 0 && this._markedReadFor !== unread) {
       this._markedReadFor = unread;
-      this._call("mark_read", this._config?.area ? { area: this._config.area } : {});
+      const area = this._effectiveArea();
+      this._call("mark_read", area ? { area } : {});
     }
   }
 
@@ -126,10 +133,12 @@ export class TedNotificationCard extends LitElement implements LovelaceCard {
     this._call("mark_read", { id });
   }
   private _clearAll(): void {
-    this._call("clear_notifications", this._config?.area ? { area: this._config.area } : {});
+    const area = this._effectiveArea();
+    this._call("clear_notifications", area ? { area } : {});
   }
   private _markAllRead(): void {
-    this._call("mark_read", this._config?.area ? { area: this._config.area } : {});
+    const area = this._effectiveArea();
+    this._call("mark_read", area ? { area } : {});
   }
 
   private _runAction(n: TedNotification, a: NotifAction): void {

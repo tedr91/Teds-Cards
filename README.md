@@ -943,6 +943,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.64
+
+- **Notifications — device-area scoping everywhere** — the navbar's notifications bell popup and the Notification Center card now scope to the **current device's area** (resolved from the item/card Area override, View Assist, browser_mod, or a per-device saved value), matching the toast. Each shows that device's area notifications **plus** house-wide (area-less) ones, so an area-scoped timer/alarm no longer appears on other rooms' devices.
+
 ### v1.0.63
 
 - **Alarm & Timer cards — area shown in title** — the scoped area now appears next to the title, e.g. **Alarms (Kitchen)** / **Timers (Primary Bedroom)**, with a new **Display area in title** toggle (default on) beside the Area option.

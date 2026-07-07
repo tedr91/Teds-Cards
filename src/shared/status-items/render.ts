@@ -9,6 +9,7 @@ import { styleMap } from "lit/directives/style-map.js";
 import type { HomeAssistant } from "custom-card-helpers";
 
 import { STATUS_ITEM_DEFAULT_ICON, DEFAULT_SPACER_SIZE } from "./const";
+import { resolveDeviceArea } from "../device-area";
 import { formatDate, formatTimeParts } from "./datetime";
 import {
   brightnessModel,
@@ -317,7 +318,10 @@ function renderNotificationsItem(
   index: number,
 ): TemplateResult {
   const all = (ctx.hass.states["sensor.teds_notifications"]?.attributes?.notifications ?? []) as NotifRow[];
-  const items = item.area ? all.filter((n) => n.area === item.area) : all;
+  // Scope to this device's area (config override → View Assist → browser_mod →
+  // localStorage), showing that area's notifications plus house-wide (area-less) ones.
+  const area = resolveDeviceArea(ctx.hass, item.area).area;
+  const items = area ? all.filter((n) => !n.area || n.area === area) : all;
   if (item.hide_when_empty && items.length === 0) return html``;
   const unread = items.filter((n) => !n.read).length;
   const icon = item.icon ?? (unread > 0 ? "mdi:bell-badge" : STATUS_ITEM_DEFAULT_ICON.notifications);
@@ -346,7 +350,7 @@ function renderNotificationsItem(
                 class="notif-clear"
                 title="Clear all"
                 aria-label="Clear all"
-                @click=${() => svc("clear_notifications", item.area ? { area: item.area } : {})}
+                @click=${() => svc("clear_notifications", area ? { area } : {})}
               >
                 <ha-icon icon="mdi:notification-clear-all"></ha-icon>
               </button>`
