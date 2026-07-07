@@ -251,6 +251,7 @@ export class TedTabCard extends LitElement implements LovelaceCard {
     css`
       :host {
         display: block;
+        height: 100%;
       }
       /* Root is a plain flow container: NO backdrop-filter / transform / contain, so it
          never becomes the containing block for a child card's position:fixed dialog. */
