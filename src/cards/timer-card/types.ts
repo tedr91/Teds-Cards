@@ -9,6 +9,8 @@ export interface TimerCardConfig extends LovelaceCardConfig {
   /** Optional area to scope this card to. When set, only timers tagged with this
    *  area are shown, and new timers started here are tagged with it. Unset = all. */
   area?: string;
+  /** Show the scoped area name next to the title, e.g. "Timers (Kitchen)". Defaults to true. */
+  show_area_in_title?: boolean;
 
   // Visual
   theme?: TedStyleTheme;

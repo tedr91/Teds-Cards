@@ -245,7 +245,7 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
   public static getStubConfig(hass: HomeAssistant): Omit<RoomCardConfig, "type"> {
     const areas = (hass as HassWithRegistries).areas ?? {};
     const firstArea = Object.keys(areas)[0];
-    return { area: firstArea ?? "", photo_height: 135 };
+    return { area: firstArea ?? "", photo_height: 132 };
   }
 
   @property({ attribute: false }) public hass?: HomeAssistant;
@@ -935,6 +935,10 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
       this._config.header_align === "middle" || this._config.header_align === "bottom"
         ? this._config.header_align
         : "top";
+    const headerHAlign =
+      this._config.header_h_align === "center" || this._config.header_h_align === "right"
+        ? this._config.header_h_align
+        : "left";
     const statusAlign =
       this._config.status_align === "middle" || this._config.status_align === "bottom"
         ? this._config.status_align
@@ -979,7 +983,7 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
         ${this._renderPhoto()}
         ${watermark ? this._renderWatermark() : nothing}
         <div
-          class="status-bar align-${statusAlign} header-align-${headerAlign}${headerDivider ? "" : " no-divider"}"
+          class="status-bar align-${statusAlign} header-align-${headerAlign} header-h-${headerHAlign}${headerDivider ? "" : " no-divider"}"
           style=${styleMap({
             "--ted-status-icon-size": `calc(16px * ${statusIconSize} / 100)`,
             ...(watermarkHeaderH ? { minHeight: `${watermarkHeaderH}px` } : {}),
@@ -1118,7 +1122,15 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
         align-items: center;
         gap: 8px;
         min-width: 0;
-        flex: 0 1 auto;
+        flex: 1 1 auto;
+        justify-content: flex-start;
+      }
+      /* Horizontal alignment of the header name/icon within the status strip. */
+      .status-bar.header-h-center .status-heading {
+        justify-content: center;
+      }
+      .status-bar.header-h-right .status-heading {
+        justify-content: flex-end;
       }
       .status-heading-icon {
         --mdc-icon-size: 22px;
@@ -1135,7 +1147,7 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
       }
       .status-items {
         display: inline-flex;
-        flex: 1 1 auto;
+        flex: 0 1 auto;
         flex-wrap: wrap;
         align-items: center;
         justify-content: flex-end;

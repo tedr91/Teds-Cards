@@ -9,6 +9,8 @@ export interface AlarmCardConfig extends LovelaceCardConfig {
   /** Optional area to scope this card to. When set, only alarms tagged with this
    *  area are shown, and new alarms created here are tagged with it. Unset = all. */
   area?: string;
+  /** Show the scoped area name next to the title, e.g. "Alarms (Kitchen)". Defaults to true. */
+  show_area_in_title?: boolean;
 
   // Visual
   theme?: TedStyleTheme;

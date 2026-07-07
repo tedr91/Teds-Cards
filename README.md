@@ -943,6 +943,11 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.63
+
+- **Alarm & Timer cards — area shown in title** — the scoped area now appears next to the title, e.g. **Alarms (Kitchen)** / **Timers (Primary Bedroom)**, with a new **Display area in title** toggle (default on) beside the Area option.
+- **Room Card — header horizontal alignment** — a new **Horizontal alignment** (Left / Center / Right) option controls where the header name/icon sits, alongside the existing vertical alignment. The **Display header divider line** option moved to the bottom of the Header section, and the default room-photo height is now 132px.
+
 ### v1.0.62
 
 - **Alarm & Timer cards — per-device area scoping** — a card with no fixed **Area** now scopes to the **current device's area**, resolved from (in order) the card's Area override, the View Assist device, the browser_mod device's assigned area, or a per-device saved value; if none is known it shows a banner to pick one (saved on that device). House-wide items always show everywhere.

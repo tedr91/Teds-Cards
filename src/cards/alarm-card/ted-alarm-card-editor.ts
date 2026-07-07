@@ -28,6 +28,7 @@ export class TedAlarmCardEditor extends LitElement implements LovelaceCardEditor
       brushed: false,
       shadow: true,
       show_add: true,
+      show_area_in_title: true,
       transparency: undefined,
       blur: undefined,
       background: undefined,
@@ -55,7 +56,15 @@ export class TedAlarmCardEditor extends LitElement implements LovelaceCardEditor
   private _schema() {
     return [
       { name: "title", selector: { text: {} } },
-      { name: "area", selector: { area: {} } },
+      {
+        type: "grid",
+        name: "",
+        column_min_width: "120px",
+        schema: [
+          { name: "area", selector: { area: {} } },
+          { name: "show_area_in_title", selector: { boolean: {} } },
+        ],
+      },
       {
         name: "",
         type: "expandable",
@@ -131,6 +140,8 @@ export class TedAlarmCardEditor extends LitElement implements LovelaceCardEditor
         return "Title";
       case "area":
         return "Area (optional — scopes this card to a room)";
+      case "show_area_in_title":
+        return "Display area in title";
       case "show_add":
         return "Show add button";
       case "theme":

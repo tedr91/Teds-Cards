@@ -42,6 +42,7 @@ export class TedTimerCardEditor extends LitElement implements LovelaceCardEditor
       shadow: true,
       show_active: true,
       show_add: true,
+      show_area_in_title: true,
       show_recent: true,
       transparency: undefined,
       blur: undefined,
@@ -78,7 +79,15 @@ export class TedTimerCardEditor extends LitElement implements LovelaceCardEditor
   private _topSchema() {
     return [
       { name: "title", selector: { text: {} } },
-      { name: "area", selector: { area: {} } },
+      {
+        type: "grid",
+        name: "",
+        column_min_width: "120px",
+        schema: [
+          { name: "area", selector: { area: {} } },
+          { name: "show_area_in_title", selector: { boolean: {} } },
+        ],
+      },
     ];
   }
 
@@ -215,6 +224,8 @@ export class TedTimerCardEditor extends LitElement implements LovelaceCardEditor
         return "Title";
       case "area":
         return "Area (optional — scopes this card to a room)";
+      case "show_area_in_title":
+        return "Display area in title";
       case "show_add":
         return "Show add button";
       case "theme":

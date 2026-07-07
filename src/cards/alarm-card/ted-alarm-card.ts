@@ -138,6 +138,13 @@ export class TedAlarmCard extends LitElement implements LovelaceCard {
     return resolveDeviceArea(this.hass, this._config?.area).source === "none";
   }
 
+  /** The " (Area)" suffix shown next to the title, when enabled and an area is resolved. */
+  private _areaSuffix(): TemplateResult | typeof nothing {
+    if (this._config?.show_area_in_title === false) return nothing;
+    const name = this._areaName(this._effectiveArea());
+    return name ? html`<span class="hdr-area"> (${name})</span>` : nothing;
+  }
+
   /** Friendly name of an HA area_id, via the frontend area registry. */
   private _areaName(id?: string): string | undefined {
     if (!id) return undefined;
@@ -274,7 +281,7 @@ export class TedAlarmCard extends LitElement implements LovelaceCard {
             : nothing}
           ${showName
             ? html`<span style=${styleMap({ fontSize: `calc(1.05rem * ${nameScale / 100})` })}
-                >${cfg.title ?? "Alarms"}</span
+                >${cfg.title ?? "Alarms"}${this._areaSuffix()}</span
               >`
             : nothing}
           ${!missing && showAdd
@@ -518,6 +525,10 @@ export class TedAlarmCard extends LitElement implements LovelaceCard {
       .head ha-icon {
         color: var(--ted-style-text);
         --mdc-icon-size: 22px;
+      }
+      .hdr-area {
+        color: var(--ted-style-muted);
+        font-weight: 400;
       }
       .add-hdr {
         margin-left: auto;

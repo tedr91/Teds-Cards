@@ -98,6 +98,7 @@ const FIELD_LABELS: Record<string, string> = {
   header_name_size: "Name size override",
   header_divider: "Display header divider line",
   header_align: "Vertical alignment",
+  header_h_align: "Horizontal alignment",
   status_align: "Vertical alignment",
   status_icon_size: "Status icon size",
   show_photo: "Show photo",
@@ -600,6 +601,7 @@ export class TedRoomCardEditor extends LitElement implements LovelaceCardEditor 
       show_header_name: true,
       header_divider: false,
       header_align: "top",
+      header_h_align: "left",
       icon_transparency: 30,
       icon_bg_transparency: 70,
       show_photo: true,
@@ -843,20 +845,40 @@ export class TedRoomCardEditor extends LitElement implements LovelaceCardEditor 
               },
             ],
           },
-          { name: "header_divider", selector: { boolean: {} } },
           {
-            name: "header_align",
-            selector: {
-              select: {
-                mode: "dropdown",
-                options: [
-                  { value: "top", label: "Top (default)" },
-                  { value: "middle", label: "Middle" },
-                  { value: "bottom", label: "Bottom" },
-                ],
+            type: "grid",
+            name: "",
+            column_min_width: "120px",
+            schema: [
+              {
+                name: "header_align",
+                selector: {
+                  select: {
+                    mode: "dropdown",
+                    options: [
+                      { value: "top", label: "Top (default)" },
+                      { value: "middle", label: "Middle" },
+                      { value: "bottom", label: "Bottom" },
+                    ],
+                  },
+                },
               },
-            },
+              {
+                name: "header_h_align",
+                selector: {
+                  select: {
+                    mode: "dropdown",
+                    options: [
+                      { value: "left", label: "Left (default)" },
+                      { value: "center", label: "Center" },
+                      { value: "right", label: "Right" },
+                    ],
+                  },
+                },
+              },
+            ],
           },
+          { name: "header_divider", selector: { boolean: {} } },
         ],
       },
       {
@@ -1062,6 +1084,7 @@ export class TedRoomCardEditor extends LitElement implements LovelaceCardEditor 
       header_name_size: value.header_name_size,
       header_divider: value.header_divider,
       header_align: value.header_align,
+      header_h_align: value.header_h_align,
       show_photo: value.show_photo,
       photo_source: value.photo_source,
       photo: value.photo,
@@ -1262,6 +1285,7 @@ export class TedRoomCardEditor extends LitElement implements LovelaceCardEditor 
     if (typeof next.header_name_size !== "number") delete next.header_name_size;
     if (next.header_divider !== true) delete next.header_divider;
     if (!next.header_align || next.header_align === "top") delete next.header_align;
+    if (!next.header_h_align || next.header_h_align === "left") delete next.header_h_align;
     if (!next.status_align || next.status_align === "top") delete next.status_align;
     if (typeof next.status_icon_size !== "number" || next.status_icon_size === 100) delete next.status_icon_size;
     // Room photo defaults.
