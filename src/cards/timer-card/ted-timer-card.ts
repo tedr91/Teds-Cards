@@ -461,7 +461,8 @@ export class TedTimerCard extends LitElement implements LovelaceCard {
 
   private _renderRecentTile(r: RecentTimer): TemplateResult {
     const total = r.h * 3600 + r.m * 60 + r.s;
-    const roomName = this._config?.area ? undefined : this._areaName(r.location);
+    const area = this._effectiveArea();
+    const roomName = !r.location ? "House-wide" : r.location !== area ? this._areaName(r.location) : undefined;
     return html`
       <button
         class="tile recent"
