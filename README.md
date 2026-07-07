@@ -943,6 +943,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.66
+
+- **Timer card — Recent presets show scope tags** — Recent timer tiles now tag **House-wide** presets (and presets from another room) the same way the Active list does, instead of showing nothing or a raw area name.
+
 ### v1.0.65
 
 - **Notification toasts clear on every device** — dismissing a notification toast (or marking it read / clearing it) now closes the matching toast on **all** devices, so a house-wide alarm/timer that popped everywhere disappears everywhere the moment you dismiss it on one screen. Requires Ted's Cards Backend v1.0.9+.
