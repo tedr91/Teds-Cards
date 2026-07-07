@@ -9,6 +9,7 @@ import {
 
 import {
   BUNDLED_PHOTO_OPTIONS,
+  DEFAULT_PHOTO_HEIGHT,
   defaultEdgeGradient,
   type PhotoEdge,
   type PhotoPlacement,
@@ -608,6 +609,7 @@ export class TedRoomCardEditor extends LitElement implements LovelaceCardEditor 
       photo_source: "bundled",
       photo: "auto",
       photo_placement: "top",
+      photo_height: DEFAULT_PHOTO_HEIGHT,
       photo_align: "center",
       shift_buttons_down: true,
       photo_opacity: 100,

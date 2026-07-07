@@ -10,6 +10,7 @@ import { brushedOverlay, tedCardThemeClass, tedStyleTheme } from "../../shared/t
 import { registerCustomCard } from "../../shared/register-card";
 import { NotificationToastController, type TedNotification } from "../../shared/notifications";
 import { resolveDeviceArea } from "../../shared/device-area";
+import { effectiveSnooze } from "../../shared/settings";
 import "../../shared/ted-icon-button";
 import {
   NOTIFICATIONS_SENSOR,
@@ -287,18 +288,20 @@ export class TedNotificationCard extends LitElement implements LovelaceCard {
           </div>
           <div class="row-msg">${n.message}</div>
           ${room ? html`<span class="room">${room}</span>` : nothing}
-          ${actions.length
-            ? html`<div class="row-actions">
-                ${actions.map(
-                  (a) => html`<button
-                    class="nc-btn ${a.variant === "primary" ? "primary" : ""}"
-                    @click=${() => this._runAction(n, a)}
-                  >
-                    ${a.label ?? "OK"}
-                  </button>`,
-                )}
-              </div>`
-            : nothing}
+          ${n.snooze
+            ? this._renderSnoozeActions(n)
+            : actions.length
+              ? html`<div class="row-actions">
+                  ${actions.map(
+                    (a) => html`<button
+                      class="nc-btn ${a.variant === "primary" ? "primary" : ""}"
+                      @click=${() => this._runAction(n, a)}
+                    >
+                      ${a.label ?? "OK"}
+                    </button>`,
+                  )}
+                </div>`
+              : nothing}
         </div>
         <ted-icon-button
           class="row-close"
@@ -308,6 +311,30 @@ export class TedNotificationCard extends LitElement implements LovelaceCard {
         ></ted-icon-button>
       </div>
     `;
+  }
+
+  /** Snooze/Dismiss buttons for a completion notification, from this device's settings. */
+  private _renderSnoozeActions(n: TedNotification): TemplateResult {
+    const s = n.snooze!;
+    const { enabled, minutes } = effectiveSnooze(s.kind);
+    return html`<div class="row-actions">
+      ${enabled
+        ? html`<button class="nc-btn primary" @click=${() => this._snooze(n, minutes)}>
+            Snooze (${minutes}min)
+          </button>`
+        : nothing}
+      <button class="nc-btn" @click=${() => this._dismiss(n.id)}>Dismiss</button>
+    </div>`;
+  }
+
+  /** Start a snooze timer (keeping name + room), then dismiss the completed item. */
+  private _snooze(n: TedNotification, minutes: number): void {
+    const s = n.snooze;
+    if (!s) return;
+    const data: Record<string, unknown> = { name: s.name, minutes };
+    if (s.area) data.location = s.area;
+    this.hass?.callService(NOTIFICATION_DOMAIN, "start_timer", data);
+    this._dismiss(n.id);
   }
 
   static styles = [

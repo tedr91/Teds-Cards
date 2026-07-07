@@ -943,6 +943,14 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.69
+
+- **Settings system (global + per-device)** — a new backend-backed settings layer with a **Ted Settings card** (`custom:ted-settings-card`) featuring **Global** and **This device** tabs (each field can inherit or override). Covers timer/alarm snooze, alert sounds/volume/repeat, media player, notification sound, Do Not Disturb, and dashboard navigation. Requires **Ted's Cards Backend v1.0.11+**.
+- **Snooze is now per-device** — timer/alarm completion notifications show **Snooze (Xmin)** / **Dismiss** resolved from *this device's* effective snooze settings (or hide Snooze if disabled), on both the toast and the Notification Center.
+- **Do Not Disturb** — suppresses toasts (and mutes server-side alert sounds) on a device.
+- **Auto-return home** — the navbar returns the device to its configured Home dashboard after an idle period (`auto_return_home_after`, 0 = never); only active when the settings backend is installed.
+- **Room Card — photo height default** — the room photo again defaults to **132px** for top / below-header placements when no height is set (use `0` for a full natural-height image).
+
 ### v1.0.68
 
 - **Tab Card — fills its container's height** — the Tab Card now stretches to the full height of its grid cell / container (e.g. a full-height `custom:grid-layout` view) instead of collapsing to its content height.

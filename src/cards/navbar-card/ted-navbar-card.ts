@@ -14,6 +14,8 @@ import { isVisible } from "../../shared/conditions";
 import { registerCustomCard } from "../../shared/register-card";
 import { NotificationToastController } from "../../shared/notifications";
 import { resolveDeviceArea } from "../../shared/device-area";
+import { SettingsController } from "../../shared/settings";
+import { AutoReturnController } from "../../shared/auto-return";
 import { viewAssistSensor } from "../../shared/view-assist";
 import { tedCardThemeClass, tedStyleTheme } from "../../shared/theme";
 import { renderStatusItem, type StatusItemContext } from "../../shared/status-items/render";
@@ -130,6 +132,9 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
         onNotify: it ? this._reveal : undefined,
       };
     });
+    // Keep this device's settings live (+ registered) and auto-return home on idle.
+    new SettingsController(this, () => this.hass);
+    new AutoReturnController(this);
   }
 
   /** The first "notifications" status item across all sections (if any). */

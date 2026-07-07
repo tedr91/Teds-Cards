@@ -1,6 +1,7 @@
 import type { ReactiveController, ReactiveControllerHost } from "lit";
 
 import { showMessageBox, dismissMessageBox, type MessagePopupSeverity, type ToastAction } from "./messagebox-popup";
+import { settingsStore, effectiveSnooze } from "./settings";
 
 /** An action button attached to a notification. */
 export interface NotifAction {
@@ -29,6 +30,8 @@ export interface TedNotification {
   timeout?: number | null;
   source?: string;
   actions?: NotifAction[];
+  /** Client-resolved snooze: the device renders/acts using its own effective settings. */
+  snooze?: { kind: "timer" | "alarm"; name: string; area?: string | null };
   /** Set by the backend when a notification is dismissed/read elsewhere: close the toast here. */
   dismissed?: boolean;
 }
@@ -83,6 +86,9 @@ export class NotificationToastController implements ReactiveController {
 
   private _ensure(): void {
     const conn = this.opts().hass?.connection;
+    // Keep the shared settings store fed wherever toasts run (for DND + snooze),
+    // even on dashboards without a Settings card mounted.
+    settingsStore.setHass(this.opts().hass as never);
     if (this._sub || !conn) return;
     this._sub = conn.subscribeMessage<TedNotification>(
       (n) => this._onEvent(n),
@@ -101,13 +107,11 @@ export class NotificationToastController implements ReactiveController {
     const { area, enabled, hass, onNotify } = this.opts();
     // Area-scoped card: show notifications for this area AND house-wide (area-less) ones.
     if (area && n.area && n.area !== area) return;
+    // Do Not Disturb (this device's effective setting): suppress toasts entirely.
+    if (settingsStore.effective().do_not_disturb === true) return;
     onNotify?.();
     if (enabled === false) return;
-    const actions: ToastAction[] = (Array.isArray(n.actions) ? n.actions : []).map((a) => ({
-      label: a.label ?? "OK",
-      primary: a.variant === "primary",
-      handler: () => this._runAction(hass, n, a),
-    }));
+    const actions: ToastAction[] = this._buildActions(hass, n);
     showMessageBox({
       key: `notif-${n.id}`,
       severity: n.severity ?? "info",
@@ -119,6 +123,35 @@ export class NotificationToastController implements ReactiveController {
       // Manually dismissing the toast marks the notification read (auto-timeout does not).
       onDismiss: () => hass?.callService?.("teds_cards_backend", "mark_read", { id: n.id }),
     });
+  }
+
+  /** Toast action buttons: synthesized Snooze/Dismiss for completion notifications
+   *  (resolved from THIS device's effective settings), else the configured actions. */
+  private _buildActions(hass: HassLike | undefined, n: TedNotification): ToastAction[] {
+    if (n.snooze) {
+      const { enabled, minutes } = effectiveSnooze(n.snooze.kind);
+      const out: ToastAction[] = [];
+      if (enabled) {
+        out.push({ label: `Snooze (${minutes}min)`, primary: true, handler: () => this._snooze(hass, n, minutes) });
+      }
+      out.push({ label: "Dismiss", handler: () => hass?.callService?.("teds_cards_backend", "mark_read", { id: n.id }) });
+      return out;
+    }
+    return (Array.isArray(n.actions) ? n.actions : []).map((a) => ({
+      label: a.label ?? "OK",
+      primary: a.variant === "primary",
+      handler: () => this._runAction(hass, n, a),
+    }));
+  }
+
+  /** Start a snooze timer (keeping the original name + room) and mark the item read. */
+  private _snooze(hass: HassLike | undefined, n: TedNotification, minutes: number): void {
+    const s = n.snooze;
+    if (!s) return;
+    const data: Record<string, unknown> = { name: s.name, minutes };
+    if (s.area) data.location = s.area;
+    hass?.callService?.("teds_cards_backend", "start_timer", data);
+    hass?.callService?.("teds_cards_backend", "mark_read", { id: n.id });
   }
 
   /** Run a notification action, then dismiss the notification everywhere. */

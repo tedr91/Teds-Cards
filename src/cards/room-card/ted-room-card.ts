@@ -20,6 +20,7 @@ import {
   autoMatchPhotoKey,
   BUNDLED_PHOTOS,
   bundledPhotoUrl,
+  DEFAULT_PHOTO_HEIGHT,
   defaultEdgeGradient,
   type PhotoEdge,
   type PhotoPlacement,
@@ -245,7 +246,7 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
   public static getStubConfig(hass: HomeAssistant): Omit<RoomCardConfig, "type"> {
     const areas = (hass as HassWithRegistries).areas ?? {};
     const firstArea = Object.keys(areas)[0];
-    return { area: firstArea ?? "", photo_height: 132 };
+    return { area: firstArea ?? "", photo_height: DEFAULT_PHOTO_HEIGHT };
   }
 
   @property({ attribute: false }) public hass?: HomeAssistant;
@@ -771,7 +772,11 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
     const placement = this._photoPlacement();
     const opacity = typeof c.photo_opacity === "number" ? c.photo_opacity : 100;
     const align = c.photo_align === "top" || c.photo_align === "bottom" ? c.photo_align : "center";
-    const height = typeof c.photo_height === "number" ? c.photo_height : undefined;
+    // For "top" / "below header", default to DEFAULT_PHOTO_HEIGHT when unset; "fill"
+    // ignores height (it uses inset: 0). A value of 0 means "full natural image".
+    const configuredHeight =
+      typeof c.photo_height === "number" ? c.photo_height : placement === "fill" ? undefined : DEFAULT_PHOTO_HEIGHT;
+    const height = configuredHeight === 0 ? undefined : configuredHeight;
     const edges = c.photo_edge_gradient ?? defaultEdgeGradient(placement);
     const cropped = placement === "fill" || typeof height === "number";
 

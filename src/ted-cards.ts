@@ -23,5 +23,6 @@ import "./cards/alarm-card/ted-alarm-card";
 import "./cards/timer-card/ted-timer-card";
 import "./cards/notification-card/ted-notification-card";
 import "./cards/tab-card/ted-tab-card";
+import "./cards/settings-card/ted-settings-card";
 
 printVersionBanner();

@@ -31,12 +31,15 @@ export {
 export type PhotoPlacement = "top" | "below_header" | "fill";
 export type PhotoEdge = "top" | "left" | "right" | "bottom";
 
+/** Default cropped photo height (px) for "top" / "below header" placements when unset. */
+export const DEFAULT_PHOTO_HEIGHT = 132;
+
 /**
  * Base URL for the bundled room photos, served from jsDelivr pinned to a tag
  * (immutable + CDN-cached). Bump the tag if more photos are added later.
  */
 export const PHOTO_CDN_BASE =
-  "https://cdn.jsdelivr.net/gh/tedr91/Teds-Cards@v1.0.68/images/room-header-photos/";
+  "https://cdn.jsdelivr.net/gh/tedr91/Teds-Cards@v1.0.69/images/room-header-photos/";
 
 /** Curated bundled photos: dropdown key → source filename. */
 export const BUNDLED_PHOTOS: Record<string, string> = {
