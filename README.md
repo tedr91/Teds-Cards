@@ -943,6 +943,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.70
+
+- **Settings card — media player fixes** — the **This device** media-player override now works (clicking override enables the entity picker even when there's no inherited value, instead of doing nothing), and the **Media player** field is greyed out on the **Global** tab since it only makes sense per-device.
+
 ### v1.0.69
 
 - **Settings system (global + per-device)** — a new backend-backed settings layer with a **Ted Settings card** (`custom:ted-settings-card`) featuring **Global** and **This device** tabs (each field can inherit or override). Covers timer/alarm snooze, alert sounds/volume/repeat, media player, notification sound, Do Not Disturb, and dashboard navigation. Requires **Ted's Cards Backend v1.0.11+**.

@@ -46,6 +46,8 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
   @property({ attribute: false }) public hass?: HomeAssistant;
   @state() private _config?: SettingsCardConfig;
   @state() private _tab: "global" | "device" = "global";
+  /** Fields the user is actively overriding on this device but hasn't stored a value for yet. */
+  private _editing = new Set<string>();
 
   public constructor() {
     super();
@@ -80,6 +82,12 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     return key in settingsStore.deviceSettings();
   }
 
+  /** True when the device row should be editable: a stored override, or the user just
+   *  clicked "override" on a field whose inherited value is empty (nothing stored yet). */
+  private _deviceOverriding(key: string): boolean {
+    return this._deviceOverridden(key) || this._editing.has(key);
+  }
+
   private _deviceValue(key: string): SettingsValue {
     const d = settingsStore.deviceSettings();
     return key in d ? d[key] : this._inherited(key);
@@ -94,8 +102,19 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
   }
 
   private _toggleOverride(field: SettingField, on: boolean): void {
-    if (on) settingsStore.setValue("device", field.key, this._inherited(field.key));
-    else settingsStore.clearValue("device", field.key);
+    if (on) {
+      // Mark as editing so the control enables even when the inherited value is
+      // empty (e.g. media_player); seed a real override only when there's a value.
+      this._editing.add(field.key);
+      const inherited = this._inherited(field.key);
+      if (inherited !== null && inherited !== undefined && inherited !== "") {
+        settingsStore.setValue("device", field.key, inherited);
+      }
+    } else {
+      this._editing.delete(field.key);
+      settingsStore.clearValue("device", field.key);
+    }
+    this.requestUpdate();
   }
 
   // --- rendering ------------------------------------------------------------
@@ -159,6 +178,20 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
   }
 
   private _renderGlobalRow(field: SettingField): TemplateResult {
+    // Device-only fields (e.g. the media player) have no sensible global value.
+    if (field.deviceOnly) {
+      return html`
+        <div class="row">
+          <div class="row-label">
+            <span>${field.label}</span>
+            <span class="help">Set on the “This device” tab.</span>
+          </div>
+          <div class="row-control">
+            ${this._renderControl(field, null, true, () => undefined)}
+          </div>
+        </div>
+      `;
+    }
     return html`
       <div class="row">
         <div class="row-label">
@@ -175,25 +208,23 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
   }
 
   private _renderDeviceRow(field: SettingField): TemplateResult {
-    const overridden = this._deviceOverridden(field.key);
+    const overriding = this._deviceOverriding(field.key);
     return html`
       <div class="row">
         <div class="row-label">
           <span>${field.label}</span>
-          ${overridden
-            ? nothing
-            : html`<span class="inherit-tag">Inherited</span>`}
+          ${overriding ? nothing : html`<span class="inherit-tag">Inherited</span>`}
         </div>
         <div class="row-control">
-          ${this._renderControl(field, this._deviceValue(field.key), !overridden, (v) =>
+          ${this._renderControl(field, this._deviceValue(field.key), !overriding, (v) =>
             this._setDevice(field.key, v),
           )}
           <button
-            class="ovr ${overridden ? "on" : ""}"
-            title=${overridden ? "Overriding — click to inherit" : "Inheriting — click to override"}
-            @click=${() => this._toggleOverride(field, !overridden)}
+            class="ovr ${overriding ? "on" : ""}"
+            title=${overriding ? "Overriding — click to inherit" : "Inheriting — click to override"}
+            @click=${() => this._toggleOverride(field, !overriding)}
           >
-            <ha-icon .icon=${overridden ? "mdi:link-off" : "mdi:link-variant"}></ha-icon>
+            <ha-icon .icon=${overriding ? "mdi:link-off" : "mdi:link-variant"}></ha-icon>
           </button>
         </div>
       </div>

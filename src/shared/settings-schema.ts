@@ -22,6 +22,8 @@ export interface SettingField {
   help?: string;
   /** For `entity` fields, restrict the picker to this domain (e.g. media_player). */
   entityDomain?: string;
+  /** Only meaningful per-device (no sensible global value) — greyed out in the Global tab. */
+  deviceOnly?: boolean;
 }
 
 export const SETTINGS_GROUPS = [
@@ -76,7 +78,7 @@ export const SETTINGS_FIELDS: SettingField[] = [
   { key: "notification_sound", label: "Alert sound", group: "Notifications", kind: "media" },
   { key: "notification_volume", label: "Sound volume", group: "Notifications", kind: "percent" },
   // Media
-  { key: "media_player", label: "Media player", group: "Media", kind: "entity", entityDomain: "media_player", help: "Speaker used for notifications, alarms, timers, music." },
+  { key: "media_player", label: "Media player", group: "Media", kind: "entity", entityDomain: "media_player", deviceOnly: true, help: "Speaker used for notifications, alarms, timers, music. Set per-device." },
   { key: "media_player_volume", label: "Media volume", group: "Media", kind: "percent" },
   // General
   { key: "do_not_disturb", label: "Do Not Disturb", group: "General", kind: "boolean", help: "Suppresses toasts and alert sounds on this device." },
