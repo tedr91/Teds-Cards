@@ -879,23 +879,24 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
     return !!this._resolvePhotoUrl() && !this._photoError;
   }
 
-  /** Watermark: a large room icon anchored to the top-left corner, its rounded
-   *  "button" background clipped off the card's top-left edges. */
+  /** Watermark: a large room icon flush against the card's top-left corner. */
   private _renderWatermark(): TemplateResult {
     const cfg = this._config!;
-    const size = typeof cfg.header_icon_size === "number" ? cfg.header_icon_size : 250;
+    const size = typeof cfg.header_icon_size === "number" ? cfg.header_icon_size : 300;
     const iconPx = (22 * size) / 100;
     const boxPx = iconPx * 2;
     const clampPct = (v: unknown, d: number): number =>
       typeof v === "number" && Number.isFinite(v) ? Math.min(100, Math.max(0, v)) : d;
-    const iconOpacity = (100 - clampPct(cfg.icon_transparency, 0)) / 100;
-    const bgAlpha = 100 - clampPct(cfg.icon_bg_transparency, 80);
+    const iconOpacity = (100 - clampPct(cfg.icon_transparency, 30)) / 100;
+    const bgAlpha = 100 - clampPct(cfg.icon_bg_transparency, 70);
+    const iconColor = cssColor(cfg.icon_color) ?? "var(--ted-style-accent)";
+    const bgColor = cssColor(cfg.icon_bg_color) ?? "var(--ted-style-accent)";
     return html`<div
       class="header-watermark"
       style=${styleMap({
         width: `${boxPx}px`,
         height: `${boxPx}px`,
-        background: `color-mix(in srgb, var(--ted-style-accent) ${bgAlpha}%, transparent)`,
+        background: `color-mix(in srgb, ${bgColor} ${bgAlpha}%, transparent)`,
       })}
       aria-hidden="true"
     >
@@ -903,7 +904,7 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
         .icon=${cfg.icon || this._areaIcon() || "mdi:home"}
         style=${styleMap({
           "--mdc-icon-size": `${iconPx}px`,
-          color: "var(--ted-style-accent)",
+          color: iconColor,
           opacity: String(iconOpacity),
         })}
       ></ha-icon>
@@ -956,6 +957,11 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
     // minus the header's bottom and the header→body gap, plus the card's padding.
     const CARD_PADDING = this._cardPadding();
     const HEADER_GAP = this._cardGap();
+    // Watermark mode: make the header strip at least as tall as the watermark icon so
+    // the button sections start just below it even when no room photo is shown.
+    const watermarkSize =
+      typeof this._config.header_icon_size === "number" ? this._config.header_icon_size : 300;
+    const watermarkHeaderH = watermark ? Math.max(0, ((22 * watermarkSize) / 100) * 2 - CARD_PADDING) : 0;
     const photoTop = placement === "below_header" ? this._headerBottom + HEADER_GAP : 0;
     const bodyShift = shiftButtons
       ? Math.max(0, photoTop + this._photoHeight - this._headerBottom - HEADER_GAP + CARD_PADDING)
@@ -974,7 +980,10 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
         ${watermark ? this._renderWatermark() : nothing}
         <div
           class="status-bar align-${statusAlign} header-align-${headerAlign}${headerDivider ? "" : " no-divider"}"
-          style=${styleMap({ "--ted-status-icon-size": `calc(16px * ${statusIconSize} / 100)` })}
+          style=${styleMap({
+            "--ted-status-icon-size": `calc(16px * ${statusIconSize} / 100)`,
+            ...(watermarkHeaderH ? { minHeight: `${watermarkHeaderH}px` } : {}),
+          })}
         >
           <div class="status-heading">
             ${showHeaderIcon
@@ -1041,8 +1050,8 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
         overflow: hidden;
         pointer-events: none;
       }
-      /* Watermark icon: a large rounded "button" anchored to the top-left, translated so
-         its top-left edges are clipped off the card. Sits above the photo, below the UI. */
+      /* Watermark icon: a large icon flush against the card's top-left corner (its
+         top/left edges sit right on the card edges). Sits above the photo, below the UI. */
       .header-watermark {
         position: absolute;
         top: 0;
@@ -1051,8 +1060,7 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
         display: flex;
         align-items: center;
         justify-content: center;
-        border-radius: var(--ted-style-radius, 12px);
-        transform: translate(-30%, -30%);
+        border-radius: 0;
         pointer-events: none;
       }
       .room-photo img {

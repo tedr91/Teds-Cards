@@ -943,6 +943,14 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.62
+
+- **Alarm & Timer cards — per-device area scoping** — a card with no fixed **Area** now scopes to the **current device's area**, resolved from (in order) the card's Area override, the View Assist device, the browser_mod device's assigned area, or a per-device saved value; if none is known it shows a banner to pick one (saved on that device). House-wide items always show everywhere.
+- **Alarm & Timer cards — per-item scope** — the Add/Edit dialog now has a **This room / House-wide** choice, so you can create a house-wide alarm or countdown that appears on every device.
+- **Room Card — watermark refinements** — the watermark now sits flush in the top-left corner (no rounding), defaults to 300% size with 30%/70% icon/background transparency, sizes the header so buttons start below it, and adds optional **Icon color** and **Icon background color** overrides.
+
+> Note: the per-item scope requires the latest **Ted's Cards Backend** integration.
+
 ### v1.0.61
 
 - **Notifications — icons in the popover & detail view** — a notification's icon now shows in the navbar bell dropdown and the full-notification popup (not just the pop-up toast), falling back to a severity icon when none is set.

@@ -144,6 +144,58 @@ export const modalStyles = css`
     background: var(--ted-style-accent, var(--primary-color, #2196f3));
     border-color: var(--ted-style-accent, var(--primary-color, #2196f3));
   }
+  .ted-scope {
+    display: flex;
+    gap: 6px;
+  }
+  .ted-scopebtn {
+    flex: 1 1 0;
+    min-width: 0;
+    appearance: none;
+    font: inherit;
+    font-size: 0.82rem;
+    font-weight: 600;
+    padding: 9px 8px;
+    cursor: pointer;
+    color: var(--ted-style-muted, var(--secondary-text-color, #6f6f6f));
+    background: var(--ted-style-surface-2, var(--secondary-background-color, rgba(0, 0, 0, 0.04)));
+    border: 1px solid var(--ted-style-divider, rgba(120, 120, 120, 0.22));
+    border-radius: var(--ted-style-radius-sm, 6px);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .ted-scopebtn.on {
+    color: var(--ted-style-on-accent, var(--text-primary-color, #fff));
+    background: var(--ted-style-accent, var(--primary-color, #2196f3));
+    border-color: var(--ted-style-accent, var(--primary-color, #2196f3));
+  }
+  .ted-scopebtn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+  .area-banner {
+    margin: 6px 12px 10px;
+    padding: 10px 12px;
+    border: 1px solid var(--ted-style-divider, rgba(120, 120, 120, 0.22));
+    border-radius: var(--ted-style-radius-sm, 6px);
+    background: var(--ted-style-surface-2, var(--secondary-background-color, rgba(0, 0, 0, 0.04)));
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .area-banner-text {
+    font-size: 0.8rem;
+    color: var(--ted-style-muted, var(--secondary-text-color, #6f6f6f));
+  }
+  .area-banner-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  .area-banner-row .ted-input {
+    flex: 1 1 auto;
+  }
   .ted-sheet-foot {
     display: flex;
     justify-content: flex-end;

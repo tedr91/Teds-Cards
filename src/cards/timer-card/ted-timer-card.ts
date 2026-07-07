@@ -10,6 +10,7 @@ import { brushedOverlay, tedCardThemeClass, tedStyleTheme } from "../../shared/t
 import { registerCustomCard } from "../../shared/register-card";
 import { modalStyles } from "../../shared/dialogs";
 import { NotificationToastController } from "../../shared/notifications";
+import { listAreas, resolveDeviceArea, setLocalDeviceArea } from "../../shared/device-area";
 import "../../shared/ted-icon-button";
 import {
   TIMERS_SENSOR,
@@ -76,6 +77,10 @@ export class TedTimerCard extends LitElement implements LovelaceCard {
   @state() private _dialog: string | null = null;
   /** The recent preset whose long-press action menu is open (null = closed). */
   @state() private _recentMenu: RecentTimer | null = null;
+  /** Scope of the timer being added/edited: this device's room, or house-wide. */
+  @state() private _scope: "room" | "house" = "room";
+  /** Area chosen in the "set device area" banner (before saving to localStorage). */
+  @state() private _bannerArea = "";
   /** Ticks once a second while any timer is counting down. */
   private _tick?: number;
   /** Long-press detection for recent tiles. */
@@ -85,7 +90,7 @@ export class TedTimerCard extends LitElement implements LovelaceCard {
   public constructor() {
     super();
     // Pops toasts for backend notifications (timer completions route through these).
-    new NotificationToastController(this, () => ({ hass: this.hass, area: this._config?.area }));
+    new NotificationToastController(this, () => ({ hass: this.hass, area: this._effectiveArea() }));
   }
 
   public setConfig(config: TimerCardConfig): void {
@@ -117,12 +122,22 @@ export class TedTimerCard extends LitElement implements LovelaceCard {
   private _onExternalAdd = (ev: Event): void => {
     const detail = (ev as CustomEvent).detail as { ted_add?: string; area?: string } | undefined;
     if (!detail || detail.ted_add !== "timer") return;
-    if (detail.area && this._config?.area && detail.area !== this._config.area) return;
+    if (detail.area && this._effectiveArea() && detail.area !== this._effectiveArea()) return;
     this._openAdd();
   };
 
   private _sensor(): string {
     return TIMERS_SENSOR;
+  }
+
+  /** The resolved area for this card (config override → VA → browser_mod → localStorage). */
+  private _effectiveArea(): string | undefined {
+    return resolveDeviceArea(this.hass, this._config?.area).area;
+  }
+
+  /** True when no area could be resolved, so the card prompts for one. */
+  private _areaUnresolved(): boolean {
+    return resolveDeviceArea(this.hass, this._config?.area).source === "none";
   }
 
   /** Friendly name of an HA area_id, via the frontend area registry. */
@@ -151,6 +166,7 @@ export class TedTimerCard extends LitElement implements LovelaceCard {
     this._h = 0;
     this._m = 5;
     this._s = 0;
+    this._scope = this._effectiveArea() ? "room" : "house";
     this._dialog = "add";
   }
 
@@ -159,6 +175,7 @@ export class TedTimerCard extends LitElement implements LovelaceCard {
     this._h = r.h;
     this._m = r.m;
     this._s = r.s;
+    this._scope = r.location ? "room" : "house";
     this._dialog = "add";
   }
 
@@ -208,6 +225,7 @@ export class TedTimerCard extends LitElement implements LovelaceCard {
     this._h = Math.floor(rem / 3600);
     this._m = Math.floor((rem % 3600) / 60);
     this._s = rem % 60;
+    this._scope = t.location ? "room" : "house";
     this._dialog = t.id;
   }
 
@@ -217,6 +235,8 @@ export class TedTimerCard extends LitElement implements LovelaceCard {
 
   private _submitDialog(): void {
     const total = this._h * 3600 + this._m * 60 + this._s;
+    const area = this._effectiveArea();
+    const location = this._scope === "house" ? null : (area ?? null);
     if (this._dialog === "add") {
       if (total <= 0) return;
       this._call("start_timer", {
@@ -224,7 +244,7 @@ export class TedTimerCard extends LitElement implements LovelaceCard {
         hours: this._h,
         minutes: this._m,
         seconds: this._s,
-        ...(this._config?.area ? { location: this._config.area } : {}),
+        location,
       });
     } else if (this._dialog) {
       this._call("update_timer", {
@@ -233,6 +253,7 @@ export class TedTimerCard extends LitElement implements LovelaceCard {
         hours: this._h,
         minutes: this._m,
         seconds: this._s,
+        location,
       });
     }
     this._closeDialog();
@@ -265,9 +286,9 @@ export class TedTimerCard extends LitElement implements LovelaceCard {
     const shadow = cfg.shadow !== false;
     const brushed = cfg.brushed === true;
     const missing = !this.hass.states[this._sensor()];
-    const area = cfg.area;
-    const active = this._attr<ActiveTimer>("active").filter((t) => !area || t.location === area);
-    const recent = this._attr<RecentTimer>("recent").filter((r) => !area || r.location === area);
+    const area = this._effectiveArea();
+    const active = this._attr<ActiveTimer>("active").filter((t) => (area ? t.location === area || !t.location : !t.location));
+    const recent = this._attr<RecentTimer>("recent").filter((r) => (area ? r.location === area || !r.location : !r.location));
     const showActive = cfg.show_active !== false;
     const showAdd = cfg.show_add !== false;
     const showRecent = cfg.show_recent !== false;
@@ -356,18 +377,55 @@ export class TedTimerCard extends LitElement implements LovelaceCard {
         </div>
         ${missing
           ? html`<div class="warn">Install the <b>Ted's Cards Backend</b> integration to use timers.</div>`
-          : html`<div class="body">${sections}</div>`}
+          : html`
+              ${this._areaUnresolved() ? this._renderAreaBanner() : nothing}
+              <div class="body">${sections}</div>
+            `}
       </ha-card>
       ${this._dialog ? this._renderDialog() : nothing}
       ${this._recentMenu ? this._renderRecentMenu() : nothing}
     `;
   }
 
+  /** Banner shown when this device's area is unknown: pick one (stored per-device). */
+  private _renderAreaBanner(): TemplateResult {
+    const areas = listAreas(this.hass);
+    return html`
+      <div class="area-banner">
+        <div class="area-banner-text">
+          Set this device's area to scope timers. Stored on this device only — a browser_mod or
+          View Assist area registration overrides it.
+        </div>
+        <div class="area-banner-row">
+          <select
+            class="ted-input"
+            @change=${(e: Event) => (this._bannerArea = (e.target as HTMLSelectElement).value)}
+          >
+            <option value="">Select area…</option>
+            ${areas.map(
+              (a) => html`<option value=${a.id} ?selected=${a.id === this._bannerArea}>${a.name}</option>`,
+            )}
+          </select>
+          <button class="ted-btn primary" ?disabled=${!this._bannerArea} @click=${this._saveBannerArea}>
+            Save
+          </button>
+        </div>
+      </div>
+    `;
+  }
+
+  private _saveBannerArea = (): void => {
+    if (!this._bannerArea) return;
+    setLocalDeviceArea(this._bannerArea);
+    this.requestUpdate();
+  };
+
   private _renderActiveTile(t: ActiveTimer): TemplateResult {
     const remaining = this._remaining(t);
     const duration = t.duration || 0;
     const frac = duration > 0 ? Math.max(0, Math.min(1, remaining / duration)) : 0;
-    const roomName = this._config?.area ? undefined : this._areaName(t.location);
+    const area = this._effectiveArea();
+    const roomName = !t.location ? "House-wide" : t.location !== area ? this._areaName(t.location) : undefined;
     return html`
       <div class="tile ${t.paused ? "paused" : ""}">
         <div class="bar"><div class="bar-fill" style=${styleMap({ width: `${frac * 100}%` })}></div></div>
@@ -438,6 +496,7 @@ export class TedTimerCard extends LitElement implements LovelaceCard {
     const adding = this._dialog === "add";
     const theme = this._config?.theme === "ted-style" ? "ted-style" : "ha";
     const total = this._h * 3600 + this._m * 60 + this._s;
+    const effArea = this._effectiveArea();
     return html`
       <div
         class="ted-modal ${tedCardThemeClass(theme)}"
@@ -460,6 +519,26 @@ export class TedTimerCard extends LitElement implements LovelaceCard {
               ${this._numField("Hours", this._h, 0, 23, (v) => (this._h = v))}
               ${this._numField("Minutes", this._m, 0, 59, (v) => (this._m = v))}
               ${this._numField("Seconds", this._s, 0, 59, (v) => (this._s = v))}
+            </div>
+            <div class="ted-field">
+              <span class="ted-field-label">Scope</span>
+              <div class="ted-scope">
+                <button
+                  type="button"
+                  class="ted-scopebtn ${this._scope === "room" ? "on" : ""}"
+                  ?disabled=${!effArea}
+                  @click=${() => (this._scope = "room")}
+                >
+                  ${effArea ? (this._areaName(effArea) ?? "This room") : "This room"}
+                </button>
+                <button
+                  type="button"
+                  class="ted-scopebtn ${this._scope === "house" ? "on" : ""}"
+                  @click=${() => (this._scope = "house")}
+                >
+                  House-wide
+                </button>
+              </div>
             </div>
           </div>
           <div class="ted-sheet-foot">

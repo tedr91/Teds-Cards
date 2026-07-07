@@ -91,7 +91,8 @@ export class NotificationToastController implements ReactiveController {
   private _onEvent(n: TedNotification): void {
     if (!n) return;
     const { area, enabled, hass, onNotify } = this.opts();
-    if (area && n.area !== area) return;
+    // Area-scoped card: show notifications for this area AND house-wide (area-less) ones.
+    if (area && n.area && n.area !== area) return;
     onNotify?.();
     if (enabled === false) return;
     const actions: ToastAction[] = (Array.isArray(n.actions) ? n.actions : []).map((a) => ({

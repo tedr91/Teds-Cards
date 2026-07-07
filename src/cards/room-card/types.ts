@@ -112,6 +112,10 @@ export interface RoomCardConfig extends LovelaceCardConfig {
   icon_transparency?: number;
   /** Watermark: icon background transparency (0–100%). Defaults to 80. */
   icon_bg_transparency?: number;
+  /** Watermark: icon glyph color override (theme color name or hex/rgb/hsl/var). */
+  icon_color?: string;
+  /** Watermark: icon background color override (theme color name or hex/rgb/hsl/var). */
+  icon_bg_color?: string;
   /** Header: show the name. Defaults to true. */
   show_header_name?: boolean;
   /** Header: name size override in px. */

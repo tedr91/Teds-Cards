@@ -10,6 +10,7 @@ import { brushedOverlay, tedCardThemeClass, tedStyleTheme } from "../../shared/t
 import { registerCustomCard } from "../../shared/register-card";
 import { showConfirmation, modalStyles } from "../../shared/dialogs";
 import { NotificationToastController } from "../../shared/notifications";
+import { listAreas, resolveDeviceArea, setLocalDeviceArea } from "../../shared/device-area";
 import "../../shared/ted-icon-button";
 import {
   ALARMS_SENSOR,
@@ -71,11 +72,15 @@ export class TedAlarmCard extends LitElement implements LovelaceCard {
   @state() private _addOpen = false;
   /** null = adding a new alarm; otherwise the id of the alarm being edited. */
   @state() private _editId: string | null = null;
+  /** Scope of the alarm being added/edited: this device's room, or house-wide. */
+  @state() private _scope: "room" | "house" = "room";
+  /** Area chosen in the "set device area" banner (before saving to localStorage). */
+  @state() private _bannerArea = "";
 
   public constructor() {
     super();
     // Pops toasts for backend notifications (alarm rings route through these).
-    new NotificationToastController(this, () => ({ hass: this.hass, area: this._config?.area }));
+    new NotificationToastController(this, () => ({ hass: this.hass, area: this._effectiveArea() }));
   }
 
   public setConfig(config: AlarmCardConfig): void {
@@ -106,7 +111,7 @@ export class TedAlarmCard extends LitElement implements LovelaceCard {
   private _onExternalAdd = (ev: Event): void => {
     const detail = (ev as CustomEvent).detail as { ted_add?: string; area?: string } | undefined;
     if (!detail || detail.ted_add !== "alarm") return;
-    if (detail.area && this._config?.area && detail.area !== this._config.area) return;
+    if (detail.area && this._effectiveArea() && detail.area !== this._effectiveArea()) return;
     this._openAdd();
   };
 
@@ -116,8 +121,21 @@ export class TedAlarmCard extends LitElement implements LovelaceCard {
 
   private get _alarms(): Alarm[] {
     const all = (this.hass?.states[this._sensor()]?.attributes.alarms as Alarm[]) ?? [];
-    const area = this._config?.area;
-    return area ? all.filter((a) => a.location === area) : all;
+    const area = this._effectiveArea();
+    // A device-scoped card shows its own area's alarms plus house-wide (no location) ones;
+    // when no area is resolved (banner shown) only house-wide alarms are relevant.
+    if (area) return all.filter((a) => a.location === area || !a.location);
+    return all.filter((a) => !a.location);
+  }
+
+  /** The resolved area for this card (config override → VA → browser_mod → localStorage). */
+  private _effectiveArea(): string | undefined {
+    return resolveDeviceArea(this.hass, this._config?.area).area;
+  }
+
+  /** True when no area could be resolved, so the card prompts for one. */
+  private _areaUnresolved(): boolean {
+    return resolveDeviceArea(this.hass, this._config?.area).source === "none";
   }
 
   /** Friendly name of an HA area_id, via the frontend area registry. */
@@ -150,6 +168,7 @@ export class TedAlarmCard extends LitElement implements LovelaceCard {
     this._label = "";
     this._time = "07:00";
     this._days = [0, 1, 2, 3, 4, 5, 6];
+    this._scope = this._effectiveArea() ? "room" : "house";
     this._addOpen = true;
   }
 
@@ -158,6 +177,7 @@ export class TedAlarmCard extends LitElement implements LovelaceCard {
     this._label = a.label ?? "";
     this._time = (a.time ?? "07:00").slice(0, 5);
     this._days = Array.isArray(a.days) ? [...a.days] : [];
+    this._scope = a.location ? "room" : "house";
     this._addOpen = true;
   }
 
@@ -174,6 +194,8 @@ export class TedAlarmCard extends LitElement implements LovelaceCard {
 
   private _submitAdd(): void {
     if (!this._label) return;
+    const area = this._effectiveArea();
+    const location = this._scope === "house" ? null : (area ?? null);
     if (this._editId) {
       this._call("update_alarm", {
         id: this._editId,
@@ -181,13 +203,14 @@ export class TedAlarmCard extends LitElement implements LovelaceCard {
         time: this._time,
         days: this._days,
         enabled: true,
+        location,
       });
     } else {
       this._call("add_alarm", {
         label: this._label,
         time: this._time,
         days: this._days,
-        ...(this._config?.area ? { location: this._config.area } : {}),
+        location,
       });
     }
     this._closeAdd();
@@ -266,6 +289,7 @@ export class TedAlarmCard extends LitElement implements LovelaceCard {
         ${missing
           ? html`<div class="warn">Install the <b>Ted's Cards Backend</b> integration to use alarms.</div>`
           : html`
+              ${this._areaUnresolved() ? this._renderAreaBanner() : nothing}
               <div class="list">
                 ${alarms.length === 0
                   ? html`<div class="empty">No alarms yet.</div>`
@@ -281,10 +305,45 @@ export class TedAlarmCard extends LitElement implements LovelaceCard {
     `;
   }
 
+  /** Banner shown when this device's area is unknown: pick one (stored per-device). */
+  private _renderAreaBanner(): TemplateResult {
+    const areas = listAreas(this.hass);
+    return html`
+      <div class="area-banner">
+        <div class="area-banner-text">
+          Set this device's area to scope alarms. Stored on this device only — a browser_mod or
+          View Assist area registration overrides it.
+        </div>
+        <div class="area-banner-row">
+          <select
+            class="ted-input"
+            @change=${(e: Event) => (this._bannerArea = (e.target as HTMLSelectElement).value)}
+          >
+            <option value="">Select area…</option>
+            ${areas.map(
+              (a) => html`<option value=${a.id} ?selected=${a.id === this._bannerArea}>${a.name}</option>`,
+            )}
+          </select>
+          <button class="ted-btn primary" ?disabled=${!this._bannerArea} @click=${this._saveBannerArea}>
+            Save
+          </button>
+        </div>
+      </div>
+    `;
+  }
+
+  private _saveBannerArea = (): void => {
+    if (!this._bannerArea) return;
+    setLocalDeviceArea(this._bannerArea);
+    this.requestUpdate();
+  };
+
   private _renderAlarm(a: Alarm): TemplateResult {
     const grouped = this._daysLabel(a.days);
-    // In the whole-home (area-unset) view, label each alarm with its room.
-    const roomName = this._config?.area ? undefined : this._areaName(a.location);
+    // Tag house-wide alarms (and any from another area) so they stand out; this room's
+    // own alarms need no redundant label.
+    const area = this._effectiveArea();
+    const roomName = !a.location ? "House-wide" : a.location !== area ? this._areaName(a.location) : undefined;
     return html`
       <div class="row ${a.enabled ? "" : "off"}">
         <div class="info">
@@ -320,6 +379,7 @@ export class TedAlarmCard extends LitElement implements LovelaceCard {
 
   private _renderAddDialog(): TemplateResult {
     const theme = this._config?.theme === "ted-style" ? "ted-style" : "ha";
+    const effArea = this._effectiveArea();
     return html`
       <div
         class="ted-modal ${tedCardThemeClass(theme)}"
@@ -360,6 +420,26 @@ export class TedAlarmCard extends LitElement implements LovelaceCard {
                     ${label}
                   </button>`,
                 )}
+              </div>
+            </div>
+            <div class="ted-field">
+              <span class="ted-field-label">Scope</span>
+              <div class="ted-scope">
+                <button
+                  type="button"
+                  class="ted-scopebtn ${this._scope === "room" ? "on" : ""}"
+                  ?disabled=${!effArea}
+                  @click=${() => (this._scope = "room")}
+                >
+                  ${effArea ? (this._areaName(effArea) ?? "This room") : "This room"}
+                </button>
+                <button
+                  type="button"
+                  class="ted-scopebtn ${this._scope === "house" ? "on" : ""}"
+                  @click=${() => (this._scope = "house")}
+                >
+                  House-wide
+                </button>
               </div>
             </div>
           </div>

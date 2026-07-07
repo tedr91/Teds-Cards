@@ -92,6 +92,8 @@ const FIELD_LABELS: Record<string, string> = {
   header_icon_size: "Icon size override",
   icon_transparency: "Icon transparency",
   icon_bg_transparency: "Icon background transparency",
+  icon_color: "Icon color",
+  icon_bg_color: "Icon background color",
   show_header_name: "Display name in header",
   header_name_size: "Name size override",
   header_divider: "Display header divider line",
@@ -598,8 +600,8 @@ export class TedRoomCardEditor extends LitElement implements LovelaceCardEditor 
       show_header_name: true,
       header_divider: false,
       header_align: "top",
-      icon_transparency: 0,
-      icon_bg_transparency: 80,
+      icon_transparency: 30,
+      icon_bg_transparency: 70,
       show_photo: true,
       photo_source: "bundled",
       photo: "auto",
@@ -817,6 +819,15 @@ export class TedRoomCardEditor extends LitElement implements LovelaceCardEditor 
                     },
                   ],
                 },
+                {
+                  type: "grid",
+                  name: "",
+                  column_min_width: "100px",
+                  schema: [
+                    { name: "icon_color", selector: { ui_color: {} } },
+                    { name: "icon_bg_color", selector: { ui_color: {} } },
+                  ],
+                },
               ]
             : []),
           {
@@ -1024,10 +1035,10 @@ export class TedRoomCardEditor extends LitElement implements LovelaceCardEditor 
         : "standard";
     const showHeaderIcon = mode !== "none";
     const headerIconStyle = mode === "watermark" ? "watermark" : undefined;
-    // Entering watermark seeds the 250% size called for by that mode.
+    // Entering watermark seeds the 300% size called for by that mode.
     let headerIconSize = value.header_icon_size;
     if (mode === "watermark" && prevMode !== "watermark") {
-      headerIconSize = 250;
+      headerIconSize = 300;
     }
     this._commit({
       ...this._config,
@@ -1045,6 +1056,8 @@ export class TedRoomCardEditor extends LitElement implements LovelaceCardEditor 
       header_icon_size: headerIconSize,
       icon_transparency: value.icon_transparency,
       icon_bg_transparency: value.icon_bg_transparency,
+      icon_color: value.icon_color,
+      icon_bg_color: value.icon_bg_color,
       show_header_name: value.show_header_name,
       header_name_size: value.header_name_size,
       header_divider: value.header_divider,
@@ -1237,12 +1250,14 @@ export class TedRoomCardEditor extends LitElement implements LovelaceCardEditor 
     if (!next.show_header_icon) delete next.show_header_icon;
     if (next.header_icon_style !== "watermark") delete next.header_icon_style;
     if (typeof next.header_icon_size !== "number" || !next.show_header_icon) delete next.header_icon_size;
-    if (next.header_icon_style !== "watermark" || next.icon_transparency === 0 || typeof next.icon_transparency !== "number") {
+    if (next.header_icon_style !== "watermark" || next.icon_transparency === 30 || typeof next.icon_transparency !== "number") {
       delete next.icon_transparency;
     }
-    if (next.header_icon_style !== "watermark" || next.icon_bg_transparency === 80 || typeof next.icon_bg_transparency !== "number") {
+    if (next.header_icon_style !== "watermark" || next.icon_bg_transparency === 70 || typeof next.icon_bg_transparency !== "number") {
       delete next.icon_bg_transparency;
     }
+    if (next.header_icon_style !== "watermark" || !next.icon_color) delete next.icon_color;
+    if (next.header_icon_style !== "watermark" || !next.icon_bg_color) delete next.icon_bg_color;
     if (next.show_header_name !== false) delete next.show_header_name;
     if (typeof next.header_name_size !== "number") delete next.header_name_size;
     if (next.header_divider !== true) delete next.header_divider;
