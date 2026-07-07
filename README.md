@@ -943,6 +943,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.71
+
+- **Settings — media player falls back to this device** — when neither a per-device nor global **Media player** is set, alerts now play on the current client's own media player (View Assist satellite or browser_mod browser). The Settings card shows a live hint of which player that is. Requires **Ted's Cards Backend v1.0.12+**.
+
 ### v1.0.70
 
 - **Settings card — media player fixes** — the **This device** media-player override now works (clicking override enables the entity picker even when there's no inherited value, instead of doing nothing), and the **Media player** field is greyed out on the **Global** tab since it only makes sense per-device.

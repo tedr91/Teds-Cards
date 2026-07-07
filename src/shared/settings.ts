@@ -9,7 +9,7 @@
  */
 import type { ReactiveController, ReactiveControllerHost } from "lit";
 
-import { resolveDeviceId } from "./device-id";
+import { resolveDeviceId, resolveDeviceMediaPlayer } from "./device-id";
 import { resolveDeviceArea } from "./device-area";
 import { SETTINGS_DEFAULTS, type SettingsMap, type SettingsValue } from "./settings-schema";
 
@@ -39,6 +39,7 @@ class SettingsStore {
   private _sub?: Promise<() => void>;
   private _listeners = new Set<() => void>();
   private _registeredArea?: string | null;
+  private _registeredMp?: string | null;
   private _loaded = false;
 
   /** True once a settings snapshot has been received from the backend. */
@@ -121,22 +122,26 @@ class SettingsStore {
     });
   }
 
-  /** Register (or refresh) this device's id + resolved area with the backend. */
+  /** Register (or refresh) this device's id + resolved area + own media player. */
   private _maybeRegister(hass: HassLike | undefined): void {
     const conn = hass?.connection;
     if (!conn?.sendMessagePromise) return;
     const area = resolveDeviceArea(hass as never, undefined).area ?? null;
-    if (area === this._registeredArea) return;
+    const mediaPlayer = resolveDeviceMediaPlayer(hass) ?? null;
+    if (area === this._registeredArea && mediaPlayer === this._registeredMp) return;
     this._registeredArea = area;
+    this._registeredMp = mediaPlayer;
     conn
       .sendMessagePromise({
         type: `${DOMAIN}/register_device`,
         device_id: this.deviceId,
         area,
+        media_player: mediaPlayer,
       })
       .catch(() => {
         // Allow a later retry if registration failed (e.g. transient).
         this._registeredArea = undefined;
+        this._registeredMp = undefined;
       });
   }
 }

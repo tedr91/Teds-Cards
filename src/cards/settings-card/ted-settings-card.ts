@@ -8,6 +8,7 @@ import { appearanceStyle, cssColor } from "../../shared/appearance";
 import { brushedOverlay, tedCardThemeClass, tedStyleTheme } from "../../shared/theme";
 import { registerCustomCard } from "../../shared/register-card";
 import { SettingsController, settingsStore } from "../../shared/settings";
+import { resolveDeviceMediaPlayer } from "../../shared/device-id";
 import {
   fieldsByGroup,
   SETTINGS_DEFAULTS,
@@ -101,6 +102,25 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     settingsStore.setValue("device", key, value);
   }
 
+  /** This device's own media player (the playback fallback when nothing is set). */
+  private _deviceMediaPlayer(): string | undefined {
+    return resolveDeviceMediaPlayer(this.hass);
+  }
+
+  /** Friendly name for an entity id, or a readable "none" placeholder. */
+  private _entityLabel(entityId?: string): string {
+    if (!entityId) return "none detected";
+    const fn = this.hass?.states[entityId]?.attributes?.friendly_name;
+    return typeof fn === "string" && fn ? `${fn} (${entityId})` : entityId;
+  }
+
+  /** The fallback hint shown on the media-player rows. */
+  private _mediaFallbackHint(): TemplateResult {
+    return html`<span class="help"
+      >When unset, plays on this device: <b>${this._entityLabel(this._deviceMediaPlayer())}</b></span
+    >`;
+  }
+
   private _toggleOverride(field: SettingField, on: boolean): void {
     if (on) {
       // Mark as editing so the control enables even when the inherited value is
@@ -185,6 +205,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
           <div class="row-label">
             <span>${field.label}</span>
             <span class="help">Set on the “This device” tab.</span>
+            ${field.key === "media_player" ? this._mediaFallbackHint() : nothing}
           </div>
           <div class="row-control">
             ${this._renderControl(field, null, true, () => undefined)}
@@ -214,6 +235,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
         <div class="row-label">
           <span>${field.label}</span>
           ${overriding ? nothing : html`<span class="inherit-tag">Inherited</span>`}
+          ${field.key === "media_player" && !overriding ? this._mediaFallbackHint() : nothing}
         </div>
         <div class="row-control">
           ${this._renderControl(field, this._deviceValue(field.key), !overriding, (v) =>
