@@ -26,7 +26,9 @@ export interface TedNotification {
   area_name?: string;
   created?: string;
   read?: boolean;
-  sticky?: boolean;
+  /** Lifetime: "transient" (toast only, never stored), "normal" (auto-clears on
+   *  read/dismiss), or "sticky" (marked read on interaction, kept until cleared). */
+  persistence?: "transient" | "normal" | "sticky";
   timeout?: number | null;
   source?: string;
   actions?: NotifAction[];

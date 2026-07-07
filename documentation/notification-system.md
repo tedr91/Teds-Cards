@@ -59,7 +59,7 @@ Each notification stored by the backend has this shape (exposed in the sensor's
 | `area_name` | string \| null | Friendly name of `area`, resolved server-side. |
 | `created` | string | ISO-8601 timestamp. Rendered as "just now / 5m ago / 2h ago / 3d ago". |
 | `read` | boolean | Whether it has been marked read. |
-| `sticky` | boolean | Reserved flag for persistent notifications. |
+| `persistence` | string | `transient` \| `normal` \| `sticky`. Controls lifetime (see below). Default `normal`. |
 | `timeout` | number \| null | Toast auto-dismiss time in **seconds**. `0`/unset → default 8s toast. |
 | `actions` | array | Optional action buttons (see [Actions](#actions)). |
 | `source` | string | Origin: `service`, `alarm`, `timer`, etc. |
@@ -84,7 +84,7 @@ Create (or replace) a notification.
 | `icon` | | icon | MDI icon. |
 | `area` | | area | Scope to a room. Omit / `null` = house-wide. |
 | `timeout` | | number (0–600 s) | Toast duration. `0` = default (8s). |
-| `sticky` | | boolean | Mark as sticky. |
+| `persistence` | | `transient`\|`normal`\|`sticky` | Default `normal`. `transient` = toast only, never stored; `normal` = stored, auto-cleared when read/dismissed; `sticky` = stored, marked read on interaction and kept until cleared. |
 | `id` | | string | Provide to **update** an existing notification instead of adding a new one. |
 | `actions` | | list | Action buttons (see below). |
 
