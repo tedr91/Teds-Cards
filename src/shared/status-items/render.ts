@@ -350,7 +350,10 @@ function renderNotificationsItem(
                 class="notif-clear"
                 title="Clear all"
                 aria-label="Clear all"
-                @click=${() => svc("clear_notifications", area ? { area } : {})}
+                @click=${() =>
+                  area
+                    ? items.forEach((n) => svc("dismiss_notification", { id: n.id }))
+                    : svc("clear_notifications", {})}
               >
                 <ha-icon icon="mdi:notification-clear-all"></ha-icon>
               </button>`

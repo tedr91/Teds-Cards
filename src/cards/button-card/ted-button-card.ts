@@ -343,7 +343,10 @@ export class TedButtonCard extends LitElement implements LovelaceCard {
     if (!Array.isArray(list)) return undefined;
     const area = cfg.area_scoped ? resolveDeviceArea(this.hass, undefined).area : undefined;
     let items = list as Array<{ location?: string | null; enabled?: boolean }>;
-    if (cfg.area_scoped) {
+    // Only scope when an area actually resolves; if the device's area is unknown,
+    // count everything (mirrors the notification behaviour) instead of hiding all
+    // room-scoped items — otherwise the badge/highlight would never show.
+    if (area) {
       items = items.filter((it) => !it.location || it.location === area);
     }
     items = items.filter((it) => it.enabled === undefined || it.enabled);

@@ -36,7 +36,7 @@ export type PhotoEdge = "top" | "left" | "right" | "bottom";
  * (immutable + CDN-cached). Bump the tag if more photos are added later.
  */
 export const PHOTO_CDN_BASE =
-  "https://cdn.jsdelivr.net/gh/tedr91/Teds-Cards@v1.0.66/images/room-header-photos/";
+  "https://cdn.jsdelivr.net/gh/tedr91/Teds-Cards@v1.0.67/images/room-header-photos/";
 
 /** Curated bundled photos: dropdown key → source filename. */
 export const BUNDLED_PHOTOS: Record<string, string> = {

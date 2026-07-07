@@ -105,6 +105,13 @@ export class TedNotificationCard extends LitElement implements LovelaceCard {
     return resolveDeviceArea(this.hass, this._config?.area).area;
   }
 
+  /** Full (uncapped) scoped notification list: this area's items plus house-wide ones. */
+  private _scoped(): TedNotification[] {
+    const list = (this.hass?.states[NOTIFICATIONS_SENSOR]?.attributes.notifications as TedNotification[]) ?? [];
+    const area = this._effectiveArea();
+    return area ? list.filter((n) => !n.area || n.area === area) : list;
+  }
+
   private _areaName(id?: string): string | undefined {
     if (!id) return undefined;
     const areas = (this.hass as { areas?: Record<string, { name?: string }> } | undefined)?.areas;
@@ -122,7 +129,8 @@ export class TedNotificationCard extends LitElement implements LovelaceCard {
     if (unread > 0 && this._markedReadFor !== unread) {
       this._markedReadFor = unread;
       const area = this._effectiveArea();
-      this._call("mark_read", area ? { area } : {});
+      if (area) this._scoped().forEach((n) => !n.read && this._markRead(n.id));
+      else this._call("mark_read", {});
     }
   }
 
@@ -134,11 +142,15 @@ export class TedNotificationCard extends LitElement implements LovelaceCard {
   }
   private _clearAll(): void {
     const area = this._effectiveArea();
-    this._call("clear_notifications", area ? { area } : {});
+    // Area-scoped: the list shows this area's items plus house-wide ones; the
+    // backend's area filter would leave house-wide behind, so clear by id.
+    if (area) this._scoped().forEach((n) => this._dismiss(n.id));
+    else this._call("clear_notifications", {});
   }
   private _markAllRead(): void {
     const area = this._effectiveArea();
-    this._call("mark_read", area ? { area } : {});
+    if (area) this._scoped().forEach((n) => !n.read && this._markRead(n.id));
+    else this._call("mark_read", {});
   }
 
   private _runAction(n: TedNotification, a: NotifAction): void {

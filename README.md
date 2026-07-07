@@ -943,6 +943,11 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.67
+
+- **Notifications — “Clear all” / “Mark all read” now include house-wide items** — in an area-scoped view (navbar bell popup or Notification Center card) these actions now clear/mark the notifications actually shown — this room's **plus** house-wide (area-less) ones — instead of leaving the house-wide ones behind.
+- **Button Card — area-scoped badge/highlight fallback** — when a device's area can't be resolved (e.g. a plain browser with no View Assist / browser_mod / saved area), an area-scoped `count_attribute` badge/highlight now counts everything instead of hiding all room-scoped items, so the navbar Alarm/Timer badges & accents reappear.
+
 ### v1.0.66
 
 - **Timer card — Recent presets show scope tags** — Recent timer tiles now tag **House-wide** presets (and presets from another room) the same way the Active list does, instead of showing nothing or a raw area name.
