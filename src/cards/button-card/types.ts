@@ -22,6 +22,10 @@ export interface HighlightRule {
 export interface HighlightConfig {
   entity?: string;
   rules?: HighlightRule[];
+  /** Count entries in this list attribute of the entity instead of using its state. */
+  count_attribute?: string;
+  /** Only count entries whose `location` matches this device's area (plus house-wide). */
+  area_scoped?: boolean;
 }
 
 /** A small numeric badge driven by an entity's state. */
@@ -31,6 +35,10 @@ export interface BadgeConfig {
   text_color?: string;
   /** Show the badge even when the value is zero. Defaults to false. */
   show_when_zero?: boolean;
+  /** Count entries in this list attribute of the entity instead of using its state. */
+  count_attribute?: string;
+  /** Only count entries whose `location` matches this device's area (plus house-wide). */
+  area_scoped?: boolean;
 }
 
 /** Navigate using the View Assist integration's `view_assist.navigate` service so the

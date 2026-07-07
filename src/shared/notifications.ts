@@ -1,6 +1,6 @@
 import type { ReactiveController, ReactiveControllerHost } from "lit";
 
-import { showMessageBox, type MessagePopupSeverity, type ToastAction } from "./messagebox-popup";
+import { showMessageBox, dismissMessageBox, type MessagePopupSeverity, type ToastAction } from "./messagebox-popup";
 
 /** An action button attached to a notification. */
 export interface NotifAction {
@@ -29,6 +29,8 @@ export interface TedNotification {
   timeout?: number | null;
   source?: string;
   actions?: NotifAction[];
+  /** Set by the backend when a notification is dismissed/read elsewhere: close the toast here. */
+  dismissed?: boolean;
 }
 
 interface HassLike {
@@ -90,6 +92,12 @@ export class NotificationToastController implements ReactiveController {
 
   private _onEvent(n: TedNotification): void {
     if (!n) return;
+    // Dismissed/read on another device: close the matching toast here too so a
+    // house-wide (or same-area) notification clears everywhere at once.
+    if (n.dismissed) {
+      dismissMessageBox(`notif-${n.id}`);
+      return;
+    }
     const { area, enabled, hass, onNotify } = this.opts();
     // Area-scoped card: show notifications for this area AND house-wide (area-less) ones.
     if (area && n.area && n.area !== area) return;

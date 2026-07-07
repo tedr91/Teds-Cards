@@ -70,6 +70,11 @@ export class TedMessagePopupLayer extends LitElement {
     this._msgs = this._msgs.filter((m) => m.id !== id);
   }
 
+  /** Close any showing toast with this key (without running its onDismiss). */
+  public dismissByKey(key: string): void {
+    this._msgs = this._msgs.filter((m) => m.key !== key);
+  }
+
   protected render(): TemplateResult | typeof nothing {
     if (!this._msgs.length) return nothing;
     return html`
@@ -292,4 +297,9 @@ export function showMessageBox(opts: MessagePopupOptions): void {
     document.body.appendChild(layer);
   }
   layer.push(opts);
+}
+
+/** Close any showing toast with this key (e.g. when it was dismissed on another device). */
+export function dismissMessageBox(key: string): void {
+  layer?.dismissByKey(key);
 }

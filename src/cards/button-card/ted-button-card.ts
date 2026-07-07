@@ -15,6 +15,7 @@ import {
 
 import { registerCustomCard } from "../../shared/register-card";
 import { appearanceStyle } from "../../shared/appearance";
+import { resolveDeviceArea } from "../../shared/device-area";
 import { brushedOverlay, tedCardThemeClass, tedStyleTheme } from "../../shared/theme";
 import { viewAssistNavigate, viewAssistToggleHold } from "../../shared/view-assist";
 import {
@@ -83,15 +84,23 @@ function highlightRuleMatches(rule: HighlightRule, raw: string, num: number): bo
 function evalHighlight(
   hass: HomeAssistant,
   highlight?: HighlightConfig,
+  valueOverride?: number,
 ): { background?: string; icon?: string } {
   const result: { background?: string; icon?: string } = {};
   const entity = highlight?.entity;
   const rules = highlight?.rules;
   if (!entity || !Array.isArray(rules) || rules.length === 0) return result;
-  const stateObj = hass.states[entity];
-  if (!stateObj) return result;
-  const raw = stateObj.state;
-  const num = Number(raw);
+  let raw: string;
+  let num: number;
+  if (valueOverride !== undefined) {
+    num = valueOverride;
+    raw = String(valueOverride);
+  } else {
+    const stateObj = hass.states[entity];
+    if (!stateObj) return result;
+    raw = stateObj.state;
+    num = Number(raw);
+  }
   for (const rule of rules) {
     if (!highlightRuleMatches(rule, raw, num)) continue;
     if (rule.background_color) result.background = cssColor(rule.background_color);
@@ -298,15 +307,47 @@ export class TedButtonCard extends LitElement implements LovelaceCard {
     const badge = this._config?.badge;
     const entity = badge?.entity;
     if (!entity) return undefined;
-    const stateObj = this.hass?.states[entity];
-    if (!stateObj) return undefined;
-    const raw = stateObj.state;
-    if (raw === "" || raw === "unavailable" || raw === "unknown" || raw === "none") return undefined;
-    const num = Number(raw);
+    const scoped = this._scopedCount(badge);
+    let num: number;
+    let raw: string;
+    if (scoped !== undefined) {
+      num = scoped;
+      raw = String(scoped);
+    } else {
+      const stateObj = this.hass?.states[entity];
+      if (!stateObj) return undefined;
+      raw = stateObj.state;
+      if (raw === "" || raw === "unavailable" || raw === "unknown" || raw === "none") return undefined;
+      num = Number(raw);
+    }
     const isZero = Number.isFinite(num) ? num === 0 : raw === "0";
     if (isZero && !badge.show_when_zero) return undefined;
     if (Number.isFinite(num)) return num > 99 ? "99+" : String(num);
     return raw;
+  }
+
+  /**
+   * Area-scoped count for a badge/highlight configured with `count_attribute`:
+   * counts entries in that list attribute, optionally filtered to this device's
+   * area (plus house-wide, area-less entries). Entries carrying an `enabled` flag
+   * (alarms) are only counted when enabled, matching the sensor's own state.
+   * Returns undefined when not configured for counting (falls back to state).
+   */
+  private _scopedCount(cfg?: {
+    entity?: string;
+    count_attribute?: string;
+    area_scoped?: boolean;
+  }): number | undefined {
+    if (!cfg?.entity || !cfg.count_attribute) return undefined;
+    const list = this.hass?.states[cfg.entity]?.attributes?.[cfg.count_attribute];
+    if (!Array.isArray(list)) return undefined;
+    const area = cfg.area_scoped ? resolveDeviceArea(this.hass, undefined).area : undefined;
+    let items = list as Array<{ location?: string | null; enabled?: boolean }>;
+    if (cfg.area_scoped) {
+      items = items.filter((it) => !it.location || it.location === area);
+    }
+    items = items.filter((it) => it.enabled === undefined || it.enabled);
+    return items.length;
   }
 
   protected render(): TemplateResult | typeof nothing {
@@ -346,7 +387,7 @@ export class TedButtonCard extends LitElement implements LovelaceCard {
     // Dynamic highlighting: an independent entity drives background / icon color
     // overrides via ordered rules, applied on top of the configured colors and
     // regardless of the bound entity's active state.
-    const highlight = evalHighlight(this.hass, this._config.highlight);
+    const highlight = evalHighlight(this.hass, this._config.highlight, this._scopedCount(this._config.highlight));
     if (highlight.background) cardStyle.background = highlight.background;
 
     // In a grid (Sections) view, honor the grid cell sizing. Everywhere else

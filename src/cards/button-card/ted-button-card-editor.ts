@@ -527,6 +527,8 @@ export class TedButtonCardEditor extends LitElement implements LovelaceCardEdito
                 ],
               },
               { name: "show_when_zero", selector: { boolean: {} } },
+              { name: "count_attribute", selector: { text: {} } },
+              { name: "area_scoped", selector: { boolean: {} } },
             ]}
             .computeLabel=${this._computeBadgeLabel}
             @value-changed=${this._onBadgeChanged}
@@ -546,6 +548,10 @@ export class TedButtonCardEditor extends LitElement implements LovelaceCardEdito
         return "Text color";
       case "show_when_zero":
         return "Show when value is zero";
+      case "count_attribute":
+        return "Count list attribute (e.g. alarms)";
+      case "area_scoped":
+        return "Scope count to this device's area";
       default:
         return schema.name;
     }
@@ -559,6 +565,8 @@ export class TedButtonCardEditor extends LitElement implements LovelaceCardEdito
     if (value.color) badge.color = value.color;
     if (value.text_color) badge.text_color = value.text_color;
     if (value.show_when_zero) badge.show_when_zero = true;
+    if (value.count_attribute) badge.count_attribute = value.count_attribute;
+    if (value.area_scoped) badge.area_scoped = true;
     const next = { ...this._config } as ButtonCardConfig;
     if (badge.entity) next.badge = badge;
     else delete next.badge;

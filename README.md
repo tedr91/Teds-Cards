@@ -943,6 +943,11 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.65
+
+- **Notification toasts clear on every device** — dismissing a notification toast (or marking it read / clearing it) now closes the matching toast on **all** devices, so a house-wide alarm/timer that popped everywhere disappears everywhere the moment you dismiss it on one screen. Requires Ted's Cards Backend v1.0.9+.
+- **Button Card — area-scoped badge & highlight counts** — the badge and dynamic-highlight can now count a list attribute (e.g. `alarms` / `active`) with an optional **area scope**, so navbar Alarm/Timer badges & accents reflect only the current device's area (plus house-wide items) instead of the raw total. New `count_attribute` + `area_scoped` options (badge fields added to the visual editor).
+
 ### v1.0.64
 
 - **Notifications — device-area scoping everywhere** — the navbar's notifications bell popup and the Notification Center card now scope to the **current device's area** (resolved from the item/card Area override, View Assist, browser_mod, or a per-device saved value), matching the toast. Each shows that device's area notifications **plus** house-wide (area-less) ones, so an area-scoped timer/alarm no longer appears on other rooms' devices.
