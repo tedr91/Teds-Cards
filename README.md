@@ -945,6 +945,14 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.73
+
+- **Navbar — Alarms & Timers status items** — new status items showing a fluent icon with a count badge for enabled alarms / active timers (area-scoped, with a **Hide when there are none** option, default on).
+- **Navbar — combined Date/Time item** — the separate **Time** and **Date** items are now one **Date/Time** item with a **Display** choice (Both / Time only / Date only) and token-based **Date format** (default `ddd, MMMM D`) and **Time format** (default `h:MM`); the unused format field disables based on Display.
+- **Badge-item editor** — Notifications / Alarms / Timers now share a tidy layout (Area + Name, Icon + Hide-when-empty side by side, then a **Display badge icon** toggle to show/hide the count bubble).
+- **Navbar menu tidy-up** — removed Temperature, Occupancy, and Spacer from the navbar's status-item menu (still available on the Room Card); "Brightness control"/"Volume control" are now just **Brightness**/**Volume**.
+- **New default navigation** — **Home dashboard** defaults to `[root]/home` and **Auto-return home after** defaults to `0` (never). Requires **Ted's Cards Backend v1.0.14+**.
+
 ### v1.0.72
 
 - **Per-severity notification sounds** — the Settings card's **Notifications** group now has Info / Success / Warning / Danger / Tip sound fields (each `"default"` falls back to the general alert sound), so different severities can play different sounds. Requires **Ted's Cards Backend v1.0.13+**.
