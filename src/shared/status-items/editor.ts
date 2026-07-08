@@ -2,11 +2,27 @@
 import type { HomeAssistant } from "custom-card-helpers";
 
 import { DEFAULT_SPACER_SIZE, STATUS_ITEM_DEFAULT_DISPLAY } from "./const";
+import { DEFAULT_DATE_FORMAT, DEFAULT_TIME_FORMAT } from "./datetime";
 import type { StatusItem, StatusItemType } from "./types";
 
 /** Form data for a status item, with the per-type default display filled in. */
 export function statusItemData(item: StatusItem): Record<string, unknown> {
   if (item.type === "spacer") return { ...item };
+  if (item.type === "datetime") {
+    return {
+      ...item,
+      display: item.display ?? "both",
+      date_format: item.date_format ?? DEFAULT_DATE_FORMAT,
+      time_format: item.time_format ?? DEFAULT_TIME_FORMAT,
+    };
+  }
+  if (item.type === "notifications" || item.type === "alarms" || item.type === "timers") {
+    return {
+      ...item,
+      hide_when_empty: item.hide_when_empty ?? true,
+      display_badge: item.display_badge ?? true,
+    };
+  }
   return { ...item, display: item.display ?? STATUS_ITEM_DEFAULT_DISPLAY[item.type] };
 }
 
@@ -25,9 +41,23 @@ const DISPLAY_FIELD = {
 };
 const ICON_FIELD = { name: "icon", selector: { icon: {} } };
 const NAME_FIELD = { name: "name", selector: { text: {} } };
+const AREA_FIELD = { name: "area", selector: { area: {} } };
+const HIDE_FIELD = { name: "hide_when_empty", selector: { boolean: {} } };
+const DISPLAY_BADGE_FIELD = { name: "display_badge", selector: { boolean: {} } };
 
-/** ha-form schema for a status item of the given type. */
-export function statusItemSchema(type: StatusItemType): unknown[] {
+/**
+ * Shared layout for the "badge" items (notifications / alarms / timers):
+ * Area + Name, then Icon + Hide-when-empty (side by side), then Display badge.
+ */
+const BADGE_SCHEMA = [
+  { name: "", type: "grid", column_min_width: "100px", schema: [AREA_FIELD, NAME_FIELD] },
+  { name: "", type: "grid", column_min_width: "100px", schema: [ICON_FIELD, HIDE_FIELD] },
+  DISPLAY_BADGE_FIELD,
+];
+
+/** ha-form schema for a status item of the given type. `item` (when supplied)
+ *  lets fields react to the item's current values (e.g. disabling formats). */
+export function statusItemSchema(type: StatusItemType, item?: StatusItem): unknown[] {
   switch (type) {
     case "temperature":
     case "occupancy":
@@ -68,46 +98,33 @@ export function statusItemSchema(type: StatusItemType): unknown[] {
           selector: { number: { min: 0, max: 600, step: 1, mode: "box", unit_of_measurement: "px" } },
         },
       ];
-    case "time":
+    case "datetime": {
+      const mode = (item?.type === "datetime" ? item.display : undefined) ?? "both";
       return [
-        DISPLAY_FIELD,
         {
-          name: "time_format",
+          name: "display",
           selector: {
             select: {
               mode: "dropdown",
               options: [
-                { value: "auto", label: "Auto (locale)" },
-                { value: "12h", label: "12-hour" },
-                { value: "24h", label: "24-hour" },
-                { value: "custom", label: "Custom" },
+                { value: "both", label: "Both" },
+                { value: "time", label: "Time only" },
+                { value: "date", label: "Date only" },
               ],
             },
           },
         },
-        { name: "time_format_custom", selector: { text: {} } },
-        ICON_FIELD,
-        NAME_FIELD,
-      ];
-    case "date":
-      return [
-        DISPLAY_FIELD,
         {
-          name: "date_format",
-          selector: {
-            select: {
-              mode: "dropdown",
-              options: [
-                { value: "standard", label: "Standard (locale)" },
-                { value: "custom", label: "Custom" },
-              ],
-            },
-          },
+          name: "",
+          type: "grid",
+          column_min_width: "100px",
+          schema: [
+            { name: "date_format", disabled: mode === "time", selector: { text: {} } },
+            { name: "time_format", disabled: mode === "date", selector: { text: {} } },
+          ],
         },
-        { name: "date_format_custom", selector: { text: {} } },
-        ICON_FIELD,
-        NAME_FIELD,
       ];
+    }
     case "weather":
       return [
         { name: "entity", selector: { entity: { filter: { domain: "weather" } } } },
@@ -116,12 +133,9 @@ export function statusItemSchema(type: StatusItemType): unknown[] {
         NAME_FIELD,
       ];
     case "notifications":
-      return [
-        { name: "area", selector: { area: {} } },
-        { name: "hide_when_empty", selector: { boolean: {} } },
-        ICON_FIELD,
-        NAME_FIELD,
-      ];
+    case "alarms":
+    case "timers":
+      return BADGE_SCHEMA;
   }
 }
 
@@ -143,14 +157,16 @@ export function newStatusItem(
       return { type: "led", entity: "" };
     case "spacer":
       return { type: "spacer", size: DEFAULT_SPACER_SIZE };
-    case "time":
-      return { type: "time" };
-    case "date":
-      return { type: "date" };
+    case "datetime":
+      return { type: "datetime" };
     case "weather":
       return { type: "weather" };
     case "notifications":
       return { type: "notifications" };
+    case "alarms":
+      return { type: "alarms" };
+    case "timers":
+      return { type: "timers" };
   }
 }
 
@@ -164,14 +180,18 @@ export function statusItemSubtitle(item: StatusItem, hass?: HomeAssistant): stri
 }
 
 /** Editor label for a status-item ha-form field, or undefined if not one of ours. */
-export function statusItemFieldLabel(name: string): string | undefined {
+export function statusItemFieldLabel(name: string, type?: StatusItemType): string | undefined {
   switch (name) {
     case "entity":
       return "Entity";
     case "area":
       return "Area (optional — scopes to a room)";
     case "hide_when_empty":
+      if (type === "alarms") return "Hide when there are no alarms";
+      if (type === "timers") return "Hide when there are no timers";
       return "Hide when there are no notifications";
+    case "display_badge":
+      return "Display badge icon";
     case "display":
       return "Display";    case "icon":
       return "Icon";
@@ -187,12 +207,8 @@ export function statusItemFieldLabel(name: string): string | undefined {
       return "Width";
     case "time_format":
       return "Time format";
-    case "time_format_custom":
-      return "Custom time format";
     case "date_format":
       return "Date format";
-    case "date_format_custom":
-      return "Custom date format";
     default:
       return undefined;
   }

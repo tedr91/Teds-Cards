@@ -10,7 +10,7 @@ import type { HomeAssistant } from "custom-card-helpers";
 
 import { STATUS_ITEM_DEFAULT_ICON, DEFAULT_SPACER_SIZE } from "./const";
 import { resolveDeviceArea } from "../device-area";
-import { formatDate, formatTimeParts } from "./datetime";
+import { formatDate, formatTime } from "./datetime";
 import {
   brightnessModel,
   capitalize,
@@ -26,14 +26,15 @@ import {
 import type { StatusSliderController } from "./slider-controller";
 import type {
   BrightnessStatusItem,
-  DateStatusItem,
+  DateTimeStatusItem,
   LedStatusItem,
   NotificationsStatusItem,
+  AlarmsStatusItem,
+  TimersStatusItem,
   SensorStatusItem,
   SliderModel,
   SpacerStatusItem,
   StatusItem,
-  TimeStatusItem,
   VolumeStatusItem,
   WeatherStatusItem,
 } from "./types";
@@ -51,7 +52,7 @@ export interface StatusItemContext {
 
 /** True when a list contains a live clock/date item (so the host should tick). */
 export function hasClockItem(items: readonly StatusItem[]): boolean {
-  return items.some((i) => i.type === "time" || i.type === "date");
+  return items.some((i) => i.type === "datetime");
 }
 
 export function renderStatusItem(item: StatusItem, ctx: StatusItemContext, index: number): TemplateResult {
@@ -67,14 +68,25 @@ export function renderStatusItem(item: StatusItem, ctx: StatusItemContext, index
       return renderLedItem(item, ctx);
     case "spacer":
       return renderSpacerItem(item);
-    case "time":
-      return renderTimeItem(item, ctx);
-    case "date":
-      return renderDateItem(item, ctx);
+    case "datetime":
+      return renderDateTimeItem(item, ctx);
     case "weather":
       return renderWeatherItem(item, ctx);
     case "notifications":
       return renderNotificationsItem(item, ctx, index);
+    case "alarms":
+      return renderCountItem(item, ctx, {
+        sensor: "sensor.teds_alarms",
+        attr: "alarms",
+        enabledOnly: true,
+        defaultLabel: "Alarms",
+      });
+    case "timers":
+      return renderCountItem(item, ctx, {
+        sensor: "sensor.teds_timers",
+        attr: "active",
+        defaultLabel: "Timers",
+      });
   }
 }
 
@@ -218,40 +230,20 @@ function renderSliderPopover(
   `;
 }
 
-function renderTimeItem(item: TimeStatusItem, ctx: StatusItemContext): TemplateResult {
+function renderDateTimeItem(item: DateTimeStatusItem, ctx: StatusItemContext): TemplateResult {
   const now = new Date();
   const lang = ctx.hass.locale?.language || "en";
-  const { main, suffix } = formatTimeParts(
-    now,
-    item.time_format ?? "auto",
-    item.time_format_custom ?? "",
-    lang,
-    ctx.hass.locale?.time_format,
-  );
-  const icon = item.icon ?? STATUS_ITEM_DEFAULT_ICON.time;
-  const show = itemDisplay(item);
+  const mode = item.display ?? "both";
+  const showDate = mode !== "time";
+  const showTime = mode !== "date";
+  const dateText = showDate ? formatDate(now, item.date_format ?? "", lang) : "";
+  const timeText = showTime ? formatTime(now, item.time_format ?? "") : "";
+  const autoLabel = [dateText, timeText].filter(Boolean).join(" • ") || "Date/Time";
+  const label = String(item.name ?? autoLabel);
   return html`
-    <div class="status-item" title=${String(item.name ?? "Time")}>
-      ${show.icon ? html`<ha-icon class="status-icon" .icon=${icon}></ha-icon>` : nothing}
-      ${show.state
-        ? html`<span class="status-text"
-            >${main}${suffix ? html`<span class="status-suffix">${suffix}</span>` : nothing}</span
-          >`
-        : nothing}
-    </div>
-  `;
-}
-
-function renderDateItem(item: DateStatusItem, ctx: StatusItemContext): TemplateResult {
-  const now = new Date();
-  const lang = ctx.hass.locale?.language || "en";
-  const text = formatDate(now, item.date_format ?? "standard", item.date_format_custom ?? "", lang);
-  const icon = item.icon ?? STATUS_ITEM_DEFAULT_ICON.date;
-  const show = itemDisplay(item);
-  return html`
-    <div class="status-item" title=${String(item.name ?? "Date")}>
-      ${show.icon ? html`<ha-icon class="status-icon" .icon=${icon}></ha-icon>` : nothing}
-      ${show.state ? html`<span class="status-text">${text}</span>` : nothing}
+    <div class="status-item" title=${label}>
+      ${showDate ? html`<span class="status-text">${dateText}</span>` : nothing}
+      ${showTime ? html`<span class="status-text">${timeText}</span>` : nothing}
     </div>
   `;
 }
@@ -312,6 +304,42 @@ function notifTimeAgo(iso?: string): string {
   return `${Math.round(h / 24)}d ago`;
 }
 
+/** Scoped row from the alarms/timers sensor: only the fields the count needs. */
+interface CountRow {
+  location?: string | null;
+  enabled?: boolean;
+}
+
+/**
+ * Icon + count badge for the alarms / timers sensors. Scoped to this device's
+ * area (config → View Assist → browser_mod → localStorage) plus house-wide
+ * (area-less) items. Hidden entirely when empty unless `hide_when_empty: false`.
+ */
+function renderCountItem(
+  item: AlarmsStatusItem | TimersStatusItem,
+  ctx: StatusItemContext,
+  opts: { sensor: string; attr: string; enabledOnly?: boolean; defaultLabel: string },
+): TemplateResult {
+  const rows = (ctx.hass.states[opts.sensor]?.attributes?.[opts.attr] ?? []) as CountRow[];
+  const area = resolveDeviceArea(ctx.hass, item.area).area;
+  let items = opts.enabledOnly ? rows.filter((r) => r.enabled) : rows;
+  if (area) items = items.filter((r) => !r.location || r.location === area);
+  const count = items.length;
+  // Default is to hide when there's nothing set (only show when count > 0).
+  if (item.hide_when_empty !== false && count === 0) return html``;
+  const icon = item.icon ?? STATUS_ITEM_DEFAULT_ICON[item.type];
+  const label = String(item.name ?? opts.defaultLabel);
+  const showBadge = count > 0 && item.display_badge !== false;
+  return html`
+    <div class="status-item" title=${label}>
+      <span class="status-icon-badge">
+        <ha-icon class="status-icon" .icon=${icon}></ha-icon>
+        ${showBadge ? html`<span class="status-badge">${count > 99 ? "99+" : count}</span>` : nothing}
+      </span>
+    </div>
+  `;
+}
+
 function renderNotificationsItem(
   item: NotificationsStatusItem,
   ctx: StatusItemContext,
@@ -322,9 +350,10 @@ function renderNotificationsItem(
   // localStorage), showing that area's notifications plus house-wide (area-less) ones.
   const area = resolveDeviceArea(ctx.hass, item.area).area;
   const items = area ? all.filter((n) => !n.area || n.area === area) : all;
-  if (item.hide_when_empty && items.length === 0) return html``;
+  if (item.hide_when_empty !== false && items.length === 0) return html``;
   const unread = items.filter((n) => !n.read).length;
   const icon = item.icon ?? (unread > 0 ? "mdi:bell-badge" : STATUS_ITEM_DEFAULT_ICON.notifications);
+  const showBadge = unread > 0 && item.display_badge !== false;
   const anchorId = `${ctx.keyPrefix}-notif-anchor-${index}`;
   const popId = `${ctx.keyPrefix}-notif-pop-${index}`;
   const detailPopId = `${popId}-detail`;
@@ -340,7 +369,7 @@ function renderNotificationsItem(
         aria-label="Notifications"
       >
         <ha-icon .icon=${icon}></ha-icon>
-        ${unread > 0 ? html`<span class="status-badge">${unread > 99 ? "99+" : unread}</span>` : nothing}
+        ${showBadge ? html`<span class="status-badge">${unread > 99 ? "99+" : unread}</span>` : nothing}
       </button>
       <div id=${popId} class="notif-popover" popover data-anchor=${anchorId} @toggle=${ctx.slider.onPopoverToggle}>
         <div class="notif-pop-head">

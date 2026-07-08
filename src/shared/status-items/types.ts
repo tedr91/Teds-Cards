@@ -15,19 +15,14 @@ export type StatusItemType =
   | "volume"
   | "led"
   | "spacer"
-  | "time"
-  | "date"
+  | "datetime"
   | "weather"
-  | "notifications";
+  | "notifications"
+  | "alarms"
+  | "timers";
 
 /** How a status item displays: icon + state, just the icon, or just the state. */
 export type StatusDisplay = "both" | "icon" | "state";
-
-/** Time display format. `auto` follows the HA locale. */
-export type StatusTimeFormat = "auto" | "12h" | "24h" | "custom";
-
-/** Date display format. `standard` is the locale long date. */
-export type StatusDateFormat = "standard" | "custom";
 
 /** Fields shared by every status item. */
 export interface StatusItemBase {
@@ -89,21 +84,14 @@ export interface SpacerStatusItem extends StatusItemBase {
 }
 
 /** Current time, optionally with a clock icon. */
-export interface TimeStatusItem extends StatusItemBase {
-  type: "time";
-  icon?: string;
-  time_format?: StatusTimeFormat;
-  /** Custom token string when `time_format` is "custom" (e.g. "h:MM a"). */
-  time_format_custom?: string;
-}
-
-/** Current date, optionally with a calendar icon. */
-export interface DateStatusItem extends StatusItemBase {
-  type: "date";
-  icon?: string;
-  date_format?: StatusDateFormat;
-  /** Custom token string when `date_format` is "custom" (e.g. "ddd D MMM"). */
-  date_format_custom?: string;
+export interface DateTimeStatusItem extends Omit<StatusItemBase, "display"> {
+  type: "datetime";
+  /** Which parts to show: both, time only, or date only. Defaults to "both". */
+  display?: "both" | "time" | "date";
+  /** Date token format (default "ddd, MMMM D"). */
+  date_format?: string;
+  /** Time token format (default "h:MM"). */
+  time_format?: string;
 }
 
 /** Current weather: condition icon + temperature. `entity` defaults to the first weather.* entity. */
@@ -119,8 +107,34 @@ export interface NotificationsStatusItem extends StatusItemBase {
   icon?: string;
   /** Only count/show notifications for this area (unset = all). */
   area?: string;
-  /** Hide the bell entirely when there are no notifications. Defaults to false. */
+  /** Hide the bell entirely when there are no notifications. Defaults to true. */
   hide_when_empty?: boolean;
+  /** Show the numeric count bubble over the icon. Defaults to true. */
+  display_badge?: boolean;
+}
+
+/** An icon with a badge showing the number of enabled alarms in scope. */
+export interface AlarmsStatusItem extends StatusItemBase {
+  type: "alarms";
+  icon?: string;
+  /** Only count alarms for this area (unset = all). */
+  area?: string;
+  /** Hide the item entirely when no alarms are set. Defaults to true. */
+  hide_when_empty?: boolean;
+  /** Show the numeric count bubble over the icon. Defaults to true. */
+  display_badge?: boolean;
+}
+
+/** An icon with a badge showing the number of active timers in scope. */
+export interface TimersStatusItem extends StatusItemBase {
+  type: "timers";
+  icon?: string;
+  /** Only count timers for this area (unset = all). */
+  area?: string;
+  /** Hide the item entirely when no timers are set. Defaults to true. */
+  hide_when_empty?: boolean;
+  /** Show the numeric count bubble over the icon. Defaults to true. */
+  display_badge?: boolean;
 }
 
 export type StatusItem =
@@ -129,10 +143,11 @@ export type StatusItem =
   | VolumeStatusItem
   | LedStatusItem
   | SpacerStatusItem
-  | TimeStatusItem
-  | DateStatusItem
+  | DateTimeStatusItem
   | WeatherStatusItem
-  | NotificationsStatusItem;
+  | NotificationsStatusItem
+  | AlarmsStatusItem
+  | TimersStatusItem;
 
 /** Resolved slider bounds + current value for a brightness / volume control. */
 export interface SliderModel {

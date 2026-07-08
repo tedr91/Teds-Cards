@@ -89,6 +89,12 @@ export const statusItemStyles = css`
     position: relative;
     overflow: visible;
   }
+  /* Non-interactive icon + badge (alarms / timers counts). */
+  .status-icon-badge {
+    position: relative;
+    display: inline-flex;
+    overflow: visible;
+  }
   .status-badge {
     position: absolute;
     top: -3px;

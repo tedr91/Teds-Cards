@@ -50,7 +50,7 @@ export class AutoReturnController implements ReactiveController {
   private _homePath(): string {
     const eff = settingsStore.effective();
     const root = String(eff.dashboard_root ?? "ted-dashboard");
-    let home = String(eff.home_dashboard ?? "[root]/home-tablet").replace("[root]", root);
+    let home = String(eff.home_dashboard ?? "[root]/home").replace("[root]", root);
     if (!home.startsWith("/")) home = `/${home}`;
     return home;
   }

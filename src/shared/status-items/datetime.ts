@@ -1,8 +1,11 @@
 /**
- * Pure time/date formatting for the `time` and `date` status items. The token
- * logic mirrors the Clock Weather Card so both render identically.
+ * Pure token-based time/date formatting for the `datetime` status item. The
+ * token logic mirrors the Clock Weather Card so both render identically.
  */
-import type { StatusDateFormat, StatusTimeFormat } from "./types";
+
+/** Default token formats for the datetime status item. */
+export const DEFAULT_DATE_FORMAT = "ddd, MMMM D";
+export const DEFAULT_TIME_FORMAT = "h:MM";
 
 function pad(n: number): string {
   return n < 10 ? `0${n}` : `${n}`;
@@ -31,13 +34,14 @@ function replaceTokens(fmt: string, map: Array<[string, string]>): string {
   return out;
 }
 
-function formatTimeTokens(d: Date, fmt: string): string {
+/** Format the time part of `d` using token string `fmt` (e.g. "h:MM"). */
+export function formatTime(d: Date, fmt: string): string {
   const H = d.getHours();
   const h12 = H % 12 === 0 ? 12 : H % 12;
   const m = d.getMinutes();
   const s = d.getSeconds();
   const ampm = H < 12 ? "AM" : "PM";
-  return replaceTokens(fmt, [
+  return replaceTokens(fmt || DEFAULT_TIME_FORMAT, [
     ["HH", pad(H)],
     ["H", String(H)],
     ["hh", pad(h12)],
@@ -53,56 +57,15 @@ function formatTimeTokens(d: Date, fmt: string): string {
   ]);
 }
 
-/** Derive 12-hour preference from HA's locale time_format ("12"/"am_pm"/"24"). */
-function autoHour12(timeFormat: string | undefined): boolean | undefined {
-  switch (timeFormat) {
-    case "12":
-    case "am_pm":
-      return true;
-    case "24":
-      return false;
-    default:
-      return undefined; // let Intl decide from the locale
-  }
-}
-
-/** Split the formatted time into its main part and the AM/PM suffix (empty if none). */
-export function formatTimeParts(
-  d: Date,
-  fmt: StatusTimeFormat,
-  custom: string,
-  lang: string,
-  localeTimeFormat: string | undefined,
-): { main: string; suffix: string } {
-  if (fmt === "custom") {
-    return { main: formatTimeTokens(d, custom || "H:MM"), suffix: "" };
-  }
-  let hour12: boolean | undefined;
-  if (fmt === "12h") hour12 = true;
-  else if (fmt === "24h") hour12 = false;
-  else hour12 = autoHour12(localeTimeFormat);
-  const parts = new Intl.DateTimeFormat(lang, {
-    hour: "numeric",
-    minute: "2-digit",
-    hour12,
-  }).formatToParts(d);
-  let main = "";
-  let suffix = "";
-  for (const p of parts) {
-    if (p.type === "dayPeriod") suffix = p.value;
-    else main += p.value;
-  }
-  return { main: main.trim(), suffix };
-}
-
-function formatDateTokens(d: Date, fmt: string, lang: string): string {
+/** Format the date part of `d` using token string `fmt` (e.g. "ddd, MMMM D"). */
+export function formatDate(d: Date, fmt: string, lang: string): string {
   const weekdayLong = new Intl.DateTimeFormat(lang, { weekday: "long" }).format(d);
   const weekdayShort = new Intl.DateTimeFormat(lang, { weekday: "short" }).format(d);
   const monthLong = new Intl.DateTimeFormat(lang, { month: "long" }).format(d);
   const monthShort = new Intl.DateTimeFormat(lang, { month: "short" }).format(d);
   const day = d.getDate();
   const year = d.getFullYear();
-  return replaceTokens(fmt, [
+  return replaceTokens(fmt || DEFAULT_DATE_FORMAT, [
     ["dddd", weekdayLong],
     ["ddd", weekdayShort],
     ["MMMM", monthLong],
@@ -112,9 +75,4 @@ function formatDateTokens(d: Date, fmt: string, lang: string): string {
     ["YYYY", String(year)],
     ["YY", String(year).slice(-2)],
   ]);
-}
-
-export function formatDate(d: Date, fmt: StatusDateFormat, custom: string, lang: string): string {
-  if (fmt === "custom") return formatDateTokens(d, custom || "dddd, MMMM D", lang);
-  return new Intl.DateTimeFormat(lang, { weekday: "long", month: "long", day: "numeric" }).format(d);
 }

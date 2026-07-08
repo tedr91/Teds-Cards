@@ -58,8 +58,8 @@ export const SETTINGS_DEFAULTS: SettingsMap = {
   media_player_volume: 50,
   do_not_disturb: false,
   dashboard_root: "ted-dashboard",
-  home_dashboard: "[root]/home-tablet",
-  auto_return_home_after: 30,
+  home_dashboard: "[root]/home",
+  auto_return_home_after: 0,
 };
 
 export const SETTINGS_FIELDS: SettingField[] = [
@@ -90,7 +90,7 @@ export const SETTINGS_FIELDS: SettingField[] = [
   { key: "do_not_disturb", label: "Do Not Disturb", group: "General", kind: "boolean", help: "Suppresses toasts and alert sounds on this device." },
   // Navigation
   { key: "dashboard_root", label: "Dashboard root", group: "Navigation", kind: "text" },
-  { key: "home_dashboard", label: "Home dashboard", group: "Navigation", kind: "text", help: "Use [root] for the dashboard root, e.g. [root]/home-tablet." },
+  { key: "home_dashboard", label: "Home dashboard", group: "Navigation", kind: "text", help: "Use [root] for the dashboard root, e.g. [root]/home." },
   { key: "auto_return_home_after", label: "Auto-return home after", group: "Navigation", kind: "number", min: 0, max: 3600, unit: "s", help: "0 = never." },
 ];
 

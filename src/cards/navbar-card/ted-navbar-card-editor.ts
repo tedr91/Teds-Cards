@@ -563,8 +563,9 @@ export class TedNavbarCardEditor extends LitElement implements LovelaceCardEdito
           <ha-form
             .hass=${this.hass}
             .data=${statusItemData(item)}
-            .schema=${statusItemSchema(item.type)}
-            .computeLabel=${this._computeLabel}
+            .schema=${statusItemSchema(item.type, item)}
+            .computeLabel=${(schema: { name: string }) =>
+              statusItemFieldLabel(schema.name, item.type) ?? schema.name}
             @value-changed=${(ev: CustomEvent) => this._onStatusItemChanged(containerPath, idx, item.type, ev)}
           ></ha-form>
         </div>

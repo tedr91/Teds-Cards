@@ -8,24 +8,26 @@ export const STATUS_ITEM_DEFAULT_ICON: Record<StatusItemType, string> = {
   volume: "mdi:volume-high",
   led: "mdi:led-on",
   spacer: "mdi:arrow-expand-horizontal",
-  time: "mdi:clock-outline",
-  date: "mdi:calendar",
+  datetime: "mdi:calendar-clock",
   weather: "mdi:weather-partly-cloudy",
   notifications: "mdi:bell-outline",
+  alarms: "fluent:clock-alarm-24-regular",
+  timers: "fluent:timer-24-regular",
 };
 
 /** Human-readable label per status item type (used in editor menus). */
 export const STATUS_ITEM_LABEL: Record<StatusItemType, string> = {
   temperature: "Temperature",
   occupancy: "Occupancy",
-  brightness: "Brightness control",
-  volume: "Volume control",
+  brightness: "Brightness",
+  volume: "Volume",
   led: "Status LED",
   spacer: "Spacer",
-  time: "Time",
-  date: "Date",
+  datetime: "Date/Time",
   weather: "Weather",
   notifications: "Notifications bell",
+  alarms: "Alarms",
+  timers: "Timers",
 };
 
 /** Default display mode per status item type (icon + state / icon only / state only). */
@@ -36,10 +38,11 @@ export const STATUS_ITEM_DEFAULT_DISPLAY: Record<StatusItemType, StatusDisplay> 
   volume: "icon",
   led: "icon",
   spacer: "both",
-  time: "state",
-  date: "state",
+  datetime: "state",
   weather: "both",
   notifications: "icon",
+  alarms: "icon",
+  timers: "icon",
 };
 
 /** Status item types offered by the Room Card (a subset of the full set). */
@@ -54,16 +57,14 @@ export const ROOM_STATUS_ITEM_TYPES: StatusItemType[] = [
 
 /** Status item types offered by the Navbar Card (the full superset). */
 export const NAVBAR_STATUS_ITEM_TYPES: StatusItemType[] = [
-  "time",
-  "date",
+  "datetime",
   "weather",
-  "temperature",
-  "occupancy",
   "brightness",
   "volume",
   "led",
-  "spacer",
   "notifications",
+  "alarms",
+  "timers",
 ];
 
 /** MDI icon per Home Assistant weather condition. */

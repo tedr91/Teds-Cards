@@ -846,7 +846,8 @@ sections:                 # up to 5 sections
     visible: true         # optional, show/hide the section
     overflow: true        # optional, collapse items that don't fit into a “…” popover
     items:                # ordered mix of buttons, status items, and popups
-      - type: date                          # status item
+      - type: datetime                      # status item (date + time; set display: time/date to show one)
+        display: date
       - type: weather                       # status item (auto-picks a weather entity, or set entity:)
   - placement: center
     items_source:         # optional (View Assist): append buttons from a status-icon list
@@ -859,7 +860,8 @@ sections:                 # up to 5 sections
         nav_button_size: normal             # normal (default) | wide
   - placement: right
     items:
-      - type: time                          # status item — updates live
+      - type: datetime                      # status item — updates live
+        display: time
       # A "popup menu" is an Expandable Button Card: a normal button tile that opens a
       # popover of child buttons (configure layout / title / nesting on the card itself).
       - type: custom:ted-expandable-button-card
