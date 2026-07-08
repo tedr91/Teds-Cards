@@ -87,37 +87,42 @@ Dismissal is **CSS-safe** (no inline scripts). Flags are stored under the
 
 The card is hidden when either flag for its `dismiss_key` is set.
 
-### Visibility conditions — `show_if`
+### Visibility conditions — `visibility`
 
-Optional conditions controlling whether the card renders. When **more than one**
-key is set, the card is shown if **ANY** is satisfied (logical **OR**). Omit
-`show_if` to always show.
+Optional list of standard visibility conditions — the **same engine used by the
+Navbar Card** (a superset of Home Assistant's native card `visibility:`). Omit
+`visibility` to always show. Top-level conditions are **AND-ed** (every one must
+pass); use an `or` / `not` condition to combine them differently.
 
-| Key | Type | Shows the card when… |
+| `condition` | Keys | Shows the card when… |
 | --- | --- | --- |
-| `form_factor` | `portrait-small` \| `portrait-large` \| `landscape-small` \| `landscape-large` \| `amazon` (or a list) | The current device matches one of these form factors. `amazon` matches Amazon Silk devices (Echo Show / Fire) via user agent. |
-| `not_view_assist` | boolean | The device is **not** a View Assist device. |
-| `missing_cards` | string[] | Any of the listed custom card types is **not** registered (e.g. warn when a dependency card isn't installed). |
-| `entity` + `state` | string + string/list | The entity's state **matches** `state`. |
-| `entity` + `state_not` | string + string/list | The entity's state does **not** match `state_not`. |
+| `screen` | `media_query` | The CSS media query matches (e.g. `(max-width: 600px)`, `(orientation: portrait)`). |
+| `view-assist` | `present`, `mode` / `mode_not`, `view` / `not_view` | Matches the current View Assist device/view. `present: false` → **not** a View Assist device. |
+| `card` | `registered` / `not_registered` (string or list) | `not_registered` passes when any listed custom card type is **not** registered (warn about a missing dependency); `registered` passes only when all are present. |
+| `state` | `entity`, `attribute`, `state` / `state_not` | The entity's state (or attribute) matches / does not match. |
+| `numeric_state` | `entity`, `above`, `below` | The entity's numeric value is within range. |
+| `user` | `users` | The current user is one of the listed user ids. |
+| `and` / `or` / `not` | `conditions` | Boolean combination of nested conditions. |
 
 ```yaml
 type: custom:ted-messagebox-card
 severity: warning
 title: Missing dependency
 message: Install the Mushroom cards to use this view.
-show_if:
-  missing_cards:
-    - custom:mushroom-template-card
+visibility:
+  - condition: card
+    not_registered:
+      - custom:mushroom-template-card
 ```
 
 ```yaml
 type: custom:ted-messagebox-card
 severity: info
 message: Guest mode is active.
-show_if:
-  entity: input_boolean.guest_mode
-  state: "on"
+visibility:
+  - condition: state
+    entity: input_boolean.guest_mode
+    state: "on"
 ```
 
 ### Actions
@@ -180,7 +185,7 @@ actions:
 ## Notes
 
 - The visual editor exposes all of the above (severity, display, dismiss key,
-  `show_if`, and an actions list builder).
+  `visibility`, and an actions list builder).
 - Because dismissal state is per-browser, a `dismiss_key` banner dismissed on one
   device still shows on others — this is intentional (each screen decides for
   itself). For cross-device, server-backed messages use the

@@ -11,6 +11,7 @@ import type { ReactiveController, ReactiveControllerHost } from "lit";
 
 import { resolveDeviceId, resolveDeviceMediaPlayer } from "./device-id";
 import { resolveDeviceArea } from "./device-area";
+import { clientInfo } from "./client-info";
 import { SETTINGS_DEFAULTS, type SettingsMap, type SettingsValue } from "./settings-schema";
 
 const DOMAIN = "teds_cards_backend";
@@ -27,7 +28,18 @@ interface SettingsSnapshot {
   defaults?: SettingsMap;
   global?: SettingsMap;
   devices?: Record<string, SettingsMap>;
-  registry?: Record<string, { area?: string; name?: string; last_seen?: string }>;
+  registry?: Record<string, DeviceRegistryEntry>;
+}
+
+export interface DeviceRegistryEntry {
+  area?: string;
+  name?: string;
+  last_seen?: string;
+  media_player?: string | null;
+  client_width?: number;
+  client_height?: number;
+  client_orientation?: string;
+  client_form_factor?: string;
 }
 
 export type SettingsScope = "global" | "device";
@@ -40,7 +52,25 @@ class SettingsStore {
   private _listeners = new Set<() => void>();
   private _registeredArea?: string | null;
   private _registeredMp?: string | null;
+  private _registeredClient?: string;
   private _loaded = false;
+
+  constructor() {
+    // Re-report client info when the viewport changes (throttled).
+    if (typeof window !== "undefined") {
+      const onResize = (): void => {
+        if (this._resizeTimer) return;
+        this._resizeTimer = window.setTimeout(() => {
+          this._resizeTimer = undefined;
+          this._maybeRegister(this._hass);
+        }, 500);
+      };
+      window.addEventListener("resize", onResize, { passive: true });
+      window.addEventListener("orientationchange", onResize, { passive: true });
+    }
+  }
+
+  private _resizeTimer?: number;
 
   /** True once a settings snapshot has been received from the backend. */
   hasLoaded(): boolean {
@@ -83,7 +113,7 @@ class SettingsStore {
     return { ...(this._snapshot.devices?.[this.deviceId] ?? {}) };
   }
 
-  registry(): Record<string, { area?: string; name?: string; last_seen?: string }> {
+  registry(): Record<string, DeviceRegistryEntry> {
     return { ...(this._snapshot.registry ?? {}) };
   }
 
@@ -128,20 +158,34 @@ class SettingsStore {
     if (!conn?.sendMessagePromise) return;
     const area = resolveDeviceArea(hass as never, undefined).area ?? null;
     const mediaPlayer = resolveDeviceMediaPlayer(hass) ?? null;
-    if (area === this._registeredArea && mediaPlayer === this._registeredMp) return;
+    const client = clientInfo();
+    const clientSig = `${client.width}x${client.height}:${client.orientation}:${client.form_factor}`;
+    if (
+      area === this._registeredArea &&
+      mediaPlayer === this._registeredMp &&
+      clientSig === this._registeredClient
+    ) {
+      return;
+    }
     this._registeredArea = area;
     this._registeredMp = mediaPlayer;
+    this._registeredClient = clientSig;
     conn
       .sendMessagePromise({
         type: `${DOMAIN}/register_device`,
         device_id: this.deviceId,
         area,
         media_player: mediaPlayer,
+        client_width: client.width,
+        client_height: client.height,
+        client_orientation: client.orientation,
+        client_form_factor: client.form_factor,
       })
       .catch(() => {
         // Allow a later retry if registration failed (e.g. transient).
         this._registeredArea = undefined;
         this._registeredMp = undefined;
+        this._registeredClient = undefined;
       });
   }
 }

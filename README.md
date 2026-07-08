@@ -945,6 +945,11 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.80
+
+- **MessageBox card — standard visibility conditions** — the card's bespoke `show_if` (form factor / View Assist presence / missing cards / entity state) is replaced by a `visibility:` list using the **same conditions engine as the Navbar Card** (`screen`, `view-assist`, `card`, `state`, `numeric_state`, `user`, and `and`/`or`/`not`). Top-level conditions are AND-ed. A new generic **`card`** condition (`registered` / `not_registered`) covers the old "warn when a dependency card isn't installed" use.
+- **Devices report their screen to the backend** — on registration each device now sends its viewport **width/height, orientation, and form factor** to Ted's Cards Backend (updated, throttled, when the screen changes), so server-side logic and dashboards can reason about the client. Pairs with Ted's Cards Backend v1.0.17+.
+
 ### v1.0.79
 
 - **Fix release build** — resolved a TypeScript type error in the Clock/Weather card (`_stackRows`) that failed the release workflow's type-check, so v1.0.78's build didn't attach. This is a clean rebuild of the v1.0.78 changes.

@@ -14,6 +14,7 @@ export type Condition =
   | ScreenCondition
   | UserCondition
   | ViewAssistCondition
+  | CardCondition
   | AndCondition
   | OrCondition
   | NotCondition
@@ -56,6 +57,15 @@ export interface ViewAssistCondition {
   /** Match the current dashboard view slug (last path segment), e.g. "clock". */
   view?: string | string[];
   not_view?: string | string[];
+}
+
+/** Condition evaluated against the registered custom cards (`window.customCards`). */
+export interface CardCondition {
+  condition: "card";
+  /** Pass only when every listed custom card type is registered. */
+  registered?: string | string[];
+  /** Pass when any listed custom card type is NOT registered. */
+  not_registered?: string | string[];
 }
 
 export interface AndCondition {
@@ -152,6 +162,23 @@ function checkViewAssist(c: ViewAssistCondition, hass?: HomeAssistant): boolean 
   return true;
 }
 
+function checkCard(c: CardCondition): boolean {
+  const have = new Set(
+    (window.customCards || []).map((e) => (e.type || "").replace(/^custom:/, "")),
+  );
+  if (c.registered != null) {
+    if (!asArray(c.registered).every((t) => have.has(String(t).replace(/^custom:/, "")))) {
+      return false;
+    }
+  }
+  if (c.not_registered != null) {
+    if (!asArray(c.not_registered).some((t) => !have.has(String(t).replace(/^custom:/, "")))) {
+      return false;
+    }
+  }
+  return true;
+}
+
 function checkOne(c: Condition, hass?: HomeAssistant): boolean {
   switch (c.condition) {
     case "state":
@@ -164,6 +191,8 @@ function checkOne(c: Condition, hass?: HomeAssistant): boolean {
       return checkUser(c, hass);
     case "view-assist":
       return checkViewAssist(c, hass);
+    case "card":
+      return checkCard(c);
     case "and":
       return (c.conditions ?? []).every((x) => checkOne(x, hass));
     case "or":

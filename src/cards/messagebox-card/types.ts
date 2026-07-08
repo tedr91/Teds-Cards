@@ -1,35 +1,12 @@
 import type { LovelaceCardConfig } from "custom-card-helpers";
 import type { TedStyleTheme } from "../../shared/types";
+import type { Condition } from "../../shared/conditions";
 
 /** Accent / tone of the message. */
 export type MessageBoxSeverity = "info" | "success" | "warning" | "danger" | "tip";
 
 /** How the message is presented. */
 export type MessageBoxDisplay = "inline" | "pinned" | "modal";
-
-/** Device form factors usable in `show_if.form_factor`. `amazon` matches Amazon
- *  Silk devices (Echo Show / Fire) via user agent. */
-export type FormFactor =
-  | "portrait-small"
-  | "portrait-large"
-  | "landscape-small"
-  | "landscape-large"
-  | "amazon";
-
-/** Built-in visibility conditions. When more than one key is set the card is
- *  shown if ANY of them is satisfied (logical OR). Omit `show_if` to always show. */
-export interface MessageBoxShowIf {
-  /** Show when the current device matches one of these form factors. */
-  form_factor?: FormFactor | FormFactor[];
-  /** Show when NOT on a View Assist device (no `view_assist_sensor`). */
-  not_view_assist?: boolean;
-  /** Show when any of these custom card types is not registered. */
-  missing_cards?: string[];
-  /** Show based on an entity's state. */
-  entity?: string;
-  state?: string | string[];
-  state_not?: string | string[];
-}
 
 /** What an action button does when tapped. */
 export type MessageBoxActionKind =
@@ -83,7 +60,10 @@ export interface MessageBoxCardConfig extends LovelaceCardConfig {
    *  Without a key the dismiss actions only hide the card for the current view. */
   dismiss_key?: string;
 
-  show_if?: MessageBoxShowIf;
+  /** Standard visibility conditions (same engine as the Navbar Card): `state`,
+   *  `numeric_state`, `screen` (media query), `user`, `view-assist`, `card`, and
+   *  `and`/`or`/`not`. Top-level conditions are AND-ed; omit to always show. */
+  visibility?: Condition[];
   actions?: MessageBoxAction[];
 
   // Visual overrides

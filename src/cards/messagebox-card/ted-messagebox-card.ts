@@ -11,6 +11,7 @@ import {
 import { registerCustomCard } from "../../shared/register-card";
 import { tedCardThemeClass, tedStyleTheme } from "../../shared/theme";
 import { viewAssistNavigate } from "../../shared/view-assist";
+import { isVisible } from "../../shared/conditions";
 import {
   DISMISS_STORAGE_PREFIX,
   MESSAGEBOX_CARD_DESCRIPTION,
@@ -18,15 +19,7 @@ import {
   MESSAGEBOX_CARD_NAME,
   MESSAGEBOX_CARD_TYPE,
 } from "./const";
-import type {
-  FormFactor,
-  MessageBoxAction,
-  MessageBoxCardConfig,
-  MessageBoxShowIf,
-} from "./types";
-
-/** Short-edge (CSS px) at or below which a device is treated as "small" (phone-class). */
-const SMALL_SHORT_EDGE = 600;
+import type { MessageBoxAction, MessageBoxCardConfig } from "./types";
 
 /**
  * A dismissible message banner with optional action buttons. Think of it as a
@@ -35,8 +28,8 @@ const SMALL_SHORT_EDGE = 600;
  *
  * Dismissal is CSS-safe (no inline scripts): `dismiss` writes a persistent
  * flag, `dismiss-session` a per-session flag, both keyed by `dismiss_key`.
- * Optional `show_if` conditions (device form factor, missing cards, View Assist
- * presence, entity state) gate visibility.
+ * Optional `visibility` conditions (the shared engine: `screen`, `view-assist`,
+ * `card`, `state`, …) gate whether the card is shown.
  */
 @customElement(MESSAGEBOX_CARD_TYPE)
 export class TedMessageBoxCard extends LitElement implements LovelaceCard {
@@ -89,7 +82,12 @@ export class TedMessageBoxCard extends LitElement implements LovelaceCard {
   // --- Visibility ------------------------------------------------------------
 
   private get _hidden(): boolean {
-    return !this._config || this._dismissed || this._isDismissed() || !this._showIfMet();
+    return (
+      !this._config ||
+      this._dismissed ||
+      this._isDismissed() ||
+      !isVisible(undefined, this._config.visibility, this.hass)
+    );
   }
 
   private _isDismissed(): boolean {
@@ -101,71 +99,6 @@ export class TedMessageBoxCard extends LitElement implements LovelaceCard {
     } catch {
       return false;
     }
-  }
-
-  private _showIfMet(): boolean {
-    const s = this._config?.show_if;
-    if (!s) return true;
-    const checks: boolean[] = [];
-    if (s.form_factor !== undefined) checks.push(this._formFactorMatches(s.form_factor));
-    if (s.not_view_assist) checks.push(!this._isViewAssist());
-    if (s.missing_cards?.length) checks.push(this._anyCardMissing(s.missing_cards));
-    if (s.entity) checks.push(this._entityMatches(s));
-    if (!checks.length) return true;
-    // OR semantics: show if any provided condition is satisfied.
-    return checks.some(Boolean);
-  }
-
-  private _formFactor(): FormFactor {
-    const w = window.innerWidth;
-    const h = window.innerHeight;
-    const va = (window as unknown as { viewAssistResponsive?: { orientation?: string } })
-      .viewAssistResponsive;
-    const orientation =
-      va?.orientation === "portrait" || va?.orientation === "landscape"
-        ? va.orientation
-        : h > w
-          ? "portrait"
-          : "landscape";
-    const small = Math.min(w, h) <= SMALL_SHORT_EDGE;
-    if (orientation === "portrait") return small ? "portrait-small" : "portrait-large";
-    return small ? "landscape-small" : "landscape-large";
-  }
-
-  private _formFactorMatches(want: FormFactor | FormFactor[]): boolean {
-    const list = Array.isArray(want) ? want : [want];
-    const ff = this._formFactor();
-    return list.some((w) =>
-      w === "amazon" ? /Silk|AFT/i.test(navigator.userAgent || "") : w === ff,
-    );
-  }
-
-  private _isViewAssist(): boolean {
-    try {
-      return !!window.localStorage.getItem("view_assist_sensor");
-    } catch {
-      return false;
-    }
-  }
-
-  private _anyCardMissing(types: string[]): boolean {
-    const have = new Set((window.customCards || []).map((c) => (c.type || "").replace(/^custom:/, "")));
-    return types.some((t) => !have.has(t.replace(/^custom:/, "")));
-  }
-
-  private _entityMatches(s: MessageBoxShowIf): boolean {
-    if (!s.entity || !this.hass) return false;
-    const state = this.hass.states[s.entity]?.state;
-    if (state === undefined) return false;
-    if (s.state !== undefined) {
-      const arr = Array.isArray(s.state) ? s.state : [s.state];
-      return arr.includes(state);
-    }
-    if (s.state_not !== undefined) {
-      const arr = Array.isArray(s.state_not) ? s.state_not : [s.state_not];
-      return !arr.includes(state);
-    }
-    return true;
   }
 
   // --- Actions ---------------------------------------------------------------

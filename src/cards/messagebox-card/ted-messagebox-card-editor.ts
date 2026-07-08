@@ -41,7 +41,7 @@ export class TedMessageBoxCardEditor extends LitElement implements LovelaceCardE
         @value-changed=${this._valueChanged}
       ></ha-form>
       <p class="note">
-        <code>actions</code> and <code>show_if</code> are configured in YAML — see the card
+        <code>actions</code> and <code>visibility</code> are configured in YAML — see the card
         documentation.
       </p>
     `;
