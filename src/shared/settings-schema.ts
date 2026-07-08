@@ -59,6 +59,8 @@ export const SETTINGS_DEFAULTS: SettingsMap = {
   do_not_disturb: false,
   dashboard_root: "ted-dashboard",
   home_dashboard: "[root]/home",
+  alarms_dashboard: "[root]/alarms-timers?tab=alarms",
+  timers_dashboard: "[root]/alarms-timers?tab=timers",
   auto_return_home_after: 0,
 };
 
@@ -91,6 +93,8 @@ export const SETTINGS_FIELDS: SettingField[] = [
   // Navigation
   { key: "dashboard_root", label: "Dashboard root", group: "Navigation", kind: "text" },
   { key: "home_dashboard", label: "Home dashboard", group: "Navigation", kind: "text", help: "Use [root] for the dashboard root, e.g. [root]/home." },
+  { key: "alarms_dashboard", label: "Alarms dashboard", group: "Navigation", kind: "text", help: "Where the Alarms status item navigates on tap. Use [root] for the dashboard root." },
+  { key: "timers_dashboard", label: "Timers dashboard", group: "Navigation", kind: "text", help: "Where the Timers status item navigates on tap. Use [root] for the dashboard root." },
   { key: "auto_return_home_after", label: "Auto-return home after", group: "Navigation", kind: "number", min: 0, max: 3600, unit: "s", help: "0 = never." },
 ];
 

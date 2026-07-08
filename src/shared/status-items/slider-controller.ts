@@ -28,6 +28,9 @@ export interface NotifDetail {
 /** Reopen guard: ignore a volume re-open within this long after a close. */
 const VOLUME_REOPEN_GUARD_MS = 350;
 
+/** How long a pointer must be held to open a count item's options menu. */
+const LONG_PRESS_MS = 500;
+
 function sliderValue(ev: Event): number {
   return Number.parseFloat((ev.target as HTMLInputElement).value);
 }
@@ -40,6 +43,9 @@ export class StatusSliderController implements ReactiveController {
   notifDetail?: NotifDetail;
   private volumeClickTimer?: number;
   private volumeClosedAt = 0;
+  /** Long-press timer + "fired" flag for hold-to-open-options on count items. */
+  private holdTimer?: number;
+  private holdFired = false;
 
   constructor(host: SliderHost) {
     this.host = host;
@@ -50,6 +56,10 @@ export class StatusSliderController implements ReactiveController {
     if (this.volumeClickTimer !== undefined) {
       window.clearTimeout(this.volumeClickTimer);
       this.volumeClickTimer = undefined;
+    }
+    if (this.holdTimer !== undefined) {
+      window.clearTimeout(this.holdTimer);
+      this.holdTimer = undefined;
     }
   }
 
@@ -111,12 +121,48 @@ export class StatusSliderController implements ReactiveController {
     hass?.callService("media_player", "volume_mute", { entity_id: entityId, is_volume_muted: !muted });
   }
 
-  private openPopover(popId: string): void {
+  /** Open a popover by id (guarded against a volume re-open flicker). */
+  openPopover(popId: string): void {
     const root = this.host.renderRoot as ShadowRoot;
     const popover = root.getElementById?.(popId) as (HTMLElement & { showPopover?: () => void }) | null;
     if (!popover || popover.matches(":popover-open")) return;
     if (Date.now() - this.volumeClosedAt < VOLUME_REOPEN_GUARD_MS) return;
     popover.showPopover?.();
+  }
+
+  /** Begin a long-press: after LONG_PRESS_MS, open `popId` (hold-to-open menu). */
+  startHold(popId: string): void {
+    this.holdFired = false;
+    if (this.holdTimer !== undefined) window.clearTimeout(this.holdTimer);
+    this.holdTimer = window.setTimeout(() => {
+      this.holdTimer = undefined;
+      this.holdFired = true;
+      this.openPopover(popId);
+    }, LONG_PRESS_MS);
+  }
+
+  /** Cancel a pending long-press without firing (e.g. pointer left the target). */
+  cancelHold(): void {
+    if (this.holdTimer !== undefined) {
+      window.clearTimeout(this.holdTimer);
+      this.holdTimer = undefined;
+    }
+  }
+
+  /** On click: returns true if a hold already fired (so the tap should be suppressed). */
+  consumeHold(): boolean {
+    this.cancelHold();
+    const fired = this.holdFired;
+    this.holdFired = false;
+    return fired;
+  }
+
+  /** Close a popover by id (used by the options menu buttons). */
+  closePopover(popId: string): void {
+    const pop = (this.host.renderRoot as ShadowRoot).getElementById?.(popId) as
+      | (HTMLElement & { hidePopover?: () => void })
+      | null;
+    pop?.hidePopover?.();
   }
 
   /** Open a notification in the centered detail modal (rendered after state updates). */

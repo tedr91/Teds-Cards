@@ -97,18 +97,18 @@ export const statusItemStyles = css`
   }
   .status-badge {
     position: absolute;
-    top: -3px;
-    right: -3px;
-    min-width: 14px;
-    height: 14px;
+    top: -5px;
+    right: -5px;
+    min-width: 13px;
+    height: 13px;
     padding: 0 3px;
     box-sizing: border-box;
     border-radius: 999px;
     background: var(--ted-style-accent);
     color: var(--ted-style-on-accent);
-    font-size: 9px;
+    font-size: 8px;
     font-weight: 700;
-    line-height: 14px;
+    line-height: 13px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -141,6 +141,32 @@ export const statusItemStyles = css`
   }
   .notif-popover::backdrop {
     background: transparent;
+  }
+  /* Hold-to-open options menu (alarms / timers / notifications DND). */
+  .opts-popover {
+    width: max-content;
+    min-width: 168px;
+    max-width: 92vw;
+  }
+  .opts-menu {
+    display: flex;
+    flex-direction: column;
+    padding: 6px;
+    gap: 2px;
+  }
+  .opts-btn {
+    appearance: none;
+    border: none;
+    background: none;
+    color: var(--ted-style-text);
+    font: inherit;
+    text-align: left;
+    padding: 9px 12px;
+    border-radius: var(--ted-style-radius-sm);
+    cursor: pointer;
+  }
+  .opts-btn:hover {
+    background: var(--ted-style-hover, rgba(127, 127, 127, 0.16));
   }
   .notif-pop-head {
     position: sticky;

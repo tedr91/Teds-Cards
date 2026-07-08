@@ -945,6 +945,12 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.74
+
+- **Alarms/Timers status items — tap & hold actions** — tapping the Alarms or Timers navbar item navigates to its configured dashboard; holding opens a quick menu: **View Alarms** / **Disable Alarms**, and **View Timers** / **Pause all timers** / **Cancel all timers** (scoped to the device's area). New **Alarms dashboard** and **Timers dashboard** settings (default to the alarms-timers view's matching tab). Requires **Ted's Cards Backend v1.0.15+**.
+- **Notifications status item — hold for Do Not Disturb** — tapping still opens the notifications list; holding now offers **Enable / Disable Do not disturb** for this device.
+- **Count badge** — the Alarms/Timers/Notifications count badge is smaller and tucked further into the corner so it no longer covers the icon.
+
 ### v1.0.73
 
 - **Navbar — Alarms & Timers status items** — new status items showing a fluent icon with a count badge for enabled alarms / active timers (area-scoped, with a **Hide when there are none** option, default on).

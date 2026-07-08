@@ -10,6 +10,7 @@ import type { HomeAssistant } from "custom-card-helpers";
 
 import { STATUS_ITEM_DEFAULT_ICON, DEFAULT_SPACER_SIZE } from "./const";
 import { resolveDeviceArea } from "../device-area";
+import { settingsStore } from "../settings";
 import { formatDate, formatTime } from "./datetime";
 import {
   brightnessModel,
@@ -75,18 +76,9 @@ export function renderStatusItem(item: StatusItem, ctx: StatusItemContext, index
     case "notifications":
       return renderNotificationsItem(item, ctx, index);
     case "alarms":
-      return renderCountItem(item, ctx, {
-        sensor: "sensor.teds_alarms",
-        attr: "alarms",
-        enabledOnly: true,
-        defaultLabel: "Alarms",
-      });
+      return renderCountItem(item, ctx, index);
     case "timers":
-      return renderCountItem(item, ctx, {
-        sensor: "sensor.teds_timers",
-        attr: "active",
-        defaultLabel: "Timers",
-      });
+      return renderCountItem(item, ctx, index);
   }
 }
 
@@ -304,38 +296,139 @@ function notifTimeAgo(iso?: string): string {
   return `${Math.round(h / 24)}d ago`;
 }
 
-/** Scoped row from the alarms/timers sensor: only the fields the count needs. */
+/** Scoped row from the alarms/timers sensor: the fields the item needs. */
 interface CountRow {
+  id?: string;
   location?: string | null;
   enabled?: boolean;
+  paused?: boolean;
+}
+
+/** An option in a status item's hold-to-open menu. */
+interface ItemOption {
+  label: string;
+  handler: () => void;
+}
+
+/** Resolve a `[root]`-templated dashboard setting into a leading-slash path. */
+function resolveDashboardPath(key: string): string {
+  const eff = settingsStore.effective();
+  const root = String(eff.dashboard_root ?? "ted-dashboard");
+  let path = String(eff[key] ?? "").replace("[root]", root);
+  if (path && !path.startsWith("/")) path = `/${path}`;
+  return path;
+}
+
+/** Client-side navigation matching Home Assistant's `navigate` action. */
+function navigateTo(path: string): void {
+  if (!path) return;
+  history.pushState(null, "", path);
+  window.dispatchEvent(new Event("location-changed"));
+}
+
+/** A hold-to-open options popover (list of buttons); each closes it after running. */
+function renderOptionsPopover(
+  ctx: StatusItemContext,
+  popId: string,
+  anchorId: string,
+  options: readonly ItemOption[],
+): TemplateResult {
+  return html`
+    <div
+      id=${popId}
+      class="notif-popover opts-popover"
+      popover
+      data-anchor=${anchorId}
+      @toggle=${ctx.slider.onPopoverToggle}
+    >
+      <div class="opts-menu">
+        ${options.map(
+          (o) => html`<button
+            class="opts-btn"
+            @click=${() => {
+              o.handler();
+              ctx.slider.closePopover(popId);
+            }}
+          >
+            ${o.label}
+          </button>`,
+        )}
+      </div>
+    </div>
+  `;
 }
 
 /**
  * Icon + count badge for the alarms / timers sensors. Scoped to this device's
  * area (config → View Assist → browser_mod → localStorage) plus house-wide
  * (area-less) items. Hidden entirely when empty unless `hide_when_empty: false`.
+ *
+ * Tap navigates to the configured dashboard; hold opens an options menu
+ * (View / Disable alarms, or View / Pause all / Cancel all timers).
  */
 function renderCountItem(
   item: AlarmsStatusItem | TimersStatusItem,
   ctx: StatusItemContext,
-  opts: { sensor: string; attr: string; enabledOnly?: boolean; defaultLabel: string },
+  index: number,
 ): TemplateResult {
-  const rows = (ctx.hass.states[opts.sensor]?.attributes?.[opts.attr] ?? []) as CountRow[];
+  const isAlarms = item.type === "alarms";
+  const sensor = isAlarms ? "sensor.teds_alarms" : "sensor.teds_timers";
+  const attr = isAlarms ? "alarms" : "active";
+  const rows = (ctx.hass.states[sensor]?.attributes?.[attr] ?? []) as CountRow[];
   const area = resolveDeviceArea(ctx.hass, item.area).area;
-  let items = opts.enabledOnly ? rows.filter((r) => r.enabled) : rows;
+  let items = isAlarms ? rows.filter((r) => r.enabled) : rows;
   if (area) items = items.filter((r) => !r.location || r.location === area);
   const count = items.length;
   // Default is to hide when there's nothing set (only show when count > 0).
   if (item.hide_when_empty !== false && count === 0) return html``;
+
   const icon = item.icon ?? STATUS_ITEM_DEFAULT_ICON[item.type];
-  const label = String(item.name ?? opts.defaultLabel);
+  const label = String(item.name ?? (isAlarms ? "Alarms" : "Timers"));
   const showBadge = count > 0 && item.display_badge !== false;
+  const navPath = resolveDashboardPath(isAlarms ? "alarms_dashboard" : "timers_dashboard");
+  const anchorId = `${ctx.keyPrefix}-cnt-anchor-${index}`;
+  const optsPopId = `${ctx.keyPrefix}-cnt-opts-${index}`;
+  const svc = (service: string, data: Record<string, unknown>) =>
+    ctx.hass.callService("teds_cards_backend", service, data);
+
+  const options: ItemOption[] = isAlarms
+    ? [
+        { label: "View Alarms", handler: () => navigateTo(navPath) },
+        {
+          label: "Disable Alarms",
+          handler: () => items.forEach((a) => a.id && svc("update_alarm", { id: a.id, enabled: false })),
+        },
+      ]
+    : [
+        { label: "View Timers", handler: () => navigateTo(navPath) },
+        {
+          label: "Pause all timers",
+          handler: () => items.forEach((t) => t.id && !t.paused && svc("pause_timer", { id: t.id })),
+        },
+        {
+          label: "Cancel all timers",
+          handler: () => items.forEach((t) => t.id && svc("cancel_timer", { id: t.id })),
+        },
+      ];
+
   return html`
-    <div class="status-item" title=${label}>
-      <span class="status-icon-badge">
-        <ha-icon class="status-icon" .icon=${icon}></ha-icon>
+    <div class="status-item">
+      <button
+        id=${anchorId}
+        class="status-icon-button notif-btn"
+        title=${label}
+        aria-label=${label}
+        @pointerdown=${() => ctx.slider.startHold(optsPopId)}
+        @pointerleave=${() => ctx.slider.cancelHold()}
+        @pointercancel=${() => ctx.slider.cancelHold()}
+        @click=${() => {
+          if (!ctx.slider.consumeHold()) navigateTo(navPath);
+        }}
+      >
+        <ha-icon .icon=${icon}></ha-icon>
         ${showBadge ? html`<span class="status-badge">${count > 99 ? "99+" : count}</span>` : nothing}
-      </span>
+      </button>
+      ${renderOptionsPopover(ctx, optsPopId, anchorId, options)}
     </div>
   `;
 }
@@ -357,20 +450,34 @@ function renderNotificationsItem(
   const anchorId = `${ctx.keyPrefix}-notif-anchor-${index}`;
   const popId = `${ctx.keyPrefix}-notif-pop-${index}`;
   const detailPopId = `${popId}-detail`;
+  const optsPopId = `${popId}-opts`;
   const svc = (service: string, data: Record<string, unknown>) =>
     ctx.hass.callService("teds_cards_backend", service, data);
+  const dnd = settingsStore.effective().do_not_disturb === true;
+  const dndOptions: ItemOption[] = [
+    {
+      label: dnd ? "Disable Do not disturb" : "Enable Do not disturb",
+      handler: () => settingsStore.setValue("device", "do_not_disturb", !dnd),
+    },
+  ];
   return html`
     <div class="status-item">
       <button
         id=${anchorId}
         class="status-icon-button notif-btn"
-        popovertarget=${popId}
         title=${String(item.name ?? "Notifications")}
         aria-label="Notifications"
+        @pointerdown=${() => ctx.slider.startHold(optsPopId)}
+        @pointerleave=${() => ctx.slider.cancelHold()}
+        @pointercancel=${() => ctx.slider.cancelHold()}
+        @click=${() => {
+          if (!ctx.slider.consumeHold()) ctx.slider.openPopover(popId);
+        }}
       >
         <ha-icon .icon=${icon}></ha-icon>
         ${showBadge ? html`<span class="status-badge">${unread > 99 ? "99+" : unread}</span>` : nothing}
       </button>
+      ${renderOptionsPopover(ctx, optsPopId, anchorId, dndOptions)}
       <div id=${popId} class="notif-popover" popover data-anchor=${anchorId} @toggle=${ctx.slider.onPopoverToggle}>
         <div class="notif-pop-head">
           <span>Notifications</span>
