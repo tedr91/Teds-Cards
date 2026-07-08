@@ -945,6 +945,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.79
+
+- **Fix release build** — resolved a TypeScript type error in the Clock/Weather card (`_stackRows`) that failed the release workflow's type-check, so v1.0.78's build didn't attach. This is a clean rebuild of the v1.0.78 changes.
+
 ### v1.0.78
 
 - **Clock/Weather card — consistent auto-sizing** — the clock, date, and weather are now auto-sized together at their base (100%) to fit a fixed-height cell **before** each element's **clock size** / **date size** / **weather size** factor is applied, so those adjustments scale relative to the fitted size (and can shrink or overflow as configured).
