@@ -463,10 +463,12 @@ export class TedClockWeatherCard extends LitElement implements LovelaceCard {
     const mainW = this._widthPer1px(main, CLOCK_WEIGHT, family);
     const suffixW = suffix ? this._widthPer1px(` ${suffix}`, CLOCK_WEIGHT, family) * AMPM_SCALE : 0;
     const clockW = mainW + suffixW;
-    let clockPx = clockW > 0 ? (width * CLOCK_WIDTH_FRACTION * this._clockFactor()) / clockW : 0;
+    // Sized for clock_size = LARGE (factor 1.0); the actual clock_size factor is
+    // applied at the very end so it scales relative to the auto-fitted base.
+    let clockLargePx = clockW > 0 ? (width * CLOCK_WIDTH_FRACTION) / clockW : 0;
 
     const dateW = this._widthPer1px(this._dateText(REFERENCE_DATE), DATE_WEIGHT, family);
-    let datePx = dateW > 0 ? (width * DATE_WIDTH_FRACTION * this._dateFactor()) / dateW : 0;
+    const datePx = dateW > 0 ? (width * DATE_WIDTH_FRACTION * this._dateFactor()) / dateW : 0;
 
     // Weather (icon + temperature) is sized off the card width like the clock and
     // date, independent of the clock size. Width per 1px of the temp font is the
@@ -475,31 +477,13 @@ export class TedClockWeatherCard extends LitElement implements LovelaceCard {
     const showTemp = this._config?.show_current_temp !== false;
     const tempTextW = showTemp ? this._widthPer1px(this._tempRefText(), "600", family) : 0;
     const weatherW = (showIcon ? 1 : 0) + (showIcon && showTemp ? 0.25 : 0) + tempTextW;
-    let tempPx = weatherW > 0 ? (width * WEATHER_WIDTH_FRACTION * this._weatherFactor()) / weatherW : 0;
+    const tempPx = weatherW > 0 ? (width * WEATHER_WIDTH_FRACTION * this._weatherFactor()) / weatherW : 0;
 
-    // Outside a Sections grid the card fills a fixed-height container (e.g. the
-    // calendar-week "clock" grid area). The width-driven sizes above could be too
-    // tall for that height, so scale the whole stack down proportionally to fit.
-    if (!this._inGrid() && height > 0) {
-      const rows = this._stackRows();
-      let stack = clockPx > 0 ? clockPx : Math.max(datePx, tempPx);
-      if (rows.weatherRow) stack += tempPx + CWC_ROW_GAP;
-      if (rows.dateRow) stack += datePx + CWC_ROW_GAP;
-      if (stack > height && stack > 0) {
-        const scale = height / stack;
-        clockPx *= scale;
-        datePx *= scale;
-        tempPx *= scale;
-      }
-    }
-
-    // Vertically recenter the clock. With line-height:1 the font leaves leading
-    // above the caps and below the baseline; for many fonts (e.g. Segoe UI /
-    // system-ui) the leading above is far larger than below, so the digits look
-    // pushed down and the top padding looks bigger — and it scales with the font
-    // size. Measure that asymmetry and lift the rows by half of it (--cwc-vshift)
-    // so the visible glyphs sit with equal space above and below.
-    let vshift = 0;
+    // Clock font metrics: how much of the line box is actually inked (the time
+    // has no descenders and short ascenders), and how lopsided the leading is
+    // (used below to recenter the visible glyphs).
+    let inkRatio = 0.72; // fallback ≈ cap height as a fraction of the em
+    let leadAsymPer100 = 0;
     const vctx = this._canvas?.getContext("2d");
     if (vctx) {
       vctx.font = `${CLOCK_WEIGHT} 100px ${family}`;
@@ -509,12 +493,36 @@ export class TedClockWeatherCard extends LitElement implements LovelaceCard {
       const aa = m.actualBoundingBoxAscent;
       const ad = m.actualBoundingBoxDescent;
       if ([fa, fd, aa, ad].every((v) => typeof v === "number")) {
+        inkRatio = Math.max(0.1, (aa + ad) / 100);
         const halfLeading = (100 - fa - fd) / 2;
         const leadAbove = halfLeading + fa - aa;
         const leadBelow = halfLeading + fd - ad;
-        vshift = ((leadAbove - leadBelow) / 2) * (clockPx / 100);
+        leadAsymPer100 = (leadAbove - leadBelow) / 2;
       }
     }
+
+    // Outside a Sections grid the card fills a fixed-height container (e.g. the
+    // calendar-week "clock" grid area). Fit the LARGE clock so its INKED height
+    // (not the full line box, whose empty ascender/descender leading is clipped)
+    // fills the available height — clock_size then scales from this base.
+    if (!this._inGrid() && height > 0 && clockLargePx > 0) {
+      const rows = this._stackRows();
+      let avail = height;
+      if (rows.weatherRow) avail -= tempPx + CWC_ROW_GAP;
+      if (rows.dateRow) avail -= datePx + CWC_ROW_GAP;
+      if (avail > 0 && clockLargePx * inkRatio > avail) {
+        clockLargePx = avail / inkRatio;
+      }
+    }
+
+    // Apply the clock_size factor relative to the auto-fitted "large" size, so a
+    // larger size overflows (and a smaller one shrinks) the cell as configured.
+    const clockPx = clockLargePx * this._clockFactor();
+
+    // Recenter the clock's visible glyphs within its line box: line-height:1
+    // leaves more leading above the caps than below the baseline for many fonts,
+    // which would push the clock down and make the top padding look larger.
+    const vshift = leadAsymPer100 * (clockPx / 100);
 
     el.style.setProperty("--cwc-clock-size", `${clockPx}px`);
     el.style.setProperty("--cwc-date-size", `${datePx}px`);

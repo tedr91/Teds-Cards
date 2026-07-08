@@ -945,6 +945,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.77
+
+- **Clock/Weather card — smarter auto-sizing in fixed-height cells** — when the card fills a fixed-height container (e.g. a `grid-layout` area) the clock is now sized by its **inked height** (the time has no descenders and short ascenders) rather than the full line box, so it fills the space instead of leaving a big gap below. The auto-fit targets **clock size = Large**; the configured **clock size** then scales relative to that base, so a larger size can overflow and a smaller one shrinks, as set.
+
 ### v1.0.76
 
 - **Clock/Weather card — centered when filling a cell** — when the card fills a fixed-height container (e.g. a `grid-layout` area) and the clock is smaller than the cell, the leftover vertical space is now split evenly above and below instead of piling above the (bottom-aligned) clock.
