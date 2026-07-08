@@ -678,6 +678,9 @@ export class TedClockWeatherCard extends LitElement implements LovelaceCard {
       }
       .cwc.fill {
         height: 100%;
+        /* When filling a fixed-height cell, centre any leftover vertical space
+           so it isn't all piled above the (bottom-aligned) clock. */
+        justify-content: center;
       }
 
       .row {

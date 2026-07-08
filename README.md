@@ -945,6 +945,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.76
+
+- **Clock/Weather card — centered when filling a cell** — when the card fills a fixed-height container (e.g. a `grid-layout` area) and the clock is smaller than the cell, the leftover vertical space is now split evenly above and below instead of piling above the (bottom-aligned) clock.
+
 ### v1.0.75
 
 - **Settings card — sound fields show their real default** — media/sound fields no longer display the literal word "default"; the box is empty with a **placeholder of the actual default it resolves to** (the bundled sound, or the general notification sound for per-severity fields). Clearing the box keeps it inheriting.
