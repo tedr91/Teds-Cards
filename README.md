@@ -943,9 +943,13 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
-### v1.0.71
+### v1.0.72
 
-- **Settings — media player falls back to this device** — when neither a per-device nor global **Media player** is set, alerts now play on the current client's own media player (View Assist satellite or browser_mod browser). The Settings card shows a live hint of which player that is. Requires **Ted's Cards Backend v1.0.12+**.
+- **Per-severity notification sounds** — the Settings card's **Notifications** group now has Info / Success / Warning / Danger / Tip sound fields (each `"default"` falls back to the general alert sound), so different severities can play different sounds. Requires **Ted's Cards Backend v1.0.13+**.
+- **Notification persistence replaces "sticky"** — notifications now carry a `persistence` of **transient** (toast only, never stored), **normal** (auto-clears when read/dismissed), or **sticky** (stays until manually cleared).
+- **Repeat is now a simple on/off** — the timer/alarm **Max repeats** setting is gone; a repeating alert loops for the sound's own length until dismissed (or the notification times out), handled server-side.
+
+### v1.0.71
 
 ### v1.0.70
 
