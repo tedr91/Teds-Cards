@@ -945,6 +945,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.81
+
+- **Button/Navbar icons — icon-set fallback** — a Button Card `icon` can now be a per-set name map instead of a single string, and the card renders the first icon set that's actually installed on the device, in priority order (`streamline-ultimate-color` → `streamline-freehand-color` → `pepicons-print` → `fluent` → `mdi`). This lets a dashboard prefer fancy icon packs and degrade gracefully to MDI when a pack isn't present. Also applies to the Expandable Button Card trigger/children and Navbar buttons (they're all Button Cards). Example: `icon: { streamline-ultimate-color: bedroom-hotel, mdi: bed }`.
+
 ### v1.0.80
 
 - **MessageBox card — standard visibility conditions** — the card's bespoke `show_if` (form factor / View Assist presence / missing cards / entity state) is replaced by a `visibility:` list using the **same conditions engine as the Navbar Card** (`screen`, `view-assist`, `card`, `state`, `numeric_state`, `user`, and `and`/`or`/`not`). Top-level conditions are AND-ed. A new generic **`card`** condition (`registered` / `not_registered`) covers the old "warn when a dependency card isn't installed" use.

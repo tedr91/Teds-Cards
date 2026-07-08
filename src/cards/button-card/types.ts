@@ -1,5 +1,6 @@
 import type { ActionConfig, LovelaceCardConfig } from "custom-card-helpers";
 import type { TedStyleTheme } from "../../shared/types";
+import type { IconSpec } from "../../shared/icons";
 
 /** The three reorderable content elements. */
 export type CardElement = "name" | "icon" | "state";
@@ -62,7 +63,9 @@ export interface ButtonCardConfig extends LovelaceCardConfig {
   type: string;
   entity?: string;
   name?: string;
-  icon?: string;
+  /** An icon string (`mdi:bed`) OR a per-set fallback map (`{ streamline-ultimate-color: …, mdi: bed }`),
+   *  resolved to the first installed set in priority order — see `shared/icons.ts`. */
+  icon?: IconSpec;
 
   // Visual
   theme?: TedStyleTheme;

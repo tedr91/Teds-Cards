@@ -16,6 +16,7 @@ import {
 import { registerCustomCard } from "../../shared/register-card";
 import { appearanceStyle } from "../../shared/appearance";
 import { resolveDeviceArea } from "../../shared/device-area";
+import { resolveIcon } from "../../shared/icons";
 import { brushedOverlay, tedCardThemeClass, tedStyleTheme } from "../../shared/theme";
 import { viewAssistNavigate, viewAssistToggleHold } from "../../shared/view-assist";
 import {
@@ -291,7 +292,7 @@ export class TedButtonCard extends LitElement implements LovelaceCard {
 
   private _icon(): string {
     const stateObj = this._stateObj();
-    return this._config?.icon ?? stateObj?.attributes?.icon ?? DEFAULT_BUTTON_ICON;
+    return resolveIcon(this._config?.icon) ?? stateObj?.attributes?.icon ?? DEFAULT_BUTTON_ICON;
   }
 
   private _stateLabel(): string {

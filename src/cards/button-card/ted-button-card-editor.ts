@@ -86,6 +86,9 @@ export class TedButtonCardEditor extends LitElement implements LovelaceCardEdito
     if (!this.hass || !this._config) return nothing;
 
     const data = { ...this._defaults(), ...this._config };
+    // A per-set icon fallback map is YAML-only; the icon picker expects a string,
+    // so hide the map from the form (it's preserved via `_valueChanged`).
+    if (data.icon && typeof data.icon === "object") data.icon = undefined;
     const schema = this._schema();
 
     return html`
@@ -310,7 +313,13 @@ export class TedButtonCardEditor extends LitElement implements LovelaceCardEdito
   };
 
   private _valueChanged = (ev: CustomEvent): void => {
-    this._commit({ ...this._config, ...ev.detail.value } as ButtonCardConfig);
+    const next = { ...this._config, ...ev.detail.value } as ButtonCardConfig;
+    // Preserve a YAML-only per-set icon fallback map: the form blanks object icons,
+    // so an empty icon from the form shouldn't wipe an existing map.
+    if (ev.detail.value?.icon == null && this._config?.icon && typeof this._config.icon === "object") {
+      next.icon = this._config.icon;
+    }
+    this._commit(next);
   };
 
   /** Strip defaults / empty values, drop a redundant element order, and fire. */
