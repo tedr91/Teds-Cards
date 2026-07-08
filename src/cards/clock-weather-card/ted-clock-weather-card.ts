@@ -434,7 +434,8 @@ export class TedClockWeatherCard extends LitElement implements LovelaceCard {
   /** Which optional elements sit on their own row (adding stack height). Mirrors
    *  the row placement decided in `render()`. */
   private _stackRows(): { weatherRow: boolean; dateRow: boolean } {
-    const c = this._config ?? {};
+    const c = this._config;
+    if (!c) return { weatherRow: false, dateRow: false };
     const showClock = c.show_clock !== false;
     const showWeather = c.show_weather !== false;
     const showIcon = c.show_weather_icon !== false;
