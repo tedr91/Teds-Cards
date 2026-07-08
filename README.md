@@ -945,6 +945,12 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.75
+
+- **Settings card — sound fields show their real default** — media/sound fields no longer display the literal word "default"; the box is empty with a **placeholder of the actual default it resolves to** (the bundled sound, or the general notification sound for per-severity fields). Clearing the box keeps it inheriting.
+- **Date/Time status item — default time format** is now `h:MM a` (e.g. `7:05 pm`).
+- **Clock/Weather card — sizes to its container height** when it isn't a direct Sections-grid item (e.g. a fixed-height `grid-layout` area): the text now scales to fit both the width **and** the available height instead of overflowing.
+
 ### v1.0.74
 
 - **Alarms/Timers status items — tap & hold actions** — tapping the Alarms or Timers navbar item navigates to its configured dashboard; holding opens a quick menu: **View Alarms** / **Disable Alarms**, and **View Timers** / **Pause all timers** / **Cancel all timers** (scoped to the device's area). New **Alarms dashboard** and **Timers dashboard** settings (default to the alarms-timers view's matching tab). Requires **Ted's Cards Backend v1.0.15+**.
