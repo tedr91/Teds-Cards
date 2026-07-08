@@ -36,6 +36,9 @@ const DATE_WIDTH_FRACTION = 0.33;
 const WEATHER_WIDTH_FRACTION = 0.28;
 /** AM/PM suffix font-size as a fraction of the clock font-size. */
 const AMPM_SCALE = 1 / 3;
+
+/** Vertical gap (px) between stacked rows — mirrors the `.cwc` `gap`. */
+const CWC_ROW_GAP = 4;
 /**
  * Vertical nudges (in units of the clock font-size) used to line a small
  * component up with the clock's glyphs when it is overlaid in the clock row.
@@ -221,6 +224,13 @@ export class TedClockWeatherCard extends LitElement implements LovelaceCard {
   private _ro?: ResizeObserver;
   private _canvas?: HTMLCanvasElement;
   private _lastWidth = -1;
+  private _lastHeight = -1;
+
+  /** True in a Home Assistant Sections grid, where the card hugs its content
+   *  (height is auto). Elsewhere it fills its container, so height matters. */
+  private _inGrid(): boolean {
+    return this.layout === "grid";
+  }
 
   public setConfig(config: ClockWeatherCardConfig): void {
     if (!config) {
@@ -278,25 +288,40 @@ export class TedClockWeatherCard extends LitElement implements LovelaceCard {
     this._setupObserver();
   }
 
-  /** Observe the card width so the clock font tracks it. Safe to call repeatedly. */
+  /** Observe the card so the fonts track its size. Safe to call repeatedly.
+   *  Width always matters; height matters too when the card fills a container
+   *  (i.e. not a Sections grid, where it hugs its content). */
   private _setupObserver(): void {
     if (this._ro) return;
     const el = this.renderRoot?.querySelector?.(".cwc") as HTMLElement | null;
     if (!el || !("ResizeObserver" in window)) return;
     this._ro = new ResizeObserver((entries) => {
-      const width = entries[0]?.contentRect?.width ?? 0;
-      if (Math.abs(width - this._lastWidth) < 0.5) return; // ignore height-only changes
+      const rect = entries[0]?.contentRect;
+      const width = rect?.width ?? 0;
+      const height = rect?.height ?? 0;
+      const widthChanged = Math.abs(width - this._lastWidth) >= 0.5;
+      const heightChanged = Math.abs(height - this._lastHeight) >= 0.5;
+      if (!widthChanged && !(heightChanged && !this._inGrid())) return;
       this._lastWidth = width;
-      this._recompute(width);
+      this._lastHeight = height;
+      this._recompute(width, height);
     });
     this._ro.observe(el);
   }
 
+  protected willUpdate(): void {
+    // Fill the container (and size to its height) everywhere except a Sections
+    // grid, where the card must hug its content for the auto-height row.
+    this.toggleAttribute("fill", !this._inGrid());
+  }
+
   protected updated(changed: PropertyValues): void {
-    // Only re-measure when the config changes (sizes/formats). Resizes are
-    // handled by the ResizeObserver. The per-second clock tick must NOT trigger
-    // a re-measure, otherwise the font would change with the time/date text.
-    if (changed.has("_config") && this._lastWidth > 0) this._recompute(this._lastWidth);
+    // Re-measure when the config or layout changes (sizes/formats/fill mode).
+    // Resizes are handled by the ResizeObserver; the per-second clock tick must
+    // NOT re-measure, else the font would change with the time/date text.
+    if ((changed.has("_config") || changed.has("layout")) && this._lastWidth > 0) {
+      this._recompute(this._lastWidth, this._lastHeight);
+    }
   }
 
   private _clockFactor(): number {
@@ -406,8 +431,29 @@ export class TedClockWeatherCard extends LitElement implements LovelaceCard {
     return ctx.measureText(text).width / 100;
   }
 
-  /** Compute width-relative font sizes and publish them as CSS variables. */
-  private _recompute(width: number): void {
+  /** Which optional elements sit on their own row (adding stack height). Mirrors
+   *  the row placement decided in `render()`. */
+  private _stackRows(): { weatherRow: boolean; dateRow: boolean } {
+    const c = this._config ?? {};
+    const showClock = c.show_clock !== false;
+    const showWeather = c.show_weather !== false;
+    const showIcon = c.show_weather_icon !== false;
+    const showTemp = c.show_current_temp !== false;
+    const showDate = c.show_date !== false;
+    const weatherVisible = showWeather && (showIcon || (showTemp && this._tempText() != null));
+    const clockOff = c.clock_offset ?? 0;
+    const canOverlay = (off: number) => Math.abs(off - clockOff) > 50;
+    const weatherAbove = c.weather_above_clock === true || !canOverlay(c.weather_offset ?? 100);
+    const dateBelow = c.date_below_clock === true || !canOverlay(c.date_offset ?? 100);
+    return {
+      weatherRow: weatherVisible && (weatherAbove || !showClock),
+      dateRow: showDate && (dateBelow || !showClock),
+    };
+  }
+
+  /** Compute size-relative font sizes and publish them as CSS variables. Outside
+   *  a Sections grid the fonts also scale down to fit the container `height`. */
+  private _recompute(width: number, height = 0): void {
     const el = this.renderRoot.querySelector(".cwc") as HTMLElement | null;
     if (!el || width <= 0) return;
     const family = getComputedStyle(el).fontFamily || "sans-serif";
@@ -417,10 +463,10 @@ export class TedClockWeatherCard extends LitElement implements LovelaceCard {
     const mainW = this._widthPer1px(main, CLOCK_WEIGHT, family);
     const suffixW = suffix ? this._widthPer1px(` ${suffix}`, CLOCK_WEIGHT, family) * AMPM_SCALE : 0;
     const clockW = mainW + suffixW;
-    const clockPx = clockW > 0 ? (width * CLOCK_WIDTH_FRACTION * this._clockFactor()) / clockW : 0;
+    let clockPx = clockW > 0 ? (width * CLOCK_WIDTH_FRACTION * this._clockFactor()) / clockW : 0;
 
     const dateW = this._widthPer1px(this._dateText(REFERENCE_DATE), DATE_WEIGHT, family);
-    const datePx = dateW > 0 ? (width * DATE_WIDTH_FRACTION * this._dateFactor()) / dateW : 0;
+    let datePx = dateW > 0 ? (width * DATE_WIDTH_FRACTION * this._dateFactor()) / dateW : 0;
 
     // Weather (icon + temperature) is sized off the card width like the clock and
     // date, independent of the clock size. Width per 1px of the temp font is the
@@ -429,7 +475,23 @@ export class TedClockWeatherCard extends LitElement implements LovelaceCard {
     const showTemp = this._config?.show_current_temp !== false;
     const tempTextW = showTemp ? this._widthPer1px(this._tempRefText(), "600", family) : 0;
     const weatherW = (showIcon ? 1 : 0) + (showIcon && showTemp ? 0.25 : 0) + tempTextW;
-    const tempPx = weatherW > 0 ? (width * WEATHER_WIDTH_FRACTION * this._weatherFactor()) / weatherW : 0;
+    let tempPx = weatherW > 0 ? (width * WEATHER_WIDTH_FRACTION * this._weatherFactor()) / weatherW : 0;
+
+    // Outside a Sections grid the card fills a fixed-height container (e.g. the
+    // calendar-week "clock" grid area). The width-driven sizes above could be too
+    // tall for that height, so scale the whole stack down proportionally to fit.
+    if (!this._inGrid() && height > 0) {
+      const rows = this._stackRows();
+      let stack = clockPx > 0 ? clockPx : Math.max(datePx, tempPx);
+      if (rows.weatherRow) stack += tempPx + CWC_ROW_GAP;
+      if (rows.dateRow) stack += datePx + CWC_ROW_GAP;
+      if (stack > height && stack > 0) {
+        const scale = height / stack;
+        clockPx *= scale;
+        datePx *= scale;
+        tempPx *= scale;
+      }
+    }
 
     // Vertically recenter the clock. With line-height:1 the font leaves leading
     // above the caps and below the baseline; for many fonts (e.g. Segoe UI /
@@ -535,7 +597,7 @@ export class TedClockWeatherCard extends LitElement implements LovelaceCard {
     return html`
       <ha-card class=${classMap(cardClasses)} style=${styleMap(cardStyle)}>
         ${brushed ? brushedOverlay : nothing}
-        <div class="cwc">
+        <div class=${classMap({ cwc: true, fill: !this._inGrid() })}>
           ${weatherVisible && weatherAbove
             ? html`<div class="row weather-row">
                 <div class="weather" style=${styleMap({ "--cwc-off": String(weatherOff) })}>
@@ -594,6 +656,13 @@ export class TedClockWeatherCard extends LitElement implements LovelaceCard {
         overflow: hidden;
       }
 
+      /* Outside a Sections grid the card fills its container so the fonts can be
+         sized to the available height (e.g. a grid-layout "clock" area). */
+      :host([fill]),
+      :host([fill]) ha-card {
+        height: 100%;
+      }
+
       .cwc {
         position: relative;
         box-sizing: border-box;
@@ -606,6 +675,9 @@ export class TedClockWeatherCard extends LitElement implements LovelaceCard {
         padding: 14px 18px;
         overflow: hidden;
         color: var(--ted-style-text);
+      }
+      .cwc.fill {
+        height: 100%;
       }
 
       .row {

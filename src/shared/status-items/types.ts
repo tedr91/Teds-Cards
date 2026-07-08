@@ -90,7 +90,7 @@ export interface DateTimeStatusItem extends Omit<StatusItemBase, "display"> {
   display?: "both" | "time" | "date";
   /** Date token format (default "ddd, MMMM D"). */
   date_format?: string;
-  /** Time token format (default "h:MM"). */
+  /** Time token format (default "h:MM a"). */
   time_format?: string;
 }
 

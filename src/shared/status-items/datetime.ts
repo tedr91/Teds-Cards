@@ -5,7 +5,7 @@
 
 /** Default token formats for the datetime status item. */
 export const DEFAULT_DATE_FORMAT = "ddd, MMMM D";
-export const DEFAULT_TIME_FORMAT = "h:MM";
+export const DEFAULT_TIME_FORMAT = "h:MM a";
 
 function pad(n: number): string {
   return n < 10 ? `0${n}` : `${n}`;

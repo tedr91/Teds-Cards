@@ -25,6 +25,9 @@ import type { SettingsCardConfig } from "./types";
 
 const SETTINGS_SENSOR = "sensor.teds_settings";
 
+/** Sentinel value meaning "use the resolved default sound" (mirrors the backend). */
+const DEFAULT_SOUND = "default";
+
 registerCustomCard({
   type: SETTINGS_CARD_TYPE,
   name: SETTINGS_CARD_NAME,
@@ -185,6 +188,17 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
           @value-changed=${(e: CustomEvent) => onChange(e.detail.value || null)}
         ></ha-entity-picker>`;
       case "media":
+        return html`<input
+          class="txt"
+          type="text"
+          .value=${typeof value === "string" && value && value !== DEFAULT_SOUND ? value : ""}
+          placeholder=${this._resolvedDefaultSound(field.key)}
+          ?disabled=${disabled}
+          @change=${(e: Event) => {
+            const v = (e.target as HTMLInputElement).value.trim();
+            onChange(v === "" ? DEFAULT_SOUND : v);
+          }}
+        />`;
       case "text":
       default:
         return html`<input
@@ -195,6 +209,18 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
           @change=${(e: Event) => onChange((e.target as HTMLInputElement).value)}
         />`;
     }
+  }
+
+  /** The actual sound a "default" media field resolves to (shown as its placeholder). */
+  private _resolvedDefaultSound(key: string): string {
+    const bundled = (name: string) => `/teds_cards_backend/sounds/${name}.mp3`;
+    if (key === "timer_alert_sound") return bundled("timer");
+    if (key === "alarm_alert_sound") return bundled("alarm");
+    if (key === "notification_sound") return bundled("notification");
+    // Per-severity notification sounds fall back to the general notification sound.
+    const general = settingsStore.effective().notification_sound;
+    if (typeof general === "string" && general && general !== DEFAULT_SOUND) return general;
+    return bundled("notification");
   }
 
   private _renderGlobalRow(field: SettingField): TemplateResult {
