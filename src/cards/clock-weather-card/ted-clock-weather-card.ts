@@ -463,12 +463,13 @@ export class TedClockWeatherCard extends LitElement implements LovelaceCard {
     const mainW = this._widthPer1px(main, CLOCK_WEIGHT, family);
     const suffixW = suffix ? this._widthPer1px(` ${suffix}`, CLOCK_WEIGHT, family) * AMPM_SCALE : 0;
     const clockW = mainW + suffixW;
-    // Sized for clock_size = LARGE (factor 1.0); the actual clock_size factor is
-    // applied at the very end so it scales relative to the auto-fitted base.
-    let clockLargePx = clockW > 0 ? (width * CLOCK_WIDTH_FRACTION) / clockW : 0;
+    // All three elements are auto-sized at their base (size factor = 1.0 / LARGE
+    // for the clock); each element's size factor is applied at the very end so it
+    // scales relative to the auto-fitted base.
+    let clockBasePx = clockW > 0 ? (width * CLOCK_WIDTH_FRACTION) / clockW : 0;
 
     const dateW = this._widthPer1px(this._dateText(REFERENCE_DATE), DATE_WEIGHT, family);
-    const datePx = dateW > 0 ? (width * DATE_WIDTH_FRACTION * this._dateFactor()) / dateW : 0;
+    let dateBasePx = dateW > 0 ? (width * DATE_WIDTH_FRACTION) / dateW : 0;
 
     // Weather (icon + temperature) is sized off the card width like the clock and
     // date, independent of the clock size. Width per 1px of the temp font is the
@@ -477,7 +478,7 @@ export class TedClockWeatherCard extends LitElement implements LovelaceCard {
     const showTemp = this._config?.show_current_temp !== false;
     const tempTextW = showTemp ? this._widthPer1px(this._tempRefText(), "600", family) : 0;
     const weatherW = (showIcon ? 1 : 0) + (showIcon && showTemp ? 0.25 : 0) + tempTextW;
-    const tempPx = weatherW > 0 ? (width * WEATHER_WIDTH_FRACTION * this._weatherFactor()) / weatherW : 0;
+    let tempBasePx = weatherW > 0 ? (width * WEATHER_WIDTH_FRACTION) / weatherW : 0;
 
     // Clock font metrics: how much of the line box is actually inked (the time
     // has no descenders and short ascenders), and how lopsided the leading is
@@ -502,22 +503,28 @@ export class TedClockWeatherCard extends LitElement implements LovelaceCard {
     }
 
     // Outside a Sections grid the card fills a fixed-height container (e.g. the
-    // calendar-week "clock" grid area). Fit the LARGE clock so its INKED height
-    // (not the full line box, whose empty ascender/descender leading is clipped)
-    // fills the available height — clock_size then scales from this base.
-    if (!this._inGrid() && height > 0 && clockLargePx > 0) {
+    // calendar-week "clock" grid area). Auto-size all three elements together so
+    // the stack fits the available height — using the clock's INKED height (its
+    // empty ascender/descender leading is clipped) rather than the full line box.
+    // This happens BEFORE the per-element size factors, so those adjust the fit.
+    if (!this._inGrid() && height > 0) {
       const rows = this._stackRows();
-      let avail = height;
-      if (rows.weatherRow) avail -= tempPx + CWC_ROW_GAP;
-      if (rows.dateRow) avail -= datePx + CWC_ROW_GAP;
-      if (avail > 0 && clockLargePx * inkRatio > avail) {
-        clockLargePx = avail / inkRatio;
+      let stack = clockBasePx > 0 ? clockBasePx * inkRatio : Math.max(dateBasePx, tempBasePx);
+      if (rows.weatherRow) stack += tempBasePx + CWC_ROW_GAP;
+      if (rows.dateRow) stack += dateBasePx + CWC_ROW_GAP;
+      if (stack > height && stack > 0) {
+        const scale = height / stack;
+        clockBasePx *= scale;
+        dateBasePx *= scale;
+        tempBasePx *= scale;
       }
     }
 
-    // Apply the clock_size factor relative to the auto-fitted "large" size, so a
-    // larger size overflows (and a smaller one shrinks) the cell as configured.
-    const clockPx = clockLargePx * this._clockFactor();
+    // Apply each element's size factor relative to the auto-fitted base, so a
+    // larger size overflows (and a smaller one shrinks) the space as configured.
+    const clockPx = clockBasePx * this._clockFactor();
+    const datePx = dateBasePx * this._dateFactor();
+    const tempPx = tempBasePx * this._weatherFactor();
 
     // Recenter the clock's visible glyphs within its line box: line-height:1
     // leaves more leading above the caps than below the baseline for many fonts,
