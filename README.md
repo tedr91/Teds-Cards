@@ -945,6 +945,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.97
+
+- **Bigger auto-hide reveal target** — the horizontal reveal-pill's tap surface is larger (200×20px) and sits 10px from the bottom edge, so it's easier to tap to un-hide a collapsed bottom bar.
+
 ### v1.0.96
 
 - **Camera Card can be driven by per-device Settings** — set `cameras_source: settings` and the Camera Card shows this device's own camera list from Settings → Cameras. **Global** holds the available camera allow-list (with Auto-populate); each device curates its own ordered subset (with a **Sync camera list** button). Also adds a responsive **Auto grid** layout that adapts to the number of cameras, a **Fill** option to fill a dashboard area, and a friendly empty-state prompt (with a Settings button) when a device has no cameras yet. Pairs with Ted's Cards Backend v1.0.24+.
