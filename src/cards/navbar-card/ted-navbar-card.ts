@@ -347,8 +347,13 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
       setNavbarBottomReserve(0);
       return;
     }
-    // Reserve the full bar footprint even for auto-hide bars, so a revealed bar clears
-    // the toast (a fired notification reveals the bar anyway).
+    // An auto-hide bar is collapsed off-screen, so it only occupies the small pill's
+    // strip — reserve just that (matching the actual view padding) so content/toasts
+    // reclaim the rest of the bar's footprint instead of a large empty gap.
+    if (this._autoHide()) {
+      setNavbarBottomReserve(NAVBAR_PILL_RESERVE);
+      return;
+    }
     const margin = this._barType() === "float" ? 16 : 0;
     setNavbarBottomReserve(this._thickness() + margin);
   }
@@ -1361,10 +1366,10 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
         height: 5px;
       }
       .navbar.bottom .nav-pill {
-        bottom: 2px;
+        bottom: 4px;
       }
       .navbar.top .nav-pill {
-        top: 2px;
+        top: 4px;
       }
       /* Vertical bars: a tall, thin pill centered on the left/right edge; its hit
          surface is 3× taller and 2× wider than the visible pill. */
@@ -1381,10 +1386,10 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
         height: 46px;
       }
       .navbar.left .nav-pill {
-        left: 2px;
+        left: 4px;
       }
       .navbar.right .nav-pill {
-        right: 2px;
+        right: 4px;
       }
 
       .navbar-card {

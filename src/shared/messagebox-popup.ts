@@ -124,7 +124,9 @@ export class TedMessagePopupLayer extends LitElement {
       position: fixed;
       left: 0;
       right: 0;
-      bottom: var(--ted-navbar-bottom-reserve, 0px);
+      /* Sit above a bottom navbar's reserved strip, plus a fixed 50px lift so toasts
+         always clear the bar area a little more (auto-hide or not). */
+      bottom: calc(var(--ted-navbar-bottom-reserve, 0px) + 50px);
       z-index: 10000;
       display: flex;
       justify-content: center;

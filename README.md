@@ -945,6 +945,12 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.95
+
+- **Auto-hide navbar reclaims its space** — an auto-hidden bottom bar now only reserves the small pill's strip instead of the full bar height, so dashboard content fills the freed space.
+- **Toasts sit higher** — notification toasts now appear 50px higher so they clear the bar area more comfortably.
+- **Pill tweak** — the auto-hide reveal pill sits 4px from the edge.
+
 ### v1.0.94
 
 - **Navbar long-press menu now closes reliably** — the menu is rendered on a full-screen overlay so a tap anywhere outside it always dismisses it (previously it could stay open until the page was refreshed).
