@@ -441,14 +441,6 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
 
   /** Collapse when a pointer press lands anywhere outside the navbar. */
   private _onDocPointerDown = (ev: PointerEvent): void => {
-    // Dismiss the hold-menu on any press that lands outside it. Check the popover's
-    // real open-state (not a tracked flag) so it always closes on an outside tap.
-    const menu = (this.renderRoot as ShadowRoot).getElementById("nav-hold-menu") as
-      | (HTMLElement & { matches(sel: string): boolean })
-      | null;
-    if (menu && menu.matches(":popover-open") && !ev.composedPath().includes(menu)) {
-      this._closeMenu();
-    }
     if (!this._autoHide() || this._collapsed) return;
     if (ev.composedPath().includes(this)) return;
     this._collapse();
@@ -526,8 +518,18 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
     } catch {
       /* already open */
     }
-    requestAnimationFrame(() => this._positionMenu(menu as HTMLElement, at));
+    requestAnimationFrame(() => {
+      const sheet = (this.renderRoot as ShadowRoot).getElementById("nav-hold-sheet");
+      if (sheet) this._positionMenu(sheet, at);
+    });
   }
+
+  /** Close the menu when a press lands on the full-screen layer but outside the sheet. */
+  private _onMenuLayerDown = (ev: PointerEvent): void => {
+    const sheet = (this.renderRoot as ShadowRoot).getElementById("nav-hold-sheet");
+    if (sheet && ev.composedPath().includes(sheet)) return;
+    this._closeMenu();
+  };
 
   /** Place the hold-menu near where the long-press happened, opening away from the
    *  bar's edge and clamped to the viewport. */
@@ -968,10 +970,12 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
     return html`
       <div
         id="nav-hold-menu"
-        class="nav-popover nav-menu"
+        class="nav-menu-layer"
         popover
         @toggle=${this._onMenuToggle}
+        @pointerdown=${this._onMenuLayerDown}
       >
+        <div id="nav-hold-sheet" class="nav-popover nav-menu">
         ${this._menuView === "root"
           ? html`
               <div class="nav-menu-head">Navbar</div>
@@ -1077,6 +1081,7 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
                 `,
               )}
             `}
+        </div>
       </div>
     `;
   }
@@ -1587,6 +1592,27 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
         max-width: 80vw;
       }
 
+      /* Full-screen transparent layer that hosts the long-press menu in the top layer
+         (above all dashboard content). A press on the layer — anywhere outside the
+         sheet — dismisses the menu (self-managed, since native light-dismiss is
+         unreliable for an imperatively-shown popover inside a shadow root). */
+      .nav-menu-layer {
+        position: fixed;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        border: none;
+        background: transparent;
+        max-width: none;
+        max-height: none;
+        overflow: visible;
+        pointer-events: auto;
+      }
+      .nav-menu-layer::backdrop {
+        background: transparent;
+      }
       /* Long-press settings menu: a vertical list of rows inside the popover. */
       .nav-menu {
         display: flex;
@@ -1595,9 +1621,6 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
         padding: 6px;
         min-width: 208px;
         box-sizing: border-box;
-        /* The menu is a child of the pointer-events:none .navbar wrapper (unlike the
-           overflow popover, which sits inside the interactive .navbar-card), so it must
-           re-enable pointer events or it can't be clicked / light-dismissed. */
         pointer-events: auto;
       }
       .nav-menu-head {

@@ -945,6 +945,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.94
+
+- **Navbar long-press menu now closes reliably** — the menu is rendered on a full-screen overlay so a tap anywhere outside it always dismisses it (previously it could stay open until the page was refreshed).
+
 ### v1.0.93
 
 - **Navbar long-press menu — dismiss & width fixes** — the menu now reliably closes when you tap outside it, and no longer overflows with a stray horizontal scrollbar (it sizes tighter).
