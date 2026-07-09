@@ -945,6 +945,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.89
+
+- **Clock Weather Card — weather no longer clipped on short screens** — the card body now allows content to overflow instead of clipping it, so the top weather block is no longer cut off on shorter displays (tablets, Echo Show 5, etc.).
+
 ### v1.0.88
 
 - **Status Card layout tidy-up** — the **Ted's Cards Backend** row moved to the top of the panel, the redundant **Integrations** row was removed (those items already appear in the **Requirements** tooltip), and the row label/icon vertical alignment was corrected.
