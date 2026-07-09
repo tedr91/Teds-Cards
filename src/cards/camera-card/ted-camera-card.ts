@@ -14,6 +14,7 @@ import { ensureHuiImage, type CameraView } from "../../shared/camera";
 import { registerCustomCard } from "../../shared/register-card";
 import { appearanceStyle, cssColor } from "../../shared/appearance";
 import { brushedOverlay, tedStyleTheme } from "../../shared/theme";
+import { SettingsController, settingsStore } from "../../shared/settings";
 import {
   CAMERA_CARD_DESCRIPTION,
   CAMERA_CARD_EDITOR_TYPE,
@@ -30,6 +31,12 @@ const CHECK_ICON = "M21,7L9,19L3.5,13.5L4.91,12.09L9,16.17L19.59,5.59L21,7Z";
 // mdi:crown — "Make primary camera" option.
 const CROWN_ICON =
   "M5,16L3,5L8.5,10L12,4L15.5,10L21,5L19,16H5M19,19A1,1 0 0,1 18,20H6A1,1 0 0,1 5,19V18H19V19Z";
+// mdi:cctv — empty-state illustration.
+const CCTV_ICON =
+  "M18.14,7.35L16.17,8.87C16.72,9.83 16.66,11.05 15.9,11.97L15.24,11.05L11.31,5.68L10.65,4.76C11.7,3.97 13.19,4.16 14,5.21C14.33,4.55 14.97,4.1 15.71,4H15.83C16.5,4 17.13,4.29 17.58,4.79L18.11,5.44M11.31,5.68L15.24,11.05L14.29,11.74C13.79,11.05 12.82,10.9 12.13,11.4C11.44,11.9 11.29,12.87 11.79,13.56C12.29,14.25 13.26,14.4 13.95,13.9L14.19,13.72V19H18V21H2V19H8V13.28C7.65,13.19 7.32,13 7.05,12.71L2.6,14L2,12.08L11.31,5.68Z";
+// mdi:cog — empty-state "Settings" button.
+const COG_ICON =
+  "M12,15.5A3.5,3.5 0 0,1 8.5,12A3.5,3.5 0 0,1 12,8.5A3.5,3.5 0 0,1 15.5,12A3.5,3.5 0 0,1 12,15.5M19.43,12.97C19.47,12.65 19.5,12.33 19.5,12C19.5,11.67 19.47,11.34 19.43,11L21.54,9.37C21.73,9.22 21.78,8.95 21.66,8.73L19.66,5.27C19.54,5.05 19.27,4.96 19.05,5.05L16.56,6.05C16.04,5.66 15.5,5.32 14.87,5.07L14.5,2.42C14.46,2.18 14.25,2 14,2H10C9.75,2 9.54,2.18 9.5,2.42L9.13,5.07C8.5,5.32 7.96,5.66 7.44,6.05L4.95,5.05C4.73,4.96 4.46,5.05 4.34,5.27L2.34,8.73C2.21,8.95 2.27,9.22 2.46,9.37L4.57,11C4.53,11.34 4.5,11.67 4.5,12C4.5,12.33 4.53,12.65 4.57,12.97L2.46,14.63C2.27,14.78 2.21,15.05 2.34,15.27L4.34,18.73C4.46,18.95 4.73,19.03 4.95,18.95L7.44,17.94C7.96,18.34 8.5,18.68 9.13,18.93L9.5,21.58C9.54,21.82 9.75,22 10,22H14C14.25,22 14.46,21.82 14.5,21.58L14.87,18.93C15.5,18.67 16.04,18.34 16.56,17.94L19.05,18.95C19.27,19.03 19.54,18.95 19.66,18.73L21.66,15.27C21.78,15.05 21.73,14.78 21.54,14.63L19.43,12.97Z";
 
 /** Subset of Home Assistant's LovelaceGridOptions for the Sections grid layout. */
 interface GridOptions {
@@ -85,14 +92,21 @@ export class TedCameraCard extends LitElement implements LovelaceCard {
   private _longPressFired = false;
   private _io?: IntersectionObserver;
 
+  public constructor() {
+    super();
+    // Keep this device's settings live so `cameras_source: settings` stays in sync.
+    new SettingsController(this, () => this.hass);
+  }
+
   public setConfig(config: CameraCardConfig): void {
     if (!config) {
       throw new Error("Invalid configuration");
     }
-    if (!Array.isArray(config.cameras) || config.cameras.length === 0) {
+    const fromSettings = config.cameras_source === "settings";
+    if (!fromSettings && (!Array.isArray(config.cameras) || config.cameras.length === 0)) {
       throw new Error("You must specify at least one camera");
     }
-    for (const cam of config.cameras) {
+    for (const cam of config.cameras ?? []) {
       const domain = cam.entity?.split(".")[0];
       if (cam.entity && domain !== "camera") {
         throw new Error(`ted-camera-card only supports camera entities (got '${domain}')`);
@@ -166,8 +180,10 @@ export class TedCameraCard extends LitElement implements LovelaceCard {
     };
 
     // In a grid (Sections) view, honor the grid cell sizing. Everywhere else
-    // (stacks, masonry, panel), render at the configured fixed size.
+    // (stacks, masonry, panel), render at the configured fixed size — unless `fill`
+    // is set, in which case the card fills its parent (e.g. a grid-layout area).
     const isGrid = this.layout === "grid";
+    const fill = this._config.fill === true;
     const cardWidth = typeof this._config.width === "number" ? this._config.width : 800;
     const cardHeight = typeof this._config.height === "number" ? this._config.height : 450;
     const cardStyle: Record<string, string> = appearanceStyle({
@@ -175,26 +191,45 @@ export class TedCameraCard extends LitElement implements LovelaceCard {
       transparency: this._config.transparency,
       blur: this._config.blur,
     });
-    if (!isGrid) {
+    if (!isGrid && !fill) {
       cardStyle.width = `${cardWidth}px`;
       cardStyle.height = `${cardHeight}px`;
       cardStyle.margin = "0 auto";
     }
 
+    const empty =
+      this._config.cameras_source === "settings" && this._sourceCameras().length === 0;
+
     return html`
       <ha-card class=${classMap(themeClasses)} style=${styleMap(cardStyle)}>
         ${this._config.brushed ? brushedOverlay : nothing}
-        ${this._renderLayout(isGrid)}
+        ${empty ? this._renderEmpty() : this._renderLayout(isGrid)}
       </ha-card>
       ${this._renderPopover()}
     `;
   }
 
+  /** The raw camera list — from config, or resolved from this device's settings. */
+  private _sourceCameras(): CameraItemConfig[] {
+    if (this._config?.cameras_source === "settings") return this._settingsCameras();
+    return this._config?.cameras ?? [];
+  }
+
+  /** Resolve this device's cameras from settings: the device's curated subset (else
+   *  the global available list), always limited to the global allow-list. */
+  private _settingsCameras(): CameraItemConfig[] {
+    const asIds = (v: unknown): string[] =>
+      Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
+    const global = asIds(settingsStore.globalSettings().cameras_list);
+    const device = settingsStore.deviceSettings();
+    const chosen = "cameras_list" in device ? asIds(device.cameras_list) : global;
+    const limited = global.length ? chosen.filter((id) => global.includes(id)) : chosen;
+    return limited.map((entity) => ({ entity }));
+  }
+
   /** The cameras that should appear in the layout, in order. */
   private _enabledCameras(): CameraItemConfig[] {
-    const cameras = (this._config?.cameras ?? []).filter(
-      (cam) => cam.enabled !== false && cam.entity,
-    );
+    const cameras = this._sourceCameras().filter((cam) => cam.enabled !== false && cam.entity);
     // Session-only "make primary" moves the chosen camera to the front.
     if (this._primaryEntity) {
       const i = cameras.findIndex((cam) => cam.entity === this._primaryEntity);
@@ -212,6 +247,23 @@ export class TedCameraCard extends LitElement implements LovelaceCard {
   private _renderLayout(isGrid: boolean): TemplateResult {
     const cameras = this._enabledCameras();
     const layout: CameraLayout = this._config?.layout ?? "single";
+
+    if (layout === "auto") {
+      const n = Math.max(cameras.length, 1);
+      const cols = Math.ceil(Math.sqrt(n));
+      const rows = Math.ceil(n / cols);
+      return html`
+        <div
+          class="grid auto"
+          style=${styleMap({
+            gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
+            gridTemplateRows: `repeat(${rows}, minmax(0, 1fr))`,
+          })}
+        >
+          ${cameras.map((cam) => this._renderTile(cam, isGrid))}
+        </div>
+      `;
+    }
 
     if (layout === "big-small") {
       const position = this._config?.big_small_position === "bottom" ? "bottom" : "right";
@@ -375,7 +427,7 @@ export class TedCameraCard extends LitElement implements LovelaceCard {
   private _renderPopover(): TemplateResult | typeof nothing {
     const popup = this._popup;
     if (!popup) return nothing;
-    const cam = this._config?.cameras.find((c) => c.entity === popup.entity);
+    const cam = this._sourceCameras().find((c) => c.entity === popup.entity);
     if (!cam) return nothing;
     const view = this._effectiveView(cam);
     const isPrimary = this._enabledCameras()[0]?.entity === popup.entity;
@@ -415,6 +467,42 @@ export class TedCameraCard extends LitElement implements LovelaceCard {
               <span>Make primary camera</span>
             </button>`
           : nothing}
+      </div>
+    `;
+  }
+
+  // --- Empty-state (settings mode) -------------------------------------------
+
+  /** The path the empty-state "Settings" button navigates to. */
+  private _settingsPath(): string {
+    const root = String(settingsStore.effective().dashboard_root ?? "ted-dashboard");
+    const raw = this._config?.settings_path || "[root]/settings?tab=cameras";
+    let path = raw.replace("[root]", root);
+    if (!path.startsWith("/")) path = `/${path}`;
+    return path;
+  }
+
+  private _openSettings = (): void => {
+    const path = this._settingsPath();
+    window.history.pushState(null, "", path);
+    window.dispatchEvent(new CustomEvent("location-changed", { bubbles: true, composed: true }));
+  };
+
+  /** Shown in `settings` mode when this device has no cameras available. */
+  private _renderEmpty(): TemplateResult {
+    const title = this._config?.empty_title ?? "No cameras yet";
+    const message =
+      this._config?.empty_message ??
+      "This device hasn't been given any cameras. Open Settings to choose which cameras to show.";
+    return html`
+      <div class="empty">
+        <ha-svg-icon class="empty-icon" .path=${CCTV_ICON}></ha-svg-icon>
+        <div class="empty-title">${title}</div>
+        <div class="empty-msg">${message}</div>
+        <button type="button" class="empty-btn" @click=${this._openSettings}>
+          <ha-svg-icon .path=${COG_ICON}></ha-svg-icon>
+          <span>Settings</span>
+        </button>
       </div>
     `;
   }
@@ -466,6 +554,9 @@ export class TedCameraCard extends LitElement implements LovelaceCard {
       .grid.quad {
         grid-template-columns: 1fr 1fr;
         grid-template-rows: 1fr 1fr;
+      }
+      .grid.auto {
+        /* grid-template-columns/rows are set inline from the camera count. */
       }
       .big-small {
         display: flex;
@@ -594,6 +685,50 @@ export class TedCameraCard extends LitElement implements LovelaceCard {
       }
       .cam-pop-item.active ha-svg-icon.check {
         visibility: visible;
+      }
+      .empty {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        padding: 24px;
+        box-sizing: border-box;
+        text-align: center;
+        color: var(--ted-style-text, var(--primary-text-color));
+      }
+      .empty-icon {
+        --mdc-icon-size: 46px;
+        color: var(--ted-style-accent, var(--primary-color));
+        opacity: 0.9;
+      }
+      .empty-title {
+        font-size: 1.05rem;
+        font-weight: 600;
+      }
+      .empty-msg {
+        max-width: 360px;
+        font-size: 0.9rem;
+        color: var(--ted-style-muted, var(--secondary-text-color));
+      }
+      .empty-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 4px;
+        padding: 8px 16px;
+        border: none;
+        border-radius: 10px;
+        background: var(--ted-style-accent, var(--primary-color));
+        color: #fff;
+        font: inherit;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      .empty-btn ha-svg-icon {
+        --mdc-icon-size: 18px;
       }
     `,
   ];

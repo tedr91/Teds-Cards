@@ -12,8 +12,9 @@ export type CameraCardTheme = TedStyleTheme;
  * - `dual`     — two feeds side by side.
  * - `quad`     — a 2×2 grid of feeds.
  * - `big-small` — one large feed plus a strip of smaller feeds.
+ * - `auto`     — a responsive grid sized to the number of cameras (shows them all).
  */
-export type CameraLayout = "single" | "dual" | "quad" | "big-small";
+export type CameraLayout = "single" | "dual" | "quad" | "big-small" | "auto";
 
 /** Where the strip of small feeds sits in the `big-small` layout. */
 export type BigSmallPosition = "right" | "bottom";
@@ -32,8 +33,11 @@ export interface CameraItemConfig {
 
 export interface CameraCardConfig extends LovelaceCardConfig {
   type: string;
-  /** The cameras shown in the card. */
-  cameras: CameraItemConfig[];
+  /** The cameras shown in the card. Omit when `cameras_source: settings`. */
+  cameras?: CameraItemConfig[];
+  /** Where the camera list comes from. `config` (default) uses `cameras`; `settings`
+   *  uses this device's per-device Cameras list from the Ted's Cards settings. */
+  cameras_source?: "config" | "settings";
   /** Arrangement of the feeds. Defaults to `single`. */
   layout?: CameraLayout;
   /** Placement of the small-feed strip in the `big-small` layout. Defaults to `right`. */
@@ -59,6 +63,14 @@ export interface CameraCardConfig extends LovelaceCardConfig {
   width?: number;
   /** Manual height in px (used outside the Sections grid). */
   height?: number;
+  /** Fill the parent instead of a fixed size (like a grid cell). Ignores width/height. */
+  fill?: boolean;
+  /** Empty-state (only in `settings` mode when no cameras are available). */
+  empty_title?: string;
+  empty_message?: string;
+  /** Where the empty-state "Settings" button navigates. `[root]` is substituted with
+   *  the dashboard root. Defaults to `[root]/settings?tab=cameras`. */
+  settings_path?: string;
   /** Defaults to opening the more-info dialog. */
   tap_action?: ActionConfig;
   double_tap_action?: ActionConfig;

@@ -28,6 +28,13 @@ const LAYOUT_OPTIONS = [
   { value: "single", label: "Single" },
   { value: "quad", label: "Quad (2×2)" },
   { value: "big-small", label: "Multi" },
+  { value: "auto", label: "Auto grid" },
+];
+
+/** Where the camera list comes from. */
+const SOURCE_OPTIONS = [
+  { value: "config", label: "This card (choose below)" },
+  { value: "settings", label: "This device's Settings list" },
 ];
 
 /** Where the small-feed strip sits in the big-small layout. */
@@ -101,8 +108,13 @@ export class TedCameraCardEditor extends LitElement implements LovelaceCardEdito
 
   private _renderCameras(): TemplateResult {
     const cameras = this._cameras();
+    const source = this._config?.cameras_source ?? "config";
     const layout = this._config?.layout ?? "single";
     const topSchema = [
+      {
+        name: "cameras_source",
+        selector: { select: { mode: "dropdown", options: SOURCE_OPTIONS } },
+      },
       {
         name: "layout",
         selector: { select: { mode: "dropdown", options: LAYOUT_OPTIONS } },
@@ -166,6 +178,7 @@ export class TedCameraCardEditor extends LitElement implements LovelaceCardEdito
       },
     ];
     const topData = {
+      cameras_source: source,
       layout,
       big_small_position: this._config?.big_small_position ?? "right",
       big_small_width: this._config?.big_small_width ?? 25,
@@ -194,24 +207,31 @@ export class TedCameraCardEditor extends LitElement implements LovelaceCardEdito
             .computeHelper=${this._computeHelper}
             @value-changed=${this._onLayoutChanged}
           ></ha-form>
-          <div class="feeds-header">
-            <span class="subgroup-label">Camera Feeds</span>
-            <div class="group-actions" @click=${this._stop}>
-              <button type="button" class="add-btn" @click=${this._autoPopulate}>
-                Auto populate
-              </button>
-              <ha-icon-button
-                label="Add camera"
-                .path=${PLUS_ICON_PATH}
-                @click=${this._addCamera}
-              ></ha-icon-button>
-            </div>
-          </div>
-          <ha-sortable handle-selector=".camera-drag-handle" @item-moved=${this._cameraMoved}>
-            <div class="row-list">
-              ${cameras.map((cam, idx) => this._renderCameraRow(cam, idx))}
-            </div>
-          </ha-sortable>
+          ${source === "settings"
+            ? html`<div class="settings-note">
+                Cameras are chosen per-device in <b>Settings → Cameras</b>. Global lists the available
+                cameras; each device curates its own subset.
+              </div>`
+            : html`
+                <div class="feeds-header">
+                  <span class="subgroup-label">Camera Feeds</span>
+                  <div class="group-actions" @click=${this._stop}>
+                    <button type="button" class="add-btn" @click=${this._autoPopulate}>
+                      Auto populate
+                    </button>
+                    <ha-icon-button
+                      label="Add camera"
+                      .path=${PLUS_ICON_PATH}
+                      @click=${this._addCamera}
+                    ></ha-icon-button>
+                  </div>
+                </div>
+                <ha-sortable handle-selector=".camera-drag-handle" @item-moved=${this._cameraMoved}>
+                  <div class="row-list">
+                    ${cameras.map((cam, idx) => this._renderCameraRow(cam, idx))}
+                  </div>
+                </ha-sortable>
+              `}
         </div>
       </ha-expansion-panel>
     `;
@@ -292,6 +312,8 @@ export class TedCameraCardEditor extends LitElement implements LovelaceCardEdito
       fit_mode: "cover",
       show_name: false,
       name_size: 14,
+      cameras_source: "config",
+      fill: false,
       layout: "single",
       big_small_position: "right",
       big_small_width: 25,
@@ -302,6 +324,7 @@ export class TedCameraCardEditor extends LitElement implements LovelaceCardEdito
 
   private _appearanceSchema() {
     const inGrid = Boolean(this._config?.grid_options);
+    const fill = Boolean(this._config?.fill);
     return [
       {
         name: "",
@@ -325,6 +348,7 @@ export class TedCameraCardEditor extends LitElement implements LovelaceCardEdito
           { name: "background", selector: { ui_color: {} } },
           { name: "brushed", selector: { boolean: {} } },
           transparencyBlurSchema(this._config?.transparency),
+          { name: "fill", selector: { boolean: {} } },
           {
             type: "grid",
             name: "",
@@ -332,12 +356,12 @@ export class TedCameraCardEditor extends LitElement implements LovelaceCardEdito
             schema: [
               {
                 name: "width",
-                disabled: this.embedded || inGrid,
+                disabled: this.embedded || inGrid || fill,
                 selector: { number: { min: 80, max: 2000, step: 10, mode: "box", unit_of_measurement: "px" } },
               },
               {
                 name: "height",
-                disabled: this.embedded || inGrid,
+                disabled: this.embedded || inGrid || fill,
                 selector: { number: { min: 60, max: 2000, step: 10, mode: "box", unit_of_measurement: "px" } },
               },
             ],
@@ -380,6 +404,12 @@ export class TedCameraCardEditor extends LitElement implements LovelaceCardEdito
     if (schema.name === "width" || schema.name === "height") {
       return "Only used when the card isn't a direct item in a grid (Sections) view.";
     }
+    if (schema.name === "fill") {
+      return "Fill the parent container (e.g. a dashboard view area) instead of a fixed width/height.";
+    }
+    if (schema.name === "cameras_source") {
+      return "\"This device's Settings list\" shows the per-device Cameras list from Ted's Cards Settings.";
+    }
     if (schema.name === "aspect_ratio") {
       return "e.g. 16:9. Ignored in a grid (Sections) view with set rows.";
     }
@@ -391,6 +421,10 @@ export class TedCameraCardEditor extends LitElement implements LovelaceCardEdito
 
   private _computeLabel = (schema: { name: string }): string => {
     switch (schema.name) {
+      case "cameras_source":
+        return "Camera source";
+      case "fill":
+        return "Fill available space";
       case "layout":
         return "Layout";
       case "big_small_position":
@@ -676,6 +710,11 @@ export class TedCameraCardEditor extends LitElement implements LovelaceCardEdito
     .add-btn[disabled] {
       opacity: 0.5;
       cursor: default;
+    }
+    .settings-note {
+      font-size: 0.85rem;
+      color: var(--secondary-text-color);
+      padding: 4px 2px;
     }
   `;
 }

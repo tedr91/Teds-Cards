@@ -4,11 +4,11 @@
  * MUST stay in sync with the backend's `SETTINGS_DEFAULTS` in `const.py`.
  */
 
-export type SettingsValue = boolean | number | string | null;
+export type SettingsValue = boolean | number | string | string[] | null;
 export type SettingsMap = Record<string, SettingsValue>;
 
 /** How a setting is edited / rendered in the Settings card. */
-export type SettingKind = "boolean" | "number" | "percent" | "text" | "entity" | "media" | "select";
+export type SettingKind = "boolean" | "number" | "percent" | "text" | "entity" | "media" | "select" | "cameras";
 
 export interface SettingField {
   key: string;
@@ -36,6 +36,7 @@ export const SETTINGS_GROUPS = [
   "Alarms",
   "Notifications",
   "Media",
+  "Cameras",
   "Navbar",
   "General",
   "Navigation",
@@ -62,6 +63,7 @@ export const SETTINGS_DEFAULTS: SettingsMap = {
   notification_sound_tip: "default",
   media_player: null,
   media_player_volume: 50,
+  cameras_list: [],
   navbar_auto_hide: false,
   navbar_auto_hide_delay: 5,
   navbar_float: false,
@@ -107,6 +109,8 @@ export const SETTINGS_FIELDS: SettingField[] = [
   // Media
   { key: "media_player", label: "Media player", group: "Media", kind: "entity", entityDomain: "media_player", deviceOnly: true, help: "Speaker used for notifications, alarms, timers, music. Set per-device." },
   { key: "media_player_volume", label: "Media volume", group: "Media", kind: "percent" },
+  // Cameras
+  { key: "cameras_list", label: "Cameras", group: "Cameras", kind: "cameras", help: "Global lists the available cameras; each device curates its own subset." },
   // Navbar
   { key: "navbar_auto_hide", label: "Auto-hide", group: "Navbar", kind: "boolean", help: "Collapse the navbar into its edge until revealed." },
   { key: "navbar_auto_hide_delay", label: "Auto-hide delay", group: "Navbar", kind: "number", min: 1, max: 60, unit: "s", help: "Seconds before the revealed bar re-collapses." },

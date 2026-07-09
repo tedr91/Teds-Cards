@@ -284,6 +284,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
   }
 
   private _renderGlobalRow(field: SettingField): TemplateResult {
+    if (field.kind === "cameras") return this._renderCamerasGlobal(field);
     // Device-only fields (e.g. the media player) have no sensible global value.
     if (field.deviceOnly) {
       return html`
@@ -315,6 +316,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
   }
 
   private _renderDeviceRow(field: SettingField): TemplateResult {
+    if (field.kind === "cameras") return this._renderCamerasDevice(field);
     const overriding = this._deviceOverriding(field.key);
     return html`
       <div class="row">
@@ -337,6 +339,188 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
         </div>
       </div>
     `;
+  }
+
+  // --- Cameras field (Global = available allow-list; Device = curated subset) ---
+
+  private _camerasArray(v: SettingsValue): string[] {
+    return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
+  }
+
+  /** All `camera.*` entities, sorted. */
+  private _allCameras(): string[] {
+    if (!this.hass) return [];
+    return Object.keys(this.hass.states)
+      .filter((id) => id.startsWith("camera."))
+      .sort();
+  }
+
+  private _cameraName(id: string): string {
+    const fn = this.hass?.states[id]?.attributes?.friendly_name;
+    return typeof fn === "string" && fn ? fn : id;
+  }
+
+  /** A reorderable, removable list of camera rows. */
+  private _renderCameraChips(
+    ids: string[],
+    onRemove: (idx: number) => void,
+    onMove: (from: number, to: number) => void,
+  ): TemplateResult {
+    return html`
+      <ha-sortable
+        handle-selector=".cam-grip"
+        @item-moved=${(e: CustomEvent) => {
+          const { oldIndex, newIndex } = e.detail as { oldIndex: number; newIndex: number };
+          onMove(oldIndex, newIndex);
+        }}
+      >
+        <div class="cam-list">
+          ${ids.map(
+            (id, idx) => html`
+              <div class="cam-item">
+                <div class="cam-grip" title="Drag to reorder">
+                  <ha-icon icon="mdi:drag"></ha-icon>
+                </div>
+                <ha-icon class="cam-ico" icon="mdi:cctv"></ha-icon>
+                <span class="cam-name">${this._cameraName(id)}</span>
+                <button class="cam-del" title="Remove" @click=${() => onRemove(idx)}>
+                  <ha-icon icon="mdi:close"></ha-icon>
+                </button>
+              </div>
+            `,
+          )}
+        </div>
+      </ha-sortable>
+    `;
+  }
+
+  private _renderCamerasGlobal(field: SettingField): TemplateResult {
+    const admin = this._isAdmin();
+    const ids = this._camerasArray(this._globalValue(field.key));
+    const remaining = this._allCameras().filter((id) => !ids.includes(id));
+    const setList = (next: string[]): void => this._setGlobal(field.key, next);
+    return html`
+      <div class="cam-row">
+        <div class="cam-head">
+          <div class="row-label">
+            <span>${field.label} — available list</span>
+            <span class="help">The cameras any device is allowed to show.</span>
+          </div>
+          ${admin
+            ? html`<button class="cam-btn" @click=${() => this._autoPopulateGlobal(field)}>
+                <ha-icon icon="mdi:auto-fix"></ha-icon><span>Auto-populate</span>
+              </button>`
+            : nothing}
+        </div>
+        ${ids.length
+          ? this._renderCameraChips(
+              ids,
+              (idx) => {
+                if (!admin) return;
+                const n = [...ids];
+                n.splice(idx, 1);
+                setList(n);
+              },
+              (from, to) => {
+                if (!admin) return;
+                const n = [...ids];
+                n.splice(to, 0, n.splice(from, 1)[0]);
+                setList(n);
+              },
+            )
+          : html`<div class="help">No cameras yet — add one below or tap “Auto-populate”.</div>`}
+        ${admin && remaining.length
+          ? html`<ha-entity-picker
+              .hass=${this.hass}
+              .value=${""}
+              .includeEntities=${remaining}
+              allow-custom-entity
+              label="Add a camera"
+              @value-changed=${(e: CustomEvent) => {
+                const id = e.detail.value;
+                if (id && !ids.includes(id)) setList([...ids, id]);
+              }}
+            ></ha-entity-picker>`
+          : nothing}
+      </div>
+    `;
+  }
+
+  private _autoPopulateGlobal(field: SettingField): void {
+    const ids = this._camerasArray(this._globalValue(field.key));
+    const merged = [...ids, ...this._allCameras().filter((id) => !ids.includes(id))];
+    this._setGlobal(field.key, merged);
+  }
+
+  private _renderCamerasDevice(field: SettingField): TemplateResult {
+    const global = this._camerasArray(this._globalValue(field.key));
+    const raw = settingsStore.deviceSettings();
+    const hasDevice = field.key in raw;
+    const stored = hasDevice ? this._camerasArray(raw[field.key]) : [];
+    // Only global cameras are choosable; hide any stale ids once a global list exists.
+    const valid = global.length ? stored.filter((id) => global.includes(id)) : stored;
+    const pool = global.length ? global : this._allCameras();
+    const remaining = pool.filter((id) => !valid.includes(id));
+    const setList = (next: string[]): void => this._setDevice(field.key, next);
+    return html`
+      <div class="cam-row">
+        <div class="cam-head">
+          <div class="row-label">
+            <span>${field.label} — this device</span>
+            <span class="help">
+              ${hasDevice
+                ? "The cameras this device shows."
+                : "Not customized — this device shows all available cameras."}
+            </span>
+          </div>
+          <button class="cam-btn" @click=${() => this._syncDevice(field)}>
+            <ha-icon icon="mdi:sync"></ha-icon><span>Sync camera list</span>
+          </button>
+        </div>
+        ${valid.length
+          ? this._renderCameraChips(
+              valid,
+              (idx) => {
+                const n = [...valid];
+                n.splice(idx, 1);
+                setList(n);
+              },
+              (from, to) => {
+                const n = [...valid];
+                n.splice(to, 0, n.splice(from, 1)[0]);
+                setList(n);
+              },
+            )
+          : html`<div class="help">
+              No cameras selected yet — add from the list or tap “Sync camera list”.
+            </div>`}
+        ${remaining.length
+          ? html`<select
+              class="sel cam-add"
+              @change=${(e: Event) => {
+                const sel = e.target as HTMLSelectElement;
+                const id = sel.value;
+                sel.value = "";
+                if (id) setList([...valid, id]);
+              }}
+            >
+              <option value="">Add a camera…</option>
+              ${remaining.map((id) => html`<option value=${id}>${this._cameraName(id)}</option>`)}
+            </select>`
+          : nothing}
+      </div>
+    `;
+  }
+
+  /** Reconcile the device list with the global list: keep still-valid cameras in
+   *  order, append newly-available global cameras, drop any no longer offered. */
+  private _syncDevice(field: SettingField): void {
+    const global = this._camerasArray(this._globalValue(field.key));
+    const raw = settingsStore.deviceSettings();
+    const current = field.key in raw ? this._camerasArray(raw[field.key]) : [];
+    const kept = current.filter((id) => global.includes(id));
+    const added = global.filter((id) => !kept.includes(id));
+    this._setDevice(field.key, [...kept, ...added]);
   }
 
   protected render(): TemplateResult | typeof nothing {
@@ -641,6 +825,94 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
       }
       .ovr ha-icon {
         --mdc-icon-size: 18px;
+      }
+      .cam-row {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        padding: 8px 0;
+        border-bottom: 1px solid color-mix(in srgb, var(--ted-style-divider) 60%, transparent);
+      }
+      .cam-head {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 12px;
+      }
+      .cam-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font: inherit;
+        font-size: 0.85rem;
+        padding: 6px 10px;
+        border-radius: 8px;
+        border: 1px solid var(--ted-style-divider);
+        background: var(--ted-style-surface-2);
+        color: inherit;
+        cursor: pointer;
+        white-space: nowrap;
+        flex: none;
+      }
+      .cam-btn ha-icon {
+        --mdc-icon-size: 18px;
+      }
+      .cam-list {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      .cam-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 8px;
+        border-radius: 8px;
+        border: 1px solid var(--ted-style-divider);
+        background: var(--ted-style-surface-2);
+      }
+      .cam-grip {
+        display: flex;
+        align-items: center;
+        color: var(--ted-style-muted);
+        cursor: grab;
+        touch-action: none;
+      }
+      .cam-grip > * {
+        pointer-events: none;
+      }
+      .cam-ico {
+        flex: none;
+        color: var(--ted-style-muted);
+        --mdc-icon-size: 20px;
+      }
+      .cam-name {
+        flex: 1 1 auto;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .cam-del {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        border-radius: 8px;
+        border: none;
+        background: none;
+        color: var(--ted-style-muted);
+        cursor: pointer;
+      }
+      .cam-del:hover {
+        color: var(--error-color, #db4437);
+      }
+      .cam-del ha-icon {
+        --mdc-icon-size: 18px;
+      }
+      .cam-add {
+        max-width: 260px;
       }
     `,
   ];
