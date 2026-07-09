@@ -64,6 +64,14 @@ export const SETTINGS_DEFAULTS: SettingsMap = {
   home_dashboard: "[root]/welcome",
   alarms_dashboard: "[root]/alarms-timers?tab=alarms",
   timers_dashboard: "[root]/alarms-timers?tab=timers",
+  weather_dashboard: "[root]/weather",
+  calendar_dashboard: "[root]/calendar-month",
+  cameras_dashboard: "[root]/cameras",
+  climate_dashboard: "[root]/climate",
+  music_dashboard: "[root]/music",
+  photos_dashboard: "[root]/photos",
+  info_dashboard: "[root]/info",
+  announce_dashboard: "[root]/announce",
   auto_return_home_after: 0,
 };
 
@@ -94,11 +102,19 @@ export const SETTINGS_FIELDS: SettingField[] = [
   // General
   { key: "do_not_disturb", label: "Do Not Disturb", group: "General", kind: "boolean", help: "Suppresses toasts and alert sounds on this device." },
   // Navigation
+  { key: "auto_return_home_after", label: "Auto-return home after", group: "Navigation", kind: "number", min: 0, max: 3600, unit: "s", help: "0 = never." },
   { key: "dashboard_root", label: "Dashboard root", group: "Navigation", kind: "text" },
   { key: "home_dashboard", label: "Home dashboard", group: "Navigation", kind: "text", rootRelative: true, help: "The view the Home button opens." },
   { key: "alarms_dashboard", label: "Alarms dashboard", group: "Navigation", kind: "text", rootRelative: true, help: "Where the Alarms status item navigates on tap." },
   { key: "timers_dashboard", label: "Timers dashboard", group: "Navigation", kind: "text", rootRelative: true, help: "Where the Timers status item navigates on tap." },
-  { key: "auto_return_home_after", label: "Auto-return home after", group: "Navigation", kind: "number", min: 0, max: 3600, unit: "s", help: "0 = never." },
+  { key: "weather_dashboard", label: "Weather dashboard", group: "Navigation", kind: "text", rootRelative: true },
+  { key: "calendar_dashboard", label: "Calendar dashboard", group: "Navigation", kind: "text", rootRelative: true },
+  { key: "cameras_dashboard", label: "Cameras dashboard", group: "Navigation", kind: "text", rootRelative: true },
+  { key: "climate_dashboard", label: "Climate dashboard", group: "Navigation", kind: "text", rootRelative: true },
+  { key: "music_dashboard", label: "Music dashboard", group: "Navigation", kind: "text", rootRelative: true },
+  { key: "photos_dashboard", label: "Photos dashboard", group: "Navigation", kind: "text", rootRelative: true },
+  { key: "info_dashboard", label: "Info dashboard", group: "Navigation", kind: "text", rootRelative: true },
+  { key: "announce_dashboard", label: "Announce dashboard", group: "Navigation", kind: "text", rootRelative: true },
 ];
 
 /** Fields grouped for the card UI, in declared order per group. */
