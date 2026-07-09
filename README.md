@@ -945,6 +945,11 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.90
+
+- **Navbar — per-device settings & long-press menu** — the navbar can now be configured per-device from **Ted's Cards Settings** (new **Navbar** section: Auto-hide, Auto-hide delay, Float, Position) and from a **long-press menu** on the bar itself (toggle auto-hide/float, pick a position, open Dashboard Settings, or exit the dashboard). A dashboard's own YAML still takes precedence where it sets these, so forced layouts (e.g. an always-auto-hiding nightstand bar) stay put and appear locked in the menu.
+- **Auto-hide navbar — easier and safer to reveal** — the reveal pill now has a much larger invisible tap target (3× wider, 2× taller), and taps on the bar's buttons are ignored for a moment right after revealing so you don't accidentally trigger a button while un-hiding it.
+
 ### v1.0.89
 
 - **Clock Weather Card — weather no longer clipped on short screens** — the card body now allows content to overflow instead of clipping it, so the top weather block is no longer cut off on shorter displays (tablets, Echo Show 5, etc.).

@@ -8,7 +8,7 @@ export type SettingsValue = boolean | number | string | null;
 export type SettingsMap = Record<string, SettingsValue>;
 
 /** How a setting is edited / rendered in the Settings card. */
-export type SettingKind = "boolean" | "number" | "percent" | "text" | "entity" | "media";
+export type SettingKind = "boolean" | "number" | "percent" | "text" | "entity" | "media" | "select";
 
 export interface SettingField {
   key: string;
@@ -20,6 +20,8 @@ export interface SettingField {
   step?: number;
   unit?: string;
   help?: string;
+  /** For `select` fields, the choosable options (value stored, label shown). */
+  options?: { value: string; label: string }[];
   /** For `entity` fields, restrict the picker to this domain (e.g. media_player). */
   entityDomain?: string;
   /** Only meaningful per-device (no sensible global value) — greyed out in the Global tab. */
@@ -34,6 +36,7 @@ export const SETTINGS_GROUPS = [
   "Alarms",
   "Notifications",
   "Media",
+  "Navbar",
   "General",
   "Navigation",
 ] as const;
@@ -59,6 +62,10 @@ export const SETTINGS_DEFAULTS: SettingsMap = {
   notification_sound_tip: "default",
   media_player: null,
   media_player_volume: 50,
+  navbar_auto_hide: false,
+  navbar_auto_hide_delay: 5,
+  navbar_float: false,
+  navbar_position: "bottom",
   do_not_disturb: false,
   dashboard_root: "ted-dashboard",
   home_dashboard: "[root]/welcome",
@@ -99,6 +106,22 @@ export const SETTINGS_FIELDS: SettingField[] = [
   // Media
   { key: "media_player", label: "Media player", group: "Media", kind: "entity", entityDomain: "media_player", deviceOnly: true, help: "Speaker used for notifications, alarms, timers, music. Set per-device." },
   { key: "media_player_volume", label: "Media volume", group: "Media", kind: "percent" },
+  // Navbar
+  { key: "navbar_auto_hide", label: "Auto-hide", group: "Navbar", kind: "boolean", help: "Collapse the navbar into its edge until revealed." },
+  { key: "navbar_auto_hide_delay", label: "Auto-hide delay", group: "Navbar", kind: "number", min: 1, max: 60, unit: "s", help: "Seconds before the revealed bar re-collapses." },
+  { key: "navbar_float", label: "Float", group: "Navbar", kind: "boolean", help: "Centre the bar with margins and rounded corners (horizontal bars only)." },
+  {
+    key: "navbar_position",
+    label: "Position",
+    group: "Navbar",
+    kind: "select",
+    options: [
+      { value: "bottom", label: "Bottom" },
+      { value: "top", label: "Top" },
+      { value: "left", label: "Left" },
+      { value: "right", label: "Right" },
+    ],
+  },
   // General
   { key: "do_not_disturb", label: "Do Not Disturb", group: "General", kind: "boolean", help: "Suppresses toasts and alert sounds on this device." },
   // Navigation

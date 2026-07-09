@@ -91,6 +91,11 @@ export interface NavbarCardConfig extends LovelaceCardConfig {
   auto_hide?: boolean;
   /** Seconds before an auto-hide bar re-collapses after being revealed. Default 5. */
   auto_hide_delay?: number;
+  /** Long-press the bar to open a settings menu (auto-hide / float / position toggles,
+   *  plus Exit + Dashboard Settings links). Default true. */
+  hold_menu?: boolean;
+  /** Where the hold-menu "Exit" item navigates. Default "/lovelace". */
+  exit_path?: string;
   /** Drive the bar thickness from an entity attribute holding a View Assist size
    *  ("6vw"/"7vw"/"8vw" → 35/42/50 px). Overrides `size` when it resolves; View Assist's
    *  own vw rendering is intentionally not used. */

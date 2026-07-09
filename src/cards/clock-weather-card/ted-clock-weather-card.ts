@@ -701,7 +701,7 @@ export class TedClockWeatherCard extends LitElement implements LovelaceCard {
         width: 100%;
         min-height: 56px;
         padding: 14px 18px;
-        overflow: visible;
+        overflow: hidden;
         color: var(--ted-style-text);
       }
       .cwc.fill {

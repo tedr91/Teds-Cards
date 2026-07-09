@@ -14,7 +14,8 @@ import { isVisible } from "../../shared/conditions";
 import { registerCustomCard } from "../../shared/register-card";
 import { NotificationToastController } from "../../shared/notifications";
 import { resolveDeviceArea } from "../../shared/device-area";
-import { SettingsController } from "../../shared/settings";
+import { SettingsController, settingsStore } from "../../shared/settings";
+import type { SettingsValue } from "../../shared/settings-schema";
 import { AutoReturnController } from "../../shared/auto-return";
 import { viewAssistSensor } from "../../shared/view-assist";
 import { tedCardThemeClass, tedStyleTheme } from "../../shared/theme";
@@ -53,6 +54,10 @@ interface ButtonEntry {
 }
 
 const ZONES: NavZone[] = ["left", "center", "right"];
+
+/** After the auto-hidden bar is revealed, ignore taps on its buttons/status items for
+ *  this long so the reveal gesture doesn't also fire the control under the finger. */
+const NAVBAR_REVEAL_GUARD_MS = 500;
 
 registerCustomCard({
   type: NAVBAR_CARD_TYPE,
@@ -116,6 +121,17 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
   @state() private _collapsed = false;
   /** Pending re-collapse timeout while an auto-hide bar is revealed. */
   private _hideTimer?: number;
+  /** Unsubscribe from the shared settings store (per-device navbar overrides). */
+  private _settingsUnsub?: () => void;
+  /** Timestamp (ms) until which taps on nav items are ignored after a reveal. */
+  private _revealGuardUntil = 0;
+  /** Last resolved auto-hide state, so a settings change only re-collapses on a flip. */
+  private _prevAutoHide = false;
+  /** Which view the hold-press settings menu is showing. */
+  @state() private _menuView: "root" | "position" = "root";
+  /** Long-press timer + start point for the hold-menu gesture. */
+  private _holdTimer?: number;
+  private _holdStart?: { x: number; y: number };
 
   public constructor() {
     super();
@@ -166,9 +182,13 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
     super.connectedCallback();
     this._editMode = detectEditOrPreview(this);
     this._collapsed = this._autoHide();
+    this._prevAutoHide = this._autoHide();
     void this._loadHelpers();
     this._applyPadding();
     this._syncClockTimer();
+    this._settingsUnsub = settingsStore.subscribe(this._onSettingsChanged);
+    this.addEventListener("pointerdown", this._guardTap, true);
+    this.addEventListener("click", this._guardTap, true);
     window.addEventListener("resize", this._onResize);
     window.addEventListener("location-changed", this._onVisibilityEvent);
     window.addEventListener("popstate", this._onVisibilityEvent);
@@ -180,6 +200,11 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
     super.disconnectedCallback();
     removeNavbarPadding();
     setNavbarBottomReserve(0);
+    this._settingsUnsub?.();
+    this._settingsUnsub = undefined;
+    this.removeEventListener("pointerdown", this._guardTap, true);
+    this.removeEventListener("click", this._guardTap, true);
+    this._clearHold();
     window.removeEventListener("resize", this._onResize);
     window.removeEventListener("location-changed", this._onVisibilityEvent);
     window.removeEventListener("popstate", this._onVisibilityEvent);
@@ -204,6 +229,7 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
       this._syncClockTimer();
       // Re-collapse (or fully show) when the auto-hide setting changes.
       this._collapsed = this._autoHide();
+      this._prevAutoHide = this._autoHide();
       if (!this._autoHide()) this._clearHide();
     } else if (changed.has("hass") && (this._hasConditional || this._hasSource)) {
       // Visibility conditions and sourced items may depend on entity state; rebuild so
@@ -242,7 +268,12 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
   }
 
   private _alignment(): NavbarAlignment {
-    const a = this._config?.alignment;
+    // The card's YAML config wins; a per-device `navbar_position` setting only applies
+    // when the card doesn't pin an alignment itself (so a view can force e.g. bottom).
+    const cfg = this._config?.alignment;
+    if (cfg === "bottom" || cfg === "top" || cfg === "left" || cfg === "right") return cfg;
+    const o = this._settingOverride("navbar_position");
+    const a = typeof o === "string" && o ? o : undefined;
     return a === "top" || a === "left" || a === "right" ? a : "bottom";
   }
 
@@ -253,8 +284,26 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
   }
 
   private _barType(): "snap" | "float" {
+    // The card's YAML `bar_type` wins; the per-device `navbar_float` setting is the
+    // fallback when the card doesn't set one.
+    const cfg = this._config?.bar_type;
+    let float: boolean;
+    if (cfg === "float" || cfg === "snap") float = cfg === "float";
+    else float = this._settingOverride("navbar_float") === true;
     // Float is horizontal-only; a vertical bar is always snap.
-    return !this._isVertical() && this._config?.bar_type === "float" ? "float" : "snap";
+    return !this._isVertical() && float ? "float" : "snap";
+  }
+
+  /** A per-device setting override for a navbar key (device scope, else global scope),
+   *  or undefined when neither scope has set it. Only consulted as a FALLBACK when the
+   *  card's own YAML doesn't set the corresponding option (so a view can force a value).
+   *  Defaults are intentionally NOT consulted here. */
+  private _settingOverride(key: string): SettingsValue | undefined {
+    const dev = settingsStore.deviceSettings();
+    if (key in dev) return dev[key];
+    const glob = settingsStore.globalSettings();
+    if (key in glob) return glob[key];
+    return undefined;
   }
 
   private _minWidth(): number {
@@ -299,20 +348,37 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
     setNavbarBottomReserve(this._thickness() + margin);
   }
 
-  /** Whether auto-hide is active (configured on, and not in the editor/preview). */
+  /** Whether auto-hide is active (configured on, and not in the editor/preview). The
+   *  card's YAML `auto_hide` wins (so a view can force auto-hide, e.g. the nightstand);
+   *  the per-device `navbar_auto_hide` setting is the fallback when the card is silent. */
   private _autoHide(): boolean {
-    return this._config?.auto_hide === true && !this._editMode;
+    const cfg = this._config?.auto_hide;
+    const on = typeof cfg === "boolean" ? cfg : this._settingOverride("navbar_auto_hide") === true;
+    return on && !this._editMode;
   }
 
   private _autoHideDelay(): number {
-    const d = this._config?.auto_hide_delay;
-    return (typeof d === "number" && d >= 0 ? d : DEFAULT_NAVBAR_AUTOHIDE_DELAY) * 1000;
+    // Card YAML wins; the per-device `navbar_auto_hide_delay` setting is the fallback.
+    const cfg = this._config?.auto_hide_delay;
+    let secs: number;
+    if (typeof cfg === "number" && cfg >= 0) {
+      secs = cfg;
+    } else {
+      const o = this._settingOverride("navbar_auto_hide_delay");
+      secs = typeof o === "number" && o >= 0 ? o : DEFAULT_NAVBAR_AUTOHIDE_DELAY;
+    }
+    return secs * 1000;
   }
 
   /** Reveal the collapsed bar and (re)start the auto-collapse countdown. */
   private _reveal = (): void => {
     if (!this._autoHide()) return;
-    if (this._collapsed) this._collapsed = false;
+    if (this._collapsed) {
+      this._collapsed = false;
+      // Swallow nav-item taps for a moment so the gesture that revealed the bar
+      // doesn't also trigger a button right under the finger.
+      this._revealGuardUntil = Date.now() + NAVBAR_REVEAL_GUARD_MS;
+    }
     this._scheduleHide();
   };
 
@@ -320,6 +386,24 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
     if (!this._autoHide()) return;
     this._clearHide();
     if (!this._collapsed) this._collapsed = true;
+  };
+
+  /** Capture-phase guard: for a short window after the bar is revealed, swallow taps
+   *  that land on a nav button / status item (but not the bar background or pill) so
+   *  the reveal gesture doesn't accidentally trigger the control under the finger. */
+  private _guardTap = (ev: Event): void => {
+    if (Date.now() >= this._revealGuardUntil) return;
+    const onItem = ev
+      .composedPath()
+      .some(
+        (n) =>
+          n instanceof HTMLElement &&
+          (n.classList.contains("nav-button") || n.classList.contains("nav-status")),
+      );
+    if (!onItem) return;
+    ev.stopPropagation();
+    ev.stopImmediatePropagation();
+    ev.preventDefault();
   };
 
   private _scheduleHide(): void {
@@ -333,6 +417,22 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
       this._hideTimer = undefined;
     }
   }
+
+  /** A per-device navbar setting (position/float/auto-hide) changed: re-reserve the
+   *  view padding for the (possibly new) edge/thickness and re-collapse if auto-hide
+   *  was just toggled. The SettingsController already requests a re-render. */
+  private _onSettingsChanged = (): void => {
+    this._applyPadding();
+    this._lastThickness = this._thickness();
+    const ah = this._autoHide();
+    if (ah !== this._prevAutoHide) {
+      this._prevAutoHide = ah;
+      this._collapsed = ah;
+      if (!ah) this._clearHide();
+    }
+    this._visible.clear();
+    this.requestUpdate();
+  };
 
   /** Collapse when a pointer press lands anywhere outside the navbar. */
   private _onDocPointerDown = (ev: PointerEvent): void => {
@@ -349,9 +449,89 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
     if (this._autoHide() && !this._collapsed) this._scheduleHide();
   };
   /** A tap on a nav item resets the countdown so it doesn't vanish mid-interaction. */
-  private _onBarPointerDown = (): void => {
+  private _onBarPointerDown = (ev: PointerEvent): void => {
     if (this._autoHide() && !this._collapsed) this._scheduleHide();
+    this._maybeStartHold(ev);
   };
+
+  // --- Hold-press settings menu ---------------------------------------------
+
+  private _holdMenuEnabled(): boolean {
+    return this._config?.hold_menu !== false && !this._editMode;
+  }
+
+  /** Begin the long-press timer when the bar background (not a button/status item) is
+   *  pressed; a quick tap or a drag cancels it before the menu opens. */
+  private _maybeStartHold(ev: PointerEvent): void {
+    if (!this._holdMenuEnabled()) return;
+    if (ev.button !== undefined && ev.button !== 0) return;
+    const onItem = ev
+      .composedPath()
+      .some(
+        (n) =>
+          n instanceof HTMLElement &&
+          (n.classList.contains("nav-button") ||
+            n.classList.contains("nav-status") ||
+            n.classList.contains("nav-pill")),
+      );
+    if (onItem) return;
+    this._holdStart = { x: ev.clientX, y: ev.clientY };
+    this._clearHold();
+    this._holdTimer = window.setTimeout(() => this._openMenu(), 500);
+  }
+
+  /** Cancel the pending long-press if the pointer moves too far. */
+  private _onBarPointerMove = (ev: PointerEvent): void => {
+    if (this._holdTimer === undefined || !this._holdStart) return;
+    if (Math.hypot(ev.clientX - this._holdStart.x, ev.clientY - this._holdStart.y) > 10) {
+      this._clearHold();
+    }
+  };
+
+  private _onBarPointerUp = (): void => {
+    this._clearHold();
+  };
+
+  private _clearHold(): void {
+    if (this._holdTimer !== undefined) {
+      window.clearTimeout(this._holdTimer);
+      this._holdTimer = undefined;
+    }
+    this._holdStart = undefined;
+  }
+
+  private _openMenu(): void {
+    this._clearHold();
+    this._menuView = "root";
+    const menu = (this.renderRoot as ShadowRoot).getElementById("nav-hold-menu");
+    if (!menu) return;
+    // Keep the auto-hide bar revealed while the menu is open.
+    if (this._autoHide()) this._clearHide();
+    try {
+      (menu as HTMLElement & { showPopover?: () => void }).showPopover?.();
+    } catch {
+      /* already open */
+    }
+    requestAnimationFrame(() => this._positionPopover(menu as HTMLElement));
+  }
+
+  private _closeMenu(): void {
+    const menu = (this.renderRoot as ShadowRoot).getElementById("nav-hold-menu");
+    (menu as (HTMLElement & { hidePopover?: () => void }) | null)?.hidePopover?.();
+    if (this._autoHide()) this._scheduleHide();
+  }
+
+  /** Navigate to a path via the HA client-side router (mirrors the messagebox card). */
+  private _navigate(path: string): void {
+    if (!path) return;
+    window.history.pushState(null, "", path);
+    window.dispatchEvent(new CustomEvent("location-changed", { bubbles: true, composed: true }));
+  }
+
+  private _setNavbarSetting(key: string, value: SettingsValue): void {
+    settingsStore.setHass(this.hass as never);
+    settingsStore.setValue("device", key, value);
+  }
 
   /** (Re)build cached embedded button cards, reusing those whose config is unchanged. */
   private _buildButtonElements(): void {
@@ -695,6 +875,9 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
           @pointerenter=${this._onBarEnter}
           @pointerleave=${this._onBarLeave}
           @pointerdown=${this._onBarPointerDown}
+          @pointermove=${this._onBarPointerMove}
+          @pointerup=${this._onBarPointerUp}
+          @pointercancel=${this._onBarPointerUp}
         >
           ${ZONES.map(
             (zone) => html`
@@ -704,9 +887,134 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
             `,
           )}
         </ha-card>
+        ${this._holdMenuEnabled() ? this._renderHoldMenu() : nothing}
       </div>
     `;
   }
+
+  /** The long-press settings menu (root list ⇄ position submenu). Rendered as a native
+   *  [popover] so it light-dismisses and layers above the dashboard. */
+  private _renderHoldMenu(): TemplateResult {
+    const eff = settingsStore.effective();
+    const root = String(eff.dashboard_root ?? "ted-dashboard");
+    const settingsPath = `/${root}/settings`;
+    const exitPath = this._config?.exit_path || "/lovelace";
+    const autoHide = this._autoHide();
+    const isFloat = this._barType() === "float";
+    const vertical = this._isVertical();
+    const pos = this._alignment();
+    // A control is locked when the card's YAML pins that option (it takes precedence
+    // over the per-device setting, so the menu can't change it here).
+    const autoHideLocked = typeof this._config?.auto_hide === "boolean";
+    const floatLocked = this._config?.bar_type !== undefined;
+    const posLocked = this._config?.alignment !== undefined;
+    const positions: { value: NavbarAlignment; label: string; icon: string }[] = [
+      { value: "bottom", label: "Bottom", icon: "mdi:dock-bottom" },
+      { value: "top", label: "Top", icon: "mdi:dock-top" },
+      { value: "left", label: "Left", icon: "mdi:dock-left" },
+      { value: "right", label: "Right", icon: "mdi:dock-right" },
+    ];
+    return html`
+      <div
+        id="nav-hold-menu"
+        class="nav-popover nav-menu"
+        popover
+        @toggle=${this._onMenuToggle}
+      >
+        ${this._menuView === "root"
+          ? html`
+              <div class="nav-menu-head">Navbar</div>
+              <button
+                class="nav-menu-row"
+                role="switch"
+                aria-checked=${autoHide ? "true" : "false"}
+                ?disabled=${autoHideLocked}
+                title=${autoHideLocked ? "Set by the dashboard" : nothing}
+                @click=${() => this._setNavbarSetting("navbar_auto_hide", !autoHide)}
+              >
+                <ha-icon icon="mdi:arrow-collapse-down"></ha-icon>
+                <span>Auto-hide</span>
+                <span class="nav-menu-toggle ${autoHide ? "on" : ""}"></span>
+              </button>
+              <button
+                class="nav-menu-row"
+                role="switch"
+                aria-checked=${isFloat ? "true" : "false"}
+                ?disabled=${vertical || floatLocked}
+                title=${floatLocked
+                  ? "Set by the dashboard"
+                  : vertical
+                    ? "Float applies to top/bottom bars only"
+                    : nothing}
+                @click=${() => this._setNavbarSetting("navbar_float", !isFloat)}
+              >
+                <ha-icon icon="mdi:dock-window"></ha-icon>
+                <span>Float</span>
+                <span class="nav-menu-toggle ${isFloat ? "on" : ""}"></span>
+              </button>
+              <button
+                class="nav-menu-row"
+                ?disabled=${posLocked}
+                title=${posLocked ? "Set by the dashboard" : nothing}
+                @click=${() => (this._menuView = "position")}
+              >
+                <ha-icon icon="mdi:arrow-expand-all"></ha-icon>
+                <span>Position</span>
+                <span class="nav-menu-value">${pos}</span>
+                <ha-icon class="nav-menu-caret" icon="mdi:chevron-right"></ha-icon>
+              </button>
+              <div class="nav-menu-sep"></div>
+              <button class="nav-menu-row" @click=${() => this._menuAction(settingsPath)}>
+                <ha-icon icon="mdi:cog-outline"></ha-icon>
+                <span>Dashboard Settings</span>
+              </button>
+              <button class="nav-menu-row" @click=${() => this._menuAction(exitPath)}>
+                <ha-icon icon="mdi:exit-to-app"></ha-icon>
+                <span>Exit Ted Dashboard</span>
+              </button>
+            `
+          : html`
+              <button class="nav-menu-head nav-menu-back" @click=${() => (this._menuView = "root")}>
+                <ha-icon icon="mdi:chevron-left"></ha-icon>
+                <span>Position</span>
+              </button>
+              ${positions.map(
+                (p) => html`
+                  <button
+                    class="nav-menu-row ${pos === p.value ? "selected" : ""}"
+                    @click=${() => this._selectPosition(p.value)}
+                  >
+                    <ha-icon icon=${p.icon}></ha-icon>
+                    <span>${p.label}</span>
+                    ${pos === p.value
+                      ? html`<ha-icon class="nav-menu-check" icon="mdi:check"></ha-icon>`
+                      : nothing}
+                  </button>
+                `,
+              )}
+            `}
+      </div>
+    `;
+  }
+
+  /** Navigate from a menu item, then close the menu. */
+  private _menuAction(path: string): void {
+    this._closeMenu();
+    this._navigate(path);
+  }
+
+  private _selectPosition(value: NavbarAlignment): void {
+    this._setNavbarSetting("navbar_position", value);
+    this._menuView = "root";
+  }
+
+  /** Reset the menu to its root view whenever it closes. */
+  private _onMenuToggle = (ev: Event): void => {
+    if ((ev as Event & { newState?: string }).newState !== "open") {
+      this._menuView = "root";
+      if (this._autoHide()) this._scheduleHide();
+    }
+  };
 
   private _renderSection(section: NavSection, sIdx: number): TemplateResult {
     const align = section.align ?? "center";
@@ -902,53 +1210,78 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
       .navbar.collapsed.right .navbar-card {
         transform: translateX(100%);
       }
-      /* The pill handle: a small rounded bar centered on the aligned edge. */
+      /* The pill handle: a small rounded bar centered on the aligned edge, drawn as a
+         ::before inside a larger transparent hit surface (the button) so it's easy to
+         tap without a big visible target. */
       .nav-pill {
         position: absolute;
         z-index: 1;
         border: none;
         padding: 0;
+        margin: 0;
         cursor: pointer;
         pointer-events: none;
+        background: transparent;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .nav-pill::before {
+        content: "";
+        display: block;
         background: color-mix(in srgb, var(--ted-style-text, #888) 45%, transparent);
         opacity: 0;
         transition: opacity 0.25s ease;
         border-radius: 999px;
       }
       .navbar.collapsed .nav-pill {
-        opacity: 0.85;
         pointer-events: auto;
       }
-      .navbar.collapsed .nav-pill:hover {
+      .navbar.collapsed .nav-pill::before {
+        opacity: 0.85;
+      }
+      .navbar.collapsed .nav-pill:hover::before {
         opacity: 1;
       }
-      /* Horizontal bars: a wide, short pill centered on the top/bottom edge. */
+      /* Horizontal bars: a wide, short pill centered on the top/bottom edge; its hit
+         surface is 3× wider and 2× taller than the visible pill. */
       .navbar.bottom .nav-pill,
       .navbar.top .nav-pill {
         left: 50%;
         transform: translateX(-50%);
+        width: 138px;
+        height: 10px;
+      }
+      .navbar.bottom .nav-pill::before,
+      .navbar.top .nav-pill::before {
         width: 46px;
         height: 5px;
       }
       .navbar.bottom .nav-pill {
-        bottom: 4px;
+        bottom: 2px;
       }
       .navbar.top .nav-pill {
-        top: 4px;
+        top: 2px;
       }
-      /* Vertical bars: a tall, thin pill centered on the left/right edge. */
+      /* Vertical bars: a tall, thin pill centered on the left/right edge; its hit
+         surface is 3× taller and 2× wider than the visible pill. */
       .navbar.left .nav-pill,
       .navbar.right .nav-pill {
         top: 50%;
         transform: translateY(-50%);
+        width: 10px;
+        height: 138px;
+      }
+      .navbar.left .nav-pill::before,
+      .navbar.right .nav-pill::before {
         width: 5px;
         height: 46px;
       }
       .navbar.left .nav-pill {
-        left: 4px;
+        left: 2px;
       }
       .navbar.right .nav-pill {
-        right: 4px;
+        right: 2px;
       }
 
       .navbar-card {
@@ -1154,6 +1487,112 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
         align-items: center;
         gap: 8px;
         max-width: 80vw;
+      }
+
+      /* Long-press settings menu: a vertical list of rows inside the popover. */
+      .nav-menu {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        padding: 6px;
+        min-width: 240px;
+      }
+      .nav-menu-head {
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--ted-style-muted);
+        padding: 6px 10px 4px;
+      }
+      .nav-menu-back {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        background: transparent;
+        border: none;
+        cursor: pointer;
+        text-transform: none;
+        letter-spacing: 0;
+        font-size: 0.85rem;
+        color: var(--ted-style-text);
+      }
+      .nav-menu-back ha-icon {
+        --mdc-icon-size: 20px;
+      }
+      .nav-menu-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        width: 100%;
+        padding: 10px 12px;
+        border: none;
+        border-radius: var(--ted-style-radius-sm, 8px);
+        background: transparent;
+        color: var(--ted-style-text);
+        font: inherit;
+        font-size: 0.92rem;
+        text-align: left;
+        cursor: pointer;
+        transition: background 0.15s ease;
+      }
+      .nav-menu-row > span:nth-child(2) {
+        flex: 1 1 auto;
+      }
+      .nav-menu-row ha-icon {
+        --mdc-icon-size: 20px;
+        color: var(--ted-style-accent);
+        flex: none;
+      }
+      .nav-menu-row:hover {
+        background: color-mix(in srgb, var(--ted-style-text, #888) 12%, transparent);
+      }
+      .nav-menu-row[disabled] {
+        opacity: 0.4;
+        cursor: default;
+      }
+      .nav-menu-row.selected {
+        background: color-mix(in srgb, var(--ted-style-accent) 16%, transparent);
+      }
+      .nav-menu-value {
+        font-size: 0.8rem;
+        color: var(--ted-style-muted);
+        text-transform: capitalize;
+      }
+      .nav-menu-caret,
+      .nav-menu-check {
+        color: var(--ted-style-muted) !important;
+      }
+      .nav-menu-sep {
+        height: 1px;
+        margin: 4px 6px;
+        background: var(--ted-style-divider);
+      }
+      /* The pill switch for the auto-hide / float rows. */
+      .nav-menu-toggle {
+        flex: none;
+        width: 34px;
+        height: 20px;
+        border-radius: 999px;
+        background: color-mix(in srgb, var(--ted-style-text, #888) 30%, transparent);
+        position: relative;
+        transition: background 0.18s ease;
+      }
+      .nav-menu-toggle::after {
+        content: "";
+        position: absolute;
+        top: 2px;
+        left: 2px;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: #fff;
+        transition: transform 0.18s ease;
+      }
+      .nav-menu-toggle.on {
+        background: var(--ted-style-accent);
+      }
+      .nav-menu-toggle.on::after {
+        transform: translateX(14px);
       }
     `,
   ];

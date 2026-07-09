@@ -13,11 +13,11 @@ export const REQUIREMENT_STATUS_VALUES = new Set(["ok", "missing", "unknown"]);
 /** Friendly, human-readable labels for each requirement id (falls back to the id). */
 export const REQUIREMENT_LABELS: Record<string, string> = {
   hacs: "HACS",
-  browser_mod: "Browser Mod",
-  custom_icons: "Custom Icons",
-  layout_card: "Layout Card",
   ted_cards: "Ted's Cards",
+  browser_mod: "Browser Mod",
+  layout_card: "Layout Card",
   card_mod: "Card-mod / UIX",
+  custom_icons: "Custom Icons",
   daylight_calendar: "Daylight Calendar Card",
   kiosk_mode: "Kiosk Mode",
   weather: "Weather entity",

@@ -228,6 +228,16 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
           ?disabled=${disabled}
           @change=${(e: Event) => onChange(Number((e.target as HTMLInputElement).value))}
         />${field.unit ? html`<span class="unit">${field.unit}</span>` : nothing}`;
+      case "select":
+        return html`<select
+          class="sel"
+          ?disabled=${disabled}
+          @change=${(e: Event) => onChange((e.target as HTMLSelectElement).value)}
+        >
+          ${(field.options ?? []).map(
+            (o) => html`<option value=${o.value} ?selected=${String(value) === o.value}>${o.label}</option>`,
+          )}
+        </select>`;
       case "entity":
         return html`<ha-entity-picker
           .hass=${this.hass}
@@ -557,6 +567,19 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
         border: 1px solid var(--ted-style-divider);
         background: var(--ted-style-surface-2);
         color: inherit;
+      }
+      select.sel {
+        font: inherit;
+        padding: 5px 8px;
+        border-radius: 8px;
+        border: 1px solid var(--ted-style-divider);
+        background: var(--ted-style-surface-2);
+        color: inherit;
+        cursor: pointer;
+      }
+      select.sel:disabled {
+        opacity: 0.5;
+        cursor: default;
       }
       .unit {
         color: var(--ted-style-muted);
