@@ -130,8 +130,6 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
   private _prevAutoHide = false;
   /** Which view the hold-press settings menu is showing. */
   @state() private _menuView: "root" | "position" = "root";
-  /** Whether the hold-press settings menu is currently open. */
-  private _menuOpen = false;
   /** Long-press timer + start point for the hold-menu gesture. */
   private _holdTimer?: number;
   private _holdStart?: { x: number; y: number };
@@ -443,11 +441,13 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
 
   /** Collapse when a pointer press lands anywhere outside the navbar. */
   private _onDocPointerDown = (ev: PointerEvent): void => {
-    // Dismiss the hold-menu on any press that lands outside it (the imperatively
-    // shown popover doesn't reliably light-dismiss inside a shadow root).
-    if (this._menuOpen) {
-      const menu = (this.renderRoot as ShadowRoot).getElementById("nav-hold-menu");
-      if (menu && !ev.composedPath().includes(menu)) this._closeMenu();
+    // Dismiss the hold-menu on any press that lands outside it. Check the popover's
+    // real open-state (not a tracked flag) so it always closes on an outside tap.
+    const menu = (this.renderRoot as ShadowRoot).getElementById("nav-hold-menu") as
+      | (HTMLElement & { matches(sel: string): boolean })
+      | null;
+    if (menu && menu.matches(":popover-open") && !ev.composedPath().includes(menu)) {
+      this._closeMenu();
     }
     if (!this._autoHide() || this._collapsed) return;
     if (ev.composedPath().includes(this)) return;
@@ -526,7 +526,6 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
     } catch {
       /* already open */
     }
-    this._menuOpen = true;
     requestAnimationFrame(() => this._positionMenu(menu as HTMLElement, at));
   }
 
@@ -566,7 +565,6 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
   }
 
   private _closeMenu(): void {
-    this._menuOpen = false;
     const menu = (this.renderRoot as ShadowRoot).getElementById("nav-hold-menu");
     (menu as (HTMLElement & { hidePopover?: () => void }) | null)?.hidePopover?.();
     if (this._autoHide()) this._scheduleHide();
@@ -1110,9 +1108,7 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
 
   /** Reset the menu to its root view whenever it closes. */
   private _onMenuToggle = (ev: Event): void => {
-    const open = (ev as Event & { newState?: string }).newState === "open";
-    this._menuOpen = open;
-    if (!open) {
+    if ((ev as Event & { newState?: string }).newState !== "open") {
       this._menuView = "root";
       if (this._autoHide()) this._scheduleHide();
     }
@@ -1597,7 +1593,8 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
         flex-direction: column;
         gap: 2px;
         padding: 6px;
-        min-width: 240px;
+        min-width: 208px;
+        box-sizing: border-box;
         /* The menu is a child of the pointer-events:none .navbar wrapper (unlike the
            overflow popover, which sits inside the interactive .navbar-card), so it must
            re-enable pointer events or it can't be clicked / light-dismissed. */
@@ -1630,6 +1627,7 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
         align-items: center;
         gap: 10px;
         width: 100%;
+        box-sizing: border-box;
         padding: 10px 12px;
         border: none;
         border-radius: var(--ted-style-radius-sm, 8px);

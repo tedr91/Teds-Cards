@@ -945,6 +945,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.93
+
+- **Navbar long-press menu — dismiss & width fixes** — the menu now reliably closes when you tap outside it, and no longer overflows with a stray horizontal scrollbar (it sizes tighter).
+
 ### v1.0.92
 
 - **Navbar long-press menu — size control & custom items** — the menu now has a **Size** stepper to set the bar thickness per-device, and supports **custom action rows** via a new `menu_items` config (e.g. a Refresh or Git Pull utility) shown in their own section above Dashboard Settings.
