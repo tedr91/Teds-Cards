@@ -322,14 +322,14 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
   /** Reserve view padding so dashboard content isn't hidden under the bar. */
   private _applyPadding(): void {
     this._publishBottomReserve();
-    // Auto-hide bars only reserve room for the collapsed pill; the revealed bar
-    // overlays the dashboard temporarily.
+    // Auto-hidden: the bar is off-screen and the reveal pill is fixed to the viewport,
+    // so the scroll container needs NO forced padding. Self-sizing (grid-layout) views
+    // already leave the pill's strip via `--ted-navbar-bottom-reserve`; adding a
+    // `hui-view::after` spacer here too double-reserved it and pushed full-height views
+    // into a needless scroll (which hid the fixed pill). The revealed bar overlays
+    // content temporarily, so no padding is wanted then either.
     if (this._autoHide()) {
-      forceNavbarPadding({
-        alignment: this._alignment(),
-        px: NAVBAR_PILL_RESERVE,
-        enabled: !this._editMode,
-      });
+      forceNavbarPadding({ alignment: this._alignment(), px: 0, enabled: false });
       return;
     }
     const margin = this._barType() === "float" ? 16 : 0;
@@ -1366,7 +1366,7 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
         height: 5px;
       }
       .navbar.bottom .nav-pill {
-        bottom: 10px;
+        bottom: 8px;
       }
       .navbar.top .nav-pill {
         top: 4px;

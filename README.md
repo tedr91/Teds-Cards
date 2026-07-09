@@ -945,6 +945,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.98
+
+- **Auto-hide navbar no longer over-reserves space** — full-height (grid-layout) views could become slightly scrollable when the bar was auto-hidden, because the pill strip was reserved twice (once by the view's height calc and again by a forced view spacer). The collapsed bar now relies solely on `--ted-navbar-bottom-reserve`, and that strip is sized to clear the reveal pill — so content fits without a stray scroll.
+
 ### v1.0.97
 
 - **Bigger auto-hide reveal target** — the horizontal reveal-pill's tap surface is larger (200×20px) and sits 10px from the bottom edge, so it's easier to tap to un-hide a collapsed bottom bar.
