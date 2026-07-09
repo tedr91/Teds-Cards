@@ -18,6 +18,13 @@ export interface ClockWeatherCardConfig extends LovelaceCardConfig {
   background?: string;
   brushed?: boolean;
   shadow?: boolean;
+  /** Hug the content height (fonts sized to width) instead of filling the container.
+   *  Lets an `auto`-height grid area size to the clock's real height. Defaults to false. */
+  hug_content?: boolean;
+  /** Optional CSS max-height (e.g. `calc(100dvh * 0.25)`) that caps the card. When the
+   *  width-driven clock would be taller, its fonts scale down to fit. Pairs with
+   *  `hug_content` so the clock area shrinks with the clock but never exceeds this. */
+  max_height?: string;
 
   // Clock
   show_clock?: boolean;

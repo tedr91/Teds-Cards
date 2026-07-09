@@ -62,6 +62,7 @@ export class TedClockWeatherCardEditor extends LitElement implements LovelaceCar
       blur: undefined,
       brushed: false,
       shadow: true,
+      hug_content: false,
       show_clock: true,
       clock_size: "large",
       clock_size_custom: 100,
@@ -108,6 +109,7 @@ export class TedClockWeatherCardEditor extends LitElement implements LovelaceCar
       transparencyBlurSchema(this._config?.transparency),
       { name: "brushed", selector: { boolean: {} } },
       { name: "shadow", selector: { boolean: {} } },
+      { name: "hug_content", selector: { boolean: {} } },
     ];
   }
 
@@ -367,6 +369,8 @@ export class TedClockWeatherCardEditor extends LitElement implements LovelaceCar
         return "Brushed effect";
       case "shadow":
         return "Subtle shadow for improved contrast";
+      case "hug_content":
+        return "Hug content height (size to the clock, don't fill)";
       case "clock_size":
         return "Clock size";
       case "clock_size_custom":

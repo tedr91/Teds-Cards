@@ -338,7 +338,7 @@ function renderOptionsPopover(
     <div
       id=${popId}
       class="notif-popover opts-popover"
-      popover
+      popover="manual"
       data-anchor=${anchorId}
       @toggle=${ctx.slider.onPopoverToggle}
     >

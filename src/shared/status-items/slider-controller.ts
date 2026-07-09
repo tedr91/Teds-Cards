@@ -46,6 +46,8 @@ export class StatusSliderController implements ReactiveController {
   /** Long-press timer + "fired" flag for hold-to-open-options on count items. */
   private holdTimer?: number;
   private holdFired = false;
+  /** Removes the outside-tap / Escape listeners for an open manual (hold) popover. */
+  private manualDismiss?: () => void;
 
   constructor(host: SliderHost) {
     this.host = host;
@@ -61,6 +63,7 @@ export class StatusSliderController implements ReactiveController {
       window.clearTimeout(this.holdTimer);
       this.holdTimer = undefined;
     }
+    this.teardownManualDismiss();
   }
 
   /** Current value for a slider key — the live drag value if dragging, else the model value. */
@@ -137,8 +140,40 @@ export class StatusSliderController implements ReactiveController {
     this.holdTimer = window.setTimeout(() => {
       this.holdTimer = undefined;
       this.holdFired = true;
-      this.openPopover(popId);
+      this.openManualPopover(popId);
     }, LONG_PRESS_MS);
+  }
+
+  /** Open a hold-to-open menu that manages its own dismissal. A native `auto` popover
+   *  would be light-dismissed by the release of the very long-press that opened it
+   *  (unless the finger moved first); a `manual` popover plus our own outside-tap /
+   *  Escape handling avoids that. The listeners are attached now — while the opening
+   *  gesture's pointer is still DOWN — so its release (a pointerup) can't trigger them. */
+  openManualPopover(popId: string): void {
+    const root = this.host.renderRoot as ShadowRoot;
+    const popover = root.getElementById?.(popId) as
+      | (HTMLElement & { showPopover?: () => void })
+      | null;
+    if (!popover || popover.matches(":popover-open")) return;
+    popover.showPopover?.();
+    this.teardownManualDismiss();
+    const onDown = (ev: Event): void => {
+      if (!ev.composedPath().includes(popover)) this.closePopover(popId);
+    };
+    const onKey = (ev: KeyboardEvent): void => {
+      if (ev.key === "Escape") this.closePopover(popId);
+    };
+    document.addEventListener("pointerdown", onDown, true);
+    document.addEventListener("keydown", onKey, true);
+    this.manualDismiss = () => {
+      document.removeEventListener("pointerdown", onDown, true);
+      document.removeEventListener("keydown", onKey, true);
+    };
+  }
+
+  private teardownManualDismiss(): void {
+    this.manualDismiss?.();
+    this.manualDismiss = undefined;
   }
 
   /** Cancel a pending long-press without firing (e.g. pointer left the target). */
@@ -206,6 +241,7 @@ export class StatusSliderController implements ReactiveController {
     if (popover.id.includes("-vol-")) {
       this.volumeClosedAt = Date.now();
     }
+    this.teardownManualDismiss();
     if (this.active) {
       this.active = undefined;
       this.host.requestUpdate();

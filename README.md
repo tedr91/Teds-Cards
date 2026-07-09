@@ -945,6 +945,11 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.99
+
+- **Hold-to-open menus no longer vanish on release** — the navbar's long-press settings menu and the status-item hold menus (notifications “Do not disturb”, alarms/timers options) are now self-dismissing `manual` popovers. Releasing the long-press without first moving your finger no longer instantly closes them.
+- **Clock/Weather card can hug its content + cap its height** — a new `hug_content` option sizes the card to the clock's real (width-driven) height instead of filling its container, and an optional `max_height` caps it (the clock scales down to fit when it would be taller). Lets a dashboard “clock” area shrink with the clock but never exceed a set height.
+
 ### v1.0.98
 
 - **Auto-hide navbar no longer over-reserves space** — full-height (grid-layout) views could become slightly scrollable when the bar was auto-hidden, because the pill strip was reserved twice (once by the view's height calc and again by a forced view spacer). The collapsed bar now relies solely on `--ted-navbar-bottom-reserve`, and that strip is sized to clear the reveal pill — so content fits without a stray scroll.

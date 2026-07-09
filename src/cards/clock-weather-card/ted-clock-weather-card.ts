@@ -232,6 +232,12 @@ export class TedClockWeatherCard extends LitElement implements LovelaceCard {
     return this.layout === "grid";
   }
 
+  /** True when the card should hug its content height (fonts sized to width) rather
+   *  than filling its container — a Sections grid, or the `hug_content` option. */
+  private _hugsContent(): boolean {
+    return this._inGrid() || this._config?.hug_content === true;
+  }
+
   public setConfig(config: ClockWeatherCardConfig): void {
     if (!config) {
       throw new Error("Invalid configuration");
@@ -301,7 +307,7 @@ export class TedClockWeatherCard extends LitElement implements LovelaceCard {
       const height = rect?.height ?? 0;
       const widthChanged = Math.abs(width - this._lastWidth) >= 0.5;
       const heightChanged = Math.abs(height - this._lastHeight) >= 0.5;
-      if (!widthChanged && !(heightChanged && !this._inGrid())) return;
+      if (!widthChanged && !(heightChanged && !this._hugsContent())) return;
       this._lastWidth = width;
       this._lastHeight = height;
       this._recompute(width, height);
@@ -311,8 +317,17 @@ export class TedClockWeatherCard extends LitElement implements LovelaceCard {
 
   protected willUpdate(): void {
     // Fill the container (and size to its height) everywhere except a Sections
-    // grid, where the card must hug its content for the auto-height row.
-    this.toggleAttribute("fill", !this._inGrid());
+    // grid or when `hug_content` is set, where the card hugs its content for the
+    // auto-height row.
+    this.toggleAttribute("fill", !this._hugsContent());
+    // A `max_height` caps the card; the clock scales to fit it when it would be taller.
+    this.style.maxHeight = this._config?.max_height || "";
+  }
+
+  /** The resolved `max_height` cap in px (0 when unset). */
+  private _maxHeightPx(): number {
+    const mh = getComputedStyle(this).maxHeight;
+    return mh.endsWith("px") ? parseFloat(mh) || 0 : 0;
   }
 
   protected updated(changed: PropertyValues): void {
@@ -503,12 +518,14 @@ export class TedClockWeatherCard extends LitElement implements LovelaceCard {
       }
     }
 
-    // Outside a Sections grid the card fills a fixed-height container (e.g. the
-    // calendar-week "clock" grid area). Auto-size all three elements together so
-    // the stack fits the available height — using the clock's INKED height (its
-    // empty ascender/descender leading is clipped) rather than the full line box.
-    // This happens BEFORE the per-element size factors, so those adjust the fit.
-    if (!this._inGrid() && height > 0) {
+    // Fit the stack to the available height: the container height when filling, or
+    // the `max_height` cap when hugging content (so a width-driven clock that would
+    // overflow the cap scales down to it). Auto-size all three elements together,
+    // using the clock's INKED height (its empty ascender/descender leading is
+    // clipped) rather than the full line box. This happens BEFORE the per-element
+    // size factors, so those adjust the fit.
+    const fitHeight = this._hugsContent() ? this._maxHeightPx() : height;
+    if (fitHeight > 0) {
       const rows = this._stackRows();
       // Only the elements actually rendered contribute height. A hidden clock
       // must NOT reserve its (width-derived) height, or the visible weather/date
@@ -525,8 +542,8 @@ export class TedClockWeatherCard extends LitElement implements LovelaceCard {
       let stack = Math.max(clockInk, overlaidWeather, overlaidDate);
       if (rows.weatherRow) stack += tempBasePx + CWC_ROW_GAP;
       if (rows.dateRow) stack += dateBasePx + CWC_ROW_GAP;
-      if (stack > height && stack > 0) {
-        const scale = height / stack;
+      if (stack > fitHeight && stack > 0) {
+        const scale = fitHeight / stack;
         clockBasePx *= scale;
         dateBasePx *= scale;
         tempBasePx *= scale;
@@ -625,7 +642,7 @@ export class TedClockWeatherCard extends LitElement implements LovelaceCard {
     return html`
       <ha-card class=${classMap(cardClasses)} style=${styleMap(cardStyle)}>
         ${brushed ? brushedOverlay : nothing}
-        <div class=${classMap({ cwc: true, fill: !this._inGrid() })}>
+        <div class=${classMap({ cwc: true, fill: !this._hugsContent() })}>
           ${weatherVisible && weatherAbove
             ? html`<div class="row weather-row">
                 <div class="weather" style=${styleMap({ "--cwc-off": String(weatherOff) })}>

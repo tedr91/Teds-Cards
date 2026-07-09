@@ -976,7 +976,7 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
       <div
         id="nav-hold-menu"
         class="nav-menu-layer"
-        popover
+        popover="manual"
         @toggle=${this._onMenuToggle}
         @pointerdown=${this._onMenuLayerDown}
       >
@@ -1357,16 +1357,16 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
       .navbar.top .nav-pill {
         left: 50%;
         transform: translateX(-50%);
-        width: 200px;
+        width: 240px;
         height: 20px;
       }
       .navbar.bottom .nav-pill::before,
       .navbar.top .nav-pill::before {
-        width: 46px;
+        width: 60px;
         height: 5px;
       }
       .navbar.bottom .nav-pill {
-        bottom: 8px;
+        bottom: 4px;
       }
       .navbar.top .nav-pill {
         top: 4px;
