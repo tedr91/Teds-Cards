@@ -945,6 +945,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.84
+
+- **MessageBox `set-setting` action + admin-only Global settings** — MessageBox action buttons can now write a Ted's Cards setting (`action: set-setting` with `scope`, `setting`, `value`) and then navigate, so a "Use this layout" button can save your choice before switching views. The Settings card now shows **Global** settings as **read-only** for non-admins (device-scope stays editable). Pairs with Ted's Cards Backend v1.0.20+, which enforces that only admins may write Global settings.
+
 ### v1.0.83
 
 - **Settings — expanded Navigation section** — the **Auto-return home after** setting moved to the top of the Navigation section, and new root-relative dashboard-path settings were added for **Weather, Calendar, Cameras, Climate, Music, Photos, Info, and Announce**. Pairs with Ted's Cards Backend v1.0.19+.

@@ -123,6 +123,11 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     settingsStore.setValue("global", key, value);
   }
 
+  /** Non-admins may only read Global settings (device-scope stays editable). */
+  private _isAdmin(): boolean {
+    return !!this.hass?.user?.is_admin;
+  }
+
   private _setDevice(key: string, value: SettingsValue): void {
     settingsStore.setValue("device", key, value);
   }
@@ -291,8 +296,8 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
           ${field.help ? html`<span class="help">${field.help}</span>` : nothing}
         </div>
         <div class="row-control">
-          ${this._renderControl(field, this._globalValue(field.key), false, (v) =>
-            this._setGlobal(field.key, v),
+          ${this._renderControl(field, this._globalValue(field.key), !this._isAdmin(), (v) =>
+            this._isAdmin() ? this._setGlobal(field.key, v) : undefined,
           )}
         </div>
       </div>
@@ -372,7 +377,10 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
                 <button class="tab ${scope === "device" ? "active" : ""}" @click=${() => setUiScope("device")}>
                   This device
                 </button>
-              </div>`}
+              </div>
+              ${scope === "global" && !this._isAdmin()
+                ? html`<div class="device-note">Global settings are read-only — administrator access required.</div>`
+                : nothing}`}
         </ha-card>
       `;
     }
@@ -409,6 +417,9 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
                 ? html`<div class="device-note">
                     Overrides apply to <b>this device only</b>. Un-overridden settings inherit the Global value.
                   </div>`
+                : nothing}
+              ${!scopeShared && tab === "global" && !this._isAdmin()
+                ? html`<div class="device-note">Global settings are read-only — administrator access required.</div>`
                 : nothing}
               <div class="groups">
                 ${groups.map(

@@ -17,6 +17,7 @@ export type MessageBoxActionKind =
   | "url"
   | "perform-action"
   | "call-service"
+  | "set-setting"
   | "more-info"
   | "none";
 
@@ -37,6 +38,10 @@ export interface MessageBoxAction {
   service?: string;
   data?: Record<string, unknown>;
   target?: Record<string, unknown>;
+  // set-setting — writes a Ted's Cards setting, then navigates if navigation_path is set.
+  scope?: "global" | "device";
+  setting?: string;
+  value?: string | number | boolean | null;
   // more-info
   entity?: string;
 }
