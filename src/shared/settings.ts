@@ -131,7 +131,18 @@ class SettingsStore {
   }
 
   private _emit(): void {
+    this._reflectDebug();
     for (const cb of this._listeners) cb();
+  }
+
+  /** Publish `--ted-debug` on the document root (a `solid` outline-style when debug
+   *  mode is on, unset otherwise) so any card / card_mod can gate debug styling via
+   *  `outline: 2px var(--ted-debug, none) <color>` — CSS vars inherit into shadow DOM. */
+  private _reflectDebug(): void {
+    if (typeof document === "undefined") return;
+    const root = document.documentElement;
+    if (this.effective().debug_mode === true) root.style.setProperty("--ted-debug", "solid");
+    else root.style.removeProperty("--ted-debug");
   }
 
   private _ensureSub(): void {

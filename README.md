@@ -945,6 +945,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.100
+
+- **Debug mode setting** — a new `debug_mode` toggle (Settings → General, per-device or global) publishes a `--ted-debug` CSS variable on the document root. Because CSS variables inherit into shadow DOM, any card or `card_mod` can show layout debug outlines with `outline: 2px var(--ted-debug, none) <color>` and have them appear only when debug mode is on. Also reordered the settings groups (General/Navigation first).
+
 ### v1.0.99
 
 - **Hold-to-open menus no longer vanish on release** — the navbar's long-press settings menu and the status-item hold menus (notifications “Do not disturb”, alarms/timers options) are now self-dismissing `manual` popovers. Releasing the long-press without first moving your finger no longer instantly closes them.

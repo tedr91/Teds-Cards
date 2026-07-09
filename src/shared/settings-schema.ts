@@ -32,14 +32,14 @@ export interface SettingField {
 }
 
 export const SETTINGS_GROUPS = [
-  "Timers",
-  "Alarms",
-  "Notifications",
-  "Media",
-  "Cameras",
-  "Navbar",
   "General",
   "Navigation",
+  "Navbar",
+  "Notifications",
+  "Alarms",
+  "Timers",
+  "Media",
+  "Cameras"
 ] as const;
 
 /** Default values — must match the backend `SETTINGS_DEFAULTS`. */
@@ -70,6 +70,7 @@ export const SETTINGS_DEFAULTS: SettingsMap = {
   navbar_position: "bottom",
   navbar_size: 48,
   do_not_disturb: false,
+  debug_mode: false,
   dashboard_root: "ted-dashboard",
   home_dashboard: "[root]/welcome",
   alarms_dashboard: "[root]/alarms-timers?tab=alarms",
@@ -130,6 +131,7 @@ export const SETTINGS_FIELDS: SettingField[] = [
   { key: "navbar_size", label: "Size", group: "Navbar", kind: "number", min: 32, max: 96, unit: "px", help: "Bar thickness in pixels (buttons/items size from this)." },
   // General
   { key: "do_not_disturb", label: "Do Not Disturb", group: "General", kind: "boolean", help: "Suppresses toasts and alert sounds on this device." },
+  { key: "debug_mode", label: "Debug mode", group: "General", kind: "boolean", help: "Publishes the --ted-debug CSS variable so dashboards can show layout debug outlines." },
   // Navigation
   { key: "auto_return_home_after", label: "Auto-return home after", group: "Navigation", kind: "number", min: 0, max: 3600, unit: "s", help: "0 = never." },
   { key: "dashboard_root", label: "Dashboard root", group: "Navigation", kind: "text" },
