@@ -475,8 +475,8 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
             n.classList.contains("nav-pill")),
       );
     if (onItem) return;
-    this._holdStart = { x: ev.clientX, y: ev.clientY };
     this._clearHold();
+    this._holdStart = { x: ev.clientX, y: ev.clientY };
     this._holdTimer = window.setTimeout(() => this._openMenu(), 500);
   }
 
@@ -501,6 +501,7 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
   }
 
   private _openMenu(): void {
+    const at = this._holdStart ? { x: this._holdStart.x, y: this._holdStart.y } : undefined;
     this._clearHold();
     this._menuView = "root";
     const menu = (this.renderRoot as ShadowRoot).getElementById("nav-hold-menu");
@@ -512,7 +513,42 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
     } catch {
       /* already open */
     }
-    requestAnimationFrame(() => this._positionPopover(menu as HTMLElement));
+    requestAnimationFrame(() => this._positionMenu(menu as HTMLElement, at));
+  }
+
+  /** Place the hold-menu near where the long-press happened, opening away from the
+   *  bar's edge and clamped to the viewport. */
+  private _positionMenu(menu: HTMLElement, at?: { x: number; y: number }): void {
+    const margin = 8;
+    const rect = menu.getBoundingClientRect();
+    const vw = document.documentElement.clientWidth;
+    const vh = document.documentElement.clientHeight;
+    menu.style.position = "fixed";
+    menu.style.margin = "0";
+    if (!at) {
+      menu.style.left = `${Math.round((vw - rect.width) / 2)}px`;
+      menu.style.top = `${Math.round((vh - rect.height) / 2)}px`;
+      return;
+    }
+    const a = this._alignment();
+    let left: number;
+    let top: number;
+    if (a === "left" || a === "right") {
+      // Vertical bar: open beside the press point.
+      top = at.y - rect.height / 2;
+      left = a === "left" ? at.x + margin : at.x - margin - rect.width;
+    } else {
+      // Horizontal bar: open above a bottom bar, below a top bar (falling back the
+      // other way if there isn't room).
+      left = at.x - rect.width / 2;
+      top = a === "top" ? at.y + margin : at.y - margin - rect.height;
+      if (a !== "top" && top < margin) top = at.y + margin;
+      if (a === "top" && top + rect.height > vh - margin) top = at.y - margin - rect.height;
+    }
+    left = Math.max(margin, Math.min(left, vw - rect.width - margin));
+    top = Math.max(margin, Math.min(top, vh - rect.height - margin));
+    menu.style.left = `${Math.round(left)}px`;
+    menu.style.top = `${Math.round(top)}px`;
   }
 
   private _closeMenu(): void {
@@ -1496,6 +1532,10 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
         gap: 2px;
         padding: 6px;
         min-width: 240px;
+        /* The menu is a child of the pointer-events:none .navbar wrapper (unlike the
+           overflow popover, which sits inside the interactive .navbar-card), so it must
+           re-enable pointer events or it can't be clicked / light-dismissed. */
+        pointer-events: auto;
       }
       .nav-menu-head {
         font-size: 0.72rem;

@@ -945,6 +945,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.91
+
+- **Navbar long-press menu fixes** — the settings menu now opens **next to where you pressed** (instead of the screen centre), is **clickable**, and **dismisses** when you tap away or pick an item (it previously appeared centered, couldn't be interacted with, and stayed stuck open until a refresh).
+
 ### v1.0.90
 
 - **Navbar — per-device settings & long-press menu** — the navbar can now be configured per-device from **Ted's Cards Settings** (new **Navbar** section: Auto-hide, Auto-hide delay, Float, Position) and from a **long-press menu** on the bar itself (toggle auto-hide/float, pick a position, open Dashboard Settings, or exit the dashboard). A dashboard's own YAML still takes precedence where it sets these, so forced layouts (e.g. an always-auto-hiding nightstand bar) stay put and appear locked in the menu.
