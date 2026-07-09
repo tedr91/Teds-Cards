@@ -244,7 +244,7 @@ export class TedStatusCard extends LitElement implements LovelaceCard {
         label: "Weather",
         value: weatherOk
           ? weatherId
-            ? `Available (${this._entityLabel(weatherId)})`
+            ? `Available · ${this._entityLabel(weatherId)}`
             : "Available"
           : "None found",
         level: weatherOk ? "ok" : "warn",
@@ -256,7 +256,7 @@ export class TedStatusCard extends LitElement implements LovelaceCard {
     rows.push({
       icon: "mdi:speaker",
       label: "Media Player",
-      value: mp ? `Available (${this._entityLabel(mp)})` : "none detected",
+      value: mp ? `Available · ${this._entityLabel(mp)}` : "none detected",
       level: mp ? "ok" : "warn",
     });
 
