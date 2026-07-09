@@ -7,7 +7,8 @@ import { browserModId, resolveDeviceMediaPlayer } from "../../shared/device-id";
 import { SettingsController, settingsStore } from "../../shared/settings";
 import {
   INTEGRATION_REQUIREMENTS,
-  REQUIREMENT_META_KEYS,
+  REQUIREMENT_LABELS,
+  REQUIREMENT_STATUS_VALUES,
   STATUS_CARD_TYPE,
 } from "./const";
 import type { StatusCardConfig } from "./types";
@@ -15,14 +16,32 @@ import type { StatusCardConfig } from "./types";
 const REQUIREMENTS_SENSOR = "sensor.teds_requirements";
 const SETTINGS_SENSOR = "sensor.teds_settings";
 
+/** The Ted's Cards Backend HACS integration, linked from the backend row's tooltip. */
+const BACKEND_REPO_URL = "https://github.com/tedr91/Teds-Cards-Backend";
+
 /** The visual weight of a status row's glyph. */
 type StatusLevel = "ok" | "warn" | "bad" | "unknown";
+
+/** A single itemised entry inside a row's tooltip. */
+interface DetailItem {
+  label: string;
+  level: StatusLevel;
+}
+
+/** Optional hover/tap tooltip attached to a row. */
+interface RowTip {
+  title?: string;
+  items?: DetailItem[];
+  note?: string;
+  link?: { label: string; url: string };
+}
 
 interface StatusRow {
   icon: string;
   label: string;
   value: string;
   level: StatusLevel;
+  tip?: RowTip;
 }
 
 /** Minimal shape of the HA device registry present on `hass` at runtime. */
@@ -46,11 +65,33 @@ interface RegistryHass {
 export class TedStatusCard extends LitElement implements LovelaceCard {
   @property({ attribute: false }) public hass?: HomeAssistant;
   @state() private _config?: StatusCardConfig;
+  /** Label of the row whose tooltip is pinned open by tap (hover uses CSS). */
+  @state() private _openTip: string | null = null;
 
   public constructor() {
     super();
     // Keep the effective settings (for the media-player fallback) live.
     new SettingsController(this, () => this.hass);
+  }
+
+  public connectedCallback(): void {
+    super.connectedCallback();
+    document.addEventListener("click", this._onDocClick);
+  }
+
+  public disconnectedCallback(): void {
+    document.removeEventListener("click", this._onDocClick);
+    super.disconnectedCallback();
+  }
+
+  /** Close any tap-pinned tooltip when clicking anywhere outside a tip row. */
+  private _onDocClick = (): void => {
+    if (this._openTip !== null) this._openTip = null;
+  };
+
+  private _toggleTip(key: string, ev: Event): void {
+    ev.stopPropagation();
+    this._openTip = this._openTip === key ? null : key;
   }
 
   public setConfig(config: StatusCardConfig): void {
@@ -69,11 +110,27 @@ export class TedStatusCard extends LitElement implements LovelaceCard {
     return this.hass?.states?.[REQUIREMENTS_SENSOR]?.attributes;
   }
 
-  /** [ok count, total] across every tracked requirement (excludes meta keys). */
+  /** Ordered ids of every tracked requirement (real status attributes only). */
+  private _requirementIds(attrs: Record<string, unknown>): string[] {
+    return Object.keys(attrs).filter((k) => REQUIREMENT_STATUS_VALUES.has(attrs[k] as string));
+  }
+
+  /** [ok count, total] across every tracked requirement. Only attributes whose
+   *  value is an actual requirement status ("ok"/"missing"/"unknown") are counted,
+   *  so Home Assistant's auto-added attributes (friendly_name, icon, …) and the
+   *  sensor's own meta keys are ignored. */
   private _requirementTotals(attrs: Record<string, unknown>): [number, number] {
-    const ids = Object.keys(attrs).filter((k) => !REQUIREMENT_META_KEYS.has(k));
+    const ids = this._requirementIds(attrs);
     const ok = ids.filter((id) => attrs[id] === "ok").length;
     return [ok, ids.length];
+  }
+
+  /** Itemised tooltip entries for the given requirement ids. */
+  private _detailItems(attrs: Record<string, unknown>, ids: readonly string[]): DetailItem[] {
+    return ids.map((id) => ({
+      label: REQUIREMENT_LABELS[id] ?? id,
+      level: TedStatusCard._levelOf(attrs[id]),
+    }));
   }
 
   /** [ok count, total] across just the integration requirements. */
@@ -99,6 +156,12 @@ export class TedStatusCard extends LitElement implements LovelaceCard {
     return resolveDeviceMediaPlayer(this.hass);
   }
 
+  /** The first `weather.*` entity (what the requirements check detects). */
+  private _firstWeatherEntity(): string | undefined {
+    const states = this.hass?.states;
+    return states ? Object.keys(states).find((id) => id.startsWith("weather.")) : undefined;
+  }
+
   private _entityLabel(entityId?: string): string {
     if (!entityId) return "none detected";
     const fn = this.hass?.states?.[entityId]?.attributes?.friendly_name;
@@ -113,20 +176,24 @@ export class TedStatusCard extends LitElement implements LovelaceCard {
 
     // Requirements + integrations (need the backend's requirements sensor).
     if (attrs) {
+      const reqIds = this._requirementIds(attrs);
       const [rok, rtotal] = this._requirementTotals(attrs);
       rows.push({
         icon: "mdi:clipboard-check-outline",
         label: "Requirements",
         value: `${rok} of ${rtotal} met`,
         level: rtotal > 0 && rok === rtotal ? "ok" : "warn",
+        tip: { title: "Requirements", items: this._detailItems(attrs, reqIds) },
       });
 
+      const intIds = INTEGRATION_REQUIREMENTS.filter((id) => id in attrs);
       const [iok, itotal] = this._integrationTotals(attrs);
       rows.push({
         icon: "mdi:puzzle-outline",
         label: "Integrations",
         value: `${iok} of ${itotal} installed`,
         level: itotal > 0 && iok === itotal ? "ok" : "warn",
+        tip: { title: "Integrations", items: this._detailItems(attrs, intIds) },
       });
     } else {
       rows.push({
@@ -156,18 +223,30 @@ export class TedStatusCard extends LitElement implements LovelaceCard {
     const version = typeof attrs?.version === "string" ? (attrs.version as string) : undefined;
     rows.push({
       icon: "mdi:server-network",
-      label: "Backend",
+      label: "Ted's Backend",
       value: connected ? (version ? `Connected · v${version}` : "Connected") : "Not installed",
       level: connected ? "ok" : "bad",
+      tip: {
+        title: "Ted's Cards Backend",
+        note: connected
+          ? "The integration powering alarms, timers, notifications and per-device settings."
+          : "Install the Ted's Cards Backend integration via HACS to enable alarms, timers, notifications and settings.",
+        link: { label: "Ted's Cards Backend on GitHub", url: BACKEND_REPO_URL },
+      },
     });
 
     // Weather entity.
     if (attrs) {
       const weatherOk = attrs.weather === "ok";
+      const weatherId = weatherOk ? this._firstWeatherEntity() : undefined;
       rows.push({
         icon: "mdi:weather-partly-cloudy",
         label: "Weather",
-        value: weatherOk ? "Available" : "None found",
+        value: weatherOk
+          ? weatherId
+            ? `Available (${this._entityLabel(weatherId)})`
+            : "Available"
+          : "None found",
         level: weatherOk ? "ok" : "warn",
       });
     }
@@ -177,7 +256,7 @@ export class TedStatusCard extends LitElement implements LovelaceCard {
     rows.push({
       icon: "mdi:speaker",
       label: "Media Player",
-      value: mp ? this._entityLabel(mp) : "none detected",
+      value: mp ? `Available (${this._entityLabel(mp)})` : "none detected",
       level: mp ? "ok" : "warn",
     });
 
@@ -199,6 +278,11 @@ export class TedStatusCard extends LitElement implements LovelaceCard {
     }
   }
 
+  /** Map a requirement attribute value to a status level. */
+  private static _levelOf(state: unknown): StatusLevel {
+    return state === "ok" ? "ok" : state === "missing" ? "bad" : "unknown";
+  }
+
   protected render(): TemplateResult | typeof nothing {
     const cfg = this._config;
     if (!cfg) return nothing;
@@ -208,17 +292,66 @@ export class TedStatusCard extends LitElement implements LovelaceCard {
       <div class="sc-box ${themeClass}" role="status" aria-live="polite">
         ${cfg.title ? html`<div class="sc-title">${cfg.title}</div>` : nothing}
         <div class="sc-rows">
-          ${this._rows().map(
-            (r) => html`
-              <div class="sc-row sc-lvl-${r.level}">
-                <ha-icon class="sc-row-icon" .icon=${r.icon}></ha-icon>
-                <span class="sc-label">${r.label}</span>
-                <span class="sc-value">${r.value}</span>
-                <ha-icon class="sc-status" .icon=${TedStatusCard._glyph(r.level)}></ha-icon>
-              </div>
-            `,
-          )}
+          ${this._rows().map((r) => this._renderRow(r))}
         </div>
+      </div>
+    `;
+  }
+
+  private _renderRow(r: StatusRow): TemplateResult {
+    if (!r.tip) {
+      return html`
+        <div class="sc-row sc-lvl-${r.level}">
+          <ha-icon class="sc-row-icon" .icon=${r.icon}></ha-icon>
+          <span class="sc-label">${r.label}</span>
+          <span class="sc-value">${r.value}</span>
+          <ha-icon class="sc-status" .icon=${TedStatusCard._glyph(r.level)}></ha-icon>
+        </div>
+      `;
+    }
+    const open = this._openTip === r.label;
+    return html`
+      <div
+        class="sc-row sc-row--tip sc-lvl-${r.level} ${open ? "is-open" : ""}"
+        tabindex="0"
+        role="button"
+        aria-haspopup="true"
+        aria-expanded=${open ? "true" : "false"}
+        @click=${(e: Event) => this._toggleTip(r.label, e)}
+        @keydown=${(e: KeyboardEvent) => {
+          if (e.key === "Enter" || e.key === " ") this._toggleTip(r.label, e);
+          if (e.key === "Escape") this._openTip = null;
+        }}
+      >
+        <ha-icon class="sc-row-icon" .icon=${r.icon}></ha-icon>
+        <span class="sc-label">${r.label}<ha-icon class="sc-info" .icon=${"mdi:information-outline"}></ha-icon></span>
+        <span class="sc-value">${r.value}</span>
+        <ha-icon class="sc-status" .icon=${TedStatusCard._glyph(r.level)}></ha-icon>
+        ${this._renderTip(r.tip)}
+      </div>
+    `;
+  }
+
+  private _renderTip(tip: RowTip): TemplateResult {
+    return html`
+      <div class="sc-tip" role="tooltip" @click=${(e: Event) => e.stopPropagation()}>
+        ${tip.title ? html`<div class="sc-tip-title">${tip.title}</div>` : nothing}
+        ${tip.items?.length
+          ? html`<div class="sc-tip-items">
+              ${tip.items.map(
+                (it) => html`<div class="sc-tip-item sc-lvl-${it.level}">
+                  <span>${it.label}</span>
+                  <ha-icon .icon=${TedStatusCard._glyph(it.level)}></ha-icon>
+                </div>`,
+              )}
+            </div>`
+          : nothing}
+        ${tip.note ? html`<div class="sc-tip-note">${tip.note}</div>` : nothing}
+        ${tip.link
+          ? html`<a class="sc-tip-link" href=${tip.link.url} target="_blank" rel="noopener noreferrer"
+              >${tip.link.label} ›</a
+            >`
+          : nothing}
       </div>
     `;
   }
@@ -303,6 +436,114 @@ export class TedStatusCard extends LitElement implements LovelaceCard {
       }
       .sc-lvl-unknown .sc-status {
         color: var(--ted-style-muted, rgba(255, 255, 255, 0.6));
+      }
+
+      /* --- Tooltip rows --------------------------------------------------- */
+      .sc-row--tip {
+        position: relative;
+        cursor: help;
+        outline: none;
+      }
+      .sc-info {
+        --mdc-icon-size: 15px;
+        margin-left: 5px;
+        vertical-align: -2px;
+        opacity: 0.5;
+      }
+      .sc-row--tip:hover .sc-info,
+      .sc-row--tip:focus-visible .sc-info,
+      .sc-row--tip.is-open .sc-info {
+        opacity: 0.9;
+      }
+      .sc-row--tip:focus-visible {
+        border-radius: var(--ted-style-radius-sm);
+        box-shadow: 0 0 0 2px var(--ted-style-accent, #4cc2ff);
+      }
+
+      .sc-tip {
+        position: absolute;
+        z-index: 30;
+        top: calc(100% - 2px);
+        right: 0;
+        min-width: 220px;
+        max-width: min(360px, 90vw);
+        padding: 10px 12px;
+        border-radius: var(--ted-style-radius-sm);
+        background: rgba(20, 22, 30, 0.96);
+        color: #fff;
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        box-shadow: 0 14px 40px rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(18px) saturate(150%);
+        -webkit-backdrop-filter: blur(18px) saturate(150%);
+        opacity: 0;
+        visibility: hidden;
+        transform: translateY(-4px);
+        transition: opacity 0.12s ease, transform 0.12s ease, visibility 0.12s;
+        pointer-events: none;
+      }
+      .sc-box.ted-card--theme-ha .sc-tip {
+        background: var(--ha-card-background, var(--card-background-color, #fff));
+        color: var(--primary-text-color, #1c1c1c);
+        border-color: var(--divider-color, rgba(120, 120, 120, 0.3));
+      }
+      .sc-row--tip:hover .sc-tip,
+      .sc-row--tip:focus-within .sc-tip,
+      .sc-row--tip.is-open .sc-tip {
+        opacity: 1;
+        visibility: visible;
+        transform: translateY(0);
+        pointer-events: auto;
+      }
+
+      .sc-tip-title {
+        font-weight: 600;
+        font-size: 0.9em;
+        margin-bottom: 8px;
+        opacity: 0.85;
+      }
+      .sc-tip-items {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      .sc-tip-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        font-size: 0.9em;
+      }
+      .sc-tip-item ha-icon {
+        --mdc-icon-size: 18px;
+        flex: 0 0 auto;
+      }
+      .sc-tip-item.sc-lvl-ok ha-icon {
+        color: var(--ted-style-success, #6ccb5f);
+      }
+      .sc-tip-item.sc-lvl-warn ha-icon {
+        color: var(--ted-style-warning, #ffb454);
+      }
+      .sc-tip-item.sc-lvl-bad ha-icon {
+        color: var(--ted-style-danger, #ff99a4);
+      }
+      .sc-tip-item.sc-lvl-unknown ha-icon {
+        color: var(--ted-style-muted, rgba(255, 255, 255, 0.6));
+      }
+      .sc-tip-note {
+        font-size: 0.88em;
+        line-height: 1.4;
+        opacity: 0.9;
+      }
+      .sc-tip-link {
+        display: inline-block;
+        margin-top: 8px;
+        font-size: 0.88em;
+        font-weight: 600;
+        color: var(--ted-style-accent, #4cc2ff);
+        text-decoration: none;
+      }
+      .sc-tip-link:hover {
+        text-decoration: underline;
       }
     `,
   ];
