@@ -35,6 +35,9 @@ export const tedStyleTheme: CSSResult = css`
     --ted-style-gap: 14px;
     --ted-style-touch: 44px;
     display: block;
+    /* DEBUG: outline every Ted card when the "Debug mode" setting is on (it publishes
+       --ted-debug: solid on the document root; unset otherwise -> no outline). */
+    outline: 1px var(--ted-debug, none) red;
     font-family: "Segoe UI Variable Text", "Segoe UI Variable", "Segoe UI", system-ui,
       -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
   }

@@ -324,10 +324,18 @@ export class TedClockWeatherCard extends LitElement implements LovelaceCard {
     this.style.maxHeight = this._config?.max_height || "";
   }
 
-  /** The resolved `max_height` cap in px (0 when unset). */
+  /** The resolved `max_height` cap in px (0 when unset). Resolved via a hidden probe
+   *  because getComputedStyle doesn't reliably reduce a `calc()` that mixes `dvh` and
+   *  `var()` to px (which left the cap at 0 -> the clock grew unbounded). */
   private _maxHeightPx(): number {
-    const mh = getComputedStyle(this).maxHeight;
-    return mh.endsWith("px") ? parseFloat(mh) || 0 : 0;
+    const v = this._config?.max_height;
+    if (!v) return 0;
+    const probe = document.createElement("div");
+    probe.style.cssText = `position:absolute;left:-9999px;top:0;width:0;visibility:hidden;height:${v};`;
+    document.body.appendChild(probe);
+    const px = probe.offsetHeight;
+    probe.remove();
+    return px || 0;
   }
 
   protected updated(changed: PropertyValues): void {

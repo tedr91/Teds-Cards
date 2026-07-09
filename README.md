@@ -945,6 +945,11 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.101
+
+- **Clock/Weather `max_height` cap now holds** — the cap is resolved via a hidden probe, so a `calc()` mixing `dvh`/`var()` reduces correctly (previously it read as unset and the clock kept growing with width). The clock now scales down to stay within the cap.
+- **Debug outlines work on every Ted card** — the `debug_mode` outline now lives on the shared card theme (`outline: 1px var(--ted-debug, none) red`), so it reliably appears on all Ted cards when debug mode is on (a `card_mod` on a layout-card *view* was a no-op). Inert without the setting.
+
 ### v1.0.100
 
 - **Debug mode setting** — a new `debug_mode` toggle (Settings → General, per-device or global) publishes a `--ted-debug` CSS variable on the document root. Because CSS variables inherit into shadow DOM, any card or `card_mod` can show layout debug outlines with `outline: 2px var(--ted-debug, none) <color>` and have them appear only when debug mode is on. Also reordered the settings groups (General/Navigation first).
