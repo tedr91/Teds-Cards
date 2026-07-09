@@ -66,6 +66,7 @@ export const SETTINGS_DEFAULTS: SettingsMap = {
   navbar_auto_hide_delay: 5,
   navbar_float: false,
   navbar_position: "bottom",
+  navbar_size: 48,
   do_not_disturb: false,
   dashboard_root: "ted-dashboard",
   home_dashboard: "[root]/welcome",
@@ -122,6 +123,7 @@ export const SETTINGS_FIELDS: SettingField[] = [
       { value: "right", label: "Right" },
     ],
   },
+  { key: "navbar_size", label: "Size", group: "Navbar", kind: "number", min: 32, max: 96, unit: "px", help: "Bar thickness in pixels (buttons/items size from this)." },
   // General
   { key: "do_not_disturb", label: "Do Not Disturb", group: "General", kind: "boolean", help: "Suppresses toasts and alert sounds on this device." },
   // Navigation

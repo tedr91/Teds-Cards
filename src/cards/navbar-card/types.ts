@@ -1,4 +1,4 @@
-import type { LovelaceCardConfig } from "custom-card-helpers";
+import type { ActionConfig, LovelaceCardConfig } from "custom-card-helpers";
 
 import type { Condition } from "../../shared/conditions";
 import type { StatusItem } from "../../shared/status-items/types";
@@ -28,6 +28,19 @@ export type NavButtonConfig = ButtonCardConfig & {
   /** Conditions (HA-style + `view-assist`) that gate the item's visibility. */
   visibility?: Condition[];
 };
+
+/** A custom action row in the navbar's long-press menu (e.g. a Refresh or Git Pull
+ *  utility). Runs a standard Home Assistant action via `tap_action`. */
+export interface NavMenuItem {
+  /** Row label. */
+  name: string;
+  /** Optional leading icon (mdi:* recommended so it renders without the icon pack). */
+  icon?: string;
+  /** Entity for actions that need one (e.g. `more-info`, `toggle`). */
+  entity?: string;
+  /** The action to run when the row is tapped (call-service, navigate, url, …). */
+  tap_action?: ActionConfig;
+}
 
 /** An item in a navbar section: a button or a status item. (A "popup menu" is just a
  *  nav button whose type is `custom:ted-expandable-button-card`.) */
@@ -94,6 +107,9 @@ export interface NavbarCardConfig extends LovelaceCardConfig {
   /** Long-press the bar to open a settings menu (auto-hide / float / position toggles,
    *  plus Exit + Dashboard Settings links). Default true. */
   hold_menu?: boolean;
+  /** Extra custom action rows shown in the long-press menu, in their own section just
+   *  above Dashboard Settings (e.g. dashboard utilities like Refresh or Git Pull). */
+  menu_items?: NavMenuItem[];
   /** Where the hold-menu "Exit" item navigates. Default "/lovelace". */
   exit_path?: string;
   /** Drive the bar thickness from an entity attribute holding a View Assist size

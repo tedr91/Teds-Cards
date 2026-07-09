@@ -8,6 +8,7 @@ import type {
   LovelaceCardConfig,
   LovelaceCardEditor,
 } from "custom-card-helpers";
+import { handleAction } from "custom-card-helpers";
 
 import { appearanceStyle, cssColor } from "../../shared/appearance";
 import { isVisible } from "../../shared/conditions";
@@ -36,7 +37,7 @@ import {
   defaultNavButton,
 } from "./const";
 import { detectEditOrPreview, forceNavbarPadding, navbarContentRect, navbarHeaderHeight, removeNavbarPadding, setNavbarBottomReserve } from "./navbar-dom";
-import type { EntityAttrSource, NavButtonConfig, NavItem, NavSection, NavZone, NavbarAlignment, NavbarCardConfig } from "./types";
+import type { EntityAttrSource, NavButtonConfig, NavItem, NavMenuItem, NavSection, NavZone, NavbarAlignment, NavbarCardConfig } from "./types";
 import { navItemKey, parseVaItem, vaSizeToThickness } from "./va-items";
 
 interface CardHelpers {
@@ -129,6 +130,8 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
   private _prevAutoHide = false;
   /** Which view the hold-press settings menu is showing. */
   @state() private _menuView: "root" | "position" = "root";
+  /** Whether the hold-press settings menu is currently open. */
+  private _menuOpen = false;
   /** Long-press timer + start point for the hold-menu gesture. */
   private _holdTimer?: number;
   private _holdStart?: { x: number; y: number };
@@ -254,7 +257,11 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
       const mapped = vaSizeToThickness(this.hass.states[entity]?.attributes?.[source.attribute]);
       if (mapped !== undefined) return mapped;
     }
-    return typeof this._config?.size === "number" ? this._config.size : DEFAULT_NAVBAR_SIZE;
+    // Card YAML `size` wins; a per-device `navbar_size` setting is the fallback.
+    if (typeof this._config?.size === "number") return this._config.size;
+    const o = this._settingOverride("navbar_size");
+    if (typeof o === "number" && o > 0) return o;
+    return DEFAULT_NAVBAR_SIZE;
   }
 
   /** When a View Assist size source changes the bar thickness, refresh the reserved view
@@ -436,6 +443,12 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
 
   /** Collapse when a pointer press lands anywhere outside the navbar. */
   private _onDocPointerDown = (ev: PointerEvent): void => {
+    // Dismiss the hold-menu on any press that lands outside it (the imperatively
+    // shown popover doesn't reliably light-dismiss inside a shadow root).
+    if (this._menuOpen) {
+      const menu = (this.renderRoot as ShadowRoot).getElementById("nav-hold-menu");
+      if (menu && !ev.composedPath().includes(menu)) this._closeMenu();
+    }
     if (!this._autoHide() || this._collapsed) return;
     if (ev.composedPath().includes(this)) return;
     this._collapse();
@@ -513,6 +526,7 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
     } catch {
       /* already open */
     }
+    this._menuOpen = true;
     requestAnimationFrame(() => this._positionMenu(menu as HTMLElement, at));
   }
 
@@ -552,6 +566,7 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
   }
 
   private _closeMenu(): void {
+    this._menuOpen = false;
     const menu = (this.renderRoot as ShadowRoot).getElementById("nav-hold-menu");
     (menu as (HTMLElement & { hidePopover?: () => void }) | null)?.hidePopover?.();
     if (this._autoHide()) this._scheduleHide();
@@ -944,6 +959,8 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
     const autoHideLocked = typeof this._config?.auto_hide === "boolean";
     const floatLocked = this._config?.bar_type !== undefined;
     const posLocked = this._config?.alignment !== undefined;
+    const sizeLocked = this._config?.size !== undefined || this._config?.size_source !== undefined;
+    const size = this._thickness();
     const positions: { value: NavbarAlignment; label: string; icon: string }[] = [
       { value: "bottom", label: "Bottom", icon: "mdi:dock-bottom" },
       { value: "top", label: "Top", icon: "mdi:dock-top" },
@@ -999,7 +1016,40 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
                 <span class="nav-menu-value">${pos}</span>
                 <ha-icon class="nav-menu-caret" icon="mdi:chevron-right"></ha-icon>
               </button>
+              <div
+                class="nav-menu-row nav-menu-static ${sizeLocked ? "disabled" : ""}"
+                title=${sizeLocked ? "Set by the dashboard" : nothing}
+              >
+                <ha-icon icon="mdi:arrow-split-horizontal"></ha-icon>
+                <span>Size</span>
+                <button
+                  class="nav-menu-step"
+                  aria-label="Smaller"
+                  ?disabled=${sizeLocked || size <= 32}
+                  @click=${() => this._stepSize(-4)}
+                >
+                  <ha-icon icon="mdi:minus"></ha-icon>
+                </button>
+                <span class="nav-menu-value nav-menu-size">${size}px</span>
+                <button
+                  class="nav-menu-step"
+                  aria-label="Larger"
+                  ?disabled=${sizeLocked || size >= 96}
+                  @click=${() => this._stepSize(4)}
+                >
+                  <ha-icon icon="mdi:plus"></ha-icon>
+                </button>
+              </div>
               <div class="nav-menu-sep"></div>
+              ${(this._config?.menu_items?.length ?? 0) > 0
+                ? html`${this._config!.menu_items!.map(
+                    (item) => html`<button class="nav-menu-row" @click=${() => this._runMenuItem(item)}>
+                      <ha-icon icon=${item.icon || "mdi:play"}></ha-icon>
+                      <span>${item.name}</span>
+                    </button>`,
+                  )}
+                  <div class="nav-menu-sep"></div>`
+                : nothing}
               <button class="nav-menu-row" @click=${() => this._menuAction(settingsPath)}>
                 <ha-icon icon="mdi:cog-outline"></ha-icon>
                 <span>Dashboard Settings</span>
@@ -1039,14 +1089,30 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
     this._navigate(path);
   }
 
+  /** Run a custom menu item's configured action (via HA's standard action handler). */
+  private _runMenuItem(item: NavMenuItem): void {
+    this._closeMenu();
+    if (!this.hass) return;
+    const cfg = { entity: item.entity, tap_action: item.tap_action };
+    handleAction(this, this.hass, cfg as unknown as Parameters<typeof handleAction>[2], "tap");
+  }
+
   private _selectPosition(value: NavbarAlignment): void {
     this._setNavbarSetting("navbar_position", value);
     this._menuView = "root";
   }
 
+  /** Adjust the per-device navbar size by `delta` px, clamped to 32–96. */
+  private _stepSize(delta: number): void {
+    const next = Math.max(32, Math.min(96, this._thickness() + delta));
+    this._setNavbarSetting("navbar_size", next);
+  }
+
   /** Reset the menu to its root view whenever it closes. */
   private _onMenuToggle = (ev: Event): void => {
-    if ((ev as Event & { newState?: string }).newState !== "open") {
+    const open = (ev as Event & { newState?: string }).newState === "open";
+    this._menuOpen = open;
+    if (!open) {
       this._menuView = "root";
       if (this._autoHide()) this._scheduleHide();
     }
@@ -1589,6 +1655,43 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
       .nav-menu-row[disabled] {
         opacity: 0.4;
         cursor: default;
+      }
+      /* Non-button rows (e.g. the size stepper) share the row look but aren't clickable. */
+      .nav-menu-static {
+        cursor: default;
+      }
+      .nav-menu-static.disabled {
+        opacity: 0.4;
+      }
+      /* Compact +/- buttons in the size stepper row. */
+      .nav-menu-step {
+        flex: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 26px;
+        height: 26px;
+        border: 1px solid var(--ted-style-divider);
+        border-radius: 50%;
+        background: transparent;
+        color: var(--ted-style-text);
+        cursor: pointer;
+        transition: background 0.15s ease;
+      }
+      .nav-menu-step ha-icon {
+        --mdc-icon-size: 16px;
+        color: var(--ted-style-text) !important;
+      }
+      .nav-menu-step:hover:not([disabled]) {
+        background: color-mix(in srgb, var(--ted-style-text, #888) 14%, transparent);
+      }
+      .nav-menu-step[disabled] {
+        opacity: 0.35;
+        cursor: default;
+      }
+      .nav-menu-size {
+        min-width: 42px;
+        text-align: center;
       }
       .nav-menu-row.selected {
         background: color-mix(in srgb, var(--ted-style-accent) 16%, transparent);
