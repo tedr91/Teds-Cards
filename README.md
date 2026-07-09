@@ -945,6 +945,11 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.86
+
+- **New Status Card + Welcome-page device panel** — a new `custom:ted-status-card` shows this device's readiness at a glance: how many requirements and integrations are met, whether Browser Mod has registered *this* browser (with its Browser ID, read client-side the same way the Browser Mod panel does), the backend connection + version, the weather entity, and the media-player playback target. It is intentionally left out of the "Add card" picker and used by reference in YAML (`type: custom:ted-status-card`). Pairs with Ted's Cards Backend v1.0.21+ (which exposes the backend `version`) and the Ted Dashboard Welcome page.
+- **Clock Weather Card — correct auto-sizing when the clock is hidden** — a weather-only or date-only card in a fill (grid-layout) area no longer reserves the hidden clock's height when auto-fitting. Previously the phantom clock height shrank the visible weather/date to roughly a third of its intended size in height-constrained areas.
+
 ### v1.0.85
 
 - **Navbar status items + Home button navigate to dashboard settings** — Navbar `datetime` and `weather` status items gained a `tap_navigate: <setting>` option (e.g. `calendar_dashboard`, `weather_dashboard`, `alarms_dashboard`), and the Button Card gained a `navigate-dashboard` action (`{ action: navigate-dashboard, dashboard: home_dashboard }`). Both resolve the target from your Settings dashboard-path values at tap time, honouring the configured root and per-device overrides.

@@ -510,7 +510,19 @@ export class TedClockWeatherCard extends LitElement implements LovelaceCard {
     // This happens BEFORE the per-element size factors, so those adjust the fit.
     if (!this._inGrid() && height > 0) {
       const rows = this._stackRows();
-      let stack = clockBasePx > 0 ? clockBasePx * inkRatio : Math.max(dateBasePx, tempBasePx);
+      // Only the elements actually rendered contribute height. A hidden clock
+      // must NOT reserve its (width-derived) height, or the visible weather/date
+      // would be scaled down to fit a phantom clock. When the clock is hidden,
+      // _stackRows() forces weather/date onto their own rows, so the clock-row
+      // is empty; when it's shown, an un-split date/weather overlays into it.
+      const showClock = this._config?.show_clock !== false;
+      const showDate = this._config?.show_date !== false;
+      const showWeather = this._config?.show_weather !== false;
+      const weatherVisible = showWeather && (showIcon || (showTemp && this._tempText() != null));
+      const clockInk = showClock ? clockBasePx * inkRatio : 0;
+      const overlaidWeather = weatherVisible && !rows.weatherRow ? tempBasePx : 0;
+      const overlaidDate = showDate && !rows.dateRow ? dateBasePx : 0;
+      let stack = Math.max(clockInk, overlaidWeather, overlaidDate);
       if (rows.weatherRow) stack += tempBasePx + CWC_ROW_GAP;
       if (rows.dateRow) stack += dateBasePx + CWC_ROW_GAP;
       if (stack > height && stack > 0) {

@@ -14,7 +14,7 @@ import { viewAssistSensor } from "./view-assist";
 export const LOCAL_DEVICE_ID_KEY = "ted_device_id";
 
 /** The current browser_mod browser id, if browser_mod is installed. */
-function browserModId(): string | undefined {
+export function browserModId(): string | undefined {
   try {
     const w = window as unknown as { browser_mod?: { browserID?: string; browser_id?: string } };
     return (
