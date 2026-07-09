@@ -17,6 +17,7 @@ import { registerCustomCard } from "../../shared/register-card";
 import { appearanceStyle } from "../../shared/appearance";
 import { resolveDeviceArea } from "../../shared/device-area";
 import { resolveIcon } from "../../shared/icons";
+import { resolveDashboardPath } from "../../shared/settings";
 import { brushedOverlay, tedCardThemeClass, tedStyleTheme } from "../../shared/theme";
 import { viewAssistNavigate, viewAssistToggleHold } from "../../shared/view-assist";
 import {
@@ -573,6 +574,20 @@ export class TedButtonCard extends LitElement implements LovelaceCard {
       if (!this._confirmAction(actionConfig)) return;
       viewAssistToggleHold(this.hass);
       forwardHaptic("success");
+      return;
+    }
+
+    // Navigate to a dashboard-path setting (resolved at tap time, so it honours the
+    // configured root + this device's override). Opt-in via `navigate-dashboard`.
+    if (actionConfig && (actionConfig.action as string) === "navigate-dashboard") {
+      if (!this._confirmAction(actionConfig)) return;
+      const key = (actionConfig as unknown as { dashboard?: string }).dashboard;
+      const path = key ? resolveDashboardPath(key) : "";
+      if (path) {
+        window.history.pushState(null, "", path);
+        window.dispatchEvent(new CustomEvent("location-changed", { bubbles: true, composed: true }));
+        forwardHaptic("success");
+      }
       return;
     }
 

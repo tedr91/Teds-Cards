@@ -17,6 +17,9 @@ export const statusItemStyles = css`
     color: var(--ted-style-text);
     white-space: nowrap;
   }
+  .status-item.clickable {
+    cursor: pointer;
+  }
   .status-spacer {
     flex: none;
     align-self: stretch;

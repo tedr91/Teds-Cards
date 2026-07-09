@@ -59,6 +59,15 @@ export interface ViewAssistHoldActionConfig {
   action: "view-assist-hold";
 }
 
+/** Navigate to a Ted's Cards dashboard-path setting resolved at tap time (so it
+ *  follows the configured root + per-device override). Configure in YAML:
+ *  `tap_action: { action: navigate-dashboard, dashboard: home_dashboard }`. */
+export interface NavigateDashboardActionConfig {
+  action: "navigate-dashboard";
+  /** Settings key, e.g. `home_dashboard`, `calendar_dashboard`, `weather_dashboard`. */
+  dashboard: string;
+}
+
 export interface ButtonCardConfig extends LovelaceCardConfig {
   type: string;
   entity?: string;

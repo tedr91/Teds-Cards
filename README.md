@@ -945,6 +945,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.85
+
+- **Navbar status items + Home button navigate to dashboard settings** — Navbar `datetime` and `weather` status items gained a `tap_navigate: <setting>` option (e.g. `calendar_dashboard`, `weather_dashboard`, `alarms_dashboard`), and the Button Card gained a `navigate-dashboard` action (`{ action: navigate-dashboard, dashboard: home_dashboard }`). Both resolve the target from your Settings dashboard-path values at tap time, honouring the configured root and per-device overrides.
+
 ### v1.0.84
 
 - **MessageBox `set-setting` action + admin-only Global settings** — MessageBox action buttons can now write a Ted's Cards setting (`action: set-setting` with `scope`, `setting`, `value`) and then navigate, so a "Use this layout" button can save your choice before switching views. The Settings card now shows **Global** settings as **read-only** for non-admins (device-scope stays editable). Pairs with Ted's Cards Backend v1.0.20+, which enforces that only admins may write Global settings.

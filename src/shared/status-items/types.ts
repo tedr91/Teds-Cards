@@ -92,6 +92,8 @@ export interface DateTimeStatusItem extends Omit<StatusItemBase, "display"> {
   date_format?: string;
   /** Time token format (default "h:MM a"). */
   time_format?: string;
+  /** Settings key of a dashboard path to open on tap (e.g. `calendar_dashboard`). */
+  tap_navigate?: string;
 }
 
 /** Current weather: condition icon + temperature. `entity` defaults to the first weather.* entity. */
@@ -99,6 +101,8 @@ export interface WeatherStatusItem extends StatusItemBase {
   type: "weather";
   entity?: string;
   icon?: string;
+  /** Settings key of a dashboard path to open on tap (e.g. `weather_dashboard`). */
+  tap_navigate?: string;
 }
 
 /** A bell with an unread badge; tapping opens a popover list of notifications. */

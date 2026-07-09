@@ -10,7 +10,7 @@ import type { HomeAssistant } from "custom-card-helpers";
 
 import { STATUS_ITEM_DEFAULT_ICON, DEFAULT_SPACER_SIZE } from "./const";
 import { resolveDeviceArea } from "../device-area";
-import { settingsStore } from "../settings";
+import { settingsStore, resolveDashboardPath } from "../settings";
 import { formatDate, formatTime } from "./datetime";
 import {
   brightnessModel,
@@ -232,8 +232,13 @@ function renderDateTimeItem(item: DateTimeStatusItem, ctx: StatusItemContext): T
   const timeText = showTime ? formatTime(now, item.time_format ?? "") : "";
   const autoLabel = [dateText, timeText].filter(Boolean).join(" • ") || "Date/Time";
   const label = String(item.name ?? autoLabel);
+  const nav = item.tap_navigate;
   return html`
-    <div class="status-item" title=${label}>
+    <div
+      class=${classMap({ "status-item": true, clickable: !!nav })}
+      title=${label}
+      @click=${nav ? () => navigateTo(resolveDashboardPath(nav)) : nothing}
+    >
       ${showDate ? html`<span class="status-text">${dateText}</span>` : nothing}
       ${showTime ? html`<span class="status-text">${timeText}</span>` : nothing}
     </div>
@@ -247,8 +252,13 @@ function renderWeatherItem(item: WeatherStatusItem, ctx: StatusItemContext): Tem
   const temp = weatherTemp(ctx.hass, stateObj);
   const label = String(item.name ?? stateObj?.attributes?.friendly_name ?? "Weather");
   const show = itemDisplay(item);
+  const nav = item.tap_navigate;
   return html`
-    <div class="status-item" title=${label}>
+    <div
+      class=${classMap({ "status-item": true, clickable: !!nav })}
+      title=${label}
+      @click=${nav ? () => navigateTo(resolveDashboardPath(nav)) : nothing}
+    >
       ${show.icon ? html`<ha-icon class="status-icon status-weather-icon" .icon=${icon}></ha-icon>` : nothing}
       ${show.state
         ? html`<span class="status-text">${temp ?? (stateObj ? capitalize(stateObj.state) : "—")}</span>`
@@ -308,15 +318,6 @@ interface CountRow {
 interface ItemOption {
   label: string;
   handler: () => void;
-}
-
-/** Resolve a `[root]`-templated dashboard setting into a leading-slash path. */
-function resolveDashboardPath(key: string): string {
-  const eff = settingsStore.effective();
-  const root = String(eff.dashboard_root ?? "ted-dashboard");
-  let path = String(eff[key] ?? "").replace("[root]", root);
-  if (path && !path.startsWith("/")) path = `/${path}`;
-  return path;
 }
 
 /** Client-side navigation matching Home Assistant's `navigate` action. */

@@ -214,6 +214,16 @@ export function subscribeUiScope(cb: () => void): () => void {
   return () => _uiScopeListeners.delete(cb);
 }
 
+/** Resolve a `[root]`-templated dashboard setting (e.g. `home_dashboard`) into a
+ *  leading-slash path, substituting the effective `dashboard_root`. Empty when unset. */
+export function resolveDashboardPath(key: string): string {
+  const eff = settingsStore.effective();
+  const root = String(eff.dashboard_root ?? "ted-dashboard");
+  let path = String(eff[key] ?? "").replace("[root]", root);
+  if (path && !path.startsWith("/")) path = `/${path}`;
+  return path;
+}
+
 /** This device's effective snooze config for a given alert kind. */
 export function effectiveSnooze(kind: "timer" | "alarm"): { enabled: boolean; minutes: number } {
   const eff = settingsStore.effective();
