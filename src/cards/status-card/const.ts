@@ -5,9 +5,6 @@ export const STATUS_CARD_NAME = "Ted Status Card";
 export const STATUS_CARD_DESCRIPTION =
   "An at-a-glance panel of this device's dependency, backend and browser-registration status.";
 
-/** Requirement ids that are Home Assistant integrations (as opposed to resources/entities). */
-export const INTEGRATION_REQUIREMENTS = ["hacs", "browser_mod", "custom_icons"] as const;
-
 /** The status values an individual requirement attribute can hold. Used to tell
  *  real requirement attributes apart from HA's auto-added attributes
  *  (friendly_name, icon, …) and the sensor's meta keys (missing, ok, version). */

@@ -6,7 +6,6 @@ import { tedCardThemeClass, tedStyleTheme } from "../../shared/theme";
 import { browserModId, resolveDeviceMediaPlayer } from "../../shared/device-id";
 import { SettingsController, settingsStore } from "../../shared/settings";
 import {
-  INTEGRATION_REQUIREMENTS,
   REQUIREMENT_LABELS,
   REQUIREMENT_STATUS_VALUES,
   STATUS_CARD_TYPE,
@@ -133,13 +132,6 @@ export class TedStatusCard extends LitElement implements LovelaceCard {
     }));
   }
 
-  /** [ok count, total] across just the integration requirements. */
-  private _integrationTotals(attrs: Record<string, unknown>): [number, number] {
-    const present = INTEGRATION_REQUIREMENTS.filter((id) => id in attrs);
-    const ok = present.filter((id) => attrs[id] === "ok").length;
-    return [ok, present.length];
-  }
-
   /** True when Browser Mod has registered a device for this browser id. */
   private _browserRegistered(id: string): boolean {
     const devices = (this.hass as RegistryHass | undefined)?.devices;
@@ -174,6 +166,25 @@ export class TedStatusCard extends LitElement implements LovelaceCard {
     const rows: StatusRow[] = [];
     const attrs = this._reqAttrs();
 
+    // Ted's Backend connection + version (top of the list — it's the funnel that
+    // powers every other check).
+    const settings = this.hass?.states?.[SETTINGS_SENSOR];
+    const connected = !!settings && settings.state !== "unavailable" && settings.state !== "unknown";
+    const version = typeof attrs?.version === "string" ? (attrs.version as string) : undefined;
+    rows.push({
+      icon: "mdi:server-network",
+      label: "Ted's Cards Backend",
+      value: connected ? (version ? `Connected · v${version}` : "Connected") : "Not installed",
+      level: connected ? "ok" : "bad",
+      tip: {
+        title: "Ted's Cards Backend",
+        note: connected
+          ? "The integration powering alarms, timers, notifications and per-device settings."
+          : "Install the Ted's Cards Backend integration via HACS to enable alarms, timers, notifications and settings.",
+        link: { label: "Ted's Cards Backend on GitHub", url: BACKEND_REPO_URL },
+      },
+    });
+
     // Requirements + integrations (need the backend's requirements sensor).
     if (attrs) {
       const reqIds = this._requirementIds(attrs);
@@ -184,16 +195,6 @@ export class TedStatusCard extends LitElement implements LovelaceCard {
         value: `${rok} of ${rtotal} met`,
         level: rtotal > 0 && rok === rtotal ? "ok" : "warn",
         tip: { title: "Requirements", items: this._detailItems(attrs, reqIds) },
-      });
-
-      const intIds = INTEGRATION_REQUIREMENTS.filter((id) => id in attrs);
-      const [iok, itotal] = this._integrationTotals(attrs);
-      rows.push({
-        icon: "mdi:puzzle-outline",
-        label: "Integrations",
-        value: `${iok} of ${itotal} installed`,
-        level: itotal > 0 && iok === itotal ? "ok" : "warn",
-        tip: { title: "Integrations", items: this._detailItems(attrs, intIds) },
       });
     } else {
       rows.push({
@@ -216,24 +217,6 @@ export class TedStatusCard extends LitElement implements LovelaceCard {
     } else {
       rows.push({ icon: "mdi:web", label: "Browser Mod", value: "Not installed", level: "warn" });
     }
-
-    // Backend connection + version.
-    const settings = this.hass?.states?.[SETTINGS_SENSOR];
-    const connected = !!settings && settings.state !== "unavailable" && settings.state !== "unknown";
-    const version = typeof attrs?.version === "string" ? (attrs.version as string) : undefined;
-    rows.push({
-      icon: "mdi:server-network",
-      label: "Ted's Backend",
-      value: connected ? (version ? `Connected · v${version}` : "Connected") : "Not installed",
-      level: connected ? "ok" : "bad",
-      tip: {
-        title: "Ted's Cards Backend",
-        note: connected
-          ? "The integration powering alarms, timers, notifications and per-device settings."
-          : "Install the Ted's Cards Backend integration via HACS to enable alarms, timers, notifications and settings.",
-        link: { label: "Ted's Cards Backend on GitHub", url: BACKEND_REPO_URL },
-      },
-    });
 
     // Weather entity.
     if (attrs) {
@@ -407,13 +390,19 @@ export class TedStatusCard extends LitElement implements LovelaceCard {
       .sc-row-icon {
         --mdc-icon-size: 20px;
         color: var(--ted-style-icon-dim, rgba(255, 255, 255, 0.7));
+        display: flex;
+        align-items: center;
       }
       .sc-label {
+        display: inline-flex;
+        align-items: center;
         font-weight: 600;
         font-size: 0.95em;
+        line-height: 1;
       }
       .sc-value {
         font-size: 0.9em;
+        line-height: 1;
         opacity: 0.9;
         text-align: right;
         overflow: hidden;
@@ -423,6 +412,8 @@ export class TedStatusCard extends LitElement implements LovelaceCard {
       .sc-status {
         --mdc-icon-size: 20px;
         flex: 0 0 auto;
+        display: flex;
+        align-items: center;
       }
 
       .sc-lvl-ok .sc-status {
@@ -447,7 +438,6 @@ export class TedStatusCard extends LitElement implements LovelaceCard {
       .sc-info {
         --mdc-icon-size: 15px;
         margin-left: 5px;
-        vertical-align: -2px;
         opacity: 0.5;
       }
       .sc-row--tip:hover .sc-info,

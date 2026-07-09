@@ -945,6 +945,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.88
+
+- **Status Card layout tidy-up** — the **Ted's Cards Backend** row moved to the top of the panel, the redundant **Integrations** row was removed (those items already appear in the **Requirements** tooltip), and the row label/icon vertical alignment was corrected.
+
 ### v1.0.87
 
 - **Status Card polish** — the **Requirements** and **Integrations** rows now open a hover/tap/keyboard tooltip listing each item with a state icon (met / missing / unknown); the requirement count now tallies only real dependency attributes (it no longer miscounted Home Assistant's auto-added `friendly_name`/`icon`); the **Backend** row is renamed **Ted's Backend** with a tooltip linking the Ted's Cards Backend HACS integration; and the **Weather** and **Media Player** rows now name the resolved entity (`Available · <name>`).
