@@ -945,6 +945,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.87
+
+- **Status Card polish** — the **Requirements** and **Integrations** rows now open a hover/tap/keyboard tooltip listing each item with a state icon (met / missing / unknown); the requirement count now tallies only real dependency attributes (it no longer miscounted Home Assistant's auto-added `friendly_name`/`icon`); the **Backend** row is renamed **Ted's Backend** with a tooltip linking the Ted's Cards Backend HACS integration; and the **Weather** and **Media Player** rows now name the resolved entity (`Available · <name>`).
+
 ### v1.0.86
 
 - **New Status Card + Welcome-page device panel** — a new `custom:ted-status-card` shows this device's readiness at a glance: how many requirements and integrations are met, whether Browser Mod has registered *this* browser (with its Browser ID, read client-side the same way the Browser Mod panel does), the backend connection + version, the weather entity, and the media-player playback target. It is intentionally left out of the "Add card" picker and used by reference in YAML (`type: custom:ted-status-card`). Pairs with Ted's Cards Backend v1.0.21+ (which exposes the backend `version`) and the Ted Dashboard Welcome page.
