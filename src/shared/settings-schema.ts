@@ -24,6 +24,9 @@ export interface SettingField {
   entityDomain?: string;
   /** Only meaningful per-device (no sensible global value) — greyed out in the Global tab. */
   deviceOnly?: boolean;
+  /** Root-relative dashboard path: rendered with a fixed `<dashboard_root>/` prefix,
+   *  stored as `[root]/<segment>` (so the value stays root-portable). */
+  rootRelative?: boolean;
 }
 
 export const SETTINGS_GROUPS = [
@@ -58,7 +61,7 @@ export const SETTINGS_DEFAULTS: SettingsMap = {
   media_player_volume: 50,
   do_not_disturb: false,
   dashboard_root: "ted-dashboard",
-  home_dashboard: "[root]/home",
+  home_dashboard: "[root]/welcome",
   alarms_dashboard: "[root]/alarms-timers?tab=alarms",
   timers_dashboard: "[root]/alarms-timers?tab=timers",
   auto_return_home_after: 0,
@@ -92,9 +95,9 @@ export const SETTINGS_FIELDS: SettingField[] = [
   { key: "do_not_disturb", label: "Do Not Disturb", group: "General", kind: "boolean", help: "Suppresses toasts and alert sounds on this device." },
   // Navigation
   { key: "dashboard_root", label: "Dashboard root", group: "Navigation", kind: "text" },
-  { key: "home_dashboard", label: "Home dashboard", group: "Navigation", kind: "text", help: "Use [root] for the dashboard root, e.g. [root]/home." },
-  { key: "alarms_dashboard", label: "Alarms dashboard", group: "Navigation", kind: "text", help: "Where the Alarms status item navigates on tap. Use [root] for the dashboard root." },
-  { key: "timers_dashboard", label: "Timers dashboard", group: "Navigation", kind: "text", help: "Where the Timers status item navigates on tap. Use [root] for the dashboard root." },
+  { key: "home_dashboard", label: "Home dashboard", group: "Navigation", kind: "text", rootRelative: true, help: "The view the Home button opens." },
+  { key: "alarms_dashboard", label: "Alarms dashboard", group: "Navigation", kind: "text", rootRelative: true, help: "Where the Alarms status item navigates on tap." },
+  { key: "timers_dashboard", label: "Timers dashboard", group: "Navigation", kind: "text", rootRelative: true, help: "Where the Timers status item navigates on tap." },
   { key: "auto_return_home_after", label: "Auto-return home after", group: "Navigation", kind: "number", min: 0, max: 3600, unit: "s", help: "0 = never." },
 ];
 

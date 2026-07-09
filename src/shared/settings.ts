@@ -193,6 +193,27 @@ class SettingsStore {
 /** The shared, module-level settings store. */
 export const settingsStore = new SettingsStore();
 
+/** Shared "Global vs This device" UI scope, so a single toggle can drive several
+ *  Settings cards (e.g. one per tab in a Tab Card). Module-level, not persisted. */
+export type UiScope = "global" | "device";
+let _uiScope: UiScope = "global";
+const _uiScopeListeners = new Set<() => void>();
+
+export function getUiScope(): UiScope {
+  return _uiScope;
+}
+
+export function setUiScope(scope: UiScope): void {
+  if (scope === _uiScope) return;
+  _uiScope = scope;
+  for (const cb of _uiScopeListeners) cb();
+}
+
+export function subscribeUiScope(cb: () => void): () => void {
+  _uiScopeListeners.add(cb);
+  return () => _uiScopeListeners.delete(cb);
+}
+
 /** This device's effective snooze config for a given alert kind. */
 export function effectiveSnooze(kind: "timer" | "alarm"): { enabled: boolean; minutes: number } {
   const eff = settingsStore.effective();

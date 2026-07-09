@@ -7,7 +7,13 @@ import { type HomeAssistant, type LovelaceCard, type LovelaceCardEditor } from "
 import { appearanceStyle, cssColor } from "../../shared/appearance";
 import { brushedOverlay, tedCardThemeClass, tedStyleTheme } from "../../shared/theme";
 import { registerCustomCard } from "../../shared/register-card";
-import { SettingsController, settingsStore } from "../../shared/settings";
+import {
+  SettingsController,
+  settingsStore,
+  getUiScope,
+  setUiScope,
+  subscribeUiScope,
+} from "../../shared/settings";
 import { resolveDeviceMediaPlayer } from "../../shared/device-id";
 import {
   fieldsByGroup,
@@ -63,6 +69,22 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     if (!config) throw new Error("Invalid configuration");
     this._config = { ...config };
     if (config.show_global === false && config.show_device !== false) this._tab = "device";
+  }
+
+  private _unsubScope?: () => void;
+
+  public connectedCallback(): void {
+    super.connectedCallback();
+    // Follow the shared UI scope when this card is driven by an external toggle.
+    if (this._config?.scope === "shared" || this._config?.variant === "scope-toggle") {
+      this._unsubScope ??= subscribeUiScope(() => this.requestUpdate());
+    }
+  }
+
+  public disconnectedCallback(): void {
+    super.disconnectedCallback();
+    this._unsubScope?.();
+    this._unsubScope = undefined;
   }
 
   public getCardSize(): number {
@@ -148,6 +170,29 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     disabled: boolean,
     onChange: (v: SettingsValue) => void,
   ): TemplateResult {
+    // Root-relative dashboard path: fixed `<root>/` prefix, stored as `[root]/<seg>`.
+    if (field.rootRelative) {
+      const root = String(settingsStore.effective().dashboard_root ?? "");
+      const raw = typeof value === "string" ? value : "";
+      const rel = raw.startsWith("[root]/")
+        ? raw.slice(7)
+        : raw.startsWith("[root]")
+          ? raw.slice(6)
+          : raw;
+      return html`<div class="rootpath">
+        <span class="rootprefix" title="Dashboard root">${root}/</span>
+        <input
+          class="txt"
+          type="text"
+          .value=${rel}
+          ?disabled=${disabled}
+          @change=${(e: Event) => {
+            const seg = (e.target as HTMLInputElement).value.trim().replace(/^\/+/, "");
+            onChange(`[root]/${seg}`);
+          }}
+        />
+      </div>`;
+    }
     switch (field.kind) {
       case "boolean":
         return html`<ha-switch
@@ -285,7 +330,14 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     const theme = cfg.theme === "ted-style" ? "ted-style" : "ha";
     const showGlobal = cfg.show_global !== false;
     const showDevice = cfg.show_device !== false;
+    const showHeader = cfg.show_header !== false;
+    const scopeShared = cfg.scope === "shared";
+    const isToggle = cfg.variant === "scope-toggle";
     const missing = !this.hass.states[SETTINGS_SENSOR];
+
+    // Section cards stay invisible when the backend is missing — the scope-toggle
+    // (or a header card) carries the single "install the backend" warning.
+    if (missing && !showHeader && !isToggle) return nothing;
 
     const cardStyle = appearanceStyle({
       background: cssColor(cfg.background),
@@ -298,20 +350,52 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
       "no-shadow": cfg.shadow === false,
     };
 
-    const tab = !showGlobal ? "device" : !showDevice ? "global" : this._tab;
-    const groups = fieldsByGroup();
+    const header = showHeader
+      ? html`<div class="head">
+          <ha-icon icon="mdi:cog"></ha-icon>
+          <span>${cfg.title ?? "Settings"}</span>
+        </div>`
+      : nothing;
+
+    // Scope-toggle variant: just the Global / This device switch (drives shared scope).
+    if (isToggle) {
+      const scope = getUiScope();
+      return html`
+        <ha-card class=${classMap(cardClasses)} style=${styleMap(cardStyle)}>
+          ${cfg.brushed ? brushedOverlay : nothing} ${header}
+          ${missing
+            ? html`<div class="warn">Install the <b>Ted's Cards Backend</b> integration to use settings.</div>`
+            : html`<div class="tabs" role="tablist">
+                <button class="tab ${scope === "global" ? "active" : ""}" @click=${() => setUiScope("global")}>
+                  Global
+                </button>
+                <button class="tab ${scope === "device" ? "active" : ""}" @click=${() => setUiScope("device")}>
+                  This device
+                </button>
+              </div>`}
+        </ha-card>
+      `;
+    }
+
+    const tab = scopeShared
+      ? getUiScope()
+      : !showGlobal
+        ? "device"
+        : !showDevice
+          ? "global"
+          : this._tab;
+    const sections = cfg.sections;
+    const groups = sections?.length
+      ? fieldsByGroup().filter((g) => sections.includes(g.group))
+      : fieldsByGroup();
 
     return html`
       <ha-card class=${classMap(cardClasses)} style=${styleMap(cardStyle)}>
-        ${cfg.brushed ? brushedOverlay : nothing}
-        <div class="head">
-          <ha-icon icon="mdi:cog"></ha-icon>
-          <span>${cfg.title ?? "Settings"}</span>
-        </div>
+        ${cfg.brushed ? brushedOverlay : nothing} ${header}
         ${missing
           ? html`<div class="warn">Install the <b>Ted's Cards Backend</b> integration to use settings.</div>`
           : html`
-              ${showGlobal && showDevice
+              ${!scopeShared && showGlobal && showDevice
                 ? html`<div class="tabs" role="tablist">
                     <button class="tab ${tab === "global" ? "active" : ""}" @click=${() => (this._tab = "global")}>
                       Global
@@ -321,7 +405,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
                     </button>
                   </div>`
                 : nothing}
-              ${tab === "device"
+              ${!scopeShared && tab === "device"
                 ? html`<div class="device-note">
                     Overrides apply to <b>this device only</b>. Un-overridden settings inherit the Global value.
                   </div>`
@@ -466,6 +550,29 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
       .unit {
         color: var(--ted-style-muted);
         font-size: 0.85rem;
+      }
+      .rootpath {
+        display: inline-flex;
+        align-items: stretch;
+        max-width: 42vw;
+      }
+      .rootprefix {
+        display: inline-flex;
+        align-items: center;
+        padding: 5px 6px 5px 8px;
+        border-radius: 8px 0 0 8px;
+        border: 1px solid var(--ted-style-divider);
+        border-right: none;
+        background: var(--ted-style-surface-2);
+        color: var(--ted-style-muted);
+        font-size: 0.9em;
+        white-space: nowrap;
+      }
+      .rootpath input.txt {
+        border-radius: 0 8px 8px 0;
+        max-width: none;
+        min-width: 0;
+        flex: 1 1 auto;
       }
       .pct {
         display: inline-flex;

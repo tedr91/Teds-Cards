@@ -10,6 +10,17 @@ export interface SettingsCardConfig extends LovelaceCardConfig {
   show_global?: boolean;
   show_device?: boolean;
 
+  /** Render only these setting groups (e.g. `["Timers"]`). Omit for all. */
+  sections?: string[];
+  /** Show the card header (icon + title). Defaults to true. */
+  show_header?: boolean;
+  /** `tabs` (default): own Global/This-device tabs. `shared`: follow the shared
+   *  UI scope set by a `variant: scope-toggle` card (no internal scope tabs). */
+  scope?: "tabs" | "shared";
+  /** `settings` (default) renders the fields. `scope-toggle` renders only the
+   *  Global / This device switch that drives every `scope: shared` card. */
+  variant?: "settings" | "scope-toggle";
+
   // Visual
   theme?: TedStyleTheme;
   background?: string;

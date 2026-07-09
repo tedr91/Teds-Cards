@@ -945,6 +945,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.82
+
+- **Settings card — sections, shared scope, and root-relative paths** — the Settings card can now render a single group via `sections: [...]` (so each section can live in its own Ted Tab Card tab), hide its header with `show_header: false`, and follow a shared **Global / This device** toggle across several cards via `scope: shared` + a `variant: scope-toggle` card. The Navigation **Home / Alarms / Timers dashboard** fields are now root-relative — they show a fixed `<dashboard root>/` prefix and you type only the path segment (stored as `[root]/…`, so nothing else changes). The **Home dashboard** default is now `[root]/welcome`.
+
 ### v1.0.81
 
 - **Button/Navbar icons — icon-set fallback** — a Button Card `icon` can now be a per-set name map instead of a single string, and the card renders the first icon set that's actually installed on the device, in priority order (`streamline-ultimate-color` → `streamline-freehand-color` → `pepicons-print` → `fluent` → `mdi`). This lets a dashboard prefer fancy icon packs and degrade gracefully to MDI when a pack isn't present. Also applies to the Expandable Button Card trigger/children and Navbar buttons (they're all Button Cards). Example: `icon: { streamline-ultimate-color: bedroom-hotel, mdi: bed }`.
