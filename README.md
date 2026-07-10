@@ -937,6 +937,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.116
+
+- **Tab Card — header display modes + overflow handling** — new **Tab header** option (`both` / `icon` / `name`) controls whether each tab shows its icon and name, icon only, or name only. New tabs are seeded with a placeholder icon (`mdi:help-box-outline`). When the tabs are wider than the card, the new **Auto shrink** option (on by default) collapses them to icon-only; any that still don't fit move into a "…" overflow menu, keeping the active tab visible.
+
 ### v1.0.115
 
 - **New Climate Card + Temperatures settings** — added `custom:ted-climate-card`, which auto-populates a view with native `thermostat` cards (one per climate entity, `show_current_as_primary`). Choose which thermostats each device shows in the new **Settings → Temperatures** category (same per-device model as Cameras), with layout options Auto / Tabbed / Vertical / Horizontal. The Cameras settings list UI was generalized into a reusable entity-list picker shared by both categories. Requires Ted's Cards Backend v1.0.28+.

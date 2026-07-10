@@ -7,13 +7,14 @@ import { appearanceStyle, cssColor } from "../../shared/appearance";
 import { brushedOverlay, tedCardThemeClass, tedStyleTheme } from "../../shared/theme";
 import { registerCustomCard } from "../../shared/register-card";
 import {
+  DEFAULT_TAB_ICON,
   DEFAULT_TAB_PARAM,
   TAB_CARD_DESCRIPTION,
   TAB_CARD_EDITOR_TYPE,
   TAB_CARD_NAME,
   TAB_CARD_TYPE,
 } from "./const";
-import type { TabCardConfig, TabConfig } from "./types";
+import type { TabCardConfig, TabConfig, TabHeaderMode } from "./types";
 
 interface CardHelpers {
   createCardElement(config: LovelaceCardConfig): LovelaceCard;
@@ -66,11 +67,17 @@ export class TedTabCard extends LitElement implements LovelaceCard {
   @state() private _config?: TabCardConfig;
   /** Index of the active tab. */
   @state() private _activeTab = 0;
+  /** Effective header mode after any auto-shrink (may differ from the configured mode). */
+  @state() private _effectiveMode: TabHeaderMode = "both";
+  /** How many tabs fit in the strip; the rest go into the overflow menu. */
+  @state() private _visibleCount = Number.POSITIVE_INFINITY;
 
   private _helpers?: CardHelpers;
   /** Embedded child cards, keyed by tab index. */
   private _tabEls = new Map<number, TabEntry>();
   private _lastPropagatedHass?: HomeAssistant;
+  /** Watches the host width so the tab strip can re-measure its overflow. */
+  private _resizeObserver?: ResizeObserver;
 
   public setConfig(config: TabCardConfig): void {
     if (!config) throw new Error("Invalid configuration");
@@ -96,6 +103,8 @@ export class TedTabCard extends LitElement implements LovelaceCard {
     super.connectedCallback();
     window.addEventListener("location-changed", this._onLocationChanged);
     window.addEventListener("popstate", this._onLocationChanged);
+    this._resizeObserver = new ResizeObserver(() => this._measureOverflow());
+    this._resizeObserver.observe(this);
     void this._loadHelpers();
   }
 
@@ -103,6 +112,8 @@ export class TedTabCard extends LitElement implements LovelaceCard {
     super.disconnectedCallback();
     window.removeEventListener("location-changed", this._onLocationChanged);
     window.removeEventListener("popstate", this._onLocationChanged);
+    this._resizeObserver?.disconnect();
+    this._resizeObserver = undefined;
   }
 
   private _onLocationChanged = (): void => {
@@ -138,8 +149,18 @@ export class TedTabCard extends LitElement implements LovelaceCard {
   }
 
   protected willUpdate(changed: PropertyValues): void {
-    if (changed.has("_config")) this._buildTabElements();
+    if (changed.has("_config")) {
+      this._buildTabElements();
+      // Re-measure from scratch: show every tab at the configured mode, then let
+      // _measureOverflow() (run in updated()) shrink / route to the overflow menu.
+      this._visibleCount = Number.POSITIVE_INFINITY;
+      this._effectiveMode = this._config?.tab_header ?? "both";
+    }
     if (changed.has("hass")) this._propagateHass();
+  }
+
+  protected updated(): void {
+    this._measureOverflow();
   }
 
   private async _loadHelpers(): Promise<void> {
@@ -204,6 +225,21 @@ export class TedTabCard extends LitElement implements LovelaceCard {
       blur: cfg.blur,
     });
 
+    // Work out which tabs are shown inline vs. moved into the overflow menu. The active
+    // tab is always kept visible (it displaces the last inline slot if it would overflow).
+    const configMode: TabHeaderMode = cfg.tab_header ?? "both";
+    const total = tabs.length;
+    const visibleCount = Math.min(this._visibleCount, total);
+    const overflow = showTabs && visibleCount < total;
+    const visible: number[] = [];
+    for (let i = 0; i < visibleCount; i++) visible.push(i);
+    if (overflow && !visible.includes(activeIdx) && visible.length > 0) {
+      visible[visible.length - 1] = activeIdx;
+    }
+    const visibleSet = new Set(visible);
+    const overflowList: number[] = [];
+    for (let i = 0; i < total; i++) if (!visibleSet.has(i)) overflowList.push(i);
+
     return html`
       <div class="tab-root ${tedCardThemeClass(theme)}" style=${styleMap(rootStyle)}>
         <div class="tab-surface ${shadow ? "" : "no-shadow"}" style=${styleMap(surfaceStyle)}>
@@ -211,20 +247,40 @@ export class TedTabCard extends LitElement implements LovelaceCard {
         </div>
         ${showTabs
           ? html`<div class="tab-strip" role="tablist">
-              ${tabs.map((tab, idx) => {
-                const label = tab.label || `Tab ${idx + 1}`;
-                return html`<button
-                  type="button"
-                  role="tab"
-                  class="tab${idx === activeIdx ? " active" : ""}"
-                  aria-selected=${idx === activeIdx ? "true" : "false"}
-                  @click=${() => this._selectTab(idx)}
-                >
-                  ${tab.icon ? html`<ha-icon .icon=${tab.icon}></ha-icon>` : nothing}
-                  <span>${label}</span>
-                </button>`;
-              })}
-            </div>`
+                ${visible.map((idx) => this._renderTabButton(tabs[idx], idx, this._effectiveMode, idx === activeIdx))}
+                ${overflow
+                  ? html`<button
+                      id="tab-overflow-btn"
+                      type="button"
+                      class="tab tab-overflow"
+                      popovertarget="tab-overflow-pop"
+                      title="More tabs"
+                      aria-label="More tabs"
+                    >
+                      <ha-icon .icon=${"mdi:dots-horizontal"}></ha-icon>
+                    </button>`
+                  : nothing}
+              </div>
+              ${overflow
+                ? html`<div
+                    id="tab-overflow-pop"
+                    class="tab-overflow-popover"
+                    popover
+                    @toggle=${this._onOverflowToggle}
+                  >
+                    ${overflowList.map(
+                      (idx) => html`<button
+                        type="button"
+                        class="tab-overflow-item${idx === activeIdx ? " active" : ""}"
+                        @click=${() => this._selectFromOverflow(idx)}
+                      >
+                        <ha-icon .icon=${tabs[idx].icon || DEFAULT_TAB_ICON}></ha-icon>
+                        <span>${tabs[idx].label || `Tab ${idx + 1}`}</span>
+                      </button>`,
+                    )}
+                  </div>`
+                : nothing}
+              ${this._renderMeasure(tabs, configMode)}`
           : nothing}
         <div class="panels">
           ${tabs.length === 0
@@ -233,6 +289,42 @@ export class TedTabCard extends LitElement implements LovelaceCard {
         </div>
       </div>
     `;
+  }
+
+  /** One tab button, respecting the header mode (icon+name / icon / name). */
+  private _renderTabButton(tab: TabConfig, idx: number, mode: TabHeaderMode, active: boolean): TemplateResult {
+    const label = tab.label || `Tab ${idx + 1}`;
+    const showIcon = mode !== "name";
+    const showLabel = mode !== "icon";
+    // In icon-only mode a tab without its own icon falls back to the placeholder.
+    const icon = tab.icon || (mode === "icon" ? DEFAULT_TAB_ICON : undefined);
+    return html`<button
+      type="button"
+      role="tab"
+      class="tab${active ? " active" : ""}${mode === "icon" ? " icon-only" : ""}"
+      aria-selected=${active ? "true" : "false"}
+      title=${label}
+      @click=${() => this._selectTab(idx)}
+    >
+      ${showIcon && icon ? html`<ha-icon .icon=${icon}></ha-icon>` : nothing}
+      ${showLabel ? html`<span>${label}</span>` : nothing}
+    </button>`;
+  }
+
+  /**
+   * Hidden mirror of every tab rendered at both the configured mode and icon-only, used
+   * purely to measure natural widths so overflow decisions don't depend on the live strip
+   * (which avoids a render→measure→render feedback loop).
+   */
+  private _renderMeasure(tabs: TabConfig[], configMode: TabHeaderMode): TemplateResult {
+    return html`<div class="tab-measure" aria-hidden="true">
+      <div class="measure-row measure-full">
+        ${tabs.map((tab, idx) => this._renderTabButton(tab, idx, configMode, false))}
+      </div>
+      <div class="measure-row measure-icon">
+        ${tabs.map((tab, idx) => this._renderTabButton(tab, idx, "icon", false))}
+      </div>
+    </div>`;
   }
 
   private _renderPanel(tab: TabConfig, idx: number, active: boolean): TemplateResult {
@@ -244,6 +336,101 @@ export class TedTabCard extends LitElement implements LovelaceCard {
           ? html`<div class="empty">Loading…</div>`
           : html`<div class="empty">This tab has no card yet.</div>`}
     </div>`;
+  }
+
+  /**
+   * Decide the effective header mode + how many tabs fit. Runs after every render (and on
+   * resize). Reads widths from the hidden measurement mirror so the result is stable; only
+   * writes state when it changes, so it converges in a single extra pass.
+   */
+  private _measureOverflow(): void {
+    const cfg = this._config;
+    if (!cfg) return;
+    const tabs = cfg.tabs ?? [];
+    const total = tabs.length;
+    const showTabs = cfg.show_tabs !== false && total > 0;
+    if (!showTabs) return;
+    const root = this.renderRoot as ShadowRoot;
+    const strip = root.querySelector(".tab-strip") as HTMLElement | null;
+    const fullRow = root.querySelector(".measure-full") as HTMLElement | null;
+    const iconRow = root.querySelector(".measure-icon") as HTMLElement | null;
+    if (!strip || !fullRow || !iconRow) return;
+    const available = strip.clientWidth;
+    if (available <= 0) return;
+
+    const gap = 4;
+    const overflowBtn = 52; // "…" trigger + gap, reserved when tabs spill into the menu
+    const wFull = Array.from(fullRow.children).map((c) => (c as HTMLElement).offsetWidth);
+    const wIcon = Array.from(iconRow.children).map((c) => (c as HTMLElement).offsetWidth);
+    const sum = (arr: number[]): number => arr.reduce((a, b) => a + b, 0) + Math.max(0, arr.length - 1) * gap;
+
+    const configMode: TabHeaderMode = cfg.tab_header ?? "both";
+    const autoShrink = cfg.auto_shrink !== false;
+
+    let mode: TabHeaderMode;
+    let visibleCount: number;
+    if (sum(wFull) <= available) {
+      mode = configMode;
+      visibleCount = total;
+    } else if (autoShrink && sum(wIcon) <= available) {
+      // Auto-shrink forces icon-only (even for a "name" header) when that lets them all fit.
+      mode = "icon";
+      visibleCount = total;
+    } else {
+      mode = autoShrink ? "icon" : configMode;
+      const widths = mode === "icon" ? wIcon : wFull;
+      const budget = available - overflowBtn;
+      let used = 0;
+      let count = 0;
+      for (let i = 0; i < total; i++) {
+        const add = (count > 0 ? gap : 0) + widths[i];
+        if (used + add > budget) break;
+        used += add;
+        count++;
+      }
+      visibleCount = Math.max(1, count);
+    }
+
+    if (mode !== this._effectiveMode) this._effectiveMode = mode;
+    if (visibleCount !== this._visibleCount) this._visibleCount = visibleCount;
+  }
+
+  private _onOverflowToggle = (ev: Event): void => {
+    const pop = ev.currentTarget as HTMLElement;
+    if ((ev as Event & { newState?: string }).newState !== "open") return;
+    const anchor = (this.renderRoot as ShadowRoot).getElementById("tab-overflow-btn");
+    this._positionOverflow(pop, anchor ?? undefined);
+  };
+
+  /** Anchor the overflow popover under the "…" trigger (flipping above if there's no room). */
+  private _positionOverflow(pop: HTMLElement, anchor?: HTMLElement): void {
+    const margin = 8;
+    pop.style.position = "fixed";
+    pop.style.margin = "0";
+    const rect = pop.getBoundingClientRect();
+    const vw = document.documentElement.clientWidth;
+    const vh = document.documentElement.clientHeight;
+    if (!anchor) {
+      pop.style.left = `${Math.round((vw - rect.width) / 2)}px`;
+      pop.style.top = `${Math.round((vh - rect.height) / 2)}px`;
+      return;
+    }
+    const a = anchor.getBoundingClientRect();
+    let left = a.right - rect.width;
+    left = Math.max(margin, Math.min(left, vw - rect.width - margin));
+    const fitsBelow = a.bottom + margin + rect.height <= vh - margin;
+    let top = fitsBelow ? a.bottom + margin : a.top - margin - rect.height;
+    top = Math.max(margin, Math.min(top, vh - rect.height - margin));
+    pop.style.left = `${Math.round(left)}px`;
+    pop.style.top = `${Math.round(top)}px`;
+  }
+
+  private _selectFromOverflow(idx: number): void {
+    this._selectTab(idx);
+    const pop = (this.renderRoot as ShadowRoot).getElementById("tab-overflow-pop") as
+      | (HTMLElement & { hidePopover?: () => void })
+      | null;
+    pop?.hidePopover?.();
   }
 
   static styles = [
@@ -290,9 +477,9 @@ export class TedTabCard extends LitElement implements LovelaceCard {
         position: relative;
         z-index: 1;
         display: flex;
+        flex-wrap: nowrap;
         gap: 4px;
-        overflow-x: auto;
-        scrollbar-width: none;
+        overflow: hidden;
         border-bottom: 1px solid var(--ted-style-divider, var(--divider-color));
         flex: none;
       }
@@ -318,6 +505,10 @@ export class TedTabCard extends LitElement implements LovelaceCard {
           color 0.16s ease,
           border-color 0.16s ease;
       }
+      .tab.icon-only {
+        padding-left: 12px;
+        padding-right: 12px;
+      }
       .tab ha-icon {
         --mdc-icon-size: 18px;
         flex: none;
@@ -328,6 +519,76 @@ export class TedTabCard extends LitElement implements LovelaceCard {
       .tab.active {
         color: var(--ted-style-accent, var(--primary-color));
         border-bottom-color: var(--ted-style-accent, var(--primary-color));
+      }
+      /* "…" overflow trigger — shares the tab look, sits right after the last inline tab. */
+      .tab-overflow ha-icon {
+        --mdc-icon-size: 20px;
+      }
+      /* Off-screen mirror used only to measure natural tab widths. */
+      .tab-measure {
+        position: absolute;
+        left: -9999px;
+        top: 0;
+        visibility: hidden;
+        pointer-events: none;
+      }
+      .measure-row {
+        display: flex;
+        gap: 4px;
+        white-space: nowrap;
+      }
+      /* Overflow menu — a top-layer popover so the strip's overflow:hidden can't clip it. */
+      .tab-overflow-popover {
+        position: fixed;
+        margin: 0;
+        inset: unset;
+        border: 1px solid var(--ted-style-divider, var(--divider-color));
+        border-radius: 10px;
+        padding: 6px;
+        background: color-mix(
+          in srgb,
+          var(--ted-style-surface, var(--ha-card-background, #fff)) var(--ted-card-bg-alpha, 100%),
+          transparent
+        );
+        -webkit-backdrop-filter: var(--ha-card-backdrop-filter, none);
+        backdrop-filter: var(--ha-card-backdrop-filter, none);
+        box-shadow: 0 6px 24px rgba(0, 0, 0, 0.28);
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        min-width: 160px;
+        max-height: 60vh;
+        overflow: auto;
+      }
+      .tab-overflow-popover:not(:popover-open) {
+        display: none;
+      }
+      .tab-overflow-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        font: inherit;
+        font-weight: 600;
+        color: var(--ted-style-text, var(--primary-text-color));
+        background: transparent;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        text-align: left;
+        white-space: nowrap;
+      }
+      .tab-overflow-item ha-icon {
+        --mdc-icon-size: 20px;
+        flex: none;
+        color: var(--ted-style-muted, var(--secondary-text-color));
+      }
+      .tab-overflow-item:hover {
+        background: color-mix(in srgb, var(--ted-style-accent, var(--primary-color)) 12%, transparent);
+      }
+      .tab-overflow-item.active,
+      .tab-overflow-item.active ha-icon {
+        color: var(--ted-style-accent, var(--primary-color));
       }
       .panels {
         position: relative;

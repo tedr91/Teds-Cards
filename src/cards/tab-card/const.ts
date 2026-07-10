@@ -8,3 +8,6 @@ export const TAB_CARD_DESCRIPTION =
 
 /** Default URL query parameter used to deep-link the active tab. */
 export const DEFAULT_TAB_PARAM = "tab";
+
+/** Placeholder icon seeded on newly-added tabs until the user picks one. */
+export const DEFAULT_TAB_ICON = "mdi:help-box-outline";

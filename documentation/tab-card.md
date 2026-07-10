@@ -37,6 +37,8 @@ Deep-link the Timers tab with `.../your-view?tab=timers`.
 | `default_tab` | number | 0 | Zero-based index shown when no URL param matches. |
 | `url_param` | string | `tab` | URL query parameter that selects the active tab. |
 | `show_tabs` | boolean | true | Show the tab strip (set `false` to drive tabs externally / single tab). |
+| `tab_header` | `both` \| `icon` \| `name` | `both` | What each tab button shows: icon + name, icon only, or name only. |
+| `auto_shrink` | boolean | true | When the tabs don't naturally fit, automatically display only their icons. If they still don't fit, the extras move into a "…" overflow menu. |
 | `theme`, `background`, `transparency`, `blur`, `brushed`, `shadow`, `scale` | | | See [Appearance & theming](./README.md#appearance--theming-shared). |
 
 Each tab:
@@ -44,7 +46,7 @@ Each tab:
 | Field | Type | Description |
 | --- | --- | --- |
 | `label` | string | Tab label in the strip. |
-| `icon` | string | Optional mdi icon before the label. |
+| `icon` | string | Optional mdi icon before the label. New tabs are seeded with `mdi:help-box-outline` until you pick one. |
 | `slug` | string | URL-param value that deep-links to this tab. When unset, matched by zero-based index. |
 | `card` | card config | Any Lovelace card rendered when the tab is active. |
 

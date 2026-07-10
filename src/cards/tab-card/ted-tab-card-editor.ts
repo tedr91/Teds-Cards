@@ -10,7 +10,7 @@ import {
 } from "custom-card-helpers";
 
 import { transparencyBlurSchema } from "../../shared/appearance";
-import { TAB_CARD_EDITOR_TYPE, DEFAULT_TAB_PARAM } from "./const";
+import { TAB_CARD_EDITOR_TYPE, DEFAULT_TAB_PARAM, DEFAULT_TAB_ICON } from "./const";
 import type { TabCardConfig, TabConfig } from "./types";
 
 // mdi:drag
@@ -129,7 +129,7 @@ export class TedTabCardEditor extends LitElement implements LovelaceCardEditor {
   private _addTab(): void {
     const tabs = [...this._tabs];
     const n = tabs.length + 1;
-    tabs.push({ label: `Tab ${n}`, slug: `tab-${n}` });
+    tabs.push({ label: `Tab ${n}`, icon: DEFAULT_TAB_ICON, slug: `tab-${n}` });
     this._expanded.add(`tab-${tabs.length - 1}`);
     this._commit({ ...this._config!, tabs });
   }
@@ -198,6 +198,8 @@ export class TedTabCardEditor extends LitElement implements LovelaceCardEditor {
     if (config.url_param === DEFAULT_TAB_PARAM || config.url_param === "") delete config.url_param;
     if (typeof config.default_tab !== "number") delete config.default_tab;
     if (config.show_tabs !== false) delete config.show_tabs;
+    if (config.tab_header === "both" || !config.tab_header) delete config.tab_header;
+    if (config.auto_shrink !== false) delete config.auto_shrink;
     for (const key of ["background", "brushed", "shadow", "transparency", "blur", "scale", "theme"] as const) {
       const v = config[key];
       if (v === undefined || v === null || v === "") delete config[key];
@@ -217,6 +219,8 @@ export class TedTabCardEditor extends LitElement implements LovelaceCardEditor {
       url_param: this._config.url_param ?? DEFAULT_TAB_PARAM,
       default_tab: this._config.default_tab,
       show_tabs: this._config.show_tabs !== false,
+      tab_header: this._config.tab_header ?? "both",
+      auto_shrink: this._config.auto_shrink !== false,
       theme: this._config.theme,
       background: this._config.background,
       brushed: this._config.brushed ?? false,
@@ -339,6 +343,27 @@ export class TedTabCardEditor extends LitElement implements LovelaceCardEditor {
         ],
       },
       {
+        type: "grid",
+        name: "",
+        column_min_width: "120px",
+        schema: [
+          {
+            name: "tab_header",
+            selector: {
+              select: {
+                mode: "dropdown",
+                options: [
+                  { value: "both", label: "Icon + name (default)" },
+                  { value: "icon", label: "Icon only" },
+                  { value: "name", label: "Name only" },
+                ],
+              },
+            },
+          },
+          { name: "auto_shrink", selector: { boolean: {} } },
+        ],
+      },
+      {
         name: "",
         type: "expandable",
         title: "Appearance (general)",
@@ -378,6 +403,10 @@ export class TedTabCardEditor extends LitElement implements LovelaceCardEditor {
         return "Default tab index";
       case "show_tabs":
         return "Show tab strip";
+      case "tab_header":
+        return "Tab header";
+      case "auto_shrink":
+        return "Auto shrink tab header (icons only when tabs don't fit)";
       case "theme":
         return "Visual styling";
       case "background":
