@@ -284,7 +284,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
   }
 
   private _renderGlobalRow(field: SettingField): TemplateResult {
-    if (field.kind === "cameras") return this._renderCamerasGlobal(field);
+    if (field.kind === "entity-list") return this._renderCamerasGlobal(field);
     // Device-only fields (e.g. the media player) have no sensible global value.
     if (field.deviceOnly) {
       return html`
@@ -316,7 +316,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
   }
 
   private _renderDeviceRow(field: SettingField): TemplateResult {
-    if (field.kind === "cameras") return this._renderCamerasDevice(field);
+    if (field.kind === "entity-list") return this._renderCamerasDevice(field);
     const overriding = this._deviceOverriding(field.key);
     return html`
       <div class="row">
@@ -341,17 +341,26 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     `;
   }
 
-  // --- Cameras field (Global = available allow-list; Device = curated subset) ---
+  // --- Entity-list field (Global = available allow-list; Device = curated subset) ---
+  //     Shared by Cameras (camera.*) and Temperatures (climate.*), keyed by field.entityDomain.
+
+  /** Per-domain presentation: list icon and the noun used in labels/buttons. */
+  private _listMeta(field: SettingField): { icon: string; noun: string; nounPlural: string } {
+    if (field.entityDomain === "climate") {
+      return { icon: "mdi:thermostat", noun: "thermostat", nounPlural: "thermostats" };
+    }
+    return { icon: "mdi:cctv", noun: "camera", nounPlural: "cameras" };
+  }
 
   private _camerasArray(v: SettingsValue): string[] {
     return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
   }
 
-  /** All `camera.*` entities, sorted. */
-  private _allCameras(): string[] {
+  /** All entities in the given domain (e.g. `camera` or `climate`), sorted. */
+  private _allCameras(domain: string): string[] {
     if (!this.hass) return [];
     return Object.keys(this.hass.states)
-      .filter((id) => id.startsWith("camera."))
+      .filter((id) => id.startsWith(`${domain}.`))
       .sort();
   }
 
@@ -360,9 +369,10 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     return typeof fn === "string" && fn ? fn : id;
   }
 
-  /** A reorderable, removable list of camera rows. */
+  /** A reorderable, removable list of entity rows. */
   private _renderCameraChips(
     ids: string[],
+    icon: string,
     onRemove: (idx: number) => void,
     onMove: (from: number, to: number) => void,
   ): TemplateResult {
@@ -381,7 +391,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
                 <div class="cam-grip" title="Drag to reorder">
                   <ha-icon icon="mdi:drag"></ha-icon>
                 </div>
-                <ha-icon class="cam-ico" icon="mdi:cctv"></ha-icon>
+                <ha-icon class="cam-ico" .icon=${icon}></ha-icon>
                 <span class="cam-name">${this._cameraName(id)}</span>
                 <button class="cam-del" title="Remove" @click=${() => onRemove(idx)}>
                   <ha-icon icon="mdi:close"></ha-icon>
@@ -396,15 +406,17 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
 
   private _renderCamerasGlobal(field: SettingField): TemplateResult {
     const admin = this._isAdmin();
+    const meta = this._listMeta(field);
+    const domain = field.entityDomain ?? "camera";
     const ids = this._camerasArray(this._globalValue(field.key));
-    const remaining = this._allCameras().filter((id) => !ids.includes(id));
+    const remaining = this._allCameras(domain).filter((id) => !ids.includes(id));
     const setList = (next: string[]): void => this._setGlobal(field.key, next);
     return html`
       <div class="cam-row">
         <div class="cam-head">
           <div class="row-label">
             <span>${field.label} — available list</span>
-            <span class="help">The cameras any device is allowed to show.</span>
+            <span class="help">The ${meta.nounPlural} any device is allowed to show.</span>
           </div>
           ${admin
             ? html`<button class="cam-btn" @click=${() => this._autoPopulateGlobal(field)}>
@@ -415,6 +427,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
         ${ids.length
           ? this._renderCameraChips(
               ids,
+              meta.icon,
               (idx) => {
                 if (!admin) return;
                 const n = [...ids];
@@ -428,14 +441,14 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
                 setList(n);
               },
             )
-          : html`<div class="help">No cameras yet — add one below or tap “Auto-populate”.</div>`}
+          : html`<div class="help">No ${meta.nounPlural} yet — add one below or tap “Auto-populate”.</div>`}
         ${admin && remaining.length
           ? html`<ha-entity-picker
               .hass=${this.hass}
               .value=${""}
               .includeEntities=${remaining}
               allow-custom-entity
-              label="Add a camera"
+              label=${`Add a ${meta.noun}`}
               @value-changed=${(e: CustomEvent) => {
                 const id = e.detail.value;
                 if (id && !ids.includes(id)) setList([...ids, id]);
@@ -447,19 +460,22 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
   }
 
   private _autoPopulateGlobal(field: SettingField): void {
+    const domain = field.entityDomain ?? "camera";
     const ids = this._camerasArray(this._globalValue(field.key));
-    const merged = [...ids, ...this._allCameras().filter((id) => !ids.includes(id))];
+    const merged = [...ids, ...this._allCameras(domain).filter((id) => !ids.includes(id))];
     this._setGlobal(field.key, merged);
   }
 
   private _renderCamerasDevice(field: SettingField): TemplateResult {
+    const meta = this._listMeta(field);
+    const domain = field.entityDomain ?? "camera";
     const global = this._camerasArray(this._globalValue(field.key));
     const raw = settingsStore.deviceSettings();
     const hasDevice = field.key in raw;
     const stored = hasDevice ? this._camerasArray(raw[field.key]) : [];
-    // Only global cameras are choosable; hide any stale ids once a global list exists.
+    // Only global entities are choosable; hide any stale ids once a global list exists.
     const valid = global.length ? stored.filter((id) => global.includes(id)) : stored;
-    const pool = global.length ? global : this._allCameras();
+    const pool = global.length ? global : this._allCameras(domain);
     const remaining = pool.filter((id) => !valid.includes(id));
     const setList = (next: string[]): void => this._setDevice(field.key, next);
     return html`
@@ -469,17 +485,18 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
             <span>${field.label} — this device</span>
             <span class="help">
               ${hasDevice
-                ? "The cameras this device shows."
-                : "Not customized — this device shows all available cameras."}
+                ? `The ${meta.nounPlural} this device shows.`
+                : `Not customized — this device shows all available ${meta.nounPlural}.`}
             </span>
           </div>
           <button class="cam-btn" @click=${() => this._syncDevice(field)}>
-            <ha-icon icon="mdi:sync"></ha-icon><span>Sync camera list</span>
+            <ha-icon icon="mdi:sync"></ha-icon><span>Sync list</span>
           </button>
         </div>
         ${valid.length
           ? this._renderCameraChips(
               valid,
+              meta.icon,
               (idx) => {
                 const n = [...valid];
                 n.splice(idx, 1);
@@ -492,7 +509,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
               },
             )
           : html`<div class="help">
-              No cameras selected yet — add from the list or tap “Sync camera list”.
+              No ${meta.nounPlural} selected yet — add from the list or tap “Sync list”.
             </div>`}
         ${remaining.length
           ? html`<select
@@ -504,7 +521,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
                 if (id) setList([...valid, id]);
               }}
             >
-              <option value="">Add a camera…</option>
+              <option value="">${`Add a ${meta.noun}…`}</option>
               ${remaining.map((id) => html`<option value=${id}>${this._cameraName(id)}</option>`)}
             </select>`
           : nothing}

@@ -937,6 +937,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.115
+
+- **New Climate Card + Temperatures settings** — added `custom:ted-climate-card`, which auto-populates a view with native `thermostat` cards (one per climate entity, `show_current_as_primary`). Choose which thermostats each device shows in the new **Settings → Temperatures** category (same per-device model as Cameras), with layout options Auto / Tabbed / Vertical / Horizontal. The Cameras settings list UI was generalized into a reusable entity-list picker shared by both categories. Requires Ted's Cards Backend v1.0.28+.
+
 ### v1.0.114
 
 - **Clock Weather Card — clock no longer overflows the card on wide displays** — in hug-content mode the large clock could grow into its font's empty descender space (times have no descenders) and spill past the card's bottom edge on very wide cards. It now reclaims only half that descender space, keeping the enlarged glyphs inside the card. Normal (fill-mode) auto-sizing is unchanged.

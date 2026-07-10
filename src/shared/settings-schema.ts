@@ -8,7 +8,15 @@ export type SettingsValue = boolean | number | string | string[] | null;
 export type SettingsMap = Record<string, SettingsValue>;
 
 /** How a setting is edited / rendered in the Settings card. */
-export type SettingKind = "boolean" | "number" | "percent" | "text" | "entity" | "media" | "select" | "cameras";
+export type SettingKind =
+  | "boolean"
+  | "number"
+  | "percent"
+  | "text"
+  | "entity"
+  | "media"
+  | "select"
+  | "entity-list";
 
 export interface SettingField {
   key: string;
@@ -39,7 +47,8 @@ export const SETTINGS_GROUPS = [
   "Alarms",
   "Timers",
   "Media",
-  "Cameras"
+  "Cameras",
+  "Temperatures"
 ] as const;
 
 /** Default values — must match the backend `SETTINGS_DEFAULTS`. */
@@ -65,6 +74,8 @@ export const SETTINGS_DEFAULTS: SettingsMap = {
   media_player_volume: 50,
   cameras_list: [],
   cameras_layout: "auto",
+  climate_list: [],
+  climate_layout: "auto",
   navbar_auto_hide: false,
   navbar_auto_hide_delay: 5,
   navbar_float: false,
@@ -126,7 +137,22 @@ export const SETTINGS_FIELDS: SettingField[] = [
     ],
     help: "How this device arranges its cameras on the Cameras view.",
   },
-  { key: "cameras_list", label: "Cameras", group: "Cameras", kind: "cameras", help: "Global lists the available cameras; each device curates its own subset." },
+  { key: "cameras_list", label: "Cameras", group: "Cameras", kind: "entity-list", entityDomain: "camera", help: "Global lists the available cameras; each device curates its own subset." },
+  // Temperatures
+  {
+    key: "climate_layout",
+    label: "Layout",
+    group: "Temperatures",
+    kind: "select",
+    options: [
+      { value: "auto", label: "Auto grid" },
+      { value: "tabbed", label: "Tabbed" },
+      { value: "vertical", label: "Vertical stack" },
+      { value: "horizontal", label: "Horizontal stack" },
+    ],
+    help: "How this device arranges its thermostats on the Climate view.",
+  },
+  { key: "climate_list", label: "Thermostats", group: "Temperatures", kind: "entity-list", entityDomain: "climate", help: "Global lists the available thermostats; each device curates its own subset." },
   // Navbar
   { key: "navbar_auto_hide", label: "Auto-hide", group: "Navbar", kind: "boolean", help: "Collapse the navbar into its edge until revealed." },
   { key: "navbar_auto_hide_delay", label: "Auto-hide delay", group: "Navbar", kind: "number", min: 1, max: 60, unit: "s", help: "Seconds before the revealed bar re-collapses." },
