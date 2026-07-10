@@ -945,6 +945,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.104
+
+- **Clock cap fit reverted to inked height** — reverts the v1.0.102/v1.0.103 line-box and descender-reclaim tweaks; a capped clock again fits its inked glyph height within the `max_height` cap.
+
 ### v1.0.103
 
 - **Capped clock reclaims the descender space** — when hugging content with a `max_height` cap, the clock now grows to use half of the empty space below its glyphs (the time has no descenders), so it fills the cap a bit more without spilling past it (only half, since growing the font also shifts the bottom-aligned content down).
