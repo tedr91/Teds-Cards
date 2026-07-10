@@ -945,6 +945,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.107
+
+- **Clock-less cards center correctly** — a Clock/Weather card with the clock hidden now renders the weather/date on their own rows (instead of as an absolute overlay in an empty clock row), and each row's glyph-recentering shift is sized to that row's own font rather than the clock's. Fixes the weather sitting off-center / spilling below the card (and supersedes the v1.0.106 attempt).
+
 ### v1.0.106
 
 - **Weather/date centers correctly without a clock** — the clock's glyph-recentering shift is now only applied when the clock is shown, so a weather-only (or date-only) Clock/Weather card no longer gets nudged off-center by a phantom clock offset.

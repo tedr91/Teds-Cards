@@ -564,17 +564,18 @@ export class TedClockWeatherCard extends LitElement implements LovelaceCard {
     const datePx = dateBasePx * this._dateFactor();
     const tempPx = tempBasePx * this._weatherFactor();
 
-    // Recenter the clock's visible glyphs within its line box: line-height:1
-    // leaves more leading above the caps than below the baseline for many fonts,
-    // which would push the clock down and make the top padding look larger. Only
-    // when the clock is shown — otherwise it would offset a clock-less weather/date row.
-    const vshift = this._config?.show_clock !== false ? leadAsymPer100 * (clockPx / 100) : 0;
-
+    // Recenter each row's glyphs within its line box: line-height:1 leaves more
+    // leading above the caps than below the baseline for many fonts, pushing the
+    // glyphs down. Each row is shifted proportionally to ITS OWN font size (clock,
+    // temp and date share the family, so one measured asymmetry ratio scales to each)
+    // — sizing every row by the clock pushed a clock-less weather/date row off-center.
     el.style.setProperty("--cwc-clock-size", `${clockPx}px`);
     el.style.setProperty("--cwc-date-size", `${datePx}px`);
     el.style.setProperty("--cwc-temp-size", `${tempPx}px`);
     el.style.setProperty("--cwc-icon-size", `${tempPx}px`);
-    el.style.setProperty("--cwc-vshift", `${vshift}px`);
+    el.style.setProperty("--cwc-clock-vshift", `${leadAsymPer100 * (clockPx / 100)}px`);
+    el.style.setProperty("--cwc-weather-vshift", `${leadAsymPer100 * (tempPx / 100)}px`);
+    el.style.setProperty("--cwc-date-vshift", `${leadAsymPer100 * (datePx / 100)}px`);
   }
 
   protected render(): TemplateResult | typeof nothing {
@@ -619,6 +620,13 @@ export class TedClockWeatherCard extends LitElement implements LovelaceCard {
     const canOverlay = (off: number): boolean => Math.abs(off - clockOff) > 50;
     const weatherAbove = this._config.weather_above_clock === true || !canOverlay(weatherOff);
     const dateBelow = this._config.date_below_clock === true || !canOverlay(dateOff);
+    // With no clock there's nothing to overlay on, so weather/date take their own
+    // rows (mirrors _stackRows so measurement and layout agree).
+    const weatherOwnRow = weatherVisible && (weatherAbove || !showClock);
+    const weatherOverlay = weatherVisible && !weatherAbove && showClock;
+    const dateOwnRow = showDate && (dateBelow || !showClock);
+    const dateOverlay = showDate && !dateBelow && showClock;
+    const showClockRow = showClock || weatherOverlay || dateOverlay;
 
     let iconEl;
     if (showIcon && iconStyle === "basic") {
@@ -652,33 +660,35 @@ export class TedClockWeatherCard extends LitElement implements LovelaceCard {
       <ha-card class=${classMap(cardClasses)} style=${styleMap(cardStyle)}>
         ${brushed ? brushedOverlay : nothing}
         <div class=${classMap({ cwc: true, fill: !this._hugsContent() })}>
-          ${weatherVisible && weatherAbove
+          ${weatherOwnRow
             ? html`<div class="row weather-row">
                 <div class="weather" style=${styleMap({ "--cwc-off": String(weatherOff) })}>
                   ${weatherInner}
                 </div>
               </div>`
             : nothing}
-          <div class="row clock-row">
-            ${weatherVisible && !weatherAbove
-              ? html`<div
-                  class="weather weather-abs"
-                  style=${styleMap({ ...weatherNudge, "--cwc-off": String(weatherOff) })}
-                >
-                  ${weatherInner}
-                </div>`
-              : nothing}
-            ${clockEl}
-            ${showDate && !dateBelow
-              ? html`<div
-                  class="date date-abs"
-                  style=${styleMap({ ...dateNudge, "--cwc-off": String(dateOff) })}
-                >
-                  ${dateText}
-                </div>`
-              : nothing}
-          </div>
-          ${showDate && dateBelow
+          ${showClockRow
+            ? html`<div class="row clock-row">
+                ${weatherOverlay
+                  ? html`<div
+                      class="weather weather-abs"
+                      style=${styleMap({ ...weatherNudge, "--cwc-off": String(weatherOff) })}
+                    >
+                      ${weatherInner}
+                    </div>`
+                  : nothing}
+                ${clockEl}
+                ${dateOverlay
+                  ? html`<div
+                      class="date date-abs"
+                      style=${styleMap({ ...dateNudge, "--cwc-off": String(dateOff) })}
+                    >
+                      ${dateText}
+                    </div>`
+                  : nothing}
+              </div>`
+            : nothing}
+          ${dateOwnRow
             ? html`<div class="row date-row">
                 <div class="date" style=${styleMap({ "--cwc-off": String(dateOff) })}>
                   ${dateText}
@@ -740,21 +750,26 @@ export class TedClockWeatherCard extends LitElement implements LovelaceCard {
       .row {
         position: relative;
         width: 100%;
-        /* Lift the rows by --cwc-vshift (measured per render) so the clock's
-           visible glyphs are centered: line-height:1 leaves more leading above
-           the caps than below the baseline for many fonts, which would push the
-           clock down and make the top padding look larger. */
-        transform: translateY(calc(-1 * var(--cwc-vshift, 0px)));
       }
 
+      /* Lift each row by its own --cwc-*-vshift (measured per render) so the visible
+         glyphs are centered: line-height:1 leaves more leading above the caps than
+         below the baseline for many fonts, which would push the glyphs down. Each row
+         is shifted proportionally to its OWN font size. */
       .clock-row {
         display: flex;
         align-items: flex-end;
+        transform: translateY(calc(-1 * var(--cwc-clock-vshift, 0px)));
       }
 
-      .weather-row,
+      .weather-row {
+        display: flex;
+        transform: translateY(calc(-1 * var(--cwc-weather-vshift, 0px)));
+      }
+
       .date-row {
         display: flex;
+        transform: translateY(calc(-1 * var(--cwc-date-vshift, 0px)));
       }
 
       /* Continuous horizontal positioning driven by --cwc-off (0 = left … 100 =
