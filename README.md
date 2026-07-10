@@ -937,6 +937,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.114
+
+- **Clock Weather Card — clock no longer overflows the card on wide displays** — in hug-content mode the large clock could grow into its font's empty descender space (times have no descenders) and spill past the card's bottom edge on very wide cards. It now reclaims only half that descender space, keeping the enlarged glyphs inside the card. Normal (fill-mode) auto-sizing is unchanged.
+
 ### v1.0.113
 
 - **Navbar Card — auto-hide pill sizing** — trimmed the collapsed auto-hide pill's edge reserve and hit-area height to 25 px for a tighter fit against the screen edge.

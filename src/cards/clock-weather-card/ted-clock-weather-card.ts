@@ -537,6 +537,10 @@ export class TedClockWeatherCard extends LitElement implements LovelaceCard {
     // (used below to recenter the visible glyphs).
     let inkRatio = 0.72; // fallback ≈ cap height as a fraction of the em
     let leadAsymPer100 = 0;
+    // The clock's UNUSED descender space (font descent minus the glyphs' actual
+    // descent — ~0 for a descender-less time) as a fraction of the em. Hug mode
+    // reclaims half of it below (see clockFitRatio).
+    let emptyDescRatio = 0;
     const vctx = this._canvas?.getContext("2d");
     if (vctx) {
       vctx.font = `${CLOCK_WEIGHT} 100px ${family}`;
@@ -547,6 +551,7 @@ export class TedClockWeatherCard extends LitElement implements LovelaceCard {
       const ad = m.actualBoundingBoxDescent;
       if ([fa, fd, aa, ad].every((v) => typeof v === "number")) {
         inkRatio = Math.max(0.1, (aa + ad) / 100);
+        emptyDescRatio = Math.max(0, fd - ad) / 100;
         const halfLeading = (100 - fa - fd) / 2;
         const leadAbove = halfLeading + fa - aa;
         const leadBelow = halfLeading + fd - ad;
@@ -572,7 +577,13 @@ export class TedClockWeatherCard extends LitElement implements LovelaceCard {
       const showDate = this._config?.show_date !== false;
       const showWeather = this._config?.show_weather !== false;
       const weatherVisible = showWeather && (showIcon || (showTemp && this._tempText() != null));
-      const clockInk = showClock ? clockBasePx * inkRatio : 0;
+      // In hug mode the clock (no descenders) would otherwise grow until its inked
+      // height fills max_height, letting the whole em box spill past the card's
+      // bottom edge by the full empty descender on very wide cards. Reclaim only
+      // HALF that descender so the enlarged glyphs stay inside the card. Fill mode
+      // is unchanged (its fixed-height container clips/centers instead).
+      const clockFitRatio = this._hugsContent() ? inkRatio + emptyDescRatio / 2 : inkRatio;
+      const clockInk = showClock ? clockBasePx * clockFitRatio : 0;
       const overlaidWeather = weatherVisible && !rows.weatherRow ? tempBasePx : 0;
       const overlaidDate = showDate && !rows.dateRow ? dateBasePx : 0;
       let stack = Math.max(clockInk, overlaidWeather, overlaidDate);
