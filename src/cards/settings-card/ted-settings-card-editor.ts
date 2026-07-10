@@ -41,6 +41,7 @@ export class TedSettingsCardEditor extends LitElement implements LovelaceCardEdi
   private _schema() {
     return [
       { name: "title", selector: { text: {} } },
+      { name: "section_tabs", selector: { boolean: {} } },
       {
         type: "grid",
         name: "",
@@ -73,6 +74,8 @@ export class TedSettingsCardEditor extends LitElement implements LovelaceCardEdi
     switch (schema.name) {
       case "title":
         return "Title";
+      case "section_tabs":
+        return "Built-in section tabs (one tab per settings category)";
       case "show_global":
         return "Show Global tab";
       case "show_device":

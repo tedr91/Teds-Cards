@@ -56,6 +56,8 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
   @property({ attribute: false }) public hass?: HomeAssistant;
   @state() private _config?: SettingsCardConfig;
   @state() private _tab: "global" | "device" = "global";
+  /** Active section (group name) when `section_tabs` is enabled. */
+  @state() private _section?: string;
   /** Fields the user is actively overriding on this device but hasn't stored a value for yet. */
   private _editing = new Set<string>();
 
@@ -76,8 +78,17 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
   public connectedCallback(): void {
     super.connectedCallback();
     // Follow the shared UI scope when this card is driven by an external toggle.
-    if (this._config?.scope === "shared" || this._config?.variant === "scope-toggle") {
+    if (
+      this._config?.scope === "shared" ||
+      this._config?.variant === "scope-toggle" ||
+      this._config?.section_tabs
+    ) {
       this._unsubScope ??= subscribeUiScope(() => this.requestUpdate());
+    }
+    // Built-in section tabs honour a `?tab=` deep link (e.g. from the Climate card).
+    if (this._config?.section_tabs) {
+      window.addEventListener("location-changed", this._onLocationChanged);
+      window.addEventListener("popstate", this._onLocationChanged);
     }
   }
 
@@ -85,6 +96,45 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     super.disconnectedCallback();
     this._unsubScope?.();
     this._unsubScope = undefined;
+    window.removeEventListener("location-changed", this._onLocationChanged);
+    window.removeEventListener("popstate", this._onLocationChanged);
+  }
+
+  private _onLocationChanged = (): void => {
+    if (!this._config?.section_tabs) return;
+    const s = this._sectionFromUrl();
+    if (s && s !== this._section) this._section = s;
+  };
+
+  /** Groups shown as section tabs (optionally limited by the `sections` config). */
+  private _sectionGroups(): ReturnType<typeof fieldsByGroup> {
+    const cfg = this._config;
+    return cfg?.sections?.length
+      ? fieldsByGroup().filter((g) => cfg.sections!.includes(g.group))
+      : fieldsByGroup();
+  }
+
+  /** The section named by the current URL's `?tab=` param, if it matches a group. */
+  private _sectionFromUrl(): string | undefined {
+    let raw: string | null = null;
+    try {
+      raw = new URLSearchParams(window.location.search).get(this._config?.url_param || "tab");
+    } catch {
+      raw = null;
+    }
+    if (!raw) return undefined;
+    const match = this._sectionGroups().find((g) => g.group.toLowerCase() === raw!.toLowerCase());
+    return match?.group;
+  }
+
+  /** Resolve the active section: explicit selection, else a deep link, else the first. */
+  private _activeSection(groups: ReturnType<typeof fieldsByGroup>): string {
+    if (this._section && groups.some((g) => g.group === this._section)) return this._section;
+    return this._sectionFromUrl() ?? groups[0]?.group ?? "";
+  }
+
+  private _selectSection(name: string): void {
+    this._section = name;
   }
 
   public getCardSize(): number {
@@ -596,6 +646,62 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
       `;
     }
 
+    // Built-in section tabs: a self-contained settings UI (shared Global / This device
+    // toggle + a tab per group) that doesn't need an external tab card to compose the
+    // categories. Honours a `?tab=<group>` deep link.
+    if (cfg.section_tabs) {
+      const scope = getUiScope();
+      const groups = this._sectionGroups();
+      const active = this._activeSection(groups);
+      const activeGroup = groups.find((g) => g.group === active);
+      return html`
+        <ha-card class=${classMap(cardClasses)} style=${styleMap(cardStyle)}>
+          ${cfg.brushed ? brushedOverlay : nothing} ${header}
+          ${missing
+            ? html`<div class="warn">Install the <b>Ted's Cards Backend</b> integration to use settings.</div>`
+            : html`
+                <div class="tabs" role="tablist">
+                  <button class="tab ${scope === "global" ? "active" : ""}" @click=${() => setUiScope("global")}>
+                    Global
+                  </button>
+                  <button class="tab ${scope === "device" ? "active" : ""}" @click=${() => setUiScope("device")}>
+                    This device
+                  </button>
+                </div>
+                ${scope === "device"
+                  ? html`<div class="device-note">
+                      Overrides apply to <b>this device only</b>. Un-overridden settings inherit the Global value.
+                    </div>`
+                  : scope === "global" && !this._isAdmin()
+                    ? html`<div class="device-note">Global settings are read-only — administrator access required.</div>`
+                    : nothing}
+                <div class="section-strip" role="tablist">
+                  ${groups.map(
+                    (g) => html`<button
+                      type="button"
+                      role="tab"
+                      class="section-tab ${g.group === active ? "active" : ""}"
+                      aria-selected=${g.group === active ? "true" : "false"}
+                      @click=${() => this._selectSection(g.group)}
+                    >
+                      ${g.group}
+                    </button>`,
+                  )}
+                </div>
+                <div class="groups">
+                  ${activeGroup
+                    ? html`<div class="group">
+                        ${activeGroup.fields.map((f) =>
+                          scope === "global" ? this._renderGlobalRow(f) : this._renderDeviceRow(f),
+                        )}
+                      </div>`
+                    : nothing}
+                </div>
+              `}
+        </ha-card>
+      `;
+    }
+
     const tab = scopeShared
       ? getUiScope()
       : !showGlobal
@@ -705,6 +811,32 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
       .tab.active {
         color: var(--ted-style-accent);
         border-bottom-color: var(--ted-style-accent);
+      }
+      .section-strip {
+        display: flex;
+        gap: 4px;
+        overflow-x: auto;
+        scrollbar-width: none;
+      }
+      .section-strip::-webkit-scrollbar {
+        display: none;
+      }
+      .section-tab {
+        font: inherit;
+        font-weight: 600;
+        font-size: 0.9rem;
+        color: var(--ted-style-muted);
+        background: transparent;
+        border: 1px solid var(--ted-style-divider);
+        border-radius: 999px;
+        padding: 6px 14px;
+        cursor: pointer;
+        white-space: nowrap;
+      }
+      .section-tab.active {
+        color: var(--ted-style-accent);
+        border-color: var(--ted-style-accent);
+        background: color-mix(in srgb, var(--ted-style-accent) 12%, transparent);
       }
       .device-note {
         color: var(--ted-style-muted);

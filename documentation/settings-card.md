@@ -32,7 +32,19 @@ show_global: false
 - **Global** settings apply to every device.
 - **This device** settings override Global for the current browser/device only.
 
-You can either let each card show its own Global/This-device tabs (`scope: tabs`,
+The simplest setup is a single **all-in-one** card that renders a category tab strip
+(one tab per settings group) with its own Global / This device toggle:
+
+```yaml
+- type: custom:ted-settings-card
+  section_tabs: true
+  title: Ted's Cards Settings
+```
+
+This honours a `?tab=<category>` deep link (e.g. the Climate card's "Settings" button
+navigates to `?tab=temperatures`).
+
+Otherwise you can either let each card show its own Global/This-device tabs (`scope: tabs`,
 the default), or drive several cards from **one shared switch**:
 
 ```yaml
@@ -53,7 +65,9 @@ the default), or drive several cards from **one shared switch**:
 | Option | Type | Default | Description |
 | --- | --- | --- | --- |
 | `title` | string | `Settings` | Header text. |
-| `sections` | string[] | *(all)* | Render only these setting groups (e.g. `["Timers"]`). |
+| `section_tabs` | boolean | false | Render a built-in category tab strip (one tab per settings group) plus its own Global / This device toggle. Honours a `?tab=<category>` deep link. |
+| `url_param` | string | `tab` | URL query parameter that deep-links the active section tab (when `section_tabs` is on). |
+| `sections` | string[] | *(all)* | Render only these setting groups (e.g. `["Timers"]`). With `section_tabs`, limits which category tabs appear. |
 | `show_global` | boolean | true | Show the Global tab. |
 | `show_device` | boolean | true | Show the This-device tab. |
 | `show_header` | boolean | true | Show the card header (icon + title). |
@@ -61,6 +75,6 @@ the default), or drive several cards from **one shared switch**:
 | `variant` | `settings` \| `scope-toggle` | `settings` | `settings` renders the fields; `scope-toggle` renders only the Global/This-device switch. |
 | `theme`, `background`, `transparency`, `blur`, `brushed`, `shadow` | | | See [Appearance & theming](./README.md#appearance--theming-shared). |
 
-Setting groups include **Timers**, **Alarms**, **Notifications**, **Media**,
-**Navbar**, **General**, and **Navigation**. Non-admins can view Global settings
-read-only; the This-device scope stays editable.
+Setting groups include **General**, **Navigation**, **Navbar**, **Notifications**,
+**Alarms**, **Timers**, **Media**, **Cameras**, and **Temperatures**. Non-admins can
+view Global settings read-only; the This-device scope stays editable.
