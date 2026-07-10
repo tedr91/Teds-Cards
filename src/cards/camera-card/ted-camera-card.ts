@@ -243,10 +243,21 @@ export class TedCameraCard extends LitElement implements LovelaceCard {
     return this._viewOverride[cam.entity] ?? cam.camera_view ?? "auto";
   }
 
+  /** The effective layout. In settings mode (and when the card doesn't pin `layout`),
+   *  it comes from this device's `cameras_layout` setting; otherwise the card config. */
+  private _effectiveLayout(): CameraLayout {
+    if (this._config?.cameras_source === "settings" && this._config?.layout === undefined) {
+      const valid: CameraLayout[] = ["single", "dual", "quad", "big-small", "auto"];
+      const s = settingsStore.effective().cameras_layout;
+      if (typeof s === "string" && (valid as string[]).includes(s)) return s as CameraLayout;
+    }
+    return this._config?.layout ?? "single";
+  }
+
   /** Build the tile grid for the configured layout. */
   private _renderLayout(isGrid: boolean): TemplateResult {
     const cameras = this._enabledCameras();
-    const layout: CameraLayout = this._config?.layout ?? "single";
+    const layout: CameraLayout = this._effectiveLayout();
 
     if (layout === "auto") {
       const n = Math.max(cameras.length, 1);

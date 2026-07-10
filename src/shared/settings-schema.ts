@@ -64,6 +64,7 @@ export const SETTINGS_DEFAULTS: SettingsMap = {
   media_player: null,
   media_player_volume: 50,
   cameras_list: [],
+  cameras_layout: "auto",
   navbar_auto_hide: false,
   navbar_auto_hide_delay: 5,
   navbar_float: false,
@@ -111,6 +112,19 @@ export const SETTINGS_FIELDS: SettingField[] = [
   { key: "media_player", label: "Media player", group: "Media", kind: "entity", entityDomain: "media_player", deviceOnly: true, help: "Speaker used for notifications, alarms, timers, music. Set per-device." },
   { key: "media_player_volume", label: "Media volume", group: "Media", kind: "percent" },
   // Cameras
+  {
+    key: "cameras_layout",
+    label: "Layout",
+    group: "Cameras",
+    kind: "select",
+    options: [
+      { value: "auto", label: "Auto grid" },
+      { value: "single", label: "Single" },
+      { value: "quad", label: "Quad (2×2)" },
+      { value: "big-small", label: "Multi" },
+    ],
+    help: "How this device arranges its cameras on the Cameras view.",
+  },
   { key: "cameras_list", label: "Cameras", group: "Cameras", kind: "cameras", help: "Global lists the available cameras; each device curates its own subset." },
   // Navbar
   { key: "navbar_auto_hide", label: "Auto-hide", group: "Navbar", kind: "boolean", help: "Collapse the navbar into its edge until revealed." },

@@ -945,6 +945,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.108
+
+- **Per-device camera layout** — added a `cameras_layout` setting (Auto grid / Single / Quad / Multi) shown at the top of Settings → Cameras. In `cameras_source: settings` mode the Camera Card takes its layout from this setting (per-device or global), so each device can arrange its cameras without editing YAML. Pairs with Ted's Cards Backend v1.0.26+.
+
 ### v1.0.107
 
 - **Clock-less cards center correctly** — a Clock/Weather card with the clock hidden now renders the weather/date on their own rows (instead of as an absolute overlay in an empty clock row), and each row's glyph-recentering shift is sized to that row's own font rather than the clock's. Fixes the weather sitting off-center / spilling below the card (and supersedes the v1.0.106 attempt).
