@@ -49,16 +49,11 @@ sections:
 Each `menu_items` entry: `name` (required), `icon` (mdi), `entity` (optional), and
 `tap_action` (a standard [action](./README.md#actions), e.g. `call-service`).
 
-### Backend & View Assist
+### Backend integration
 
 | Option | Type | Default | Description |
 | --- | --- | --- | --- |
 | `backend_integration` | boolean | false | Opt into Ted's Cards Backend behaviours: auto-return-home on idle, welcome-view redirect to the device's home, and `tap_navigate` on status items. |
-| `size_source` | object | | Drive bar thickness from an entity attribute holding a View Assist size (`6vw`/`7vw`/`8vw` → 35/42/50 px). Overrides `size`. |
-
-`size_source` (and a section's `items_source`) is an *EntityAttrSource*:
-`entity` (string), `va_device` (boolean — resolve from the device's View Assist
-sensor), `attribute` (string, required).
 
 ### Sections
 
@@ -72,11 +67,10 @@ sensor), `attribute` (string, required).
 | `overflow` | boolean | true | Collapse items that don't fit into a "…" popup. |
 | `items` | array | | Ordered mix of nav buttons and status items. |
 | `buttons` | array | | Legacy buttons-only list (used when `items` is unset). |
-| `items_source` | object | | Append buttons parsed from a View Assist status-icon/menu attribute. |
 
 **Nav buttons** are [Button Card](./button-card.md) configs plus optional
 `nav_button_size` (`normal` \| `wide`), `visible` (boolean), and `visibility`
-(a list of HA-style + `view-assist` conditions).
+(a list of conditions).
 
 **Status items** (brightness, volume, sensors, notifications bell, LED, time/date,
 weather, alarms/timers) can also appear in a section — see the

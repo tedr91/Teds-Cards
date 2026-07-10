@@ -101,4 +101,4 @@ Each rule: `operator` (`is`, `is_not`, `>`, `>=`, `<`, `<=`), `value`,
 | `double_tap_action` | action | On double-tap. |
 
 See [Actions](./README.md#actions) for supported action types (including the Ted
-extensions `navigate-dashboard`, `view-assist-navigate`, `view-assist-hold`).
+extension `navigate-dashboard`).

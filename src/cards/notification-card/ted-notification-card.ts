@@ -101,7 +101,7 @@ export class TedNotificationCard extends LitElement implements LovelaceCard {
     return filtered.slice(0, max);
   }
 
-  /** This device's effective area (config override → View Assist → browser_mod → localStorage). */
+  /** This device's effective area (config override → browser_mod → localStorage). */
   private _effectiveArea(): string | undefined {
     return resolveDeviceArea(this.hass, this._config?.area).area;
   }

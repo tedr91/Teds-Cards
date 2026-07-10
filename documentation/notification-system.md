@@ -249,10 +249,9 @@ the **current device's area** and show that area's notifications **plus** house-
 (area-less) ones. The area is resolved through this chain (first match wins):
 
 1. An explicit `area` set on the card / status item (config override).
-2. **View Assist** — the device's View Assist sensor's area.
-3. **browser_mod** — the browser's registered device area.
-4. A per-device value saved in `localStorage` (`ted_device_area`).
-5. If none resolve, the device is treated as "area unknown" and sees everything
+2. **browser_mod** — the browser's registered device area.
+3. A per-device value saved in `localStorage` (`ted_device_area`).
+4. If none resolve, the device is treated as "area unknown" and sees everything
    (some cards show a one-time "set this device's area" banner).
 
 Because the area is resolved **per device at runtime**, a single shared dashboard /

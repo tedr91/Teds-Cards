@@ -10,7 +10,6 @@ export type MessageBoxDisplay = "inline" | "pinned" | "modal";
 
 /** What an action button does when tapped. */
 export type MessageBoxActionKind =
-  | "view-assist-navigate"
   | "dismiss"
   | "dismiss-session"
   | "navigate"
@@ -27,8 +26,6 @@ export interface MessageBoxAction {
   /** `primary` is filled with the accent; `secondary` (default) is subtle. */
   variant?: "primary" | "secondary";
   action: MessageBoxActionKind;
-  // view-assist-navigate
-  view?: string;
   // navigate
   navigation_path?: string;
   // url
@@ -66,7 +63,7 @@ export interface MessageBoxCardConfig extends LovelaceCardConfig {
   dismiss_key?: string;
 
   /** Standard visibility conditions (same engine as the Navbar Card): `state`,
-   *  `numeric_state`, `screen` (media query), `user`, `view-assist`, `card`, and
+   *  `numeric_state`, `screen` (media query), `user`, `card`, and
    *  `and`/`or`/`not`. Top-level conditions are AND-ed; omit to always show. */
   visibility?: Condition[];
   actions?: MessageBoxAction[];

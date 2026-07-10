@@ -33,7 +33,7 @@ export interface StatusItemBase {
   display?: StatusDisplay;
   /** Hide the item outright (default true = shown). Honoured by the Navbar Card. */
   visible?: boolean;
-  /** Conditions (HA-style + `view-assist`) that gate visibility. Honoured by the Navbar Card. */
+  /** Conditions that gate visibility. Honoured by the Navbar Card. */
   visibility?: Condition[];
 }
 

@@ -4,60 +4,31 @@
  * dashboard its per-device area, so we try several in priority order:
  *
  *   1. the card's explicit `area` config (a real area_id) — highest priority override;
- *   2. the View Assist satellite's area (its VA sensor's `area_id` attribute, or the
- *      sensor / its `mic_device`'s area in the entity/device registry);
- *   3. the browser_mod browser's registered device area (assign the browser an Area in HA);
- *   4. a per-device value the user saved once into localStorage (`ted_device_area`);
- *   5. otherwise nothing — the card shows a banner prompting for an area (stored in #4).
+ *   2. the browser_mod browser's registered device area (assign the browser an Area in HA);
+ *   3. a per-device value the user saved once into localStorage (`ted_device_area`);
+ *   4. otherwise nothing — the card shows a banner prompting for an area (stored in #3).
  */
 import type { HomeAssistant } from "custom-card-helpers";
-
-import { viewAssistSensor } from "./view-assist";
 
 /** localStorage key holding a manually-chosen area for this device. */
 export const LOCAL_AREA_KEY = "ted_device_area";
 
 /** Frontend registry shapes (not declared on the custom-card-helpers HomeAssistant type). */
 interface RegistryHass {
-  states?: HomeAssistant["states"];
   areas?: Record<string, { area_id?: string; name?: string } | undefined>;
-  entities?: Record<string, { area_id?: string | null; device_id?: string | null } | undefined>;
   devices?: Record<
     string,
     { area_id?: string | null; identifiers?: [string, string][] } | undefined
   >;
 }
 
-export type AreaSource = "config" | "view_assist" | "browser_mod" | "local" | "none";
+export type AreaSource = "config" | "browser_mod" | "local" | "none";
 
 export interface ResolvedArea {
   /** The resolved area_id, or undefined when nothing resolved (prompt the user). */
   area?: string;
   /** Which step of the chain produced the value. */
   source: AreaSource;
-}
-
-/** The area of the current View Assist satellite, via its sensor / mic_device. */
-function viewAssistArea(hass: RegistryHass): string | undefined {
-  const sensor = viewAssistSensor();
-  if (!sensor) return undefined;
-  const st = hass.states?.[sensor];
-  const attr = st?.attributes?.area_id;
-  if (typeof attr === "string" && attr) return attr;
-  const fromEntity = entityArea(hass, sensor);
-  if (fromEntity) return fromEntity;
-  const mic = st?.attributes?.mic_device;
-  if (typeof mic === "string" && mic) return entityArea(hass, mic);
-  return undefined;
-}
-
-/** An entity's area: its own area override, else its device's area. */
-function entityArea(hass: RegistryHass, entityId: string): string | undefined {
-  const ent = hass.entities?.[entityId];
-  if (!ent) return undefined;
-  if (ent.area_id) return ent.area_id;
-  if (ent.device_id) return hass.devices?.[ent.device_id]?.area_id ?? undefined;
-  return undefined;
 }
 
 /** The current browser_mod browser id, if browser_mod is installed. */
@@ -112,8 +83,6 @@ export function resolveDeviceArea(hass: HomeAssistant | undefined, configArea?: 
   if (configArea) return { area: configArea, source: "config" };
   const h = hass as RegistryHass | undefined;
   if (!h) return { area: undefined, source: "none" };
-  const va = viewAssistArea(h);
-  if (va) return { area: va, source: "view_assist" };
   const bm = browserModArea(h);
   if (bm) return { area: bm, source: "browser_mod" };
   const ls = localArea();

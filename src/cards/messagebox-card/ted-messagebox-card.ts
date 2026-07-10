@@ -10,7 +10,6 @@ import {
 
 import { registerCustomCard } from "../../shared/register-card";
 import { tedCardThemeClass, tedStyleTheme } from "../../shared/theme";
-import { viewAssistNavigate } from "../../shared/view-assist";
 import { isVisible } from "../../shared/conditions";
 import { settingsStore } from "../../shared/settings";
 import {
@@ -29,8 +28,8 @@ import type { MessageBoxAction, MessageBoxCardConfig } from "./types";
  *
  * Dismissal is CSS-safe (no inline scripts): `dismiss` writes a persistent
  * flag, `dismiss-session` a per-session flag, both keyed by `dismiss_key`.
- * Optional `visibility` conditions (the shared engine: `screen`, `view-assist`,
- * `card`, `state`, …) gate whether the card is shown.
+ * Optional `visibility` conditions (the shared engine: `screen`, `card`,
+ * `state`, …) gate whether the card is shown.
  */
 @customElement(MESSAGEBOX_CARD_TYPE)
 export class TedMessageBoxCard extends LitElement implements LovelaceCard {
@@ -67,12 +66,10 @@ export class TedMessageBoxCard extends LitElement implements LovelaceCard {
   public connectedCallback(): void {
     super.connectedCallback();
     window.addEventListener("resize", this._onViewportChange);
-    window.addEventListener("view-assist-responsive-change", this._onViewportChange);
   }
 
   public disconnectedCallback(): void {
     window.removeEventListener("resize", this._onViewportChange);
-    window.removeEventListener("view-assist-responsive-change", this._onViewportChange);
     super.disconnectedCallback();
   }
 
@@ -111,9 +108,6 @@ export class TedMessageBoxCard extends LitElement implements LovelaceCard {
         break;
       case "dismiss-session":
         this._applyDismiss(false);
-        break;
-      case "view-assist-navigate":
-        viewAssistNavigate(this.hass, a.view || "home");
         break;
       case "navigate":
         if (a.navigation_path) {

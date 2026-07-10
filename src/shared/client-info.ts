@@ -26,14 +26,7 @@ export interface ClientInfo {
 export function clientInfo(): ClientInfo {
   const width = window.innerWidth;
   const height = window.innerHeight;
-  const va = (window as unknown as { viewAssistResponsive?: { orientation?: string } })
-    .viewAssistResponsive;
-  const orientation: ClientOrientation =
-    va?.orientation === "portrait" || va?.orientation === "landscape"
-      ? va.orientation
-      : height > width
-        ? "portrait"
-        : "landscape";
+  const orientation: ClientOrientation = height > width ? "portrait" : "landscape";
   const small = Math.min(width, height) <= SMALL_SHORT_EDGE;
   const form_factor: ClientFormFactor =
     orientation === "portrait"

@@ -365,7 +365,7 @@ function renderOptionsPopover(
 
 /**
  * Icon + count badge for the alarms / timers sensors. Scoped to this device's
- * area (config → View Assist → browser_mod → localStorage) plus house-wide
+ * area (config → browser_mod → localStorage) plus house-wide
  * (area-less) items. Hidden entirely when empty unless `hide_when_empty: false`.
  *
  * Tap navigates to the configured dashboard; hold opens an options menu
@@ -444,7 +444,7 @@ function renderNotificationsItem(
   index: number,
 ): TemplateResult {
   const all = (ctx.hass.states["sensor.teds_notifications"]?.attributes?.notifications ?? []) as NotifRow[];
-  // Scope to this device's area (config override → View Assist → browser_mod →
+  // Scope to this device's area (config override → browser_mod →
   // localStorage), showing that area's notifications plus house-wide (area-less) ones.
   const area = resolveDeviceArea(ctx.hass, item.area).area;
   const items = area ? all.filter((n) => !n.area || n.area === area) : all;

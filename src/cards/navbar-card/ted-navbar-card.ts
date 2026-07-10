@@ -19,7 +19,6 @@ import { SettingsController, settingsStore } from "../../shared/settings";
 import type { SettingsValue } from "../../shared/settings-schema";
 import { AutoReturnController } from "../../shared/auto-return";
 import { HomeRedirectController } from "../../shared/home-redirect";
-import { viewAssistSensor } from "../../shared/view-assist";
 import { tedCardThemeClass, tedStyleTheme } from "../../shared/theme";
 import { renderStatusItem, type StatusItemContext } from "../../shared/status-items/render";
 import { StatusSliderController } from "../../shared/status-items/slider-controller";
@@ -38,8 +37,7 @@ import {
   defaultNavButton,
 } from "./const";
 import { detectEditOrPreview, forceNavbarPadding, navbarContentRect, navbarHeaderHeight, removeNavbarPadding, setNavbarBottomReserve } from "./navbar-dom";
-import type { EntityAttrSource, NavButtonConfig, NavItem, NavMenuItem, NavSection, NavZone, NavbarAlignment, NavbarCardConfig } from "./types";
-import { navItemKey, parseVaItem, vaSizeToThickness } from "./va-items";
+import type { NavButtonConfig, NavItem, NavMenuItem, NavSection, NavZone, NavbarAlignment, NavbarCardConfig } from "./types";
 
 interface CardHelpers {
   createCardElement(config: LovelaceCardConfig): LovelaceCard;
@@ -106,10 +104,6 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
   private _clockTimer?: number;
   /** True when any nav item uses `visible`/`visibility` — enables live re-evaluation. */
   private _hasConditional = false;
-  /** True when any section sources items, or the bar sizes, from an entity attribute. */
-  private _hasSource = false;
-  /** Last bar thickness reserved as view padding (so a size source can refresh it). */
-  private _lastThickness?: number;
   /** Per-section (config index) visible item count when overflow trims the tail. */
   private _visible = new Map<number, number>();
   private _resizeRaf?: number;
@@ -142,7 +136,7 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
       const it = this._notifItem();
       return {
         hass: this.hass,
-        // Resolve the device's area (config override → View Assist → browser_mod →
+        // Resolve the device's area (config override → browser_mod →
         // localStorage) so a shared navbar only toasts this device's area + house-wide.
         area: this.hass ? resolveDeviceArea(this.hass, it?.area).area : it?.area,
         enabled: !!it,
@@ -202,7 +196,6 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
     window.addEventListener("resize", this._onResize);
     window.addEventListener("location-changed", this._onVisibilityEvent);
     window.addEventListener("popstate", this._onVisibilityEvent);
-    window.addEventListener("view-assist-responsive-change", this._onVisibilityEvent);
     document.addEventListener("pointerdown", this._onDocPointerDown, true);
   }
 
@@ -218,7 +211,6 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
     window.removeEventListener("resize", this._onResize);
     window.removeEventListener("location-changed", this._onVisibilityEvent);
     window.removeEventListener("popstate", this._onVisibilityEvent);
-    window.removeEventListener("view-assist-responsive-change", this._onVisibilityEvent);
     document.removeEventListener("pointerdown", this._onDocPointerDown, true);
     this._clearHide();
     if (this._resizeRaf) cancelAnimationFrame(this._resizeRaf);
@@ -231,21 +223,18 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
   protected willUpdate(changed: PropertyValues): void {
     if (changed.has("_config")) {
       this._hasConditional = this._computeHasConditional();
-      this._hasSource = this._computeHasSource();
       this._visible.clear();
       this._buildButtonElements();
       this._applyPadding();
-      this._lastThickness = this._thickness();
       this._syncClockTimer();
       // Re-collapse (or fully show) when the auto-hide setting changes.
       this._collapsed = this._autoHide();
       this._prevAutoHide = this._autoHide();
       if (!this._autoHide()) this._clearHide();
-    } else if (changed.has("hass") && (this._hasConditional || this._hasSource)) {
-      // Visibility conditions and sourced items may depend on entity state; rebuild so
-      // newly hidden/shown/sourced items update (elements reuse by config = cheap).
+    } else if (changed.has("hass") && this._hasConditional) {
+      // Visibility conditions may depend on entity state; rebuild so newly hidden/shown
+      // items update (elements reuse by config = cheap).
       this._buildButtonElements();
-      if (this._hasSource) this._syncSourcedThickness();
     }
     if (changed.has("hass")) this._propagateHass();
   }
@@ -258,27 +247,11 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
   }
 
   private _thickness(): number {
-    const source = this._config?.size_source;
-    const entity = source ? this._sourceEntity(source) : undefined;
-    if (source && entity && this.hass) {
-      const mapped = vaSizeToThickness(this.hass.states[entity]?.attributes?.[source.attribute]);
-      if (mapped !== undefined) return mapped;
-    }
     // Card YAML `size` wins; a per-device `navbar_size` setting is the fallback.
     if (typeof this._config?.size === "number") return this._config.size;
     const o = this._settingOverride("navbar_size");
     if (typeof o === "number" && o > 0) return o;
     return DEFAULT_NAVBAR_SIZE;
-  }
-
-  /** When a View Assist size source changes the bar thickness, refresh the reserved view
-   *  padding and let overflow re-measure against the new size. */
-  private _syncSourcedThickness(): void {
-    const thickness = this._thickness();
-    if (thickness === this._lastThickness) return;
-    this._lastThickness = thickness;
-    this._applyPadding();
-    this._visible.clear();
   }
 
   private _alignment(): NavbarAlignment {
@@ -442,7 +415,6 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
    *  was just toggled. The SettingsController already requests a re-render. */
   private _onSettingsChanged = (): void => {
     this._applyPadding();
-    this._lastThickness = this._thickness();
     const ah = this._autoHide();
     if (ah !== this._prevAutoHide) {
       this._prevAutoHide = ah;
@@ -637,49 +609,11 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
     return cardConfig as LovelaceCardConfig;
   }
 
-  /** A section's ordered items (legacy buttons-only list as fallback) plus any buttons
-   *  sourced from an entity attribute, with items hidden by `visible: false` or unmet
-   *  `visibility:` conditions filtered out. */
+  /** A section's ordered items (legacy buttons-only list as fallback), with items hidden
+   *  by `visible: false` or unmet `visibility:` conditions filtered out. */
   private _sectionItems(section: NavSection): NavItem[] {
-    const base = section.items ?? section.buttons ?? [];
-    const items = section.items_source
-      ? [...base, ...this._sourcedItems(section.items_source, base)]
-      : base;
+    const items = section.items ?? section.buttons ?? [];
     return items.filter((item) => isVisible(item.visible, item.visibility, this.hass));
-  }
-
-  /** Build extra buttons from a View Assist status-icon / menu attribute (a list of
-   *  strings), de-duped against the section's curated items so e.g. `home`/`weather`
-   *  aren't doubled. Returns nothing until the source entity is available. */
-  /** Resolve a source's entity: the current device's View Assist sensor when
-   *  `va_device` is set (falling back to a static `entity`), else the static `entity`. */
-  private _sourceEntity(source: EntityAttrSource): string | undefined {
-    return source.va_device ? viewAssistSensor() ?? source.entity : source.entity;
-  }
-
-  private _sourcedItems(source: EntityAttrSource, base: NavItem[]): NavButtonConfig[] {
-    const entity = this._sourceEntity(source);
-    if (!this.hass || !entity) return [];
-    const raw = this.hass.states[entity]?.attributes?.[source.attribute];
-    if (!Array.isArray(raw)) return [];
-    const seen = new Set<string>();
-    for (const item of base) {
-      const key = navItemKey(item);
-      if (key) seen.add(key);
-    }
-    const out: NavButtonConfig[] = [];
-    for (const value of raw) {
-      if (typeof value !== "string") continue;
-      const button = parseVaItem(value, this.hass);
-      if (!button) continue;
-      const key = navItemKey(button);
-      if (key) {
-        if (seen.has(key)) continue;
-        seen.add(key);
-      }
-      out.push(button);
-    }
-    return out;
   }
 
   /** True when any item carries `visible`/`visibility`. */
@@ -690,12 +624,6 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
           i.visible !== undefined || (Array.isArray(i.visibility) && i.visibility.length > 0),
       );
     return (this._config?.sections ?? []).some((s) => scan(s.items ?? s.buttons ?? []));
-  }
-
-  /** True when the card sizes from, or any section sources items from, an entity attr. */
-  private _computeHasSource(): boolean {
-    if (this._config?.size_source) return true;
-    return (this._config?.sections ?? []).some((s) => s.items_source !== undefined);
   }
 
   /** A nav item is a button when its `type` is an embeddable `custom:` card. */

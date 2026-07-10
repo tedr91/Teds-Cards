@@ -81,6 +81,4 @@ plus a few Ted extensions used by some cards:
 | Action | Description |
 | --- | --- |
 | `navigate-dashboard` | Navigate to a dashboard-path **setting** (e.g. `dashboard: home_dashboard`), resolved per-device via the backend. |
-| `view-assist-navigate` | Navigate through the View Assist integration (`view: home`). |
-| `view-assist-hold` | Toggle the View Assist device's hold mode. |
 | `set-setting` | Write a Ted's Cards setting (`scope: device`\|`global`, `setting:`, `value:`). |

@@ -42,23 +42,6 @@ export interface BadgeConfig {
   area_scoped?: boolean;
 }
 
-/** Navigate using the View Assist integration's `view_assist.navigate` service so the
- *  destination honours the device's configured screens. `view` is the logical name
- *  `home` (resolved by the integration to the device's configured Home screen) or a
- *  view slug such as `music` (navigated relative to the device's configured dashboard).
- *  On a non-View-Assist browser the card falls back to a normal dashboard navigation.
- *  Configure in YAML, e.g. `tap_action: { action: view-assist-navigate, view: home }`. */
-export interface ViewAssistNavigateActionConfig {
-  action: "view-assist-navigate";
-  view: string;
-}
-
-/** Toggle View Assist "hold" mode (pause the auto-revert timeout) on the current
- *  device. Configure in YAML: `tap_action: { action: view-assist-hold }`. */
-export interface ViewAssistHoldActionConfig {
-  action: "view-assist-hold";
-}
-
 /** Navigate to a Ted's Cards dashboard-path setting resolved at tap time (so it
  *  follows the configured root + per-device override). Configure in YAML:
  *  `tap_action: { action: navigate-dashboard, dashboard: home_dashboard }`. */

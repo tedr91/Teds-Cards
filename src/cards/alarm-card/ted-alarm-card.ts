@@ -318,8 +318,8 @@ export class TedAlarmCard extends LitElement implements LovelaceCard {
     return html`
       <div class="area-banner">
         <div class="area-banner-text">
-          Set this device's area to scope alarms. Stored on this device only — a browser_mod or
-          View Assist area registration overrides it.
+          Set this device's area to scope alarms. Stored on this device only — a browser_mod
+          area registration overrides it.
         </div>
         <div class="area-banner-row">
           <select

@@ -97,7 +97,6 @@ pass); use an `or` / `not` condition to combine them differently.
 | `condition` | Keys | Shows the card when… |
 | --- | --- | --- |
 | `screen` | `media_query` | The CSS media query matches (e.g. `(max-width: 600px)`, `(orientation: portrait)`). |
-| `view-assist` | `present`, `mode` / `mode_not`, `view` / `not_view` | Matches the current View Assist device/view. `present: false` → **not** a View Assist device. |
 | `card` | `registered` / `not_registered` (string or list) | `not_registered` passes when any listed custom card type is **not** registered (warn about a missing dependency); `registered` passes only when all are present. |
 | `state` | `entity`, `attribute`, `state` / `state_not` | The entity's state (or attribute) matches / does not match. |
 | `numeric_state` | `entity`, `above`, `below` | The entity's numeric value is within range. |
@@ -144,7 +143,6 @@ Action buttons rendered under the message.
 | `dismiss-session` | *(uses `dismiss_key`)* | Hide for this browser session only. |
 | `navigate` | `navigation_path` | Navigate within the dashboard. |
 | `url` | `url_path` | Open a URL. |
-| `view-assist-navigate` | `view` | Navigate via the View Assist integration (honours the device's configured screens). |
 | `perform-action` / `call-service` | `perform_action` / `service`, `data`, `target` | Call a Home Assistant service/action. |
 | `more-info` | `entity` | Open the entity's more-info dialog. |
 | `none` | | No-op (label-only). |

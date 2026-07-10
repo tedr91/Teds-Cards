@@ -837,9 +837,6 @@ max_width: 920            # float only: maximum bar width in px
 background: ""            # optional card background color (theme name or hex/rgb)
 transparency: 0           # 0–100% — fade the bar's background
 blur: 0                   # 0–100% — blur the dashboard behind the bar
-size_source:              # optional (View Assist): set bar thickness from a VA size
-  va_device: true                # this device's VA sensor (or use entity: sensor.<name>)
-  attribute: status_icons_size   # View Assist size 6vw/7vw/8vw → 35/42/50 px
 sections:                 # up to 5 sections
   - placement: left       # left | center | right (which zone the section sits in)
     align: center         # left | center | right (alignment of items within the section)
@@ -850,9 +847,6 @@ sections:                 # up to 5 sections
         display: date
       - type: weather                       # status item (auto-picks a weather entity, or set entity:)
   - placement: center
-    items_source:         # optional (View Assist): append buttons from a status-icon list
-      va_device: true                     # this device's VA sensor (or use entity: sensor.<name>)
-      attribute: status_icons             # or menu_items
     items:
       - type: custom:ted-button-card  # a button
         name: Home
@@ -880,8 +874,6 @@ sections:                 # up to 5 sections
 - **Navbar type** — **Snap** spans edge-to-edge; **Float** centers the bar with margins and rounded corners (top/bottom bars only). A floating bar **auto-sizes to fit its buttons** (just a little wider) — unless it has **left-** or **right-**zone items, in which case it spans the full (maximum) width so those items can pin to the edges.
 - **Minimum width** / **Maximum width** (float only) — the bounds the floating bar is sized within (defaults **16** and **920** px).
 - **Size** — the bar thickness in pixels; buttons size automatically from it.
-- **Size source** *(View Assist)* — optionally drive the **bar thickness** from an entity attribute holding a View Assist size (`6vw` / `7vw` / `8vw` → `35` / `42` / `50` px). Set `va_device: true` to read **this device's** View Assist sensor (so one shared dashboard fits each display), or point at a fixed `entity:`. View Assist's own `vw` rendering isn't used; everything inside the bar auto-scales from the resulting thickness.
-- **Items source** *(View Assist)* — a section can **append buttons from a View Assist status-icon / menu list** (e.g. a VA sensor's `status_icons` or `menu_items` attribute). Use `va_device: true` to read **this device's** View Assist sensor on a shared dashboard, or a fixed `entity:`. Each entry becomes a button — `view:` navigates, `entity:` toggles, `service:` calls a service, and known names like `home` / `weather` map automatically — added after the section's own items and **de-duped** against them.
 - **Sections** (up to **5**) — each sits in a **left / center / right** zone and has its own content
   **alignment**. Sections, and the items inside them, are added and **dragged to reorder** in the
   editor. The **center** zone is pinned to the exact center of the bar, independent of the left/right
@@ -944,6 +936,10 @@ options as the Alarm card apply.
 
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
+
+### v1.0.111
+
+- **Removed all View Assist integration** — Ted's Cards no longer has any hooks or ties to View Assist. Dropped the `view-assist-navigate` / `view-assist-hold` tap actions (Button & MessageBox cards), the `view-assist` visibility condition, and the Navbar Card's `size_source` / `items_source` bindings (including `va_device`). Per-device **area** and **device-id** resolution now use browser_mod → local/saved value only (the View Assist step is gone). No configuration change is needed unless a dashboard explicitly used one of those View Assist-only options.
 
 ### v1.0.110
 

@@ -19,7 +19,6 @@ import { resolveDeviceArea } from "../../shared/device-area";
 import { resolveIcon } from "../../shared/icons";
 import { resolveDashboardPath } from "../../shared/settings";
 import { brushedOverlay, tedCardThemeClass, tedStyleTheme } from "../../shared/theme";
-import { viewAssistNavigate, viewAssistToggleHold } from "../../shared/view-assist";
 import {
   BUTTON_CARD_DESCRIPTION,
   BUTTON_CARD_EDITOR_TYPE,
@@ -33,7 +32,6 @@ import type {
   CardElement,
   HighlightConfig,
   HighlightRule,
-  ViewAssistNavigateActionConfig,
 } from "./types";
 
 const DOUBLE_CLICK_MS = 250;
@@ -559,24 +557,6 @@ export class TedButtonCard extends LitElement implements LovelaceCard {
       return;
     }
 
-    // View Assist navigation: resolve the destination through the integration so it
-    // follows the device's configured screens. Opt-in via `view-assist-navigate`; any
-    // other action falls through to Home Assistant's standard handler untouched.
-    if (actionConfig && (actionConfig.action as string) === "view-assist-navigate") {
-      if (!this._confirmAction(actionConfig)) return;
-      this._vaNavigate((actionConfig as unknown as ViewAssistNavigateActionConfig).view);
-      forwardHaptic("success");
-      return;
-    }
-
-    // View Assist hold: toggle the device's hold mode (pause auto-revert). Opt-in.
-    if (actionConfig && (actionConfig.action as string) === "view-assist-hold") {
-      if (!this._confirmAction(actionConfig)) return;
-      viewAssistToggleHold(this.hass);
-      forwardHaptic("success");
-      return;
-    }
-
     // Navigate to a dashboard-path setting (resolved at tap time, so it honours the
     // configured root + this device's override). Opt-in via `navigate-dashboard`.
     if (actionConfig && (actionConfig.action as string) === "navigate-dashboard") {
@@ -592,13 +572,6 @@ export class TedButtonCard extends LitElement implements LovelaceCard {
     }
 
     handleAction(this, this.hass, this._config, action);
-  }
-
-  /** Navigate via the View Assist integration so the destination honours the device's
-   *  configured screens (see shared/view-assist). Only ever invoked from a user tap —
-   *  never at load or render — so non-View-Assist cards are entirely unaffected. */
-  private _vaNavigate(view: string): void {
-    viewAssistNavigate(this.hass, view);
   }
 
   /** Mirror custom-card-helpers' confirmation gate so toggle confirmations still work. */

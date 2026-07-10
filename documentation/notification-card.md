@@ -91,7 +91,7 @@ max_items: 20
 ## Area scoping
 
 The card resolves the device's area through the same chain as the rest of the
-system (config `area` → View Assist → browser_mod → `localStorage` → unknown) and
+system (config `area` → browser_mod → `localStorage` → unknown) and
 lists that area's notifications **plus** house-wide (area-less) ones. See
 [Device-area scoping](./notification-system.md#device-area-scoping).
 
