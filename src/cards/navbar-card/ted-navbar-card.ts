@@ -1298,7 +1298,7 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
         left: 50%;
         transform: translateX(-50%);
         width: 400px;
-        height: 30px;
+        height: 25px;
       }
       .navbar.bottom .nav-pill::before,
       .navbar.top .nav-pill::before {
