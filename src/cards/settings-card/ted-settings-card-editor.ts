@@ -21,6 +21,7 @@ export class TedSettingsCardEditor extends LitElement implements LovelaceCardEdi
       brushed: false,
       show_global: true,
       show_device: true,
+      section_tabs: true,
     };
   }
 

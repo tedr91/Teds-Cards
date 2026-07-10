@@ -20,9 +20,10 @@ export interface SettingsCardConfig extends LovelaceCardConfig {
   /** `settings` (default) renders the fields. `scope-toggle` renders only the
    *  Global / This device switch that drives every `scope: shared` card. */
   variant?: "settings" | "scope-toggle";
-  /** When true, render a built-in category tab strip (one tab per settings group)
-   *  plus its own Global / This device toggle — a self-contained settings UI that
-   *  doesn't need an external tab card to compose the categories. */
+  /** When true (the default), render a built-in category tab strip (one tab per
+   *  settings group) plus its own Global / This device toggle — a self-contained
+   *  settings UI that doesn't need an external tab card. Set `false` to render the
+   *  plain stacked/filtered layout instead. */
   section_tabs?: boolean;
   /** URL query parameter that deep-links the active section tab. Defaults to `tab`. */
   url_param?: string;

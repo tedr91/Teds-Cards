@@ -58,8 +58,12 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
   @state() private _tab: "global" | "device" = "global";
   /** Active section (group name) when `section_tabs` is enabled. */
   @state() private _section?: string;
+  /** How many section tabs fit in the strip; the rest go into the overflow menu. */
+  @state() private _sectionVisibleCount = Number.POSITIVE_INFINITY;
   /** Fields the user is actively overriding on this device but hasn't stored a value for yet. */
   private _editing = new Set<string>();
+  /** Watches the host width so the section tab strip can re-measure its overflow. */
+  private _sectionResizeObserver?: ResizeObserver;
 
   public constructor() {
     super();
@@ -81,14 +85,16 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     if (
       this._config?.scope === "shared" ||
       this._config?.variant === "scope-toggle" ||
-      this._config?.section_tabs
+      this._config?.section_tabs !== false
     ) {
       this._unsubScope ??= subscribeUiScope(() => this.requestUpdate());
     }
     // Built-in section tabs honour a `?tab=` deep link (e.g. from the Climate card).
-    if (this._config?.section_tabs) {
+    if (this._config?.section_tabs !== false) {
       window.addEventListener("location-changed", this._onLocationChanged);
       window.addEventListener("popstate", this._onLocationChanged);
+      this._sectionResizeObserver = new ResizeObserver(() => this._measureSectionOverflow());
+      this._sectionResizeObserver.observe(this);
     }
   }
 
@@ -98,10 +104,16 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     this._unsubScope = undefined;
     window.removeEventListener("location-changed", this._onLocationChanged);
     window.removeEventListener("popstate", this._onLocationChanged);
+    this._sectionResizeObserver?.disconnect();
+    this._sectionResizeObserver = undefined;
+  }
+
+  protected updated(): void {
+    this._measureSectionOverflow();
   }
 
   private _onLocationChanged = (): void => {
-    if (!this._config?.section_tabs) return;
+    if (this._config?.section_tabs === false) return;
     const s = this._sectionFromUrl();
     if (s && s !== this._section) this._section = s;
   };
@@ -135,6 +147,96 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
 
   private _selectSection(name: string): void {
     this._section = name;
+  }
+
+  /** One section tab button (shared by the visible strip and the hidden measure mirror). */
+  private _renderSectionTab(name: string, active: string): TemplateResult {
+    return html`<button
+      type="button"
+      role="tab"
+      class="section-tab ${name === active ? "active" : ""}"
+      aria-selected=${name === active ? "true" : "false"}
+      @click=${() => this._selectSection(name)}
+    >
+      ${name}
+    </button>`;
+  }
+
+  /**
+   * Decide how many section tabs fit; the rest move into the “…” overflow menu. Reads widths
+   * from the hidden `.section-measure` mirror so the result is stable (no measure→render loop);
+   * only writes state when it changes, so it converges in one extra pass.
+   */
+  private _measureSectionOverflow(): void {
+    if (this._config?.section_tabs === false) return;
+    const root = this.renderRoot as ShadowRoot;
+    const strip = root.querySelector(".section-strip") as HTMLElement | null;
+    const measure = root.querySelector(".section-measure") as HTMLElement | null;
+    if (!strip || !measure) return;
+    const available = strip.clientWidth;
+    if (available <= 0) return;
+    const total = measure.children.length;
+    if (total === 0) return;
+
+    const gap = 4;
+    const overflowBtn = 52; // “…” trigger + gap, reserved when tabs spill into the menu
+    const widths = Array.from(measure.children).map((c) => (c as HTMLElement).offsetWidth);
+    const totalWidth = widths.reduce((a, b) => a + b, 0) + Math.max(0, total - 1) * gap;
+
+    let visibleCount: number;
+    if (totalWidth <= available) {
+      visibleCount = total;
+    } else {
+      const budget = available - overflowBtn;
+      let used = 0;
+      let count = 0;
+      for (let i = 0; i < total; i++) {
+        const add = (count > 0 ? gap : 0) + widths[i];
+        if (used + add > budget) break;
+        used += add;
+        count++;
+      }
+      visibleCount = Math.max(1, count);
+    }
+    if (visibleCount !== this._sectionVisibleCount) this._sectionVisibleCount = visibleCount;
+  }
+
+  private _onSectionOverflowToggle = (ev: Event): void => {
+    const pop = ev.currentTarget as HTMLElement;
+    if ((ev as Event & { newState?: string }).newState !== "open") return;
+    const anchor = (this.renderRoot as ShadowRoot).getElementById("section-overflow-btn");
+    this._positionSectionOverflow(pop, anchor ?? undefined);
+  };
+
+  /** Anchor the overflow popover under the “…” trigger (flipping above if there's no room). */
+  private _positionSectionOverflow(pop: HTMLElement, anchor?: HTMLElement): void {
+    const margin = 8;
+    pop.style.position = "fixed";
+    pop.style.margin = "0";
+    const rect = pop.getBoundingClientRect();
+    const vw = document.documentElement.clientWidth;
+    const vh = document.documentElement.clientHeight;
+    if (!anchor) {
+      pop.style.left = `${Math.round((vw - rect.width) / 2)}px`;
+      pop.style.top = `${Math.round((vh - rect.height) / 2)}px`;
+      return;
+    }
+    const a = anchor.getBoundingClientRect();
+    let left = a.right - rect.width;
+    left = Math.max(margin, Math.min(left, vw - rect.width - margin));
+    const fitsBelow = a.bottom + margin + rect.height <= vh - margin;
+    let top = fitsBelow ? a.bottom + margin : a.top - margin - rect.height;
+    top = Math.max(margin, Math.min(top, vh - rect.height - margin));
+    pop.style.left = `${Math.round(left)}px`;
+    pop.style.top = `${Math.round(top)}px`;
+  }
+
+  private _selectSectionFromOverflow(name: string): void {
+    this._selectSection(name);
+    const pop = (this.renderRoot as ShadowRoot).getElementById("section-overflow-pop") as
+      | (HTMLElement & { hidePopover?: () => void })
+      | null;
+    pop?.hidePopover?.();
   }
 
   public getCardSize(): number {
@@ -648,12 +750,28 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
 
     // Built-in section tabs: a self-contained settings UI (shared Global / This device
     // toggle + a tab per group) that doesn't need an external tab card to compose the
-    // categories. Honours a `?tab=<group>` deep link.
-    if (cfg.section_tabs) {
+    // categories. Honours a `?tab=<group>` deep link. On by default.
+    if (cfg.section_tabs !== false) {
       const scope = getUiScope();
       const groups = this._sectionGroups();
       const active = this._activeSection(groups);
       const activeGroup = groups.find((g) => g.group === active);
+      const activeIdx = groups.findIndex((g) => g.group === active);
+
+      // Work out which section tabs fit inline vs. move into the "…" overflow menu. The
+      // active section is always kept visible (it displaces the last inline slot if needed).
+      const total = groups.length;
+      const visibleCount = Math.min(this._sectionVisibleCount, total);
+      const overflow = visibleCount < total;
+      const visible: number[] = [];
+      for (let i = 0; i < visibleCount; i++) visible.push(i);
+      if (overflow && !visible.includes(activeIdx) && visible.length > 0) {
+        visible[visible.length - 1] = activeIdx;
+      }
+      const visibleSet = new Set(visible);
+      const overflowList: number[] = [];
+      for (let i = 0; i < total; i++) if (!visibleSet.has(i)) overflowList.push(i);
+
       return html`
         <ha-card class=${classMap(cardClasses)} style=${styleMap(cardStyle)}>
           ${cfg.brushed ? brushedOverlay : nothing} ${header}
@@ -676,17 +794,40 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
                     ? html`<div class="device-note">Global settings are read-only — administrator access required.</div>`
                     : nothing}
                 <div class="section-strip" role="tablist">
-                  ${groups.map(
-                    (g) => html`<button
-                      type="button"
-                      role="tab"
-                      class="section-tab ${g.group === active ? "active" : ""}"
-                      aria-selected=${g.group === active ? "true" : "false"}
-                      @click=${() => this._selectSection(g.group)}
+                  ${visible.map((idx) => this._renderSectionTab(groups[idx].group, active))}
+                  ${overflow
+                    ? html`<button
+                        id="section-overflow-btn"
+                        type="button"
+                        class="section-tab section-overflow"
+                        popovertarget="section-overflow-pop"
+                        title="More"
+                        aria-label="More categories"
+                      >
+                        <ha-icon icon="mdi:dots-horizontal"></ha-icon>
+                      </button>`
+                    : nothing}
+                </div>
+                ${overflow
+                  ? html`<div
+                      id="section-overflow-pop"
+                      class="section-overflow-popover"
+                      popover
+                      @toggle=${this._onSectionOverflowToggle}
                     >
-                      ${g.group}
-                    </button>`,
-                  )}
+                      ${overflowList.map(
+                        (idx) => html`<button
+                          type="button"
+                          class="section-overflow-item${groups[idx].group === active ? " active" : ""}"
+                          @click=${() => this._selectSectionFromOverflow(groups[idx].group)}
+                        >
+                          ${groups[idx].group}
+                        </button>`,
+                      )}
+                    </div>`
+                  : nothing}
+                <div class="section-measure" aria-hidden="true">
+                  ${groups.map((g) => this._renderSectionTab(g.group, active))}
                 </div>
                 <div class="groups">
                   ${activeGroup
@@ -814,12 +955,9 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
       }
       .section-strip {
         display: flex;
+        flex-wrap: nowrap;
         gap: 4px;
-        overflow-x: auto;
-        scrollbar-width: none;
-      }
-      .section-strip::-webkit-scrollbar {
-        display: none;
+        overflow: hidden;
       }
       .section-tab {
         font: inherit;
@@ -832,11 +970,77 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
         padding: 6px 14px;
         cursor: pointer;
         white-space: nowrap;
+        flex: none;
       }
       .section-tab.active {
         color: var(--ted-style-accent);
         border-color: var(--ted-style-accent);
         background: color-mix(in srgb, var(--ted-style-accent) 12%, transparent);
+      }
+      .section-overflow {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 6px 10px;
+      }
+      .section-overflow ha-icon {
+        --mdc-icon-size: 18px;
+      }
+      /* Off-screen mirror used only to measure natural section-tab widths. */
+      .section-measure {
+        position: absolute;
+        left: -9999px;
+        top: 0;
+        display: flex;
+        gap: 4px;
+        white-space: nowrap;
+        visibility: hidden;
+        pointer-events: none;
+      }
+      /* Overflow menu — a top-layer popover so the strip's overflow:hidden can't clip it. */
+      .section-overflow-popover {
+        position: fixed;
+        margin: 0;
+        inset: unset;
+        border: 1px solid var(--ted-style-divider, var(--divider-color));
+        border-radius: 10px;
+        padding: 6px;
+        background: color-mix(
+          in srgb,
+          var(--ted-style-surface, var(--ha-card-background, #fff)) var(--ted-card-bg-alpha, 100%),
+          transparent
+        );
+        -webkit-backdrop-filter: var(--ha-card-backdrop-filter, none);
+        backdrop-filter: var(--ha-card-backdrop-filter, none);
+        box-shadow: 0 6px 24px rgba(0, 0, 0, 0.28);
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        min-width: 150px;
+        max-height: 60vh;
+        overflow: auto;
+      }
+      .section-overflow-popover:not(:popover-open) {
+        display: none;
+      }
+      .section-overflow-item {
+        font: inherit;
+        font-weight: 600;
+        font-size: 0.9rem;
+        color: var(--ted-style-text, var(--primary-text-color));
+        background: transparent;
+        border: none;
+        border-radius: 6px;
+        padding: 8px 12px;
+        cursor: pointer;
+        text-align: left;
+        white-space: nowrap;
+      }
+      .section-overflow-item:hover {
+        background: color-mix(in srgb, var(--ted-style-accent) 12%, transparent);
+      }
+      .section-overflow-item.active {
+        color: var(--ted-style-accent);
       }
       .device-note {
         color: var(--ted-style-muted);

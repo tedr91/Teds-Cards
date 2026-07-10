@@ -937,6 +937,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.118
+
+- **Settings Card — section tabs default on + overflow menu** — the built-in category tab strip (`section_tabs`) is now **on by default**, so a plain Ted's Cards Settings card is a complete, self-contained settings UI. When the category tabs are wider than the card, the ones that don't fit collapse into a "…" overflow menu (the active category always stays visible).
+
 ### v1.0.117
 
 - **Settings Card — built-in section tabs** — the Ted's Cards Settings card can now render its own category tab strip (one tab per settings group) plus its Global / This device toggle, all in one card. Set `section_tabs: true` for a self-contained settings UI that no longer needs an external tab card to compose the categories. It also honours a `?tab=<category>` deep link (e.g. the Climate card's Settings button → `?tab=temperatures`).
