@@ -12,6 +12,8 @@ import {
 import { registerCustomCard } from "../../shared/register-card";
 import { appearanceStyle } from "../../shared/appearance";
 import { brushedOverlay, tedCardThemeClass, tedStyleTheme } from "../../shared/theme";
+import { SettingsController, settingsStore } from "../../shared/settings";
+import type { SettingsValue } from "../../shared/settings-schema";
 import {
   CLOCK_WEATHER_CARD_DESCRIPTION,
   CLOCK_WEATHER_CARD_EDITOR_TYPE,
@@ -266,6 +268,10 @@ export class TedClockWeatherCard extends LitElement implements LovelaceCard {
     this._timer = window.setInterval(() => {
       this._now = new Date();
     }, TICK_MS);
+    // Keep settings live only when this card opts into the backend (YAML
+    // `backend_integration: true`); otherwise it never feeds hass to the store,
+    // so there is no backend dependency.
+    new SettingsController(this, () => (this._backendIntegration() ? this.hass : undefined));
     // Re-attach the width observer when the card is moved back into the DOM
     // (e.g. after leaving the dashboard editor), so font sizes recompute for
     // the restored width instead of staying stuck at the editor's width.
@@ -442,7 +448,29 @@ export class TedClockWeatherCard extends LitElement implements LovelaceCard {
   /** Configured weather entity, or the first `weather.*` entity found. */
   private _weatherEntityId(): string | undefined {
     if (this._config?.weather_entity) return this._config.weather_entity;
+    // When opted into the backend, source it from the `weather_entity` setting
+    // (device scope, then global) as a fallback before scanning for any weather.*.
+    if (this._backendIntegration()) {
+      const o = this._settingOverride("weather_entity");
+      if (typeof o === "string" && o) return o;
+    }
     return this.hass ? Object.keys(this.hass.states).find((id) => id.startsWith("weather.")) : undefined;
+  }
+
+  /** Whether this card opts into Ted's Cards Backend behaviours (YAML-only). */
+  private _backendIntegration(): boolean {
+    return this._config?.backend_integration === true;
+  }
+
+  /** A setting override for `key` (device scope, else global scope), or undefined when
+   *  neither scope has set it. Defaults are intentionally NOT consulted here — the card's
+   *  own fallback handles the unset case. Mirrors the Navbar Card's `_settingOverride`. */
+  private _settingOverride(key: string): SettingsValue | undefined {
+    const dev = settingsStore.deviceSettings();
+    if (key in dev) return dev[key];
+    const glob = settingsStore.globalSettings();
+    if (key in glob) return glob[key];
+    return undefined;
   }
 
   /** Width (in px) of `text` per 1px of font-size, using the card's resolved font. */

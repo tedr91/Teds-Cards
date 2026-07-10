@@ -945,6 +945,11 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.110
+
+- **Clock Weather Card `backend_integration` option (YAML-only)** — the Clock Weather Card gained a `backend_integration` flag (default `false`), matching the Navbar Card. When enabled and the card has no `weather_entity` of its own, it sources the entity from a new global **Weather entity** setting (Settings → General; device scope, then global), falling back to the first `weather.*` entity. Off by default, so the card keeps working with no backend dependency. Pairs with Ted's Cards Backend v1.0.27+.
+- **Weather entity setting** — added a `weather_entity` setting under Settings → General so a single place can drive the weather entity for opted-in Ted clock/weather cards.
+
 ### v1.0.109
 
 - **Navbar `backend_integration` option (YAML-only)** — the Navbar Card gained a `backend_integration` flag (default `false`) that gates its Ted's Cards Backend behaviours: **auto-return-home** on idle, a new **welcome → home redirect** on load, and status-item **`tap_navigate`**. It's left off by default so the bar can be dropped into any dashboard without cross-navigation surprises; set `backend_integration: true` on the Ted Dashboard navbar to keep those behaviours.
