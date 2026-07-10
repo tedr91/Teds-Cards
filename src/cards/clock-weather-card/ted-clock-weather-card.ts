@@ -544,10 +544,14 @@ export class TedClockWeatherCard extends LitElement implements LovelaceCard {
       const showDate = this._config?.show_date !== false;
       const showWeather = this._config?.show_weather !== false;
       const weatherVisible = showWeather && (showIcon || (showTemp && this._tempText() != null));
-      const clockInk = showClock ? clockBasePx * inkRatio : 0;
+      // In hug/cap mode the card's OWN box is what's capped (max-height) and outlined,
+      // so fit the clock's FULL line box within the height. In fill mode fit only the
+      // INKED height so the clock fills a fixed container tightly (the empty
+      // ascender/descender leading spills out and is clipped by overflow:hidden).
+      const clockH = showClock ? clockBasePx * (this._hugsContent() ? 1 : inkRatio) : 0;
       const overlaidWeather = weatherVisible && !rows.weatherRow ? tempBasePx : 0;
       const overlaidDate = showDate && !rows.dateRow ? dateBasePx : 0;
-      let stack = Math.max(clockInk, overlaidWeather, overlaidDate);
+      let stack = Math.max(clockH, overlaidWeather, overlaidDate);
       if (rows.weatherRow) stack += tempBasePx + CWC_ROW_GAP;
       if (rows.dateRow) stack += dateBasePx + CWC_ROW_GAP;
       if (stack > fitHeight && stack > 0) {

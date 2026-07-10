@@ -945,6 +945,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.102
+
+- **Clock no longer overgrows its `max_height` cap** — when hugging content with a height cap, the clock now fits its full line box within the cap (previously it fit only the inked glyph height, so the font — and the card's box — came out ~39% taller than the cap and spilled past it). The inked-height fit is kept for filling a fixed container.
+
 ### v1.0.101
 
 - **Clock/Weather `max_height` cap now holds** — the cap is resolved via a hidden probe, so a `calc()` mixing `dvh`/`var()` reduces correctly (previously it read as unset and the clock kept growing with width). The clock now scales down to stay within the cap.
