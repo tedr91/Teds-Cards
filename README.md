@@ -945,6 +945,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.106
+
+- **Weather/date centers correctly without a clock** — the clock's glyph-recentering shift is now only applied when the clock is shown, so a weather-only (or date-only) Clock/Weather card no longer gets nudged off-center by a phantom clock offset.
+
 ### v1.0.105
 
 - **Capped clock no longer overgrows** — a `max_height`-capped clock now fits its full line box minus **half** the empty descender space below the glyphs, so it may only grow into half that space (the other half is taken by the downward recentering shift). This keeps the clock inside its cap instead of spilling past it.

@@ -509,9 +509,6 @@ export class TedClockWeatherCard extends LitElement implements LovelaceCard {
     // (used below to recenter the visible glyphs).
     let inkRatio = 0.72; // fallback ≈ cap height as a fraction of the em
     let leadAsymPer100 = 0;
-    // Empty space below the visible glyphs, as a fraction of the em (the time has no
-    // descenders). The capped clock may grow into at most HALF of this descender space.
-    let bottomSlack = 0;
     const vctx = this._canvas?.getContext("2d");
     if (vctx) {
       vctx.font = `${CLOCK_WEIGHT} 100px ${family}`;
@@ -526,13 +523,14 @@ export class TedClockWeatherCard extends LitElement implements LovelaceCard {
         const leadAbove = halfLeading + fa - aa;
         const leadBelow = halfLeading + fd - ad;
         leadAsymPer100 = (leadAbove - leadBelow) / 2;
-        bottomSlack = Math.max(0, leadBelow) / 100;
       }
     }
 
     // Fit the stack to the available height: the container height when filling, or
     // the `max_height` cap when hugging content (so a width-driven clock that would
-    // overflow the cap scales down to it). This happens BEFORE the per-element size
+    // overflow the cap scales down to it). Auto-size all three elements together,
+    // using the clock's INKED height (its empty ascender/descender leading is
+    // clipped) rather than the full line box. This happens BEFORE the per-element size
     // factors, so those adjust the fit.
     const fitHeight = this._hugsContent() ? this._maxHeightPx() : height;
     if (fitHeight > 0) {
@@ -546,19 +544,10 @@ export class TedClockWeatherCard extends LitElement implements LovelaceCard {
       const showDate = this._config?.show_date !== false;
       const showWeather = this._config?.show_weather !== false;
       const weatherVisible = showWeather && (showIcon || (showTemp && this._tempText() != null));
-      // Height the clock claims when fitting to the cap. Fitting the full line box
-      // (share = 1) would leave the descender space empty; fitting the inked height
-      // lets the font — and its box — overgrow the cap. Because the font is also
-      // shifted DOWN as it grows (to keep the top steady), it may only grow into
-      // HALF of the empty descender space before the bottom leaves the cap — so the
-      // clock claims the line box minus half that space. Fill mode fits the inked
-      // height instead, filling a fixed container tightly (leading spills out and is
-      // clipped by overflow:hidden).
-      const clockShare = this._hugsContent() ? 1 - 0.5 * bottomSlack : inkRatio;
-      const clockH = showClock ? clockBasePx * clockShare : 0;
+      const clockInk = showClock ? clockBasePx * inkRatio : 0;
       const overlaidWeather = weatherVisible && !rows.weatherRow ? tempBasePx : 0;
       const overlaidDate = showDate && !rows.dateRow ? dateBasePx : 0;
-      let stack = Math.max(clockH, overlaidWeather, overlaidDate);
+      let stack = Math.max(clockInk, overlaidWeather, overlaidDate);
       if (rows.weatherRow) stack += tempBasePx + CWC_ROW_GAP;
       if (rows.dateRow) stack += dateBasePx + CWC_ROW_GAP;
       if (stack > fitHeight && stack > 0) {
@@ -577,8 +566,9 @@ export class TedClockWeatherCard extends LitElement implements LovelaceCard {
 
     // Recenter the clock's visible glyphs within its line box: line-height:1
     // leaves more leading above the caps than below the baseline for many fonts,
-    // which would push the clock down and make the top padding look larger.
-    const vshift = leadAsymPer100 * (clockPx / 100);
+    // which would push the clock down and make the top padding look larger. Only
+    // when the clock is shown — otherwise it would offset a clock-less weather/date row.
+    const vshift = this._config?.show_clock !== false ? leadAsymPer100 * (clockPx / 100) : 0;
 
     el.style.setProperty("--cwc-clock-size", `${clockPx}px`);
     el.style.setProperty("--cwc-date-size", `${datePx}px`);
