@@ -937,6 +937,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.112
+
+- **Navbar Card — bigger auto-hide reveal target** — enlarged the transparent hit area of the auto-hide pill on top/bottom bars (now 400×30 px) so it's easier to tap to reveal a hidden bar. The visible pill is unchanged.
+
 ### v1.0.111
 
 - **Removed all View Assist integration** — Ted's Cards no longer has any hooks or ties to View Assist. Dropped the `view-assist-navigate` / `view-assist-hold` tap actions (Button & MessageBox cards), the `view-assist` visibility condition, and the Navbar Card's `size_source` / `items_source` bindings (including `va_device`). Per-device **area** and **device-id** resolution now use browser_mod → local/saved value only (the View Assist step is gone). No configuration change is needed unless a dashboard explicitly used one of those View Assist-only options.
