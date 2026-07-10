@@ -509,6 +509,9 @@ export class TedClockWeatherCard extends LitElement implements LovelaceCard {
     // (used below to recenter the visible glyphs).
     let inkRatio = 0.72; // fallback ≈ cap height as a fraction of the em
     let leadAsymPer100 = 0;
+    // Empty space below the visible glyphs, as a fraction of the font (the time has
+    // no descenders). Used to let the clock grow into the cap in hug/cap mode.
+    let bottomSlack = 0;
     const vctx = this._canvas?.getContext("2d");
     if (vctx) {
       vctx.font = `${CLOCK_WEIGHT} 100px ${family}`;
@@ -523,6 +526,7 @@ export class TedClockWeatherCard extends LitElement implements LovelaceCard {
         const leadAbove = halfLeading + fa - aa;
         const leadBelow = halfLeading + fd - ad;
         leadAsymPer100 = (leadAbove - leadBelow) / 2;
+        bottomSlack = Math.max(0, leadBelow) / 100;
       }
     }
 
@@ -545,10 +549,15 @@ export class TedClockWeatherCard extends LitElement implements LovelaceCard {
       const showWeather = this._config?.show_weather !== false;
       const weatherVisible = showWeather && (showIcon || (showTemp && this._tempText() != null));
       // In hug/cap mode the card's OWN box is what's capped (max-height) and outlined,
-      // so fit the clock's FULL line box within the height. In fill mode fit only the
-      // INKED height so the clock fills a fixed container tightly (the empty
-      // ascender/descender leading spills out and is clipped by overflow:hidden).
-      const clockH = showClock ? clockBasePx * (this._hugsContent() ? 1 : inkRatio) : 0;
+      // so fit the clock's line box within the height — but reclaim HALF the empty
+      // space below the glyphs (the time has no descenders) so it can grow a little.
+      // Only half: growing the font also shifts the bottom-aligned content down, so
+      // reclaiming all of it would push the glyphs past the cap again. In fill mode fit
+      // only the INKED height so the clock fills a fixed container tightly (the empty
+      // leading spills out and is clipped by overflow:hidden).
+      const clockH = showClock
+        ? clockBasePx * (this._hugsContent() ? 1 - 0.5 * bottomSlack : inkRatio)
+        : 0;
       const overlaidWeather = weatherVisible && !rows.weatherRow ? tempBasePx : 0;
       const overlaidDate = showDate && !rows.dateRow ? dateBasePx : 0;
       let stack = Math.max(clockH, overlaidWeather, overlaidDate);
