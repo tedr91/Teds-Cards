@@ -14,7 +14,12 @@ export class AutoReturnController implements ReactiveController {
   private _timer?: number;
   private _onActivity = (): void => this._reset();
 
-  constructor(host: ReactiveControllerHost) {
+  /** @param enabled Optional gate; when it returns false the controller stays dormant
+   *  (e.g. a navbar that hasn't opted into the Ted's Cards Backend integration). */
+  constructor(
+    host: ReactiveControllerHost,
+    private _enabled?: () => boolean,
+  ) {
     host.addController(this);
   }
 
@@ -39,6 +44,8 @@ export class AutoReturnController implements ReactiveController {
 
   private _reset(): void {
     this._clear();
+    // Dormant unless the host has opted into the backend integration.
+    if (this._enabled && !this._enabled()) return;
     // Only active when the settings system is present, and when a positive delay is set.
     if (!settingsStore.hasLoaded()) return;
     const secs = Number(settingsStore.effective().auto_return_home_after);

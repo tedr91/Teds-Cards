@@ -945,6 +945,11 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.109
+
+- **Navbar `backend_integration` option (YAML-only)** — the Navbar Card gained a `backend_integration` flag (default `false`) that gates its Ted's Cards Backend behaviours: **auto-return-home** on idle, a new **welcome → home redirect** on load, and status-item **`tap_navigate`**. It's left off by default so the bar can be dropped into any dashboard without cross-navigation surprises; set `backend_integration: true` on the Ted Dashboard navbar to keep those behaviours.
+- **Return to your Home view after a reboot/reload** — with `backend_integration` on, opening the dashboard's default welcome view now redirects to this device's configured **Home dashboard** (from Settings) instead of stranding wall panels on the welcome page. It fires once per page load, so the welcome view can still be opened manually afterwards.
+
 ### v1.0.108
 
 - **Per-device camera layout** — added a `cameras_layout` setting (Auto grid / Single / Quad / Multi) shown at the top of Settings → Cameras. In `cameras_source: settings` mode the Camera Card takes its layout from this setting (per-device or global), so each device can arrange its cameras without editing YAML. Pairs with Ted's Cards Backend v1.0.26+.

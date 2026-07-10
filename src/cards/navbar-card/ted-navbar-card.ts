@@ -18,6 +18,7 @@ import { resolveDeviceArea } from "../../shared/device-area";
 import { SettingsController, settingsStore } from "../../shared/settings";
 import type { SettingsValue } from "../../shared/settings-schema";
 import { AutoReturnController } from "../../shared/auto-return";
+import { HomeRedirectController } from "../../shared/home-redirect";
 import { viewAssistSensor } from "../../shared/view-assist";
 import { tedCardThemeClass, tedStyleTheme } from "../../shared/theme";
 import { renderStatusItem, type StatusItemContext } from "../../shared/status-items/render";
@@ -149,9 +150,17 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
         onNotify: it ? this._reveal : undefined,
       };
     });
-    // Keep this device's settings live (+ registered) and auto-return home on idle.
+    // Keep this device's settings live (+ registered). The auto-return-home and
+    // welcome→home redirect behaviours only run when the navbar opts into the
+    // Ted's Cards Backend integration (YAML `backend_integration: true`).
     new SettingsController(this, () => this.hass);
-    new AutoReturnController(this);
+    new AutoReturnController(this, () => this._backendIntegration());
+    new HomeRedirectController(this, () => this._backendIntegration());
+  }
+
+  /** Whether this navbar opts into Ted's Cards Backend behaviours (YAML-only). */
+  private _backendIntegration(): boolean {
+    return this._config?.backend_integration === true;
   }
 
   /** The first "notifications" status item across all sections (if any). */
@@ -1190,6 +1199,9 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
       hass: this.hass,
       slider: this._slider,
       keyPrefix,
+      // `tap_navigate` resolves a dashboard-path setting, so it only applies when this
+      // navbar opts into the Ted's Cards Backend integration.
+      tapNavigateEnabled: this._backendIntegration(),
     };
     return html`<div class="nav-status">${renderStatusItem(item, ctx, idx)}</div>`;
   }

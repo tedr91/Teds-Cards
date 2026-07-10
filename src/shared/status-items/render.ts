@@ -49,6 +49,10 @@ export interface StatusItemContext {
   keyPrefix: string;
   /** Room Card injects area-based entity resolution; other hosts omit it. */
   resolveAreaEntity?: (kind: "temperature" | "occupancy") => string | undefined;
+  /** When false, a status item's `tap_navigate` (a dashboard-path setting) is ignored,
+   *  so the item isn't clickable. Set by hosts that opt out of the Ted's Cards Backend
+   *  integration (e.g. a standalone navbar). Defaults to enabled when omitted. */
+  tapNavigateEnabled?: boolean;
 }
 
 /** True when a list contains a live clock/date item (so the host should tick). */
@@ -232,7 +236,7 @@ function renderDateTimeItem(item: DateTimeStatusItem, ctx: StatusItemContext): T
   const timeText = showTime ? formatTime(now, item.time_format ?? "") : "";
   const autoLabel = [dateText, timeText].filter(Boolean).join(" • ") || "Date/Time";
   const label = String(item.name ?? autoLabel);
-  const nav = item.tap_navigate;
+  const nav = ctx.tapNavigateEnabled === false ? undefined : item.tap_navigate;
   return html`
     <div
       class=${classMap({ "status-item": true, clickable: !!nav })}
@@ -252,7 +256,7 @@ function renderWeatherItem(item: WeatherStatusItem, ctx: StatusItemContext): Tem
   const temp = weatherTemp(ctx.hass, stateObj);
   const label = String(item.name ?? stateObj?.attributes?.friendly_name ?? "Weather");
   const show = itemDisplay(item);
-  const nav = item.tap_navigate;
+  const nav = ctx.tapNavigateEnabled === false ? undefined : item.tap_navigate;
   return html`
     <div
       class=${classMap({ "status-item": true, clickable: !!nav })}
