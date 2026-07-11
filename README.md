@@ -937,6 +937,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.122
+
+- **Navbar Card — auto-hide pill reserve** — bumped the reserved space for the collapsed auto-hide reveal pill back to 30px so self-sizing views clear the visible pill.
+
 ### v1.0.121
 
 - **Settings Card — tab header modes + default size** — added **Tab header** (icon + name / icon only / name only) and **Auto shrink** options for the category tabs, matching the Tab Card: when the tabs don't fit they collapse to icons, then into a "…" overflow menu. The card now defaults to a 12 × 6 grid size (was auto-height), and the "Built-in section tabs" editor toggle was removed (the option still works via YAML).
