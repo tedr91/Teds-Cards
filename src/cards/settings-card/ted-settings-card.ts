@@ -79,6 +79,10 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
   private _editing = new Set<string>();
   /** Watches the host width so the section tab strip can re-measure its overflow. */
   private _sectionResizeObserver?: ResizeObserver;
+  /** The `.section-strip` element currently observed for width changes. */
+  private _observedStrip?: HTMLElement;
+  /** Pending rAF handle for a deferred overflow measurement. */
+  private _sectionMeasureRaf?: number;
 
   public constructor() {
     super();
@@ -111,7 +115,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     if (this._config?.section_tabs !== false) {
       window.addEventListener("location-changed", this._onLocationChanged);
       window.addEventListener("popstate", this._onLocationChanged);
-      this._sectionResizeObserver = new ResizeObserver(() => this._measureSectionOverflow());
+      this._sectionResizeObserver = new ResizeObserver(() => this._scheduleSectionMeasure());
       this._sectionResizeObserver.observe(this);
     }
   }
@@ -124,10 +128,37 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     window.removeEventListener("popstate", this._onLocationChanged);
     this._sectionResizeObserver?.disconnect();
     this._sectionResizeObserver = undefined;
+    this._observedStrip = undefined;
+    if (this._sectionMeasureRaf != null) {
+      cancelAnimationFrame(this._sectionMeasureRaf);
+      this._sectionMeasureRaf = undefined;
+    }
   }
 
   protected updated(): void {
-    this._measureSectionOverflow();
+    // Also watch the strip itself: its width (the real "available" space) can change
+    // without the host resizing (e.g. a scrollbar appearing, layout settling).
+    this._ensureStripObserved();
+    this._scheduleSectionMeasure();
+  }
+
+  private _ensureStripObserved(): void {
+    if (!this._sectionResizeObserver) return;
+    const strip = (this.renderRoot as ShadowRoot).querySelector(".section-strip") as HTMLElement | null;
+    if (strip && strip !== this._observedStrip) {
+      if (this._observedStrip) this._sectionResizeObserver.unobserve(this._observedStrip);
+      this._sectionResizeObserver.observe(strip);
+      this._observedStrip = strip;
+    }
+  }
+
+  /** Measure on the next frame so widths are read after layout has settled (deduped). */
+  private _scheduleSectionMeasure(): void {
+    if (this._sectionMeasureRaf != null) return;
+    this._sectionMeasureRaf = requestAnimationFrame(() => {
+      this._sectionMeasureRaf = undefined;
+      this._measureSectionOverflow();
+    });
   }
 
   private _onLocationChanged = (): void => {
@@ -967,7 +998,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
         padding: 14px;
         box-sizing: border-box;
         height: 100%;
-        overflow-y: auto;
+        overflow: hidden;
         color: var(--ted-style-text);
       }
       .head {
@@ -976,6 +1007,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
         gap: 8px;
         font-size: 1.1rem;
         font-weight: 600;
+        flex: none;
       }
       .head ha-icon {
         --mdc-icon-size: 22px;
@@ -989,6 +1021,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
         display: flex;
         gap: 4px;
         border-bottom: 1px solid var(--ted-style-divider);
+        flex: none;
       }
       .tab {
         font: inherit;
@@ -1011,6 +1044,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
         flex-wrap: nowrap;
         gap: 4px;
         overflow: hidden;
+        flex: none;
       }
       .section-tab {
         display: inline-flex;
@@ -1122,11 +1156,15 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
       .device-note {
         color: var(--ted-style-muted);
         font-size: 0.85rem;
+        flex: none;
       }
       .groups {
         display: flex;
         flex-direction: column;
         gap: 14px;
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow-y: auto;
       }
       .group-title {
         font-size: 0.8rem;

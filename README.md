@@ -937,6 +937,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.123
+
+- **Settings Card — reliable category tabs in tight layouts** — the category tab strip now always reserves its space: a tall category's content scrolls inside the card instead of pushing the tabs up and clipping (or hiding) them. Also hardened the responsive auto‑shrink measurement so it re‑measures reliably after layout, so the tabs collapse to icons / the "…" menu as they should when the card is narrow.
+
 ### v1.0.122
 
 - **Navbar Card — auto-hide pill reserve** — bumped the reserved space for the collapsed auto-hide reveal pill back to 30px so self-sizing views clear the visible pill.
