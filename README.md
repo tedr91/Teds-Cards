@@ -937,6 +937,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.125
+
+- **Fix: Settings Card "Configuration error" on v1.0.124** — a stray backtick inside a CSS comment corrupted the Settings Card in the v1.0.124 bundle, so it failed to load. Fixed. Update to v1.0.125 if you were on v1.0.124.
+
 ### v1.0.124
 
 - **Settings Card — auto-shrink now works in full-width views** — fixed a case where the category tabs wouldn't collapse to icons / the "…" menu when the card was placed in a `custom:grid-layout` view. The grid's `1fr` column was expanding the card past the viewport (grid items default to their content's min-width), so the overflow measurement never saw the narrow width. The card can now shrink to its column, restoring the responsive behavior.
