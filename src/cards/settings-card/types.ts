@@ -25,6 +25,10 @@ export interface SettingsCardConfig extends LovelaceCardConfig {
    *  settings UI that doesn't need an external tab card. Set `false` to render the
    *  plain stacked/filtered layout instead. */
   section_tabs?: boolean;
+  /** What each category tab shows: icon + name (default), icon only, or name only. */
+  tab_header?: "both" | "icon" | "name";
+  /** Automatically display only the category icons when the tabs don't fit. Default true. */
+  auto_shrink?: boolean;
   /** URL query parameter that deep-links the active section tab. Defaults to `tab`. */
   url_param?: string;
 

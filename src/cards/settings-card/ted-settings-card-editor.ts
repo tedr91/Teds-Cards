@@ -21,7 +21,8 @@ export class TedSettingsCardEditor extends LitElement implements LovelaceCardEdi
       brushed: false,
       show_global: true,
       show_device: true,
-      section_tabs: true,
+      tab_header: "both",
+      auto_shrink: true,
     };
   }
 
@@ -42,7 +43,26 @@ export class TedSettingsCardEditor extends LitElement implements LovelaceCardEdi
   private _schema() {
     return [
       { name: "title", selector: { text: {} } },
-      { name: "section_tabs", selector: { boolean: {} } },
+      {
+        type: "grid",
+        name: "",
+        schema: [
+          {
+            name: "tab_header",
+            selector: {
+              select: {
+                mode: "dropdown",
+                options: [
+                  { value: "both", label: "Icon + name (default)" },
+                  { value: "icon", label: "Icon only" },
+                  { value: "name", label: "Name only" },
+                ],
+              },
+            },
+          },
+          { name: "auto_shrink", selector: { boolean: {} } },
+        ],
+      },
       {
         type: "grid",
         name: "",
@@ -75,8 +95,10 @@ export class TedSettingsCardEditor extends LitElement implements LovelaceCardEdi
     switch (schema.name) {
       case "title":
         return "Title";
-      case "section_tabs":
-        return "Built-in section tabs (one tab per settings category)";
+      case "tab_header":
+        return "Tab header";
+      case "auto_shrink":
+        return "Auto shrink tab header (icons only when tabs don't fit)";
       case "show_global":
         return "Show Global tab";
       case "show_device":

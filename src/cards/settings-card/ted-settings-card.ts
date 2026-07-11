@@ -35,6 +35,9 @@ const SETTINGS_SENSOR = "sensor.teds_settings";
 /** Sentinel value meaning "use the resolved default sound" (mirrors the backend). */
 const DEFAULT_SOUND = "default";
 
+/** What each category tab shows in the strip. */
+type SectionHeaderMode = "both" | "icon" | "name";
+
 /** True when the `fluent` custom iconset is registered (new or legacy registry). */
 function hasFluentIconset(): boolean {
   const w = window as unknown as {
@@ -70,6 +73,8 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
   @state() private _section?: string;
   /** How many section tabs fit in the strip; the rest go into the overflow menu. */
   @state() private _sectionVisibleCount = Number.POSITIVE_INFINITY;
+  /** Effective category-tab header mode after any auto-shrink. */
+  @state() private _sectionMode: SectionHeaderMode = "both";
   /** Fields the user is actively overriding on this device but hasn't stored a value for yet. */
   private _editing = new Set<string>();
   /** Watches the host width so the section tab strip can re-measure its overflow. */
@@ -85,6 +90,9 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     if (!config) throw new Error("Invalid configuration");
     this._config = { ...config };
     if (config.show_global === false && config.show_device !== false) this._tab = "device";
+    // Re-measure from scratch at the configured header mode on any config change.
+    this._sectionMode = config.tab_header ?? "both";
+    this._sectionVisibleCount = Number.POSITIVE_INFINITY;
   }
 
   private _unsubScope?: () => void;
@@ -167,45 +175,62 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
   }
 
   /** One section tab button (shared by the visible strip and the hidden measure mirror). */
-  private _renderSectionTab(name: string, active: string): TemplateResult {
+  private _renderSectionTab(name: string, active: string, mode: SectionHeaderMode): TemplateResult {
     const icon = this._groupIcon(name);
+    const showIcon = mode !== "name";
+    const showLabel = mode !== "icon";
     return html`<button
       type="button"
       role="tab"
-      class="section-tab ${name === active ? "active" : ""}"
+      class="section-tab ${name === active ? "active" : ""}${mode === "icon" ? " icon-only" : ""}"
       aria-selected=${name === active ? "true" : "false"}
+      title=${name}
       @click=${() => this._selectSection(name)}
     >
-      ${icon ? html`<ha-icon .icon=${icon}></ha-icon>` : nothing}
-      <span>${name}</span>
+      ${showIcon && icon ? html`<ha-icon .icon=${icon}></ha-icon>` : nothing}
+      ${showLabel ? html`<span>${name}</span>` : nothing}
     </button>`;
   }
 
   /**
-   * Decide how many section tabs fit; the rest move into the “…” overflow menu. Reads widths
-   * from the hidden `.section-measure` mirror so the result is stable (no measure→render loop);
-   * only writes state when it changes, so it converges in one extra pass.
+   * Decide the effective category-tab header mode + how many tabs fit; the rest move into
+   * the "…" overflow menu. Reads widths from the hidden `.section-measure` mirror (rendered
+   * at both the configured mode and icon-only) so the result is stable (no measure→render
+   * loop); only writes state when it changes, so it converges in one extra pass.
    */
   private _measureSectionOverflow(): void {
     if (this._config?.section_tabs === false) return;
     const root = this.renderRoot as ShadowRoot;
     const strip = root.querySelector(".section-strip") as HTMLElement | null;
-    const measure = root.querySelector(".section-measure") as HTMLElement | null;
-    if (!strip || !measure) return;
+    const fullRow = root.querySelector(".section-measure-full") as HTMLElement | null;
+    const iconRow = root.querySelector(".section-measure-icon") as HTMLElement | null;
+    if (!strip || !fullRow || !iconRow) return;
     const available = strip.clientWidth;
     if (available <= 0) return;
-    const total = measure.children.length;
+    const total = fullRow.children.length;
     if (total === 0) return;
 
     const gap = 4;
-    const overflowBtn = 52; // “…” trigger + gap, reserved when tabs spill into the menu
-    const widths = Array.from(measure.children).map((c) => (c as HTMLElement).offsetWidth);
-    const totalWidth = widths.reduce((a, b) => a + b, 0) + Math.max(0, total - 1) * gap;
+    const overflowBtn = 52; // "…" trigger + gap, reserved when tabs spill into the menu
+    const wFull = Array.from(fullRow.children).map((c) => (c as HTMLElement).offsetWidth);
+    const wIcon = Array.from(iconRow.children).map((c) => (c as HTMLElement).offsetWidth);
+    const sum = (arr: number[]): number => arr.reduce((a, b) => a + b, 0) + Math.max(0, arr.length - 1) * gap;
 
+    const configMode: SectionHeaderMode = this._config?.tab_header ?? "both";
+    const autoShrink = this._config?.auto_shrink !== false;
+
+    let mode: SectionHeaderMode;
     let visibleCount: number;
-    if (totalWidth <= available) {
+    if (sum(wFull) <= available) {
+      mode = configMode;
+      visibleCount = total;
+    } else if (autoShrink && sum(wIcon) <= available) {
+      // Auto-shrink forces icon-only (even for a "name" header) when that lets them all fit.
+      mode = "icon";
       visibleCount = total;
     } else {
+      mode = autoShrink ? "icon" : configMode;
+      const widths = mode === "icon" ? wIcon : wFull;
       const budget = available - overflowBtn;
       let used = 0;
       let count = 0;
@@ -217,6 +242,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
       }
       visibleCount = Math.max(1, count);
     }
+    if (mode !== this._sectionMode) this._sectionMode = mode;
     if (visibleCount !== this._sectionVisibleCount) this._sectionVisibleCount = visibleCount;
   }
 
@@ -813,7 +839,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
                     ? html`<div class="device-note">Global settings are read-only — administrator access required.</div>`
                     : nothing}
                 <div class="section-strip" role="tablist">
-                  ${visible.map((idx) => this._renderSectionTab(groups[idx].group, active))}
+                  ${visible.map((idx) => this._renderSectionTab(groups[idx].group, active, this._sectionMode))}
                   ${overflow
                     ? html`<button
                         id="section-overflow-btn"
@@ -849,7 +875,12 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
                     </div>`
                   : nothing}
                 <div class="section-measure" aria-hidden="true">
-                  ${groups.map((g) => this._renderSectionTab(g.group, active))}
+                  <div class="section-measure-row section-measure-full">
+                    ${groups.map((g) => this._renderSectionTab(g.group, active, cfg.tab_header ?? "both"))}
+                  </div>
+                  <div class="section-measure-row section-measure-icon">
+                    ${groups.map((g) => this._renderSectionTab(g.group, active, "icon"))}
+                  </div>
                 </div>
                 <div class="groups">
                   ${activeGroup
@@ -919,7 +950,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
   }
 
   public getGridOptions() {
-    return { columns: 12, rows: "auto", min_columns: 6 };
+    return { columns: 12, rows: 6, min_columns: 6 };
   }
 
   static styles = [
@@ -1006,6 +1037,10 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
         border-color: var(--ted-style-accent);
         background: color-mix(in srgb, var(--ted-style-accent) 12%, transparent);
       }
+      .section-tab.icon-only {
+        padding-left: 10px;
+        padding-right: 10px;
+      }
       .section-overflow {
         display: inline-flex;
         align-items: center;
@@ -1015,16 +1050,18 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
       .section-overflow ha-icon {
         --mdc-icon-size: 18px;
       }
-      /* Off-screen mirror used only to measure natural section-tab widths. */
+      /* Off-screen mirror used only to measure natural section-tab widths (full + icon-only). */
       .section-measure {
         position: absolute;
         left: -9999px;
         top: 0;
+        visibility: hidden;
+        pointer-events: none;
+      }
+      .section-measure-row {
         display: flex;
         gap: 4px;
         white-space: nowrap;
-        visibility: hidden;
-        pointer-events: none;
       }
       /* Overflow menu — a top-layer popover so the strip's overflow:hidden can't clip it. */
       .section-overflow-popover {

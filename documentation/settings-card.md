@@ -66,6 +66,8 @@ the default), or drive several cards from **one shared switch**:
 | --- | --- | --- | --- |
 | `title` | string | `Settings` | Header text. |
 | `section_tabs` | boolean | true | Render a built-in category tab strip (one tab per settings group) plus its own Global / This device toggle. Honours a `?tab=<category>` deep link. Set `false` for the plain stacked/filtered layout. |
+| `tab_header` | `both` \| `icon` \| `name` | `both` | What each category tab shows: icon + name, icon only, or name only. |
+| `auto_shrink` | boolean | true | When the category tabs don't fit, automatically show only their icons. If they still don't fit, the extras move into a "…" overflow menu. |
 | `url_param` | string | `tab` | URL query parameter that deep-links the active section tab (when `section_tabs` is on). |
 | `sections` | string[] | *(all)* | Render only these setting groups (e.g. `["Timers"]`). With `section_tabs`, limits which category tabs appear. |
 | `show_global` | boolean | true | Show the Global tab. |
