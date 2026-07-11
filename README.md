@@ -937,6 +937,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.120
+
+- **Settings Card — refined category tab icons** — updated the Fluent icons for the Navigation (`dashboard`) and Navbar (`panel-bottom`) category tabs.
+
 ### v1.0.119
 
 - **Settings Card — category tab icons** — each category tab now shows an icon. Icons prefer the Fluent iconset when it's installed and fall back to Material Design icons otherwise.
