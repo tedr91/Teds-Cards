@@ -18,6 +18,7 @@ import { resolveDeviceMediaPlayer } from "../../shared/device-id";
 import {
   fieldsByGroup,
   SETTINGS_DEFAULTS,
+  SETTINGS_GROUP_ICONS,
   type SettingField,
   type SettingsValue,
 } from "../../shared/settings-schema";
@@ -33,6 +34,15 @@ const SETTINGS_SENSOR = "sensor.teds_settings";
 
 /** Sentinel value meaning "use the resolved default sound" (mirrors the backend). */
 const DEFAULT_SOUND = "default";
+
+/** True when the `fluent` custom iconset is registered (new or legacy registry). */
+function hasFluentIconset(): boolean {
+  const w = window as unknown as {
+    customIcons?: Record<string, unknown>;
+    customIconsets?: Record<string, unknown>;
+  };
+  return !!(w.customIcons?.fluent || w.customIconsets?.fluent);
+}
 
 registerCustomCard({
   type: SETTINGS_CARD_TYPE,
@@ -149,8 +159,16 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     this._section = name;
   }
 
+  /** Category tab icon: the Fluent glyph when that iconset is installed, else the mdi fallback. */
+  private _groupIcon(name: string): string {
+    const entry = SETTINGS_GROUP_ICONS[name];
+    if (!entry) return "";
+    return hasFluentIconset() ? entry.fluent : entry.mdi;
+  }
+
   /** One section tab button (shared by the visible strip and the hidden measure mirror). */
   private _renderSectionTab(name: string, active: string): TemplateResult {
+    const icon = this._groupIcon(name);
     return html`<button
       type="button"
       role="tab"
@@ -158,7 +176,8 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
       aria-selected=${name === active ? "true" : "false"}
       @click=${() => this._selectSection(name)}
     >
-      ${name}
+      ${icon ? html`<ha-icon .icon=${icon}></ha-icon>` : nothing}
+      <span>${name}</span>
     </button>`;
   }
 
@@ -821,7 +840,10 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
                           class="section-overflow-item${groups[idx].group === active ? " active" : ""}"
                           @click=${() => this._selectSectionFromOverflow(groups[idx].group)}
                         >
-                          ${groups[idx].group}
+                          ${this._groupIcon(groups[idx].group)
+                            ? html`<ha-icon .icon=${this._groupIcon(groups[idx].group)}></ha-icon>`
+                            : nothing}
+                          <span>${groups[idx].group}</span>
                         </button>`,
                       )}
                     </div>`
@@ -960,6 +982,9 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
         overflow: hidden;
       }
       .section-tab {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
         font: inherit;
         font-weight: 600;
         font-size: 0.9rem;
@@ -970,6 +995,10 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
         padding: 6px 14px;
         cursor: pointer;
         white-space: nowrap;
+        flex: none;
+      }
+      .section-tab ha-icon {
+        --mdc-icon-size: 18px;
         flex: none;
       }
       .section-tab.active {
@@ -1024,6 +1053,9 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
         display: none;
       }
       .section-overflow-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
         font: inherit;
         font-weight: 600;
         font-size: 0.9rem;
@@ -1036,10 +1068,18 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
         text-align: left;
         white-space: nowrap;
       }
+      .section-overflow-item ha-icon {
+        --mdc-icon-size: 18px;
+        flex: none;
+        color: var(--ted-style-muted);
+      }
       .section-overflow-item:hover {
         background: color-mix(in srgb, var(--ted-style-accent) 12%, transparent);
       }
       .section-overflow-item.active {
+        color: var(--ted-style-accent);
+      }
+      .section-overflow-item.active ha-icon {
         color: var(--ted-style-accent);
       }
       .device-note {

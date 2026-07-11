@@ -937,6 +937,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.119
+
+- **Settings Card — category tab icons** — each category tab now shows an icon. Icons prefer the Fluent iconset when it's installed and fall back to Material Design icons otherwise.
+
 ### v1.0.118
 
 - **Settings Card — section tabs default on + overflow menu** — the built-in category tab strip (`section_tabs`) is now **on by default**, so a plain Ted's Cards Settings card is a complete, self-contained settings UI. When the category tabs are wider than the card, the ones that don't fit collapse into a "…" overflow menu (the active category always stays visible).

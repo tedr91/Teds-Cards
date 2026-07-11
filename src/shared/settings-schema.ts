@@ -51,6 +51,20 @@ export const SETTINGS_GROUPS = [
   "Temperatures"
 ] as const;
 
+/** Per-category tab icons — a Fluent icon (used when the `fluent` iconset is installed)
+ *  with an mdi fallback for when it isn't. */
+export const SETTINGS_GROUP_ICONS: Record<string, { fluent: string; mdi: string }> = {
+  General: { fluent: "fluent:settings-24-regular", mdi: "mdi:tune" },
+  Navigation: { fluent: "fluent:navigation-24-regular", mdi: "mdi:navigation-variant-outline" },
+  Navbar: { fluent: "fluent:panel-bottom-24-regular", mdi: "mdi:dock-bottom" },
+  Notifications: { fluent: "fluent:alert-24-regular", mdi: "mdi:bell-outline" },
+  Alarms: { fluent: "fluent:clock-alarm-24-regular", mdi: "mdi:alarm" },
+  Timers: { fluent: "fluent:timer-24-regular", mdi: "mdi:timer-outline" },
+  Media: { fluent: "fluent:play-circle-24-regular", mdi: "mdi:play-circle-outline" },
+  Cameras: { fluent: "fluent:video-24-regular", mdi: "mdi:cctv" },
+  Temperatures: { fluent: "fluent:temperature-24-regular", mdi: "mdi:thermometer" },
+};
+
 /** Default values — must match the backend `SETTINGS_DEFAULTS`. */
 export const SETTINGS_DEFAULTS: SettingsMap = {
   timer_snooze_enabled: true,
