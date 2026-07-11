@@ -990,6 +990,11 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
       :host {
         display: block;
         height: 100%;
+        /* Grid items default to min-width:auto (their content's min size), which lets a
+           custom:grid-layout `1fr` (minmax(auto,1fr)) column expand this card past the
+           viewport when its content is wide — breaking the tab-strip overflow measurement.
+           Allow the card to shrink to its track instead. */
+        min-width: 0;
       }
       ha-card {
         display: flex;
@@ -998,6 +1003,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
         padding: 14px;
         box-sizing: border-box;
         height: 100%;
+        min-width: 0;
         overflow: hidden;
         color: var(--ted-style-text);
       }
