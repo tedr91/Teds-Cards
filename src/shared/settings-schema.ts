@@ -16,7 +16,8 @@ export type SettingKind =
   | "entity"
   | "media"
   | "select"
-  | "entity-list";
+  | "entity-list"
+  | "background";
 
 export interface SettingField {
   key: string;
@@ -98,6 +99,20 @@ export const SETTINGS_DEFAULTS: SettingsMap = {
   do_not_disturb: false,
   debug_mode: false,
   weather_entity: null,
+  background_mode: "solid",
+  background_scroll: false,
+  background_size: "fill",
+  background_align: "center",
+  background_repeat: "tile",
+  background_color: "#1f2430",
+  background_gradient: true,
+  background_image: null,
+  background_recent_images: [],
+  background_album: "builtin",
+  background_folder: null,
+  background_type_pref: "match",
+  background_shuffle: true,
+  background_cycle_minutes: 30,
   dashboard_root: "ted-dashboard",
   home_dashboard: "[root]/welcome",
   alarms_dashboard: "[root]/alarms-timers?tab=alarms",
@@ -188,6 +203,7 @@ export const SETTINGS_FIELDS: SettingField[] = [
   { key: "do_not_disturb", label: "Do Not Disturb", group: "General", kind: "boolean", help: "Suppresses toasts and alert sounds on this device." },
   { key: "debug_mode", label: "Debug mode", group: "General", kind: "boolean", help: "Publishes the --ted-debug CSS variable so dashboards can show layout debug outlines." },
   { key: "weather_entity", label: "Weather entity", group: "General", kind: "entity", entityDomain: "weather", help: "Default weather entity used by Ted's weather/clock cards that opt in via `backend_integration: true`." },
+  { key: "background", label: "Background Wallpaper", group: "General", kind: "background", help: "Dashboard background painted by the invisible ted-background-card." },
   // Navigation
   { key: "auto_return_home_after", label: "Auto-return home after", group: "Navigation", kind: "number", min: 0, max: 3600, unit: "s", help: "0 = never." },
   { key: "dashboard_root", label: "Dashboard root", group: "Navigation", kind: "text" },

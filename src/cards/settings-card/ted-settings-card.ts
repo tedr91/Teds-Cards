@@ -23,6 +23,19 @@ import {
   type SettingsValue,
 } from "../../shared/settings-schema";
 import {
+  BACKGROUND_ALBUM_OPTIONS,
+  BACKGROUND_ALIGN_OPTIONS,
+  BACKGROUND_KEYS,
+  BACKGROUND_MODE_OPTIONS,
+  BACKGROUND_RECENT_MAX,
+  BACKGROUND_REPEAT_OPTIONS,
+  BACKGROUND_SIZE_OPTIONS,
+  BACKGROUND_TYPE_PREF_OPTIONS,
+  stringList,
+  type BackgroundMode,
+} from "../../shared/background";
+import { isMediaSourceUri, pickMedia, resolveMediaSource, uploadImage } from "../../shared/media";
+import {
   SETTINGS_CARD_DESCRIPTION,
   SETTINGS_CARD_EDITOR_TYPE,
   SETTINGS_CARD_NAME,
@@ -77,6 +90,8 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
   @state() private _sectionMode: SectionHeaderMode = "both";
   /** Fields the user is actively overriding on this device but hasn't stored a value for yet. */
   private _editing = new Set<string>();
+  /** Resolved display URLs for media-source:// wallpaper thumbnails (uri → url). */
+  private _bgThumbs = new Map<string, string>();
   /** Watches the host width so the section tab strip can re-measure its overflow. */
   private _sectionResizeObserver?: ResizeObserver;
   /** The `.section-strip` element currently observed for width changes. */
@@ -513,6 +528,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
 
   private _renderGlobalRow(field: SettingField): TemplateResult {
     if (field.kind === "entity-list") return this._renderCamerasGlobal(field);
+    if (field.kind === "background") return this._renderBackground(field, "global");
     // Device-only fields (e.g. the media player) have no sensible global value.
     if (field.deviceOnly) {
       return html`
@@ -545,6 +561,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
 
   private _renderDeviceRow(field: SettingField): TemplateResult {
     if (field.kind === "entity-list") return this._renderCamerasDevice(field);
+    if (field.kind === "background") return this._renderBackground(field, "device");
     const overriding = this._deviceOverriding(field.key);
     return html`
       <div class="row">
@@ -766,6 +783,252 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     const kept = current.filter((id) => global.includes(id));
     const added = global.filter((id) => !kept.includes(id));
     this._setDevice(field.key, [...kept, ...added]);
+  }
+
+  // --- Background Wallpaper composite (mode-driven; solid/image/slideshow/theme) ---
+
+  /** Read a background_* value in the given scope (device falls back to inherited). */
+  private _bgVal(key: string, scope: "global" | "device"): SettingsValue {
+    return scope === "global" ? this._globalValue(key) : this._deviceValue(key);
+  }
+
+  /** Write a background_* value at the given scope. */
+  private _setBg(key: string, scope: "global" | "device", value: SettingsValue): void {
+    if (scope === "global") this._setGlobal(key, value);
+    else this._setDevice(key, value);
+    this.requestUpdate();
+  }
+
+  /** A directly-usable <img>/CSS URL for a stored image ref (resolves media-source). */
+  private _bgDisplayUrl(ref: string): string {
+    if (!isMediaSourceUri(ref)) return ref;
+    const cached = this._bgThumbs.get(ref);
+    if (cached) return cached;
+    if (this.hass) {
+      void resolveMediaSource(this.hass, ref).then((url) => {
+        if (url) {
+          this._bgThumbs.set(ref, url);
+          this.requestUpdate();
+        }
+      });
+    }
+    return "";
+  }
+
+  /** Record a picked/uploaded image as the current wallpaper + push onto the MRU. */
+  private _selectBgImage(scope: "global" | "device", ref: string): void {
+    this._setBg("background_image", scope, ref);
+    const recent = stringList(this._bgVal("background_recent_images", scope));
+    const next = [ref, ...recent.filter((r) => r !== ref)].slice(0, BACKGROUND_RECENT_MAX);
+    this._setBg("background_recent_images", scope, next);
+  }
+
+  private async _pickBgImage(scope: "global" | "device"): Promise<void> {
+    if (!this.hass) return;
+    const uri = await pickMedia(this, this.hass, { accept: ["image/*"] });
+    if (uri) this._selectBgImage(scope, uri);
+  }
+
+  private async _uploadBgImage(scope: "global" | "device", file: File): Promise<void> {
+    if (!this.hass) return;
+    const url = await uploadImage(this.hass, file);
+    if (url) this._selectBgImage(scope, url);
+  }
+
+  /** Derive a folder media-source id from an image inside it (strip the file segment). */
+  private async _pickBgFolder(scope: "global" | "device"): Promise<void> {
+    if (!this.hass) return;
+    const uri = await pickMedia(this, this.hass, { accept: ["image/*"] });
+    if (uri && uri.includes("/")) this._setBg("background_folder", scope, uri.replace(/\/[^/]*$/, ""));
+  }
+
+  private _bgSelect(
+    key: string,
+    scope: "global" | "device",
+    options: { value: string; label: string }[],
+    disabled: boolean,
+  ): TemplateResult {
+    const val = String(this._bgVal(key, scope) ?? "");
+    return html`<select
+      class="sel"
+      ?disabled=${disabled}
+      @change=${(e: Event) => this._setBg(key, scope, (e.target as HTMLSelectElement).value)}
+    >
+      ${options.map((o) => html`<option value=${o.value} ?selected=${val === o.value}>${o.label}</option>`)}
+    </select>`;
+  }
+
+  private _bgSwitch(key: string, scope: "global" | "device", disabled: boolean): TemplateResult {
+    return html`<ha-switch
+      .checked=${this._bgVal(key, scope) === true}
+      .disabled=${disabled}
+      @change=${(e: Event) => this._setBg(key, scope, (e.target as HTMLInputElement).checked)}
+    ></ha-switch>`;
+  }
+
+  private _bgField(label: string, control: TemplateResult, help?: string): TemplateResult {
+    return html`<div class="bg-field">
+      <div class="row-label">
+        <span>${label}</span>
+        ${help ? html`<span class="help">${help}</span>` : nothing}
+      </div>
+      <div class="row-control">${control}</div>
+    </div>`;
+  }
+
+  private _renderBackground(field: SettingField, scope: "global" | "device"): TemplateResult {
+    const disabled = scope === "global" && !this._isAdmin();
+    const mode = (this._bgVal("background_mode", scope) as BackgroundMode) ?? "solid";
+    const overriding = scope === "device" && BACKGROUND_KEYS.some((k) => k in settingsStore.deviceSettings());
+
+    const common = mode === "theme"
+      ? nothing
+      : html`
+          ${this._bgField("Size", this._bgSelect("background_size", scope, BACKGROUND_SIZE_OPTIONS, disabled))}
+          ${this._bgField("Alignment", this._bgSelect("background_align", scope, BACKGROUND_ALIGN_OPTIONS, disabled))}
+          ${this._bgField("Repeat", this._bgSelect("background_repeat", scope, BACKGROUND_REPEAT_OPTIONS, disabled))}
+          ${this._bgField("Scrollable", this._bgSwitch("background_scroll", scope, disabled), "Scrolls with content instead of staying fixed.")}
+        `;
+
+    return html`
+      <div class="bg-row">
+        <div class="cam-head">
+          <div class="row-label">
+            <span>${field.label}${scope === "device" ? " — this device" : ""}</span>
+            ${scope === "device" && !overriding
+              ? html`<span class="help">Not customized — this device follows the Global wallpaper.</span>`
+              : field.help
+                ? html`<span class="help">${field.help}</span>`
+                : nothing}
+          </div>
+          ${scope === "device" && overriding
+            ? html`<button class="cam-btn" @click=${() => this._resetBgDevice()}>
+                <ha-icon icon="mdi:backup-restore"></ha-icon><span>Reset</span>
+              </button>`
+            : nothing}
+        </div>
+
+        ${this._bgField("Mode", this._bgSelect("background_mode", scope, BACKGROUND_MODE_OPTIONS, disabled))}
+        ${mode === "solid" ? this._renderBgSolid(scope, disabled) : nothing}
+        ${mode === "image" ? this._renderBgImage(scope, disabled) : nothing}
+        ${mode === "slideshow" ? this._renderBgSlideshow(scope, disabled) : nothing}
+        ${common}
+      </div>
+    `;
+  }
+
+  private _resetBgDevice(): void {
+    for (const k of BACKGROUND_KEYS) settingsStore.clearValue("device", k);
+    this.requestUpdate();
+  }
+
+  private _renderBgSolid(scope: "global" | "device", disabled: boolean): TemplateResult {
+    const color = String(this._bgVal("background_color", scope) ?? "#1f2430");
+    return html`
+      ${this._bgField(
+        "Color",
+        html`<input
+          class="bg-color"
+          type="color"
+          .value=${color}
+          ?disabled=${disabled}
+          @input=${(e: Event) => this._setBg("background_color", scope, (e.target as HTMLInputElement).value)}
+        />`,
+      )}
+      ${this._bgField("Gradient effect", this._bgSwitch("background_gradient", scope, disabled))}
+    `;
+  }
+
+  private _renderBgImage(scope: "global" | "device", disabled: boolean): TemplateResult {
+    const current = String(this._bgVal("background_image", scope) ?? "");
+    const recent = stringList(this._bgVal("background_recent_images", scope));
+    return html`
+      <div class="bg-field">
+        <div class="row-label">
+          <span>Image</span>
+          <span class="help">Choose a recent image, browse media, or upload a new one.</span>
+        </div>
+        <div class="bg-image-panel">
+          ${current
+            ? html`<div
+                class="bg-preview"
+                style=${styleMap({ backgroundImage: this._bgDisplayUrl(current) ? `url("${this._bgDisplayUrl(current)}")` : "none" })}
+              ></div>`
+            : nothing}
+          ${recent.length
+            ? html`<div class="bg-recents">
+                ${recent.map(
+                  (ref) => html`<button
+                    class="bg-thumb ${ref === current ? "on" : ""}"
+                    ?disabled=${disabled}
+                    title="Use this image"
+                    style=${styleMap({ backgroundImage: this._bgDisplayUrl(ref) ? `url("${this._bgDisplayUrl(ref)}")` : "none" })}
+                    @click=${() => !disabled && this._selectBgImage(scope, ref)}
+                  ></button>`,
+                )}
+              </div>`
+            : nothing}
+          <div class="bg-actions">
+            <button class="cam-btn" ?disabled=${disabled} @click=${() => this._pickBgImage(scope)}>
+              <ha-icon icon="mdi:image-search"></ha-icon><span>Select image</span>
+            </button>
+            <label class="cam-btn ${disabled ? "disabled" : ""}">
+              <ha-icon icon="mdi:upload"></ha-icon><span>Add image</span>
+              <input
+                type="file"
+                accept="image/*"
+                ?disabled=${disabled}
+                @change=${(e: Event) => {
+                  const f = (e.target as HTMLInputElement).files?.[0];
+                  if (f) void this._uploadBgImage(scope, f);
+                  (e.target as HTMLInputElement).value = "";
+                }}
+              />
+            </label>
+            ${current
+              ? html`<button class="cam-btn" ?disabled=${disabled} @click=${() => this._setBg("background_image", scope, null)}>
+                  <ha-icon icon="mdi:close"></ha-icon><span>Clear</span>
+                </button>`
+              : nothing}
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  private _renderBgSlideshow(scope: "global" | "device", disabled: boolean): TemplateResult {
+    const album = String(this._bgVal("background_album", scope) ?? "builtin");
+    const folder = String(this._bgVal("background_folder", scope) ?? "");
+    const cycle = Number(this._bgVal("background_cycle_minutes", scope) ?? 30);
+    return html`
+      ${this._bgField("Album source", this._bgSelect("background_album", scope, BACKGROUND_ALBUM_OPTIONS, disabled))}
+      ${album === "folder"
+        ? this._bgField(
+            "Media folder",
+            html`<div class="bg-actions">
+              <button class="cam-btn" ?disabled=${disabled} @click=${() => this._pickBgFolder(scope)}>
+                <ha-icon icon="mdi:folder-image"></ha-icon><span>${folder ? "Change folder" : "Select folder"}</span>
+              </button>
+              ${folder ? html`<span class="help bg-folder">${folder.replace(/^media-source:\/\//, "")}</span>` : nothing}
+            </div>`,
+            "Pick any image inside the target folder — its whole folder is used.",
+          )
+        : nothing}
+      ${this._bgField("Type preference", this._bgSelect("background_type_pref", scope, BACKGROUND_TYPE_PREF_OPTIONS, disabled))}
+      ${this._bgField("Shuffle", this._bgSwitch("background_shuffle", scope, disabled))}
+      ${this._bgField(
+        "Cycle duration",
+        html`<input
+          class="num"
+          type="number"
+          min="1"
+          max="1440"
+          .value=${String(cycle)}
+          ?disabled=${disabled}
+          @change=${(e: Event) => this._setBg("background_cycle_minutes", scope, Number((e.target as HTMLInputElement).value))}
+        /><span class="unit">min</span>`,
+      )}
+    `;
   }
 
   protected render(): TemplateResult | typeof nothing {
@@ -1387,6 +1650,88 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
       }
       .cam-add {
         max-width: 260px;
+      }
+      .bg-row {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        padding: 8px 0;
+      }
+      .bg-field {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+      .bg-field .row-control {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        flex: none;
+      }
+      .bg-color {
+        width: 44px;
+        height: 30px;
+        padding: 0;
+        border: 1px solid var(--ted-style-divider);
+        border-radius: 8px;
+        background: none;
+        cursor: pointer;
+      }
+      .bg-image-panel {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        align-items: flex-end;
+      }
+      .bg-preview {
+        width: 160px;
+        height: 90px;
+        border-radius: 10px;
+        border: 1px solid var(--ted-style-divider);
+        background-color: var(--ted-style-surface-2);
+        background-size: cover;
+        background-position: center;
+      }
+      .bg-recents {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+      }
+      .bg-thumb {
+        width: 48px;
+        height: 32px;
+        border-radius: 6px;
+        border: 2px solid transparent;
+        background-color: var(--ted-style-surface-2);
+        background-size: cover;
+        background-position: center;
+        cursor: pointer;
+        padding: 0;
+      }
+      .bg-thumb.on {
+        border-color: var(--primary-color, #03a9f4);
+      }
+      .bg-actions {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+      }
+      .cam-btn.disabled {
+        opacity: 0.5;
+        pointer-events: none;
+      }
+      .cam-btn input[type="file"] {
+        display: none;
+      }
+      .bg-folder {
+        max-width: 200px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
     `,
   ];

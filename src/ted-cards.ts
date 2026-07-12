@@ -25,6 +25,7 @@ import "./cards/timer-card/ted-timer-card";
 import "./cards/notification-card/ted-notification-card";
 import "./cards/tab-card/ted-tab-card";
 import "./cards/settings-card/ted-settings-card";
+import "./cards/background-card/ted-background-card";
 // Client-side status panel — intentionally NOT in the "Add card" picker (no
 // registerCustomCard call); used by reference in YAML (custom:ted-status-card).
 import "./cards/status-card/ted-status-card";
