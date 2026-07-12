@@ -937,6 +937,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.133
+
+- **Consistent wallpaper across views** — the Background Wallpaper now persists as you navigate between dashboard views instead of flashing or jumping to a new image. The slideshow keeps the same image and cycle position across view changes (it only advances on its own timer), so moving between Home, Alarms, Cameras, etc. no longer reshuffles the background.
+
 ### v1.0.132
 
 - **Background Wallpaper tweaks** — the default Solid Color is now a muted indigo (`#57608E`), and the "gradient effect" now matches the "Ted's Home Theater" card surface: a 145° three-stop diagonal that steps the chosen colour darker. Pairs with Ted's Cards Backend v1.0.30+.
