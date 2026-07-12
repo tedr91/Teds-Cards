@@ -541,6 +541,7 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
   private _statusCtx(): StatusItemContext {
     return {
       hass: this.hass as HomeAssistant,
+      host: this,
       slider: this._slider,
       keyPrefix: "rc",
       resolveAreaEntity: (kind: "temperature" | "occupancy") => this._resolveAreaEntity(kind),

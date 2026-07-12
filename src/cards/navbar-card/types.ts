@@ -68,9 +68,9 @@ export interface NavbarCardConfig extends LovelaceCardConfig {
   type: string;
   /** Opt into Ted's Cards Backend integration (YAML-only; default false). When true,
    *  this navbar gains backend-driven behaviours: auto-return-home on idle, redirecting
-   *  the welcome view to the device's configured home on load, and `tap_navigate` on
-   *  status items. Left false so the card is safe to drop into any dashboard without
-   *  odd cross-navigation. Set true on the navbar in Ted's Dashboard. */
+   *  the welcome view to the device's configured home on load, and the `navigate-dashboard`
+   *  action on status items. Left false so the card is safe to drop into any dashboard
+   *  without odd cross-navigation. Set true on the navbar in Ted's Dashboard. */
   backend_integration?: boolean;
   /** Visual styling: ted-style (default) or follow the HA theme. */
   theme?: TedStyleTheme;

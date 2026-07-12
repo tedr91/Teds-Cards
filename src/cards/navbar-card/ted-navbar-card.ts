@@ -1172,11 +1172,12 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
     if (!this.hass) return html`<div class="nav-status"></div>`;
     const ctx: StatusItemContext = {
       hass: this.hass,
+      host: this,
       slider: this._slider,
       keyPrefix,
-      // `tap_navigate` resolves a dashboard-path setting, so it only applies when this
-      // navbar opts into the Ted's Cards Backend integration.
-      tapNavigateEnabled: this._backendIntegration(),
+      // `navigate-dashboard` resolves a dashboard-path setting, so it only applies when
+      // this navbar opts into the Ted's Cards Backend integration. Other actions run.
+      backendIntegration: this._backendIntegration(),
     };
     return html`<div class="nav-status">${renderStatusItem(item, ctx, idx)}</div>`;
   }

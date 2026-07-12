@@ -31,6 +31,21 @@ const VOLUME_REOPEN_GUARD_MS = 350;
 /** How long a pointer must be held to open a count item's options menu. */
 const LONG_PRESS_MS = 500;
 
+/** How long to wait for a second click before treating a click as a single tap. */
+const DOUBLE_CLICK_MS = 250;
+
+/** Effective per-gesture callbacks for an item that runs button-like interactions. */
+export interface Gestures {
+  tap?: () => void;
+  hold?: () => void;
+  doubleTap?: () => void;
+}
+
+/** True when any gesture callback is present (so the item should look clickable). */
+export function gesturesActive(g?: Gestures): boolean {
+  return !!(g && (g.tap || g.hold || g.doubleTap));
+}
+
 function sliderValue(ev: Event): number {
   return Number.parseFloat((ev.target as HTMLInputElement).value);
 }
@@ -46,6 +61,10 @@ export class StatusSliderController implements ReactiveController {
   /** Long-press timer + "fired" flag for hold-to-open-options on count items. */
   private holdTimer?: number;
   private holdFired = false;
+  /** Generic gesture (tap/hold/double-tap) timers + flag for action-enabled items. */
+  private gestureHoldTimer?: number;
+  private gestureClickTimer?: number;
+  private gestureHoldFired = false;
   /** Removes the outside-tap / Escape listeners for an open manual (hold) popover. */
   private manualDismiss?: () => void;
 
@@ -62,6 +81,14 @@ export class StatusSliderController implements ReactiveController {
     if (this.holdTimer !== undefined) {
       window.clearTimeout(this.holdTimer);
       this.holdTimer = undefined;
+    }
+    if (this.gestureHoldTimer !== undefined) {
+      window.clearTimeout(this.gestureHoldTimer);
+      this.gestureHoldTimer = undefined;
+    }
+    if (this.gestureClickTimer !== undefined) {
+      window.clearTimeout(this.gestureClickTimer);
+      this.gestureClickTimer = undefined;
     }
     this.teardownManualDismiss();
   }
@@ -122,6 +149,57 @@ export class StatusSliderController implements ReactiveController {
     const hass = this.host.hass;
     const muted = hass?.states[entityId]?.attributes?.is_volume_muted === true;
     hass?.callService("media_player", "volume_mute", { entity_id: entityId, is_volume_muted: !muted });
+  }
+
+  /** Public mute toggle (used as a volume item's built-in double-tap when a custom
+   *  action is configured elsewhere on the item). */
+  muteVolume(entityId: string): void {
+    this.toggleMute(entityId);
+  }
+
+  /** Pointer down for a generic gesture item: arm the long-press if a hold is bound. */
+  onGestureDown(g?: Gestures): void {
+    this.gestureHoldFired = false;
+    if (!g?.hold) return;
+    if (this.gestureHoldTimer !== undefined) window.clearTimeout(this.gestureHoldTimer);
+    this.gestureHoldTimer = window.setTimeout(() => {
+      this.gestureHoldTimer = undefined;
+      this.gestureHoldFired = true;
+      g.hold?.();
+    }, LONG_PRESS_MS);
+  }
+
+  /** Pointer up / cancel / leave for a generic gesture item: disarm the long-press. */
+  onGestureUp(): void {
+    if (this.gestureHoldTimer !== undefined) {
+      window.clearTimeout(this.gestureHoldTimer);
+      this.gestureHoldTimer = undefined;
+    }
+  }
+
+  /** Click for a generic gesture item: dispatch tap (deferred only when a double-tap
+   *  is bound), or double-tap on the second click. Suppressed if a hold already fired. */
+  onGestureClick(g?: Gestures): void {
+    if (!g) return;
+    if (this.gestureHoldFired) {
+      this.gestureHoldFired = false;
+      return;
+    }
+    if (this.gestureClickTimer !== undefined) {
+      window.clearTimeout(this.gestureClickTimer);
+      this.gestureClickTimer = undefined;
+      if (g.doubleTap) g.doubleTap();
+      else g.tap?.();
+      return;
+    }
+    if (!g.doubleTap) {
+      g.tap?.();
+      return;
+    }
+    this.gestureClickTimer = window.setTimeout(() => {
+      this.gestureClickTimer = undefined;
+      g.tap?.();
+    }, DOUBLE_CLICK_MS);
   }
 
   /** Open a popover by id (guarded against a volume re-open flicker). */

@@ -11,6 +11,7 @@ import type { HomeAssistant } from "custom-card-helpers";
 import { STATUS_ITEM_DEFAULT_ICON, DEFAULT_SPACER_SIZE } from "./const";
 import { resolveDeviceArea } from "../device-area";
 import { settingsStore, resolveDashboardPath } from "../settings";
+import { runTedAction, hasTedAction } from "../actions";
 import { formatDate, formatTime } from "./datetime";
 import {
   brightnessModel,
@@ -24,7 +25,8 @@ import {
   weatherIcon,
   weatherTemp,
 } from "./model";
-import type { StatusSliderController } from "./slider-controller";
+import type { StatusSliderController, Gestures } from "./slider-controller";
+import { gesturesActive } from "./slider-controller";
 import type {
   BrightnessStatusItem,
   DateTimeStatusItem,
@@ -43,21 +45,67 @@ import type {
 /** Everything a status-item renderer needs from its host. */
 export interface StatusItemContext {
   hass: HomeAssistant;
+  /** The host card element (used as the node for Home Assistant `handleAction`). */
+  host: HTMLElement;
   /** Shared controller managing brightness/volume popovers. */
   slider: StatusSliderController;
   /** Unique-per-host prefix for popover/anchor element ids. */
   keyPrefix: string;
   /** Room Card injects area-based entity resolution; other hosts omit it. */
   resolveAreaEntity?: (kind: "temperature" | "occupancy") => string | undefined;
-  /** When false, a status item's `tap_navigate` (a dashboard-path setting) is ignored,
-   *  so the item isn't clickable. Set by hosts that opt out of the Ted's Cards Backend
-   *  integration (e.g. a standalone navbar). Defaults to enabled when omitted. */
-  tapNavigateEnabled?: boolean;
+  /** When false, the `navigate-dashboard` action on a status item is ignored (hosts
+   *  that opt out of the Ted's Cards Backend integration, e.g. a standalone navbar).
+   *  Other actions still run. Defaults to enabled when omitted. */
+  backendIntegration?: boolean;
 }
 
 /** True when a list contains a live clock/date item (so the host should tick). */
 export function hasClockItem(items: readonly StatusItem[]): boolean {
   return items.some((i) => i.type === "datetime");
+}
+
+/** True when the item configures any button-like gesture action. */
+function hasItemActions(item: StatusItem): boolean {
+  return (
+    hasTedAction(item.tap_action) ||
+    hasTedAction(item.hold_action) ||
+    hasTedAction(item.double_tap_action)
+  );
+}
+
+/** Resolve the effective per-gesture callbacks for an item: a configured action wins,
+ *  otherwise the item's built-in behaviour (passed by the renderer) is used. */
+function effectiveGestures(
+  item: StatusItem,
+  ctx: StatusItemContext,
+  builtins?: Gestures,
+): Gestures {
+  const entity = (item as { entity?: string }).entity;
+  const cfg = {
+    entity,
+    tap_action: item.tap_action,
+    hold_action: item.hold_action,
+    double_tap_action: item.double_tap_action,
+  };
+  const run = (action: "tap" | "hold" | "double_tap", explicit?: unknown) =>
+    hasTedAction(explicit as never)
+      ? () => runTedAction(ctx.host, ctx.hass, cfg, action, { backendIntegration: ctx.backendIntegration })
+      : undefined;
+  return {
+    tap: run("tap", item.tap_action) ?? builtins?.tap,
+    hold: run("hold", item.hold_action) ?? builtins?.hold,
+    doubleTap: run("double_tap", item.double_tap_action) ?? builtins?.doubleTap,
+  };
+}
+
+/** Gesture event bindings for a status item's outer element. When `g` is undefined
+ *  (no actions and no built-ins routed through gestures) every handler is a no-op. */
+function gestureHandlers(ctx: StatusItemContext, g?: Gestures) {
+  return {
+    down: () => ctx.slider.onGestureDown(g),
+    up: () => ctx.slider.onGestureUp(),
+    click: () => ctx.slider.onGestureClick(g),
+  };
 }
 
 export function renderStatusItem(item: StatusItem, ctx: StatusItemContext, index: number): TemplateResult {
@@ -92,8 +140,18 @@ function renderSensorItem(item: SensorStatusItem, ctx: StatusItemContext): Templ
   const icon = item.icon ?? STATUS_ITEM_DEFAULT_ICON[item.type];
   const label = String(item.name ?? stateObj?.attributes?.friendly_name ?? entityId ?? "");
   const show = itemDisplay(item);
+  const g = effectiveGestures(item, ctx);
+  const h = gestureHandlers(ctx, g);
   return html`
-    <div class="status-item" title=${label}>
+    <div
+      class=${classMap({ "status-item": true, clickable: gesturesActive(g) })}
+      title=${label}
+      @pointerdown=${h.down}
+      @pointerup=${h.up}
+      @pointercancel=${h.up}
+      @pointerleave=${h.up}
+      @click=${h.click}
+    >
       ${show.icon ? html`<ha-icon class="status-icon" .icon=${icon}></ha-icon>` : nothing}
       ${show.state
         ? html`<span class="status-text">${formatSensor(stateObj, item.type)}</span>`
@@ -112,8 +170,18 @@ function renderLedItem(item: LedStatusItem, ctx: StatusItemContext): TemplateRes
   const color = ledColor(item, stateObj);
   const label = String(item.name ?? stateObj?.attributes?.friendly_name ?? item.entity);
   const show = itemDisplay(item);
+  const g = effectiveGestures(item, ctx);
+  const h = gestureHandlers(ctx, g);
   return html`
-    <div class="status-item" title=${label}>
+    <div
+      class=${classMap({ "status-item": true, clickable: gesturesActive(g) })}
+      title=${label}
+      @pointerdown=${h.down}
+      @pointerup=${h.up}
+      @pointercancel=${h.up}
+      @pointerleave=${h.up}
+      @click=${h.click}
+    >
       ${show.icon
         ? html`<span
             class="status-led"
@@ -134,16 +202,25 @@ function renderBrightnessItem(item: BrightnessStatusItem, ctx: StatusItemContext
   const popId = `${ctx.keyPrefix}-bri-pop-${index}`;
   const key = `${ctx.keyPrefix}-bri-${index}`;
   const show = itemDisplay(item);
+  // A configured action overrides the built-in "tap opens the slider" behaviour.
+  const actions = hasItemActions(item);
+  const g = actions ? effectiveGestures(item, ctx, { tap: () => ctx.slider.openPopover(popId) }) : undefined;
+  const h = gestureHandlers(ctx, g);
   return html`
     <div class="status-item">
       ${show.icon
         ? html`<button
             id=${anchorId}
             class="status-icon-button"
-            popovertarget=${popId}
+            popovertarget=${actions ? nothing : popId}
             ?disabled=${!model.available}
             title=${String(item.name ?? "Brightness")}
             aria-label="Brightness"
+            @pointerdown=${actions ? h.down : nothing}
+            @pointerup=${actions ? h.up : nothing}
+            @pointercancel=${actions ? h.up : nothing}
+            @pointerleave=${actions ? h.up : nothing}
+            @click=${actions ? h.click : nothing}
           >
             <ha-icon .icon=${icon}></ha-icon>
           </button>`
@@ -161,6 +238,15 @@ function renderVolumeItem(item: VolumeStatusItem, ctx: StatusItemContext, index:
   const popId = `${ctx.keyPrefix}-vol-pop-${index}`;
   const key = `${ctx.keyPrefix}-vol-${index}`;
   const show = itemDisplay(item);
+  // A configured action overrides the built-in tap-opens-slider / double-tap-mutes.
+  const actions = hasItemActions(item);
+  const g = actions
+    ? effectiveGestures(item, ctx, {
+        tap: () => ctx.slider.openPopover(popId),
+        doubleTap: () => ctx.slider.muteVolume(item.entity),
+      })
+    : undefined;
+  const h = gestureHandlers(ctx, g);
   return html`
     <div class="status-item">
       ${show.icon
@@ -168,7 +254,11 @@ function renderVolumeItem(item: VolumeStatusItem, ctx: StatusItemContext, index:
             id=${anchorId}
             class=${classMap({ "status-icon-button": true, "is-active": model.muted })}
             ?disabled=${!model.available}
-            @click=${() => ctx.slider.onVolumeClick(item.entity, popId)}
+            @click=${actions ? h.click : () => ctx.slider.onVolumeClick(item.entity, popId)}
+            @pointerdown=${actions ? h.down : nothing}
+            @pointerup=${actions ? h.up : nothing}
+            @pointercancel=${actions ? h.up : nothing}
+            @pointerleave=${actions ? h.up : nothing}
             title="Volume — double-tap to mute"
             aria-label="Volume"
           >
@@ -237,14 +327,19 @@ function renderDateTimeItem(item: DateTimeStatusItem, ctx: StatusItemContext): T
   const timeText = showTime ? formatTime(now, item.time_format ?? "") : "";
   const autoLabel = [dateText, timeText].filter(Boolean).join(" • ") || "Date/Time";
   const label = String(item.name ?? autoLabel);
-  const nav = ctx.tapNavigateEnabled === false ? undefined : item.tap_navigate;
+  const g = effectiveGestures(item, ctx);
+  const h = gestureHandlers(ctx, g);
   const dateSpan = showDate ? html`<span class="status-text">${dateText}</span>` : nothing;
   const timeSpan = showTime ? html`<span class="status-text">${timeText}</span>` : nothing;
   return html`
     <div
-      class=${classMap({ "status-item": true, "datetime-stacked": stacked, clickable: !!nav })}
+      class=${classMap({ "status-item": true, "datetime-stacked": stacked, clickable: gesturesActive(g) })}
       title=${label}
-      @click=${nav ? () => navigateTo(resolveDashboardPath(nav)) : nothing}
+      @pointerdown=${h.down}
+      @pointerup=${h.up}
+      @pointercancel=${h.up}
+      @pointerleave=${h.up}
+      @click=${h.click}
     >
       ${stacked ? html`${timeSpan}${dateSpan}` : html`${dateSpan}${timeSpan}`}
     </div>
@@ -258,12 +353,17 @@ function renderWeatherItem(item: WeatherStatusItem, ctx: StatusItemContext): Tem
   const temp = weatherTemp(ctx.hass, stateObj);
   const label = String(item.name ?? stateObj?.attributes?.friendly_name ?? "Weather");
   const show = itemDisplay(item);
-  const nav = ctx.tapNavigateEnabled === false ? undefined : item.tap_navigate;
+  const g = effectiveGestures(item, ctx);
+  const h = gestureHandlers(ctx, g);
   return html`
     <div
-      class=${classMap({ "status-item": true, clickable: !!nav })}
+      class=${classMap({ "status-item": true, clickable: gesturesActive(g) })}
       title=${label}
-      @click=${nav ? () => navigateTo(resolveDashboardPath(nav)) : nothing}
+      @pointerdown=${h.down}
+      @pointerup=${h.up}
+      @pointercancel=${h.up}
+      @pointerleave=${h.up}
+      @click=${h.click}
     >
       ${show.icon ? html`<ha-icon class="status-icon status-weather-icon" .icon=${icon}></ha-icon>` : nothing}
       ${show.state
@@ -418,6 +518,16 @@ function renderCountItem(
         },
       ];
 
+  // A configured action overrides the built-in tap-navigates / hold-opens-menu.
+  const actions = hasItemActions(item);
+  const g = actions
+    ? effectiveGestures(item, ctx, {
+        tap: () => navigateTo(navPath),
+        hold: () => ctx.slider.openManualPopover(optsPopId),
+      })
+    : undefined;
+  const h = gestureHandlers(ctx, g);
+
   return html`
     <div class="status-item">
       <button
@@ -425,12 +535,15 @@ function renderCountItem(
         class="status-icon-button notif-btn"
         title=${label}
         aria-label=${label}
-        @pointerdown=${() => ctx.slider.startHold(optsPopId)}
-        @pointerleave=${() => ctx.slider.cancelHold()}
-        @pointercancel=${() => ctx.slider.cancelHold()}
-        @click=${() => {
-          if (!ctx.slider.consumeHold()) navigateTo(navPath);
-        }}
+        @pointerdown=${actions ? h.down : () => ctx.slider.startHold(optsPopId)}
+        @pointerup=${actions ? h.up : nothing}
+        @pointerleave=${actions ? h.up : () => ctx.slider.cancelHold()}
+        @pointercancel=${actions ? h.up : () => ctx.slider.cancelHold()}
+        @click=${actions
+          ? h.click
+          : () => {
+              if (!ctx.slider.consumeHold()) navigateTo(navPath);
+            }}
       >
         <ha-icon .icon=${icon}></ha-icon>
         ${showBadge ? html`<span class="status-badge">${count > 99 ? "99+" : count}</span>` : nothing}
@@ -467,6 +580,15 @@ function renderNotificationsItem(
       handler: () => settingsStore.setValue("device", "do_not_disturb", !dnd),
     },
   ];
+  // A configured action overrides the built-in tap-opens-list / hold-opens-DND.
+  const actions = hasItemActions(item);
+  const g = actions
+    ? effectiveGestures(item, ctx, {
+        tap: () => ctx.slider.openPopover(popId),
+        hold: () => ctx.slider.openManualPopover(optsPopId),
+      })
+    : undefined;
+  const h = gestureHandlers(ctx, g);
   return html`
     <div class="status-item">
       <button
@@ -474,12 +596,15 @@ function renderNotificationsItem(
         class="status-icon-button notif-btn"
         title=${String(item.name ?? "Notifications")}
         aria-label="Notifications"
-        @pointerdown=${() => ctx.slider.startHold(optsPopId)}
-        @pointerleave=${() => ctx.slider.cancelHold()}
-        @pointercancel=${() => ctx.slider.cancelHold()}
-        @click=${() => {
-          if (!ctx.slider.consumeHold()) ctx.slider.openPopover(popId);
-        }}
+        @pointerdown=${actions ? h.down : () => ctx.slider.startHold(optsPopId)}
+        @pointerup=${actions ? h.up : nothing}
+        @pointerleave=${actions ? h.up : () => ctx.slider.cancelHold()}
+        @pointercancel=${actions ? h.up : () => ctx.slider.cancelHold()}
+        @click=${actions
+          ? h.click
+          : () => {
+              if (!ctx.slider.consumeHold()) ctx.slider.openPopover(popId);
+            }}
       >
         <ha-icon .icon=${icon}></ha-icon>
         ${showBadge ? html`<span class="status-badge">${unread > 99 ? "99+" : unread}</span>` : nothing}

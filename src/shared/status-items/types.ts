@@ -5,6 +5,8 @@
  * additionally offers {time, date, weather}.
  */
 
+import type { ActionConfig } from "custom-card-helpers";
+
 import type { Condition } from "../conditions";
 
 /** Every status-item kind across all hosts. */
@@ -35,6 +37,15 @@ export interface StatusItemBase {
   visible?: boolean;
   /** Conditions that gate visibility. Honoured by the Navbar Card. */
   visibility?: Condition[];
+  /** Action run on a single tap. Behaves like the Button Card's `tap_action`
+   *  (navigate / call-service / url / toggle / more-info / navigate-dashboard).
+   *  For the interactive items (brightness, volume, notifications, alarms, timers)
+   *  this OVERRIDES the built-in tap behaviour; leave unset to keep it. */
+  tap_action?: ActionConfig;
+  /** Action run on a long-press. Overrides the item's built-in hold behaviour. */
+  hold_action?: ActionConfig;
+  /** Action run on a double-tap. Overrides the item's built-in double-tap behaviour. */
+  double_tap_action?: ActionConfig;
 }
 
 /**
@@ -92,8 +103,6 @@ export interface DateTimeStatusItem extends Omit<StatusItemBase, "display"> {
   date_format?: string;
   /** Time token format (default "h:MM a"). */
   time_format?: string;
-  /** Settings key of a dashboard path to open on tap (e.g. `calendar_dashboard`). */
-  tap_navigate?: string;
 }
 
 /** Current weather: condition icon + temperature. `entity` defaults to the first weather.* entity. */
@@ -101,8 +110,6 @@ export interface WeatherStatusItem extends StatusItemBase {
   type: "weather";
   entity?: string;
   icon?: string;
-  /** Settings key of a dashboard path to open on tap (e.g. `weather_dashboard`). */
-  tap_navigate?: string;
 }
 
 /** A bell with an unread badge; tapping opens a popover list of notifications. */
