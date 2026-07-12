@@ -937,6 +937,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.129
+
+- **Navbar Card — hold menu requires backend integration** — the long-press settings menu (auto-hide / float / position / size / Dashboard Settings / Exit) now only appears on a navbar with `backend_integration: true`. Those controls drive backend-backed per-device settings, so a plain navbar without backend integration no longer opens the menu.
+
 ### v1.0.128
 
 - **Navbar Card — mid sections no longer overlap the pinned edges** — the **Mid-Left** and **Mid-Right** sections now stay strictly between the edge and center sections instead of sliding underneath the pinned **Left** / **Right** sections. The centered zone is inset by the widest edge section, so the **Center** anchor still sits dead-centre while the mid sections keep clear of the left/right items (e.g. a right-edge Date/Time no longer collides with a Mid-Right button).

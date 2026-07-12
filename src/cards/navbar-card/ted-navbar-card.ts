@@ -458,7 +458,9 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
   // --- Hold-press settings menu ---------------------------------------------
 
   private _holdMenuEnabled(): boolean {
-    return this._config?.hold_menu !== false && !this._editMode;
+    // The hold menu drives backend-backed per-device settings (auto-hide/float/position/
+    // size) and dashboard navigation, so it's only available with backend integration.
+    return this._backendIntegration() && this._config?.hold_menu !== false && !this._editMode;
   }
 
   /** Begin the long-press timer when the bar background (not a button/status item) is

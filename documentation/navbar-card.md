@@ -45,7 +45,7 @@ sections:
 | --- | --- | --- | --- |
 | `auto_hide` | boolean | false | Collapse the bar into its edge (a small pill remains) until revealed. |
 | `auto_hide_delay` | number (s) | 5 | Seconds before an auto-hide bar re-collapses. |
-| `hold_menu` | boolean | true | Long-press the bar to open a settings menu (auto-hide / float / position / size, plus custom items, Dashboard Settings, Exit). |
+| `hold_menu` | boolean | true | Long-press the bar to open a settings menu (auto-hide / float / position / size, plus custom items, Dashboard Settings, Exit). Requires `backend_integration: true` — the menu is hidden without it. |
 | `menu_items` | array | | Extra custom action rows in the long-press menu (below). |
 | `exit_path` | string | `/lovelace` | Where the menu's "Exit" item navigates. |
 
