@@ -937,6 +937,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.130
+
+- **Status items — button-style interactions** — every Navbar and Room Card status item now supports `tap_action`, `hold_action`, and `double_tap_action` (like the Button Card), replacing the old `datetime`/`weather` `tap_navigate`. For the interactive items (brightness, volume, notifications, alarms, timers) a configured action **overrides** that gesture's built-in behaviour; leave it unset to keep the default (e.g. brightness tap still opens its slider). Editable in the card editor under a new **Interactions** section. The `navigate-dashboard` action still requires the navbar's `backend_integration`; the Button Card and status items now share one action dispatcher.
+
 ### v1.0.129
 
 - **Navbar Card — hold menu requires backend integration** — the long-press settings menu (auto-hide / float / position / size / Dashboard Settings / Exit) now only appears on a navbar with `backend_integration: true`. Those controls drive backend-backed per-device settings, so a plain navbar without backend integration no longer opens the menu.
