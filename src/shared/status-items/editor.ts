@@ -108,6 +108,7 @@ export function statusItemSchema(type: StatusItemType, item?: StatusItem): unkno
               mode: "dropdown",
               options: [
                 { value: "both", label: "Both" },
+                { value: "both-stacked", label: "Both (stacked)" },
                 { value: "time", label: "Time only" },
                 { value: "date", label: "Date only" },
               ],

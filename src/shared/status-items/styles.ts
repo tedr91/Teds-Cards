@@ -20,6 +20,17 @@ export const statusItemStyles = css`
   .status-item.clickable {
     cursor: pointer;
   }
+  .status-item.datetime-stacked {
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+    line-height: 1.05;
+  }
+  .status-item.datetime-stacked .status-text:last-child {
+    font-size: 0.72em;
+    font-weight: 600;
+    color: var(--ted-style-muted);
+  }
   .status-spacer {
     flex: none;
     align-self: stretch;

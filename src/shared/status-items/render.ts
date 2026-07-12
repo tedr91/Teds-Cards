@@ -230,6 +230,7 @@ function renderDateTimeItem(item: DateTimeStatusItem, ctx: StatusItemContext): T
   const now = new Date();
   const lang = ctx.hass.locale?.language || "en";
   const mode = item.display ?? "both";
+  const stacked = mode === "both-stacked";
   const showDate = mode !== "time";
   const showTime = mode !== "date";
   const dateText = showDate ? formatDate(now, item.date_format ?? "", lang) : "";
@@ -237,14 +238,15 @@ function renderDateTimeItem(item: DateTimeStatusItem, ctx: StatusItemContext): T
   const autoLabel = [dateText, timeText].filter(Boolean).join(" • ") || "Date/Time";
   const label = String(item.name ?? autoLabel);
   const nav = ctx.tapNavigateEnabled === false ? undefined : item.tap_navigate;
+  const dateSpan = showDate ? html`<span class="status-text">${dateText}</span>` : nothing;
+  const timeSpan = showTime ? html`<span class="status-text">${timeText}</span>` : nothing;
   return html`
     <div
-      class=${classMap({ "status-item": true, clickable: !!nav })}
+      class=${classMap({ "status-item": true, "datetime-stacked": stacked, clickable: !!nav })}
       title=${label}
       @click=${nav ? () => navigateTo(resolveDashboardPath(nav)) : nothing}
     >
-      ${showDate ? html`<span class="status-text">${dateText}</span>` : nothing}
-      ${showTime ? html`<span class="status-text">${timeText}</span>` : nothing}
+      ${stacked ? html`${timeSpan}${dateSpan}` : html`${dateSpan}${timeSpan}`}
     </div>
   `;
 }

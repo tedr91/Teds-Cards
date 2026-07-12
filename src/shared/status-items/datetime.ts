@@ -63,6 +63,7 @@ export function formatDate(d: Date, fmt: string, lang: string): string {
   const weekdayShort = new Intl.DateTimeFormat(lang, { weekday: "short" }).format(d);
   const monthLong = new Intl.DateTimeFormat(lang, { month: "long" }).format(d);
   const monthShort = new Intl.DateTimeFormat(lang, { month: "short" }).format(d);
+  const month = d.getMonth() + 1;
   const day = d.getDate();
   const year = d.getFullYear();
   return replaceTokens(fmt || DEFAULT_DATE_FORMAT, [
@@ -70,6 +71,8 @@ export function formatDate(d: Date, fmt: string, lang: string): string {
     ["ddd", weekdayShort],
     ["MMMM", monthLong],
     ["MMM", monthShort],
+    ["MM", pad(month)],
+    ["M", String(month)],
     ["DD", pad(day)],
     ["D", String(day)],
     ["YYYY", String(year)],

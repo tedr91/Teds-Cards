@@ -86,8 +86,8 @@ export interface SpacerStatusItem extends StatusItemBase {
 /** Current time, optionally with a clock icon. */
 export interface DateTimeStatusItem extends Omit<StatusItemBase, "display"> {
   type: "datetime";
-  /** Which parts to show: both, time only, or date only. Defaults to "both". */
-  display?: "both" | "time" | "date";
+  /** Which parts to show: both, both stacked (time over date), time only, or date only. Defaults to "both". */
+  display?: "both" | "both-stacked" | "time" | "date";
   /** Date token format (default "ddd, MMMM D"). */
   date_format?: string;
   /** Time token format (default "h:MM a"). */
