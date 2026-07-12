@@ -937,6 +937,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.131
+
+- **Background Wallpapers** — new **Settings → General → Background Wallpaper** control with four modes: **Solid Color** (colour picker + optional gradient), **Single Image** (recent thumbnails, browse HA media, or upload a new image), **Slideshow** (built-in album or a media folder, theme-matched/light/dark/all, shuffle, cycle duration), and **HA Theme** (defer to the active theme). Shared options for size, alignment, repeat, and fixed/scroll. Settings apply globally or per-device. A new invisible **Ted Background Card** (`custom:ted-background-card`) paints the dashboard from these settings — add one per view (e.g. a shared layout). Requires Ted's Cards Backend v1.0.29+.
+
 ### v1.0.130
 
 - **Status items — button-style interactions** — every Navbar and Room Card status item now supports `tap_action`, `hold_action`, and `double_tap_action` (like the Button Card), replacing the old `datetime`/`weather` `tap_navigate`. For the interactive items (brightness, volume, notifications, alarms, timers) a configured action **overrides** that gesture's built-in behaviour; leave it unset to keep the default (e.g. brightness tap still opens its slider). Editable in the card editor under a new **Interactions** section. The `navigate-dashboard` action still requires the navbar's `backend_integration`; the Button Card and status items now share one action dispatcher.
