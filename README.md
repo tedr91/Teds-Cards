@@ -937,6 +937,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.132
+
+- **Background Wallpaper tweaks** — the default Solid Color is now a muted indigo (`#57608E`), and the "gradient effect" now matches the "Ted's Home Theater" card surface: a 145° three-stop diagonal that steps the chosen colour darker. Pairs with Ted's Cards Backend v1.0.30+.
+
 ### v1.0.131
 
 - **Background Wallpapers** — new **Settings → General → Background Wallpaper** control with four modes: **Solid Color** (colour picker + optional gradient), **Single Image** (recent thumbnails, browse HA media, or upload a new image), **Slideshow** (built-in album or a media folder, theme-matched/light/dark/all, shuffle, cycle duration), and **HA Theme** (defer to the active theme). Shared options for size, alignment, repeat, and fixed/scroll. Settings apply globally or per-device. A new invisible **Ted Background Card** (`custom:ted-background-card`) paints the dashboard from these settings — add one per view (e.g. a shared layout). Requires Ted's Cards Backend v1.0.29+.

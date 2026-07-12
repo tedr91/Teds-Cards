@@ -111,10 +111,17 @@ export function attachmentToCss(scroll: boolean): string {
   return scroll ? "scroll" : "fixed";
 }
 
-/** A subtle diagonal gradient derived from a base color, for the Solid Color mode. */
+/** A subtle diagonal gradient derived from a base color, for the Solid Color mode.
+ *  Mirrors the NovaStar / AV Receiver "Ted's Home Theater" card surface — a 145°
+ *  three-stop diagonal that steps the picked colour darker (same 74% / 48% luminance
+ *  ratios as `linear-gradient(145deg, #2e2e32, #222226 45%, #16161a)`). */
 export function solidGradient(color: string, gradient: boolean): string {
   if (!gradient) return color;
-  return `linear-gradient(135deg, ${color} 0%, color-mix(in srgb, ${color} 78%, #000) 100%)`;
+  return (
+    `linear-gradient(145deg, ${color} 0%, ` +
+    `color-mix(in srgb, ${color} 74%, #000) 45%, ` +
+    `color-mix(in srgb, ${color} 48%, #000) 100%)`
+  );
 }
 
 /** Read a string[] setting safely. */
@@ -144,7 +151,7 @@ export function backgroundLayerCss(
   const cssSize = sizeToCss(size);
 
   if (mode === "solid") {
-    const color = typeof s.background_color === "string" ? s.background_color : "#1f2430";
+    const color = typeof s.background_color === "string" ? s.background_color : "#57608E";
     const gradient = s.background_gradient !== false;
     return {
       image: solidGradient(color, gradient),

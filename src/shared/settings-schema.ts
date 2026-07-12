@@ -104,7 +104,7 @@ export const SETTINGS_DEFAULTS: SettingsMap = {
   background_size: "fill",
   background_align: "center",
   background_repeat: "tile",
-  background_color: "#1f2430",
+  background_color: "#57608E",
   background_gradient: true,
   background_image: null,
   background_recent_images: [],

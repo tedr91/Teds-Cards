@@ -923,7 +923,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
   }
 
   private _renderBgSolid(scope: "global" | "device", disabled: boolean): TemplateResult {
-    const color = String(this._bgVal("background_color", scope) ?? "#1f2430");
+    const color = String(this._bgVal("background_color", scope) ?? "#57608E");
     return html`
       ${this._bgField(
         "Color",
