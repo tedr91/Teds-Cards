@@ -937,6 +937,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.126
+
+- **Navbar Card — five fixed sections + smarter auto-collapse** — the navbar now has five fixed, positional sections (**Left**, **Mid-Left**, **Center**, **Mid-Right**, **Right**) instead of free-form add/remove sections with a `placement`. Left/Center/Right are locked to their edge/center; Mid-Left and Mid-Right fill the gaps and lean per their alignment. Auto-collapse gained a per-section **priority** (1–5) — when the bar runs out of room, higher-priority sections collapse into their chevron overflow first (defaults: mids 5 → center 3 → the Left/Right anchors 1). Note: `placement` is removed; sections are ordered by position.
+
 ### v1.0.125
 
 - **Fix: Settings Card "Configuration error" on v1.0.124** — a stray backtick inside a CSS comment corrupted the Settings Card in the v1.0.124 bundle, so it failed to load. Fixed. Update to v1.0.125 if you were on v1.0.124.

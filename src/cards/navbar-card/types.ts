@@ -46,16 +46,18 @@ export interface NavMenuItem {
  *  nav button whose type is `custom:ted-expandable-button-card`.) */
 export type NavItem = NavButtonConfig | StatusItem;
 
-/** A section of the navbar, placed in a zone and holding an ordered list of items. */
+/** A section of the navbar. Its position is FIXED by index (0=start, 2=center, 4=end;
+ *  1 and 3 fill the gaps) — there is no `placement`. */
 export interface NavSection {
-  /** Which zone the section sits in. Defaults to "left". */
-  placement?: NavZone;
-  /** How the section's content is aligned. Defaults to "center". */
+  /** How the section's content is aligned (only adjustable for the mid sections 1 & 3).
+   *  On a vertical bar, left/right read as up/down. Defaults per fixed section. */
   align?: NavAlign;
   /** Whether the section is shown. Defaults to true. */
   visible?: boolean;
-  /** Collapse items that don't fit into a “…” overflow popup. Defaults to true. */
+  /** Collapse items that don't fit into a chevron overflow popup. Defaults to true. */
   overflow?: boolean;
+  /** Auto-collapse priority 1-5; higher collapses first when the bar runs out of room. */
+  priority?: number;
   /** Ordered mix of nav buttons and status items. */
   items?: NavItem[];
   /** Legacy buttons-only list; read as items when `items` is unset. */

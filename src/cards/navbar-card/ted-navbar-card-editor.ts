@@ -27,7 +27,10 @@ import {
   DEFAULT_NAVBAR_MAX_WIDTH,
   DEFAULT_NAVBAR_MIN_WIDTH,
   DEFAULT_NAVBAR_SIZE,
-  MAX_NAV_SECTIONS,
+  NAV_SECTION_ALIGN_LOCKED,
+  NAV_SECTION_DEFAULT_ALIGN,
+  NAV_SECTION_DEFAULT_PRIORITY,
+  NAV_SECTION_NAMES,
   NAVBAR_CARD_EDITOR_TYPE,
   defaultNavButton,
 } from "./const";
@@ -38,7 +41,6 @@ import type {
   NavButtonSize,
   NavItem,
   NavSection,
-  NavZone,
   NavbarCardConfig,
 } from "./types";
 
@@ -120,26 +122,10 @@ export class TedNavbarCardEditor extends LitElement implements LovelaceCardEdito
     };
   }
 
-  /** Left/right bars are vertical, so zones read top→middle→bottom. */
+  /** Left/right bars are vertical, so alignment reads up/down instead of left/right. */
   private _vertical(): boolean {
     const a = this._config?.alignment;
     return a === "left" || a === "right";
-  }
-
-  /** Placement/align dropdown options; on a vertical bar, left/right read as up/down. */
-  private _zoneOptions() {
-    const v = this._vertical();
-    return [
-      { value: "left", label: v ? "Left (up)" : "Left" },
-      { value: "center", label: "Center" },
-      { value: "right", label: v ? "Right (down)" : "Right" },
-    ];
-  }
-
-  /** Section-row word for a zone/align value (up/down on a vertical bar). */
-  private _zoneWord(z: string): string {
-    if (!this._vertical()) return z;
-    return z === "left" ? "up" : z === "right" ? "down" : z;
   }
 
   private _appearanceSchema() {
@@ -271,12 +257,12 @@ export class TedNavbarCardEditor extends LitElement implements LovelaceCardEdito
         return "Auto-hide";
       case "auto_hide_delay":
         return "Auto-hide delay";
-      case "placement":
-        return "Placement";
       case "align":
         return "Content alignment";
       case "overflow":
         return "Auto-collapse overflow";
+      case "priority":
+        return "Auto-collapse priority";
       case "nav_button_size":
         return "Button size";
       case "visible":
@@ -358,8 +344,7 @@ export class TedNavbarCardEditor extends LitElement implements LovelaceCardEdito
   // --- Sections + buttons ---------------------------------------------------
 
   private _renderSections(): TemplateResult {
-    const sections = this._sections();
-    const atMax = sections.length >= MAX_NAV_SECTIONS;
+    const sections = this._sectionsPadded();
     return html`
       <ha-expansion-panel outlined class="group-panel">
         <div slot="header" class="group-header">
@@ -367,17 +352,53 @@ export class TedNavbarCardEditor extends LitElement implements LovelaceCardEdito
           <span>Sections</span>
         </div>
         <div class="group-body">
-          <ha-sortable handle-selector=".section-drag-handle" @item-moved=${this._sectionMoved}>
-            <div class="row-list">
-              ${sections.map((section, sIdx) => this._renderSectionRow(section, sIdx))}
-            </div>
-          </ha-sortable>
-          <button type="button" class="add-btn" ?disabled=${atMax} @click=${this._addSection}>
-            ${atMax ? "Maximum of 5 sections" : "+ Add section"}
-          </button>
+          <div class="row-list">
+            ${sections.map((section, sIdx) => this._renderSectionRow(section, sIdx))}
+          </div>
         </div>
       </ha-expansion-panel>
     `;
+  }
+
+  /** The five fixed sections, padded so every slot has a row. */
+  private _sectionsPadded(): NavSection[] {
+    const cfg = this._sections();
+    return NAV_SECTION_NAMES.map((_n, i) => cfg[i] ?? {});
+  }
+
+  /** Content-alignment dropdown options for a section (up/down on a vertical bar). */
+  private _alignOptions(sIdx: number) {
+    const v = this._vertical();
+    const left = { value: "left", label: v ? "Up" : "Left" };
+    const right = { value: "right", label: v ? "Down" : "Right" };
+    const center = { value: "center", label: "Center" };
+    if (!NAV_SECTION_ALIGN_LOCKED[sIdx]) return [left, right];
+    const fixed = NAV_SECTION_DEFAULT_ALIGN[sIdx];
+    return [fixed === "center" ? center : fixed === "left" ? left : right];
+  }
+
+  /** Per-section fields: alignment (locked on 0/2/4) + overflow & priority grid. */
+  private _sectionSchema(sIdx: number, overflow: boolean) {
+    return [
+      {
+        name: "align",
+        disabled: NAV_SECTION_ALIGN_LOCKED[sIdx],
+        selector: { select: { mode: "dropdown", options: this._alignOptions(sIdx) } },
+      },
+      {
+        type: "grid",
+        name: "",
+        column_min_width: "120px",
+        schema: [
+          { name: "overflow", selector: { boolean: {} } },
+          {
+            name: "priority",
+            disabled: !overflow,
+            selector: { number: { min: 1, max: 5, step: 1, mode: "box" } },
+          },
+        ],
+      },
+    ];
   }
 
   private _renderSectionRow(section: NavSection, sIdx: number): TemplateResult {
@@ -385,6 +406,13 @@ export class TedNavbarCardEditor extends LitElement implements LovelaceCardEdito
     const expanded = this._expanded.has(key);
     const visible = section.visible !== false;
     const items = this._items(section);
+    const locked = NAV_SECTION_ALIGN_LOCKED[sIdx];
+    const align = locked
+      ? NAV_SECTION_DEFAULT_ALIGN[sIdx]
+      : (section.align ?? NAV_SECTION_DEFAULT_ALIGN[sIdx]);
+    const overflow = section.overflow !== false;
+    const priority =
+      typeof section.priority === "number" ? section.priority : NAV_SECTION_DEFAULT_PRIORITY[sIdx];
     return html`
       <ha-expansion-panel
         outlined
@@ -393,54 +421,18 @@ export class TedNavbarCardEditor extends LitElement implements LovelaceCardEdito
         @expanded-changed=${(ev: CustomEvent) => this._onPanelToggle(key, ev)}
       >
         <div slot="header" class="row-header">
-          <div class="drag-handle section-drag-handle" @click=${this._stop} title="Drag to reorder">
-            <ha-svg-icon .path=${GRIP_ICON_PATH}></ha-svg-icon>
-          </div>
-          <span class="row-title">Section ${sIdx + 1} - ${this._zoneWord(section.placement ?? "left")} (${this._zoneWord(section.align ?? "center")} aligned)</span>
+          <span class="row-title">${NAV_SECTION_NAMES[sIdx]}</span>
           <ha-switch
             .checked=${visible}
             @click=${this._stop}
             @change=${(ev: Event) => this._toggleSectionVisible(sIdx, ev)}
           ></ha-switch>
-          <ha-icon-button
-            class="warning"
-            label="Delete section"
-            .path=${DELETE_ICON_PATH}
-            @click=${(ev: Event) => this._removeSection(sIdx, ev)}
-          ></ha-icon-button>
         </div>
         <div class="row-body">
           <ha-form
             .hass=${this.hass}
-            .data=${{ placement: section.placement ?? "left", align: section.align ?? "center", overflow: section.overflow !== false }}
-            .schema=${[
-              {
-                type: "grid",
-                name: "",
-                column_min_width: "120px",
-                schema: [
-                  {
-                    name: "placement",
-                    selector: {
-                      select: {
-                        mode: "dropdown",
-                        options: this._zoneOptions(),
-                      },
-                    },
-                  },
-                  {
-                    name: "align",
-                    selector: {
-                      select: {
-                        mode: "dropdown",
-                        options: this._zoneOptions(),
-                      },
-                    },
-                  },
-                ],
-              },
-              { name: "overflow", selector: { boolean: {} } },
-            ]}
+            .data=${{ align, overflow, priority }}
+            .schema=${this._sectionSchema(sIdx, overflow)}
             .computeLabel=${this._computeLabel}
             @value-changed=${(ev: CustomEvent) => this._onSectionFieldsChanged(sIdx, ev)}
           ></ha-form>
@@ -619,37 +611,6 @@ export class TedNavbarCardEditor extends LitElement implements LovelaceCardEdito
 
   // --- Section / button mutations -------------------------------------------
 
-  private _addSection = (ev: Event): void => {
-    ev.stopPropagation();
-    const sections: NavSection[] = [
-      ...this._sections(),
-      { placement: "left", align: "center", buttons: [] },
-    ];
-    if (sections.length > MAX_NAV_SECTIONS) return;
-    this._expanded = new Set([...this._expanded, `sec-${sections.length - 1}`]);
-    this._buttonEditors.clear();
-    this._commit({ ...this._config, sections } as NavbarCardConfig);
-  };
-
-  private _removeSection(sIdx: number, ev: Event): void {
-    ev.stopPropagation();
-    const sections = [...this._sections()];
-    sections.splice(sIdx, 1);
-    this._buttonEditors.clear();
-    this._commit({ ...this._config, sections } as NavbarCardConfig);
-  }
-
-  private _sectionMoved = (ev: CustomEvent): void => {
-    ev.stopPropagation();
-    const { oldIndex, newIndex } = ev.detail as { oldIndex: number; newIndex: number };
-    const sections = [...this._sections()];
-    sections.splice(newIndex, 0, sections.splice(oldIndex, 1)[0]);
-    // Move each section's expanded panels (and its items') along with it.
-    this._expanded = this._remapExpanded([], 1, this._reorderMap(this._sections().length, oldIndex, newIndex));
-    this._buttonEditors.clear();
-    this._commit({ ...this._config, sections } as NavbarCardConfig);
-  };
-
   /** old-index → new-index map for a splice(oldIndex → newIndex) over `length` items. */
   private _reorderMap(length: number, oldIndex: number, newIndex: number): Map<number, number> {
     const order = Array.from({ length }, (_, i) => i);
@@ -681,23 +642,33 @@ export class TedNavbarCardEditor extends LitElement implements LovelaceCardEdito
   private _toggleSectionVisible(sIdx: number, ev: Event): void {
     ev.stopPropagation();
     const checked = (ev.target as HTMLInputElement).checked;
-    const sections = [...this._sections()];
-    const section = sections[sIdx];
-    if (!section) return;
-    sections[sIdx] = { ...section, visible: checked };
+    const sections = this._sectionsPadded();
+    const section = { ...sections[sIdx] };
+    if (checked) delete section.visible;
+    else section.visible = false;
+    sections[sIdx] = section;
     this._commit({ ...this._config, sections } as NavbarCardConfig);
   }
 
   private _onSectionFieldsChanged(sIdx: number, ev: CustomEvent): void {
     ev.stopPropagation();
-    const value = ev.detail.value as { placement?: NavZone; align?: NavAlign; overflow?: boolean };
-    const sections = [...this._sections()];
-    const section = sections[sIdx];
-    if (!section) return;
-    const next: NavSection = { ...section, placement: value.placement, align: value.align };
-    if (value.overflow === false) next.overflow = false;
-    else delete next.overflow;
-    sections[sIdx] = next;
+    const value = ev.detail.value as { align?: NavAlign; overflow?: boolean; priority?: number };
+    const sections = this._sectionsPadded();
+    const section: NavSection = { ...sections[sIdx] };
+    // Locked sections (0/2/4) keep their fixed alignment; store mids only when non-default.
+    if (!NAV_SECTION_ALIGN_LOCKED[sIdx] && value.align && value.align !== NAV_SECTION_DEFAULT_ALIGN[sIdx]) {
+      section.align = value.align;
+    } else {
+      delete section.align;
+    }
+    if (value.overflow === false) section.overflow = false;
+    else delete section.overflow;
+    if (typeof value.priority === "number" && value.priority !== NAV_SECTION_DEFAULT_PRIORITY[sIdx]) {
+      section.priority = value.priority;
+    } else {
+      delete section.priority;
+    }
+    sections[sIdx] = section;
     this._commit({ ...this._config, sections } as NavbarCardConfig);
   }
 

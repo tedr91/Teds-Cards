@@ -16,10 +16,13 @@ continuous navbar.
 ```yaml
 type: custom:ted-navbar-card
 sections:
-  - placement: center
-    align: center
-    items:
+  # Five fixed positional sections, in order: Left, Mid-Left, Center, Mid-Right, Right.
+  - items: []                         # 0 Left
+  - items: []                         # 1 Mid-Left
+  - items:                            # 2 Center
       - { name: Home, icon: mdi:home, tap_action: { action: navigate, navigation_path: /lovelace/home } }
+  - items: []                         # 3 Mid-Right
+  - items: []                         # 4 Right
 ```
 
 ---
@@ -57,14 +60,17 @@ Each `menu_items` entry: `name` (required), `icon` (mdi), `entity` (optional), a
 
 ### Sections
 
-`sections` is a list of up to 5 sections:
+`sections` is a list of **exactly five fixed, positional sections**, in bar order:
+**Left**, **Mid-Left**, **Center**, **Mid-Right**, **Right** (index 0–4). A section's
+position is fixed by its index — there is no `placement`. On a vertical (left/right) bar,
+`align` left/right read as up/down.
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
-| `placement` | `left` \| `center` \| `right` | `left` | Which zone the section sits in. |
-| `align` | `left` \| `center` \| `right` | `center` | Content alignment within the section. |
+| `align` | `left` \| `center` \| `right` | per section | Content alignment. Fixed for Left (left), Center (center), Right (right); adjustable for Mid-Left (default left) and Mid-Right (default right), where it also controls which way the section leans. |
 | `visible` | boolean | true | Whether the section is shown. |
-| `overflow` | boolean | true | Collapse items that don't fit into a "…" popup. |
+| `overflow` | boolean | true | Auto-collapse items that don't fit into a chevron overflow popup. |
+| `priority` | number (1–5) | Left/Right 1, Center 3, Mid-Left/Mid-Right 5 | Auto-collapse priority — higher collapses first when the bar runs out of room (disabled when `overflow` is off). |
 | `items` | array | | Ordered mix of nav buttons and status items. |
 | `buttons` | array | | Legacy buttons-only list (used when `items` is unset). |
 

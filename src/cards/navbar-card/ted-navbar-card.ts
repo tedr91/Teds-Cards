@@ -29,15 +29,19 @@ import {
   DEFAULT_NAVBAR_MAX_WIDTH,
   DEFAULT_NAVBAR_MIN_WIDTH,
   DEFAULT_NAVBAR_SIZE,
+  NAV_SECTION_ALIGN_LOCKED,
+  NAV_SECTION_DEFAULT_ALIGN,
+  NAV_SECTION_DEFAULT_PRIORITY,
   NAVBAR_CARD_DESCRIPTION,
   NAVBAR_CARD_EDITOR_TYPE,
   NAVBAR_CARD_NAME,
   NAVBAR_CARD_TYPE,
   NAVBAR_PILL_RESERVE,
   defaultNavButton,
+  defaultNavSections,
 } from "./const";
 import { detectEditOrPreview, forceNavbarPadding, navbarContentRect, navbarHeaderHeight, removeNavbarPadding, setNavbarBottomReserve } from "./navbar-dom";
-import type { NavButtonConfig, NavItem, NavMenuItem, NavSection, NavZone, NavbarAlignment, NavbarCardConfig } from "./types";
+import type { NavAlign, NavButtonConfig, NavItem, NavMenuItem, NavSection, NavZone, NavbarAlignment, NavbarCardConfig } from "./types";
 
 interface CardHelpers {
   createCardElement(config: LovelaceCardConfig): LovelaceCard;
@@ -54,6 +58,18 @@ interface ButtonEntry {
 }
 
 const ZONES: NavZone[] = ["left", "center", "right"];
+
+/** Fixed slot per section index (0..4). */
+type NavSlot = "left" | "mid-left" | "center" | "mid-right" | "right";
+const SECTION_SLOTS: NavSlot[] = ["left", "mid-left", "center", "mid-right", "right"];
+/** Which physical zone each slot renders into. */
+const SLOT_ZONE: Record<NavSlot, NavZone> = {
+  left: "left",
+  "mid-left": "center",
+  center: "center",
+  "mid-right": "center",
+  right: "right",
+};
 
 /** After the auto-hidden bar is revealed, ignore taps on its buttons/status items for
  *  this long so the reveal gesture doesn't also fire the control under the finger. */
@@ -75,20 +91,10 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
   }
 
   public static getStubConfig(): Omit<NavbarCardConfig, "type"> {
-    return {
-      sections: [
-        { placement: "left", align: "left", items: [] },
-        { placement: "center", align: "right", items: [] },
-        {
-          placement: "center",
-          align: "center",
-          // Exactly an editor-added button, then given the Home name + icon.
-          items: [{ ...defaultNavButton(), name: "Home", icon: "mdi:home" }],
-        },
-        { placement: "center", align: "left", items: [] },
-        { placement: "right", align: "right", items: [] },
-      ],
-    };
+    const sections = defaultNavSections();
+    // Seed a single Home button in the Center section (index 2).
+    sections[2] = { ...sections[2], items: [{ ...defaultNavButton(), name: "Home", icon: "mdi:home" }] };
+    return { sections };
   }
 
   @property({ attribute: false }) public hass?: HomeAssistant;
@@ -687,8 +693,18 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
     this.requestUpdate();
   }
 
-  private _zoneOf(section: NavSection): NavZone {
-    return ZONES.includes(section.placement as NavZone) ? (section.placement as NavZone) : "left";
+  /** The five fixed sections, padded/defaulted so index maps to a known slot. Locked
+   *  sections (0/2/4) always take their fixed alignment; mids (1/3) honour their config. */
+  private _effectiveSections(): NavSection[] {
+    const cfg = this._config?.sections ?? [];
+    return SECTION_SLOTS.map((_slot, i) => {
+      const s: NavSection = cfg[i] ?? {};
+      const align: NavAlign = NAV_SECTION_ALIGN_LOCKED[i]
+        ? NAV_SECTION_DEFAULT_ALIGN[i]
+        : (s.align ?? NAV_SECTION_DEFAULT_ALIGN[i]);
+      const priority = typeof s.priority === "number" ? s.priority : NAV_SECTION_DEFAULT_PRIORITY[i];
+      return { ...s, align, priority };
+    });
   }
 
   /** Re-measure overflow on viewport resize, resetting trims so sections can regrow. */
@@ -719,82 +735,78 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
   };
 
   /**
-   * Trim each section's trailing items into a “…” overflow popup when they don't fit.
-   * Only sections currently showing all items (no map entry) are measured; a trim sticks
-   * until the next reset (viewport resize or config change) so we never loop. Budget
-   * model: the center zone keeps its natural width and the left/right zones split the
-   * rest of the card — a deliberate approximation on this overlapping-zone bar.
+   * Trim sections' trailing items into their chevron overflow popup when the bar runs
+   * out of room. Computed once per cycle (only when nothing is trimmed yet) so a trim
+   * sticks until the next reset (viewport resize or config change) — never loops.
+   *
+   * Model: the bar splits into a left side {Left, Mid-Left}, a centered anchor {Center},
+   * and a right side {Mid-Right, Right}. Each side gets `(W - centerNatural)/2` (or the
+   * half-bar when there's no center). Within a side, LOW-priority sections claim their
+   * space first, so HIGHER-priority sections collapse first (per Auto-collapse priority).
    */
   private _measureOverflow(): void {
     if (this._editMode || !this._config) return;
+    if (this._visible.size > 0) return; // already computed this cycle; wait for a reset
     const root = this.renderRoot as ShadowRoot | undefined;
     const card = root?.querySelector?.(".navbar-card") as HTMLElement | null;
     if (!card || card.clientWidth === 0) return;
     const cs = getComputedStyle(card);
-    // Measure along the bar's main axis: width for horizontal, height for vertical.
     const vert = this._isVertical();
     const cardInner = vert
       ? card.clientHeight - (parseFloat(cs.paddingTop) || 0) - (parseFloat(cs.paddingBottom) || 0)
       : card.clientWidth - (parseFloat(cs.paddingLeft) || 0) - (parseFloat(cs.paddingRight) || 0);
+    if (cardInner <= 0) return;
     const gap = 8;
-    const centerEl = root?.querySelector?.(".zone.center") as HTMLElement | null;
-    // The center zone is a full-extent grid, so its size == the whole bar. Use the
-    // actual content footprint (its sections summed) so the left/right budget stays sane.
-    const centerSecs = centerEl
-      ? (Array.from(centerEl.children) as HTMLElement[]).filter((c) => c.classList.contains("section"))
-      : [];
-    const centerW = centerSecs.reduce(
-      (sum, s, i) => sum + (vert ? s.offsetHeight : s.offsetWidth) + (i > 0 ? gap : 0),
-      0,
-    );
-
-    // Which zones are occupied, and how many sections share each (to split its budget).
-    const sections = this._config.sections ?? [];
-    const perZone = new Map<NavZone, number>();
-    sections.forEach((section) => {
-      if (section.visible === false || this._sectionItems(section).length === 0) return;
-      const zone = this._zoneOf(section);
-      perZone.set(zone, (perZone.get(zone) ?? 0) + 1);
-    });
-    const occ = (z: NavZone): boolean => (perZone.get(z) ?? 0) > 0;
-    /** Width a single zone may use before its items overflow. */
-    const zoneBudget = (zone: NavZone): number => {
-      if (zone === "center") return cardInner;
-      if (occ("center")) return (cardInner - centerW) / 2 - gap;
-      const other: NavZone = zone === "left" ? "right" : "left";
-      return occ(other) ? cardInner / 2 - gap : cardInner;
-    };
-
     const triggerW = this._thickness() - 12 + gap;
-    let changed = false;
-    sections.forEach((section, sIdx) => {
-      if (this._visible.has(sIdx)) return; // already trimmed; wait for a reset
-      if (section.overflow === false) return;
-      const items = this._sectionItems(section);
-      if (items.length === 0) return;
-      const el = root?.querySelector?.(`.section[data-sidx="${sIdx}"]`) as HTMLElement | null;
-      if (!el) return;
-      const zone = this._zoneOf(section);
-      const inZone = perZone.get(zone) ?? 1;
-      const budget = Math.max(0, zoneBudget(zone) / inZone);
-      // One element per item (popover children are display:none — skip them).
-      const els = (Array.from(el.children) as HTMLElement[]).filter((c) => !c.hasAttribute("popover"));
-      const extent = (c: HTMLElement): number => (vert ? c.offsetHeight : c.offsetWidth);
-      let total = 0;
-      els.forEach((c, i) => (total += extent(c) + (i > 0 ? gap : 0)));
-      if (total <= budget) return; // fits — keep showing all items
-      let used = 0;
-      let vis = 0;
-      for (let i = 0; i < els.length; i += 1) {
-        const w = extent(els[i]) + (i > 0 ? gap : 0);
-        if (used + w + triggerW > budget) break;
-        used += w;
-        vis += 1;
-      }
-      this._visible.set(sIdx, vis);
-      changed = true;
+    const sections = this._effectiveSections();
+
+    const sectionEl = (i: number): HTMLElement | null =>
+      (root?.querySelector?.(`.section[data-sidx="${i}"]`) as HTMLElement | null) ?? null;
+    const extent = (c: HTMLElement): number => (vert ? c.offsetHeight : c.offsetWidth);
+    const childExtents = (el: HTMLElement): number[] =>
+      (Array.from(el.children) as HTMLElement[])
+        .filter((c) => !c.hasAttribute("popover"))
+        .map(extent);
+    // Natural (untrimmed) extent of every section — 0 when hidden/empty.
+    const natural = sections.map((_s, i) => {
+      const el = sectionEl(i);
+      if (!el) return 0;
+      const ex = childExtents(el);
+      return ex.length ? ex.reduce((a, b) => a + b, 0) + (ex.length - 1) * gap : 0;
     });
-    if (changed) this.requestUpdate();
+
+    // Total space the sections consume along the bar (they can't overlap without colliding).
+    const occupied = natural.map((n, i) => ({ n, i })).filter((s) => s.n > 0);
+    const total = occupied.reduce((sum, s, k) => sum + s.n + (k > 0 ? gap : 0), 0);
+    if (total <= cardInner) return; // everything fits
+
+    let reclaim = total - cardInner;
+    // Collapse highest-priority sections first (ties by index); skip non-collapsible ones.
+    const order = occupied
+      .map((s) => s.i)
+      .filter((i) => sections[i].overflow !== false)
+      .sort((a, b) => (sections[b].priority ?? 3) - (sections[a].priority ?? 3) || a - b);
+
+    for (const s of order) {
+      if (reclaim <= 0) break;
+      const el = sectionEl(s);
+      if (!el) continue;
+      const ex = childExtents(el);
+      const items = ex.length;
+      if (items === 0) continue;
+      // Trim trailing items until enough is reclaimed (the chevron trigger costs triggerW
+      // the first time an item is hidden).
+      let vis = items;
+      while (vis > 0 && reclaim > 0) {
+        const firstHide = vis === items;
+        const itemW = ex[vis - 1] + (vis > 1 ? gap : 0);
+        reclaim -= itemW - (firstHide ? triggerW : 0);
+        vis -= 1;
+      }
+      if (vis < items) this._visible.set(s, Math.max(0, vis));
+    }
+
+    if (this._visible.size > 0) this.requestUpdate();
   }
 
   protected render(): TemplateResult | typeof nothing {
@@ -810,7 +822,7 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
       cardStyle["min-width"] = `${this._minWidth()}px`;
       cardStyle["max-width"] = `${this._maxWidth()}px`;
     }
-    const sections = this._config.sections ?? [];
+    const sections = this._effectiveSections();
     const byZone: Record<NavZone, Array<{ section: NavSection; idx: number }>> = {
       left: [],
       center: [],
@@ -818,10 +830,7 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
     };
     sections.forEach((section, idx) => {
       if (section.visible === false) return;
-      const zone = ZONES.includes(section.placement as NavZone)
-        ? (section.placement as NavZone)
-        : "left";
-      byZone[zone].push({ section, idx });
+      byZone[SLOT_ZONE[SECTION_SLOTS[idx]]].push({ section, idx });
     });
 
     // Center-only float bars shrink to fit their buttons; bars with left/right
@@ -1063,13 +1072,14 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
 
   private _renderSection(section: NavSection, sIdx: number): TemplateResult {
     const align = section.align ?? "center";
+    const slot = SECTION_SLOTS[sIdx] ?? "left";
     const items = this._sectionItems(section);
     const vis = this._visible.get(sIdx);
     const trim = vis !== undefined && vis < items.length && section.overflow !== false;
     const visible = trim ? items.slice(0, vis) : items;
     const hidden = trim ? items.slice(vis) : [];
     return html`
-      <div class="section align-${align}" data-sidx=${sIdx}>
+      <div class="section slot-${slot} align-${align}" data-sidx=${sIdx}>
         ${this._renderItems(visible, `${sIdx}`, `nav-${sIdx}`)}
         ${hidden.length ? this._renderOverflow(sIdx, hidden, visible.length) : nothing}
       </div>
@@ -1404,17 +1414,24 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
         justify-items: center;
         pointer-events: none;
       }
-      .navbar:not(.vertical) .zone.center > .section.align-right {
+      .navbar:not(.vertical) .zone.center > .section.slot-mid-left {
         grid-column: 1;
-        justify-self: end;
       }
-      .navbar:not(.vertical) .zone.center > .section.align-center {
+      .navbar:not(.vertical) .zone.center > .section.slot-center {
         grid-column: 2;
         justify-self: center;
       }
-      .navbar:not(.vertical) .zone.center > .section.align-left {
+      .navbar:not(.vertical) .zone.center > .section.slot-mid-right {
         grid-column: 3;
+      }
+      /* Mid sections lean per alignment: left = toward the start, right = toward the end. */
+      .navbar:not(.vertical) .zone.center > .section.slot-mid-left.align-left,
+      .navbar:not(.vertical) .zone.center > .section.slot-mid-right.align-left {
         justify-self: start;
+      }
+      .navbar:not(.vertical) .zone.center > .section.slot-mid-left.align-right,
+      .navbar:not(.vertical) .zone.center > .section.slot-mid-right.align-right {
+        justify-self: end;
       }
       /* Vertical (left/right): the card is a top→bottom column — top zone, center
          (grows), bottom zone — so sections keep their order and never overlap. */
@@ -1431,10 +1448,30 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
       }
       .navbar.vertical .zone.center {
         flex: 1;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
+        display: grid;
+        grid-template-rows: 1fr auto 1fr;
+        justify-items: center;
         pointer-events: none;
+      }
+      /* Vertical center grid: mid-left row1 (up), center row2, mid-right row3 (down). */
+      .navbar.vertical .zone.center > .section.slot-mid-left {
+        grid-row: 1;
+      }
+      .navbar.vertical .zone.center > .section.slot-center {
+        grid-row: 2;
+        align-self: center;
+      }
+      .navbar.vertical .zone.center > .section.slot-mid-right {
+        grid-row: 3;
+      }
+      /* On a vertical bar left/right read as up/down. */
+      .navbar.vertical .zone.center > .section.slot-mid-left.align-left,
+      .navbar.vertical .zone.center > .section.slot-mid-right.align-left {
+        align-self: start;
+      }
+      .navbar.vertical .zone.center > .section.slot-mid-left.align-right,
+      .navbar.vertical .zone.center > .section.slot-mid-right.align-right {
+        align-self: end;
       }
       .zone.center > .section {
         pointer-events: auto;

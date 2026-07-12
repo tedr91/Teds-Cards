@@ -1,6 +1,6 @@
 import { NAMESPACE } from "../../shared/const";
 import { BUTTON_CARD_TYPE } from "../button-card/const";
-import type { NavButtonConfig } from "./types";
+import type { NavAlign, NavButtonConfig, NavSection } from "./types";
 
 export const NAVBAR_CARD_TYPE = `${NAMESPACE}-navbar-card`;
 export const NAVBAR_CARD_EDITOR_TYPE = `${NAVBAR_CARD_TYPE}-editor`;
@@ -27,6 +27,34 @@ export const NAVBAR_PILL_RESERVE = 30;
 
 /** Maximum number of NavSections a navbar can hold. */
 export const MAX_NAV_SECTIONS = 5;
+
+/** The five fixed navbar sections, in bar order. Sections are positional (no `placement`):
+ *  index 0 = far start, 2 = center, 4 = far end; 1 and 3 fill the gaps. */
+export const NAV_SECTION_NAMES = [
+  "Left Section",
+  "Mid-Left Section",
+  "Center Section",
+  "Mid-Right Section",
+  "Right Section",
+] as const;
+
+/** Per-section default content alignment: "left"/"center"/"right" (up/down on a vertical bar). */
+export const NAV_SECTION_DEFAULT_ALIGN: NavAlign[] = ["left", "left", "center", "right", "right"];
+
+/** Sections whose alignment is fixed (0/2/4) vs. user-adjustable (1/3). */
+export const NAV_SECTION_ALIGN_LOCKED = [true, false, true, false, true];
+
+/** Default auto-collapse priority per section (1-5). Higher collapses first. */
+export const NAV_SECTION_DEFAULT_PRIORITY = [1, 5, 3, 5, 1];
+
+/** The five fixed sections with default alignment + priority and empty item lists. */
+export function defaultNavSections(): NavSection[] {
+  return NAV_SECTION_DEFAULT_ALIGN.map((align, i) => ({
+    align,
+    priority: NAV_SECTION_DEFAULT_PRIORITY[i],
+    items: [],
+  }));
+}
 
 /** Config for a freshly-added nav button — shared by the editor's "Add item" action
  *  and the default Navbar stub so an auto-added button is identical to a hand-added one. */
