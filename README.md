@@ -937,6 +937,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.128
+
+- **Navbar Card — mid sections no longer overlap the pinned edges** — the **Mid-Left** and **Mid-Right** sections now stay strictly between the edge and center sections instead of sliding underneath the pinned **Left** / **Right** sections. The centered zone is inset by the widest edge section, so the **Center** anchor still sits dead-centre while the mid sections keep clear of the left/right items (e.g. a right-edge Date/Time no longer collides with a Mid-Right button).
+
 ### v1.0.127
 
 - **Navbar Date/Time status item — new "Both (stacked)" display + numeric-month date fix** — the Date/Time status item gained a **Both (stacked)** display option that shows the time on top and the date beneath it on a second, smaller/muted row. Also fixed date formats using numeric months (`MM` / `M`, e.g. `YYYY-MM-DD`) — they previously rendered the literal `MM` (`2026-MM-12`) because only the month-name tokens were handled.

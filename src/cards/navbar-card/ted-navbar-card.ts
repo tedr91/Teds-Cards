@@ -113,6 +113,10 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
   /** Per-section (config index) visible item count when overflow trims the tail. */
   private _visible = new Map<number, number>();
   private _resizeRaf?: number;
+  /** Horizontal inset (px) applied to both sides of the centered zone so its mid-left /
+   *  mid-right columns clear the pinned left / right edge zones instead of overlapping
+   *  them. Symmetric (= widest edge zone) so the center anchor stays dead-centre. */
+  private _midInset = 0;
   /** Horizontal insets (px) so the bar clears the HA sidebar / matches the content area. */
   private _navLeft = 0;
   private _navRight = 0;
@@ -659,6 +663,7 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
 
   protected updated(): void {
     this._measureContentInset();
+    this._measureMidInset();
     this._measureOverflow();
   }
 
@@ -691,6 +696,35 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
     this._navBottom = bottom;
     this._visible.clear(); // available width changed — let overflow recompute
     this.requestUpdate();
+  }
+
+  /** Inset the centered zone by the widest edge (left/right) zone so its mid-left /
+   *  mid-right columns don't slide under the pinned left / right sections. Symmetric so
+   *  the center anchor stays dead-centre. Horizontal bars only — a vertical bar lays its
+   *  zones out in flow (flex column) so they never overlap. */
+  private _measureMidInset(): void {
+    const root = this.renderRoot as ShadowRoot | undefined;
+    if (!root) return;
+    if (this._isVertical()) {
+      if (this._midInset !== 0) {
+        this._midInset = 0;
+        this.requestUpdate();
+      }
+      return;
+    }
+    const leftZone = root.querySelector(".zone.left") as HTMLElement | null;
+    const rightZone = root.querySelector(".zone.right") as HTMLElement | null;
+    // Each edge zone is offset 10px in from its edge; add a small 8px gutter so the mid
+    // section doesn't butt right up against it.
+    const edge = 10;
+    const gutter = 8;
+    const leftW = leftZone && leftZone.offsetWidth > 0 ? edge + leftZone.offsetWidth + gutter : 0;
+    const rightW = rightZone && rightZone.offsetWidth > 0 ? edge + rightZone.offsetWidth + gutter : 0;
+    const inset = Math.round(Math.max(leftW, rightW));
+    if (inset !== this._midInset) {
+      this._midInset = inset;
+      this.requestUpdate();
+    }
   }
 
   /** The five fixed sections, padded/defaulted so index maps to a known slot. Locked
@@ -857,6 +891,7 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
         class=${classMap(navClasses)}
         style=${styleMap({
           "--nav-size": `${this._thickness()}px`,
+          "--ted-nav-mid-inset": `${this._midInset}px`,
           "--ted-nav-left": `${this._navLeft}px`,
           "--ted-nav-right": `${this._navRight}px`,
           "--ted-nav-top": `${this._navTop}px`,
@@ -1413,6 +1448,12 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
         grid-template-columns: 1fr auto 1fr;
         justify-items: center;
         pointer-events: none;
+        /* Symmetric inset (= widest edge zone) so the mid columns stay between the
+           pinned left/right zones and never overlap them, while the center anchor
+           stays dead-centre. */
+        padding-left: var(--ted-nav-mid-inset, 0);
+        padding-right: var(--ted-nav-mid-inset, 0);
+        box-sizing: border-box;
       }
       .navbar:not(.vertical) .zone.center > .section.slot-mid-left {
         grid-column: 1;
