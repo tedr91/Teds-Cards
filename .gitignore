@@ -9,6 +9,9 @@ dist/
 *.log
 npm-debug.log*
 
+# Release notes scratch file (generated during `release`)
+.release-notes.tmp.md
+
 # OS / editors
 .DS_Store
 Thumbs.db
