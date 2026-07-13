@@ -479,6 +479,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
       case "select":
         return html`<select
           class="sel"
+          .value=${String(value ?? "")}
           ?disabled=${disabled}
           @change=${(e: Event) => onChange((e.target as HTMLSelectElement).value)}
         >

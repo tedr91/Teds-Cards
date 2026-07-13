@@ -937,6 +937,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.148
+
+- **Fixed the Background Mode dropdown in Settings** — after v1.0.147 the Mode selector could stay stuck showing "Solid Color" while the fields below correctly matched a different mode (e.g. Slideshow), which also made it hard to switch. The dropdown now always reflects the actual mode. (Also hardened the Navbar/Cameras/Temperatures layout dropdowns against the same display glitch.)
+
 ### v1.0.147
 
 - **Ted Background Card works without the backend** — the card now has a full editor and carries its own wallpaper config, so you can set the background per-card (solid/image/slideshow, size/align/repeat/scroll, and more) with no Ted's Cards Backend. Turn on **Use Ted's Cards Backend** to instead drive it from Settings and get per-device wallpapers; card options still override.

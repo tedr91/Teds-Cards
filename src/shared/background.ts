@@ -363,8 +363,12 @@ function bgSelect(
   options: { value: string; label: string }[],
 ): TemplateResult {
   const val = String(ctx.get(key) ?? "");
+  // `.value` on the select keeps its DISPLAYED option in sync when the value
+  // changes after first render (e.g. the settings store loads async) — `?selected`
+  // alone doesn't move a native select's shown value on later updates.
   return html`<select
     class="sel"
+    .value=${val}
     ?disabled=${ctx.disabled}
     @change=${(e: Event) => ctx.set(key, (e.target as HTMLSelectElement).value)}
   >
