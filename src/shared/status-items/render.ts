@@ -108,7 +108,7 @@ function gestureHandlers(ctx: StatusItemContext, g?: Gestures) {
   };
 }
 
-export function renderStatusItem(item: StatusItem, ctx: StatusItemContext, index: number): TemplateResult {
+export function renderStatusItem(item: StatusItem, ctx: StatusItemContext, index: number): TemplateResult | typeof nothing {
   switch (item.type) {
     case "temperature":
     case "occupancy":
@@ -477,7 +477,7 @@ function renderCountItem(
   item: AlarmsStatusItem | TimersStatusItem,
   ctx: StatusItemContext,
   index: number,
-): TemplateResult {
+): TemplateResult | typeof nothing {
   const isAlarms = item.type === "alarms";
   const sensor = isAlarms ? "sensor.teds_alarms" : "sensor.teds_timers";
   const attr = isAlarms ? "alarms" : "active";
@@ -487,7 +487,7 @@ function renderCountItem(
   if (area) items = items.filter((r) => !r.location || r.location === area);
   const count = items.length;
   // Default is to hide when there's nothing set (only show when count > 0).
-  if (item.hide_when_empty !== false && count === 0) return html``;
+  if (item.hide_when_empty !== false && count === 0) return nothing;
 
   const icon = item.icon ?? STATUS_ITEM_DEFAULT_ICON[item.type];
   const label = String(item.name ?? (isAlarms ? "Alarms" : "Timers"));
@@ -557,13 +557,13 @@ function renderNotificationsItem(
   item: NotificationsStatusItem,
   ctx: StatusItemContext,
   index: number,
-): TemplateResult {
+): TemplateResult | typeof nothing {
   const all = (ctx.hass.states["sensor.teds_notifications"]?.attributes?.notifications ?? []) as NotifRow[];
   // Scope to this device's area (config override → browser_mod →
   // localStorage), showing that area's notifications plus house-wide (area-less) ones.
   const area = resolveDeviceArea(ctx.hass, item.area).area;
   const items = area ? all.filter((n) => !n.area || n.area === area) : all;
-  if (item.hide_when_empty !== false && items.length === 0) return html``;
+  if (item.hide_when_empty !== false && items.length === 0) return nothing;
   const unread = items.filter((n) => !n.read).length;
   const icon = item.icon ?? (unread > 0 ? "mdi:bell-badge" : STATUS_ITEM_DEFAULT_ICON.notifications);
   const showBadge = unread > 0 && item.display_badge !== false;

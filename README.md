@@ -937,6 +937,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.142
+
+- **Navbar: no empty gaps from hidden status items** — status items that render nothing when empty (e.g. `timers`, `alarms`, `notifications` with nothing active) no longer reserve a slot in the bar. Previously their empty wrapper still took a flex-gap, which showed up as a gap between items — most visibly below the date/time item on a vertical (left/right) navbar.
+
 ### v1.0.141
 
 - **Vertical navbar fills the viewport** — a left/right navbar now publishes a `--ted-navbar-header-reserve` CSS variable (the actual header height, 0 when a kiosk hides the header) so dashboard layouts can let the content — and the side bar that tracks it — fill the full height instead of leaving an empty strip below the bar. Horizontal bars are unaffected.

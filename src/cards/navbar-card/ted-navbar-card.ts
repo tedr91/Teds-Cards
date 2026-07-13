@@ -1190,7 +1190,7 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
    * button cards; `idBase` namespaces status-item ids; `offset` keeps absolute indices
    * when rendering an overflowed tail.
    */
-  private _renderItems(items: NavItem[], pathBase: string, idBase: string, offset = 0): TemplateResult[] {
+  private _renderItems(items: NavItem[], pathBase: string, idBase: string, offset = 0): (TemplateResult | typeof nothing)[] {
     return items.map((item, i) => {
       const idx = offset + i;
       if (this._isButton(item)) return this._renderButton(`${pathBase}:${idx}`, item);
@@ -1212,8 +1212,8 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
     </div>`;
   }
 
-  private _renderStatusItem(item: StatusItem, keyPrefix: string, idx: number): TemplateResult {
-    if (!this.hass) return html`<div class="nav-status"></div>`;
+  private _renderStatusItem(item: StatusItem, keyPrefix: string, idx: number): TemplateResult | typeof nothing {
+    if (!this.hass) return nothing;
     const ctx: StatusItemContext = {
       hass: this.hass,
       host: this,
@@ -1223,7 +1223,11 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
       // this navbar opts into the Ted's Cards Backend integration. Other actions run.
       backendIntegration: this._backendIntegration(),
     };
-    return html`<div class="nav-status">${renderStatusItem(item, ctx, idx)}</div>`;
+    // An item that renders nothing (e.g. empty timers/alarms/notifications) gets NO
+    // `.nav-status` wrapper, so it doesn't reserve a flex-gap slot in the bar (which
+    // showed up as an empty gap, most visibly in a vertical bar).
+    const inner = renderStatusItem(item, ctx, idx);
+    return inner === nothing ? nothing : html`<div class="nav-status">${inner}</div>`;
   }
 
   /** Reposition an overflow popover against its trigger when it opens. */
