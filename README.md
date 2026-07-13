@@ -937,6 +937,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.139
+
+- **Restored v1.0.137 navbar behaviour** — reinstates the navbar bottom-reserve / `reserve_content_space` changes from v1.0.137 (rolling forward from the v1.0.138 revert).
+
 ### v1.0.138
 
 - **Reverted v1.0.136 + v1.0.137** — rolls the navbar bottom-reserve / `reserve_content_space` changes back to the v1.0.135 behaviour.

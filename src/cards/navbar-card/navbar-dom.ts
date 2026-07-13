@@ -69,11 +69,14 @@ export function removeNavbarPadding(): void {
  *  toast stack — how much space a bottom-aligned navbar reserves, so they clear it. */
 const BOTTOM_RESERVE_VAR = "--ted-navbar-bottom-reserve";
 
-/** Publish the space a bottom navbar occupies (px). Pass 0 / non-bottom to clear it. */
+/** Publish the space a bottom navbar occupies (px). A side/top bar (or a collapsed /
+ *  absent bottom bar) publishes 0 — explicitly, NOT by removing the property, so the
+ *  dashboard's `var(--ted-navbar-bottom-reserve, 48px)` reads 0 instead of falling back
+ *  to the 48px bottom-bar default (which left a gap under a left/right bar and shortened
+ *  both the view and the vertical bar). */
 export function setNavbarBottomReserve(px: number): void {
   const root = document.documentElement;
-  if (px > 0) root.style.setProperty(BOTTOM_RESERVE_VAR, `${px}px`);
-  else root.style.removeProperty(BOTTOM_RESERVE_VAR);
+  root.style.setProperty(BOTTOM_RESERVE_VAR, `${Math.max(0, Math.round(px))}px`);
 }
 
 /** The dashboard content area's viewport rect (`hui-root`), used to inset the navbar so

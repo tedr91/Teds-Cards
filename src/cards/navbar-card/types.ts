@@ -84,6 +84,14 @@ export interface NavbarCardConfig extends LovelaceCardConfig {
   min_width?: number;
   /** Float mode: maximum bar width in px. */
   max_width?: number;
+  /** Whether the navbar reserves room for itself by padding the dashboard's scroll
+   *  container (YAML-only; default true). Leave true for normal dashboards. Set FALSE
+   *  when your view layouts already reserve the bar's strip themselves (e.g. they
+   *  subtract `--ted-navbar-bottom-reserve` from their height, as Ted's Dashboard does):
+   *  otherwise a horizontal bar reserves that strip twice, leaving ~2× the gap. Vertical
+   *  (left/right) bars always keep their side gutter regardless, since no horizontal
+   *  reserve exists. */
+  reserve_content_space?: boolean;
   /** Card background color override (theme color name or hex/rgb/hsl/var). */
   background?: string;
   /** Background transparency override, 0–100% (unset = no override). */
