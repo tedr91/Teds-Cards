@@ -327,15 +327,6 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
       forceNavbarPadding({ alignment: this._alignment(), px: 0, enabled: false });
       return;
     }
-    // When the dashboard reserves the bar's strip itself (its view layouts subtract
-    // `--ted-navbar-bottom-reserve` from their height, as Ted's Dashboard does), a
-    // horizontal bar must NOT also inject a `hui-view` spacer — that reserves the strip
-    // twice, leaving ~2× the gap. Skip it via `reserve_content_space: false`. Vertical
-    // (left/right) bars still get their side gutter (no horizontal reserve exists there).
-    if (this._config?.reserve_content_space === false && !this._isVertical()) {
-      forceNavbarPadding({ alignment: this._alignment(), px: 0, enabled: false });
-      return;
-    }
     const margin = this._barType() === "float" ? 16 : 0;
     forceNavbarPadding({
       alignment: this._alignment(),

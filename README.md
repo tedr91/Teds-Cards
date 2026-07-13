@@ -937,14 +937,6 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
-### v1.0.137
-
-- **Navbar `reserve_content_space` option** — new YAML option (default `true`). When a dashboard's view layouts already reserve the bar's strip themselves (e.g. by subtracting `--ted-navbar-bottom-reserve` from their height), set `reserve_content_space: false` so the bar doesn't reserve that strip a second time. This fixes horizontal bars leaving roughly double the intended gap at the bottom. Vertical (left/right) bars always keep their side gutter.
-
-### v1.0.136
-
-- **Navbar side-alignment gap fix** — a left/right navbar no longer leaves a ~48px empty gap at the bottom of the view and the bar. A side (or top) bar now correctly reports zero bottom reserve, so the dashboard uses the full height instead of the bottom-bar default.
-
 ### v1.0.135
 
 - **Navbar side-alignment fix (take 2)** — the previous attempt didn't fully fix sections collapsing when moving the navbar to a left/right position. The overflow measurement now waits until the bar's actual geometry matches the intended orientation (tall-and-narrow for a side bar) before measuring, so it never measures the wrong axis and collapses everything.
