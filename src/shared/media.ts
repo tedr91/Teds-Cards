@@ -115,11 +115,12 @@ export async function uploadImage(hass: HassLike, file: File): Promise<string | 
  * card. Firing `show-dialog` with `customElements.whenDefined(...)` as the
  * `dialogImport` never actually loads the chunk, so on a fresh page the dialog
  * silently never opens. Instead we mount HA's own `<ha-selector>` media control
- * off-screen and trigger its pick: ha-selector runs the correct import + dialog
- * for us, and reports the choice back via `value-changed`.
+ * off-screen *inside the calling card* (so its bubbling `show-dialog` reaches
+ * `<home-assistant>`) and trigger its pick: ha-selector runs the correct import
+ * + dialog for us, and reports the choice back via `value-changed`.
  */
 export function pickMedia(
-  _host: HTMLElement,
+  host: HTMLElement,
   hass: HassLike,
   opts: { accept?: string[] } = {},
 ): Promise<string | null> {
@@ -158,19 +159,21 @@ export function pickMedia(
     };
     selector.addEventListener("value-changed", onValue);
 
-    document.body.appendChild(selector);
+    // Mount INSIDE the card so the media-browser `show-dialog` event bubbles up
+    // through the card to `<home-assistant>` (a body-level mount would not).
+    host.appendChild(selector);
 
     // ha-selector lazy-renders <ha-selector-media>, which renders a clickable
     // ha-card that opens the media browser. Click it once it exists.
     const tryPick = (attempt: number) => {
       if (settled) return;
       const inner = selector.shadowRoot?.querySelector("ha-selector-media");
-      const card = inner?.shadowRoot?.querySelector('ha-card[role="button"]') as HTMLElement | null;
+      const card = inner?.shadowRoot?.querySelector("ha-card") as HTMLElement | null;
       if (card) {
         card.click();
         return;
       }
-      if (attempt < 60) requestAnimationFrame(() => tryPick(attempt + 1));
+      if (attempt < 120) requestAnimationFrame(() => tryPick(attempt + 1));
       else done(null);
     };
     customElements.whenDefined("ha-selector").then(() => requestAnimationFrame(() => tryPick(0)));
