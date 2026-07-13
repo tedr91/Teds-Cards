@@ -937,6 +937,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.141
+
+- **Vertical navbar fills the viewport** — a left/right navbar now publishes a `--ted-navbar-header-reserve` CSS variable (the actual header height, 0 when a kiosk hides the header) so dashboard layouts can let the content — and the side bar that tracks it — fill the full height instead of leaving an empty strip below the bar. Horizontal bars are unaffected.
+
 ### v1.0.140
 
 - **Navbar debug outlines** — with Settings → General → Debug mode on, the navbar now shows colour-coded outlines: the bar bounds (magenta), the Left/Center/Right zones (red/green/blue), each section (yellow, with the dead-centre section in teal), and each item — making it obvious where the five positional sections land. No visual change when Debug mode is off.
