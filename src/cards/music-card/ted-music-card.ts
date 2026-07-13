@@ -17,15 +17,8 @@ import {
 } from "./const";
 import type { MusicCardConfig } from "./types";
 
-// mdi:music — empty-state illustration.
-const MUSIC_ICON =
-  "M21,3V15.5A3.5,3.5 0 0,1 17.5,19A3.5,3.5 0 0,1 14,15.5A3.5,3.5 0 0,1 17.5,12C18.04,12 18.55,12.12 19,12.34V6.47L9,8.6V17.5A3.5,3.5 0 0,1 5.5,21A3.5,3.5 0 0,1 2,17.5A3.5,3.5 0 0,1 5.5,14C6.04,14 6.55,14.12 7,14.34V6L21,3Z";
-// mdi:cog — empty-state "Settings" button.
-const COG_ICON =
-  "M12,15.5A3.5,3.5 0 0,1 8.5,12A3.5,3.5 0 0,1 12,8.5A3.5,3.5 0 0,1 15.5,12A3.5,3.5 0 0,1 12,15.5M19.43,12.97C19.47,12.65 19.5,12.33 19.5,12C19.5,11.67 19.47,11.34 19.43,11L21.54,9.37C21.73,9.22 21.78,8.95 21.66,8.73L19.66,5.27C19.54,5.05 19.27,4.96 19.05,5.05L16.56,6.05C16.04,5.66 15.5,5.32 14.87,5.07L14.5,2.42C14.46,2.18 14.25,2 14,2H10C9.75,2 9.54,2.18 9.5,2.42L9.13,5.07C8.5,5.32 7.96,5.66 7.44,6.05L4.95,5.05C4.73,4.96 4.46,5.05 4.34,5.27L2.34,8.73C2.21,8.95 2.27,9.22 2.46,9.37L4.57,11C4.53,11.34 4.5,11.67 4.5,12C4.5,12.33 4.53,12.65 4.57,12.97L2.46,14.63C2.27,14.78 2.21,15.05 2.34,15.27L4.34,18.73C4.46,18.95 4.73,19.03 4.95,18.95L7.44,17.94C7.96,18.34 8.5,18.68 9.13,18.93L9.5,21.58C9.54,21.82 9.75,22 10,22H14C14.25,22 14.46,21.82 14.5,21.58L14.87,18.93C15.5,18.67 16.04,18.34 16.56,17.94L19.05,18.95C19.27,19.03 19.54,18.95 19.66,18.73L21.66,15.27C21.78,15.05 21.73,14.78 21.54,14.63L19.43,12.97Z";
-// mdi:speaker-off — "needs mapping" illustration.
-const SPEAKER_OFF_ICON =
-  "M12,4A3,3 0 0,1 15,7A3,3 0 0,1 12,10A3,3 0 0,1 9,7A3,3 0 0,1 12,4M12,6A1,1 0 0,0 11,7A1,1 0 0,0 12,8A1,1 0 0,0 13,7A1,1 0 0,0 12,6M3.28,4L20,20.72L18.73,22L15.79,19.06C15.34,19.65 14.71,20 14,20H10C8.89,20 8,19.11 8,18V13.27L2,7.27L3.28,4M10,13V18H14V17L10,13M8.2,4C8.61,4 9,4.16 9.28,4.44L10,5.16V6C10,6.55 10.45,7 11,7L11.84,7L14,9.16V4C14,2.89 13.11,2 12,2H8.2Z";
+/** The MessageBox card used for the empty / unmatched states (UX consistency). */
+const MESSAGEBOX_CARD_TYPE = "custom:ted-messagebox-card";
 
 /** Home Assistant's `loadCardHelpers()` return shape (only what this card uses). */
 interface CardHelpers {
@@ -69,8 +62,9 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
   @state() private _config?: MusicCardConfig;
 
   private _helpers?: CardHelpers;
-  /** The embedded mass-player-card, rebuilt only when its config JSON changes. */
+  /** The embedded child card (the player, or a MessageBox for empty/unmatched states). */
   private _child?: { el: LovelaceCard; json: string };
+  private _childKind?: "player" | "message";
   private _lastPropagatedHass?: HomeAssistant;
 
   public constructor() {
@@ -205,17 +199,21 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
 
   private _buildCard(): void {
     if (!this._helpers) return;
-    const res = this._resolve();
-    if (res.state !== "ok") {
+    const desired = this._desiredChild();
+    if (!desired) {
       this._child = undefined;
+      this._childKind = undefined;
       return;
     }
-    const cfg = this._childConfig(res.entity);
-    const json = JSON.stringify(cfg);
-    if (this._child?.json === json) return;
-    const el = this._helpers.createCardElement(cfg);
+    const json = JSON.stringify(desired.cfg);
+    if (this._child?.json === json) {
+      this._childKind = desired.kind;
+      return;
+    }
+    const el = this._helpers.createCardElement(desired.cfg);
     if (this.hass) el.hass = this.hass;
     this._child = { el, json };
+    this._childKind = desired.kind;
   }
 
   private _propagateHass(): void {
@@ -234,59 +232,71 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
     return path;
   }
 
-  private _openSettings = (): void => {
-    const path = this._settingsPath();
-    window.history.pushState(null, "", path);
-    window.dispatchEvent(new CustomEvent("location-changed", { bubbles: true, composed: true }));
-  };
+  // --- State cards -----------------------------------------------------------
+
+  /** The child card to render for the current state: the player, or a MessageBox. */
+  private _desiredChild(): { cfg: LovelaceCardConfig; kind: "player" | "message" } | undefined {
+    const res = this._resolve();
+    if (res.state === "ok") return { cfg: this._childConfig(res.entity), kind: "player" };
+    if (res.state === "empty") return { cfg: this._emptyMessageConfig(), kind: "message" };
+    if (res.state === "unmatched")
+      return { cfg: this._unmatchedMessageConfig(res.base), kind: "message" };
+    return undefined;
+  }
+
+  private _messageConfig(
+    severity: string,
+    icon: string,
+    title: string,
+    message: string,
+  ): LovelaceCardConfig {
+    return {
+      type: MESSAGEBOX_CARD_TYPE,
+      severity,
+      icon,
+      title,
+      message,
+      actions: [
+        {
+          label: "Settings",
+          icon: "mdi:cog",
+          variant: "primary",
+          action: "navigate",
+          navigation_path: this._settingsPath(),
+        },
+      ],
+    };
+  }
+
+  private _emptyMessageConfig(): LovelaceCardConfig {
+    return this._messageConfig(
+      "info",
+      "mdi:music",
+      this._config?.empty_title ?? "No music player yet",
+      this._config?.empty_message ??
+        "This device hasn't been given a music player. Open Settings to choose one.",
+    );
+  }
+
+  private _unmatchedMessageConfig(base: string): LovelaceCardConfig {
+    return this._messageConfig(
+      "warning",
+      "mdi:music-note-off",
+      this._config?.unmatched_title ?? "No Music Assistant player",
+      this._config?.unmatched_message ??
+        `"${this._name(base)}" isn't a Music Assistant player, and no matching one was found. ` +
+          "Pick this device's Music Assistant player in Settings → Media.",
+    );
+  }
 
   // --- Render ----------------------------------------------------------------
 
   protected render(): TemplateResult | typeof nothing {
     if (!this._config || !this.hass) return nothing;
-    const res = this._resolve();
-    if (res.state === "empty") return this._renderEmpty();
-    if (res.state === "unmatched") return this._renderUnmatched(res.base);
     if (!this._helpers || !this._child) return html`<div class="loading"></div>`;
+    if (this._childKind === "message") return html`<div class="msg">${this._child.el}</div>`;
     const cls = this._config.fill ? "player fill" : "player natural";
     return html`<div class=${cls}>${this._child.el}</div>`;
-  }
-
-  private _renderEmpty(): TemplateResult {
-    const title = this._config?.empty_title ?? "No player yet";
-    const message =
-      this._config?.empty_message ??
-      "This device hasn't been given a music player. Open Settings to choose one.";
-    return html`
-      <div class="empty">
-        <ha-svg-icon class="empty-icon" .path=${MUSIC_ICON}></ha-svg-icon>
-        <div class="empty-title">${title}</div>
-        <div class="empty-msg">${message}</div>
-        <button type="button" class="empty-btn" @click=${this._openSettings}>
-          <ha-svg-icon .path=${COG_ICON}></ha-svg-icon>
-          <span>Settings</span>
-        </button>
-      </div>
-    `;
-  }
-
-  private _renderUnmatched(base: string): TemplateResult {
-    const title = this._config?.unmatched_title ?? "No Music Assistant player";
-    const message =
-      this._config?.unmatched_message ??
-      `"${this._name(base)}" isn't a Music Assistant player, and no matching one was found. ` +
-        "Pick this device's Music Assistant player in Settings → Media.";
-    return html`
-      <div class="empty">
-        <ha-svg-icon class="empty-icon" .path=${SPEAKER_OFF_ICON}></ha-svg-icon>
-        <div class="empty-title">${title}</div>
-        <div class="empty-msg">${message}</div>
-        <button type="button" class="empty-btn" @click=${this._openSettings}>
-          <ha-svg-icon .path=${COG_ICON}></ha-svg-icon>
-          <span>Settings</span>
-        </button>
-      </div>
-    `;
   }
 
   static styles = css`
@@ -317,49 +327,9 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
       height: 100%;
       min-height: 120px;
     }
-    .empty {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 10px;
-      height: 100%;
-      min-height: 200px;
-      padding: 24px;
-      box-sizing: border-box;
-      text-align: center;
-      color: var(--secondary-text-color);
-    }
-    .empty-icon {
-      --mdc-icon-size: 56px;
-      color: var(--primary-color);
-      opacity: 0.8;
-    }
-    .empty-title {
-      font-size: 1.15rem;
-      font-weight: 600;
-      color: var(--primary-text-color);
-    }
-    .empty-msg {
-      max-width: 340px;
-      line-height: 1.4;
-    }
-    .empty-btn {
-      appearance: none;
-      cursor: pointer;
-      font: inherit;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      margin-top: 4px;
-      padding: 8px 16px;
-      border: none;
-      border-radius: 999px;
-      color: var(--text-primary-color, #fff);
-      background: var(--primary-color);
-    }
-    .empty-btn ha-svg-icon {
-      --mdc-icon-size: 20px;
+    /* Empty / unmatched states are rendered as a centered MessageBox card. */
+    .msg {
+      width: min(520px, 92%);
     }
   `;
 }

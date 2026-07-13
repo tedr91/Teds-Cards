@@ -938,6 +938,11 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.154
+
+- **Music view empty states use a MessageBox** — the Music view's “no player yet” and “no Music Assistant player” messages now appear in a centered MessageBox card (with a Settings button), matching the look of the other placeholder views.
+- **Status card entity hints** — hovering the Weather, System Sounds Player, and Music &amp; Media Player values now shows the full entity id as a tooltip.
+
 ### v1.0.153
 
 - **Separate players for music vs. system sounds** — **Settings → Media** now has two per-device players: **Music & media player** (used by the Music view / Music Assistant) and **System sounds player** (alarms, timers, alerts, notifications). The Music card uses the music player, falling back to the system-sounds player and then the device's own player, so single-speaker setups still work with one entry. The Status card shows both. Pairs with Ted's Cards Backend v1.0.33+.

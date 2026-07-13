@@ -40,6 +40,8 @@ interface StatusRow {
   label: string;
   value: string;
   level: StatusLevel;
+  /** Optional hover hint on the value (e.g. the full entity id). */
+  hint?: string;
   tip?: RowTip;
 }
 
@@ -239,6 +241,7 @@ export class TedStatusCard extends LitElement implements LovelaceCard {
             ? `Available · ${this._entityLabel(weatherId)}`
             : "Available"
           : "None found",
+        hint: weatherId,
         level: weatherOk ? "ok" : "warn",
       });
     }
@@ -249,6 +252,7 @@ export class TedStatusCard extends LitElement implements LovelaceCard {
       icon: "mdi:speaker",
       label: "System Sounds Player",
       value: mp ? `Available · ${this._entityLabel(mp)}` : "none detected",
+      hint: mp,
       level: mp ? "ok" : "warn",
     });
 
@@ -258,6 +262,7 @@ export class TedStatusCard extends LitElement implements LovelaceCard {
       icon: "mdi:music",
       label: "Music and Media Player",
       value: music ? `Available · ${this._entityLabel(music)}` : "none detected",
+      hint: music,
       level: music ? "ok" : "warn",
     });
 
@@ -305,7 +310,7 @@ export class TedStatusCard extends LitElement implements LovelaceCard {
         <div class="sc-row sc-lvl-${r.level}">
           <ha-icon class="sc-row-icon" .icon=${r.icon}></ha-icon>
           <span class="sc-label">${r.label}</span>
-          <span class="sc-value">${r.value}</span>
+          <span class="sc-value" title=${r.hint ?? nothing}>${r.value}</span>
           <ha-icon class="sc-status" .icon=${TedStatusCard._glyph(r.level)}></ha-icon>
         </div>
       `;
@@ -326,7 +331,7 @@ export class TedStatusCard extends LitElement implements LovelaceCard {
       >
         <ha-icon class="sc-row-icon" .icon=${r.icon}></ha-icon>
         <span class="sc-label">${r.label}<ha-icon class="sc-info" .icon=${"mdi:information-outline"}></ha-icon></span>
-        <span class="sc-value">${r.value}</span>
+        <span class="sc-value" title=${r.hint ?? nothing}>${r.value}</span>
         <ha-icon class="sc-status" .icon=${TedStatusCard._glyph(r.level)}></ha-icon>
         ${this._renderTip(r.tip)}
       </div>
