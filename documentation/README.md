@@ -13,6 +13,7 @@ picker, where most have a visual editor).
 | [Light](./light-card.md) | `custom:ted-light-card` | Tap-to-toggle + dual-zone brightness control for a light. |
 | [Cover](./cover-card.md) | `custom:ted-cover-card` | Tap-to-control card for blinds, shades, garage doors. |
 | [Camera](./camera-card.md) | `custom:ted-camera-card` | One or more camera feeds (thumbnail or live). |
+| [Music](./music-card.md) | `custom:ted-music-card` | Music Assistant player for this device (wraps mass-player-card). |
 | [Remote](./remote-card.md) | `custom:ted-remote-card` | Remote control for Apple TV / Kaleidescape. |
 | [Clock / Weather](./clock-weather-card.md) | `custom:ted-clock-weather-card` | A large clock with date and current weather. |
 | [Room](./room-card.md) | `custom:ted-room-card` | Room dashboard: status strip + sections of light/cover/button cards. |
@@ -34,7 +35,13 @@ backend-driven alerts (notifications, alarms, timers) fit together.
 These cards need the **Ted's Cards Backend** integration
 (`teds_cards_backend`) installed: **Settings**, **Alarm**, **Timer**,
 **Notification** (and any card using per-device settings, e.g. Camera's
-`cameras_source: settings`). The others work standalone.
+`cameras_source: settings`, or the **Music** card's default `player_source: settings`).
+The others work standalone.
+
+The **Music** card additionally needs the third-party
+[Music Assistant Player Card](https://github.com/droans/mass-player-card) and its
+[`mass_queue`](https://github.com/droans/mass_queue) integration — see the
+[Music card docs](./music-card.md#requirements).
 
 ---
 

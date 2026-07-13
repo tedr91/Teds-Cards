@@ -30,6 +30,7 @@ After spending months attempting to find an "on/off/brightness" switch that I li
 | Remote Card | `custom:ted-remote-card` | Remote control for media devices (e.g. Apple TV and Kaleidescape). |
 | Room Card | `custom:ted-room-card` | Overview card for a Home Assistant area. |
 | Camera Card | `custom:ted-camera-card` | One or more camera feeds (auto thumbnail or live stream) in single, quad, or multi layouts. |
+| Music Card | `custom:ted-music-card` | Music Assistant player for the current device (wraps droans/mass-player-card; requires it + `mass_queue`). |
 | Navbar Card | `custom:ted-navbar-card` | Navigation bar pinned to the top or bottom, with buttons and status items in left/center/right zones. |
 | Alarm Card | `custom:ted-alarm-card` | Add, view, and enable/disable alarms (requires the Ted's Cards Backend integration). |
 | Timer Card | `custom:ted-timer-card` | Start, view, and cancel countdown timers (requires the Ted's Cards Backend integration). |
@@ -936,6 +937,10 @@ options as the Alarm card apply.
 
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
+
+### v1.0.150
+
+- **New Music Card** — added `custom:ted-music-card`, a Music Assistant player for the **current device**. It wraps the third-party [Music Assistant Player Card](https://github.com/droans/mass-player-card) and feeds it the media player chosen in **Settings → Media**, so one shared dashboard shows the right player on each device. If that player is a physical speaker rather than its Music Assistant entity, the card finds the matching Music Assistant player automatically (by device, then by name), and shows a friendly prompt (with a Settings button) when none is configured or found. Requires the `mass-player-card` and its `mass_queue` integration — see the [Music card docs](./documentation/music-card.md).
 
 ### v1.0.149
 
