@@ -938,6 +938,12 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.151
+
+- **Music Card sizes to its content** — the Music card no longer stretches the player to the full view height by default (which left a tall, gappy layout); it now sizes the player to its content, centered in the view. Set `fill: true` for the old full-height behavior.
+- **Music & Climate cards hidden from “Add card”** — `custom:ted-music-card` and `custom:ted-climate-card` are configured in YAML (and via the Ted views) rather than picked from the card gallery, so they no longer clutter Home Assistant's Add Card dialog. Both still work exactly as before in YAML, with their visual editors.
+- **Settings deep-link to a scope** — the Settings card now honours a `?scope=` URL parameter (`global` or `device`) alongside `?tab=`, so a link like `settings?tab=media&scope=device` opens the Media category on the This-device tab. The Music card's Settings buttons use this.
+
 ### v1.0.150
 
 - **New Music Card** — added `custom:ted-music-card`, a Music Assistant player for the **current device**. It wraps the third-party [Music Assistant Player Card](https://github.com/droans/mass-player-card) and feeds it the media player chosen in **Settings → Media**, so one shared dashboard shows the right player on each device. If that player is a physical speaker rather than its Music Assistant entity, the card finds the matching Music Assistant player automatically (by device, then by name), and shows a friendly prompt (with a Settings button) when none is configured or found. Requires the `mass-player-card` and its `mass_queue` integration — see the [Music card docs](./documentation/music-card.md).
