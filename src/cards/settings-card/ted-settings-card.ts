@@ -34,7 +34,7 @@ import {
   stringList,
   type BackgroundMode,
 } from "../../shared/background";
-import { isMediaSourceUri, pickMedia, resolveMediaSource, uploadImage } from "../../shared/media";
+import { getMediaFolder, isMediaSourceUri, pickMedia, resolveMediaSource, uploadImage, uploadToMediaFolder } from "../../shared/media";
 import {
   SETTINGS_CARD_DESCRIPTION,
   SETTINGS_CARD_EDITOR_TYPE,
@@ -92,6 +92,8 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
   private _editing = new Set<string>();
   /** Resolved display URLs for media-source:// wallpaper thumbnails (uri → url). */
   private _bgThumbs = new Map<string, string>();
+  /** media-source URI of the backend's "Ted Dash System" wallpaper folder (or null). */
+  @state() private _mediaFolder: string | null = null;
   /** Watches the host width so the section tab strip can re-measure its overflow. */
   private _sectionResizeObserver?: ResizeObserver;
   /** The `.section-strip` element currently observed for width changes. */
@@ -118,6 +120,8 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
 
   public connectedCallback(): void {
     super.connectedCallback();
+    // Discover the dedicated wallpaper folder for uploads + the media pickers.
+    if (this.hass) void getMediaFolder(this.hass).then((f) => (this._mediaFolder = f));
     // Follow the shared UI scope when this card is driven by an external toggle.
     if (
       this._config?.scope === "shared" ||
@@ -151,6 +155,12 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
   }
 
   protected updated(): void {
+    // Discover the wallpaper folder once hass is available (may be unset at connect).
+    if (this.hass && this._mediaFolder === null) {
+      void getMediaFolder(this.hass).then((f) => {
+        if (f) this._mediaFolder = f;
+      });
+    }
     // Also watch the strip itself: its width (the real "available" space) can change
     // without the host resizing (e.g. a scrollbar appearing, layout settling).
     this._ensureStripObserved();
@@ -825,20 +835,23 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
 
   private async _pickBgImage(scope: "global" | "device"): Promise<void> {
     if (!this.hass) return;
-    const uri = await pickMedia(this, this.hass, { accept: ["image/*"] });
+    const uri = await pickMedia(this, this.hass, { accept: ["image/*"], startFolder: this._mediaFolder ?? undefined });
     if (uri) this._selectBgImage(scope, uri);
   }
 
   private async _uploadBgImage(scope: "global" | "device", file: File): Promise<void> {
     if (!this.hass) return;
-    const url = await uploadImage(this.hass, file);
+    // Prefer the dedicated "My media" folder; fall back to the image store.
+    const url = this._mediaFolder
+      ? await uploadToMediaFolder(this.hass, file, this._mediaFolder)
+      : await uploadImage(this.hass, file);
     if (url) this._selectBgImage(scope, url);
   }
 
   /** Derive a folder media-source id from an image inside it (strip the file segment). */
   private async _pickBgFolder(scope: "global" | "device"): Promise<void> {
     if (!this.hass) return;
-    const uri = await pickMedia(this, this.hass, { accept: ["image/*"] });
+    const uri = await pickMedia(this, this.hass, { accept: ["image/*"], startFolder: this._mediaFolder ?? undefined });
     if (uri && uri.includes("/")) this._setBg("background_folder", scope, uri.replace(/\/[^/]*$/, ""));
   }
 

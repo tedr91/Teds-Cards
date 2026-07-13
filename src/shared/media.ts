@@ -105,6 +105,37 @@ export async function uploadImage(hass: HassLike, file: File): Promise<string | 
   return `/api/image/serve/${media.id}/original`;
 }
 
+let _mediaFolder: string | null | undefined;
+
+/** The media-source URI of the backend's dedicated "Ted Dash System" wallpaper
+ *  folder (created on integration setup), or null when unavailable. Cached. */
+export async function getMediaFolder(hass: HassLike): Promise<string | null> {
+  if (_mediaFolder !== undefined) return _mediaFolder;
+  try {
+    const res = await hass.callWS?.<{ media_content_id: string | null }>({ type: `${DOMAIN}/media_folder` });
+    _mediaFolder = res?.media_content_id ?? null;
+  } catch {
+    _mediaFolder = null;
+  }
+  return _mediaFolder;
+}
+
+/** Upload an image into a local media-source folder (HA auto-creates the folder).
+ *  Returns the stored file's `media-source://…` URI, or null on failure. */
+export async function uploadToMediaFolder(
+  hass: HassLike,
+  file: File,
+  folderUri: string,
+): Promise<string | null> {
+  const fd = new FormData();
+  fd.append("media_content_id", folderUri);
+  fd.append("file", file);
+  const resp = await hass.fetchWithAuth?.("/api/media_source/local_source/upload", { method: "POST", body: fd });
+  if (!resp || resp.status !== 200) return null;
+  const media = (await resp.json()) as { media_content_id?: string };
+  return media?.media_content_id ?? null;
+}
+
 /**
  * Open HA's native media browser dialog to pick an image. Resolves with the
  * picked item's `media_content_id` (a `media-source://` URI), or null if
@@ -122,7 +153,7 @@ export async function uploadImage(hass: HassLike, file: File): Promise<string | 
 export function pickMedia(
   host: HTMLElement,
   hass: HassLike,
-  opts: { accept?: string[] } = {},
+  opts: { accept?: string[]; startFolder?: string } = {},
 ): Promise<string | null> {
   return new Promise((resolve) => {
     let settled = false;
@@ -131,7 +162,19 @@ export function pickMedia(
     const selector = document.createElement("ha-selector") as any;
     selector.hass = hass;
     selector.selector = { media: { accept: opts.accept ?? ["image/*"] } };
-    selector.value = {};
+    // Opening straight into a folder is done via the media browser's
+    // `navigateIds` (root entry -> target folder), read from value.metadata.
+    selector.value = opts.startFolder
+      ? {
+          media_content_id: "",
+          metadata: {
+            navigateIds: [
+              { media_content_id: undefined, media_content_type: undefined },
+              { media_content_id: opts.startFolder, media_content_type: undefined },
+            ],
+          },
+        }
+      : {};
     // Keep it out of view but still clickable / event-connected.
     Object.assign(selector.style, {
       position: "fixed",

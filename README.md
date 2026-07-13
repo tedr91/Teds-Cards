@@ -937,6 +937,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.146
+
+- **Background uploads go to a dedicated “Ted Dash System” folder** — the Background Wallpaper **Add image** now stores uploads in a `Ted Dash System` folder under Home Assistant's **My media** (created by the Ted's Cards Backend on setup) instead of the generic image store, and **Select image** / slideshow **Select folder** open the media browser directly inside that folder. Requires Ted's Cards Backend v1.0.31+.
+
 ### v1.0.145
 
 - **Settings: Background media pickers actually open now** — fixes v1.0.144 where “Select image” / “Select folder” still did nothing. The helper control that opens Home Assistant's media browser was mounted at the page root, so its open request never reached the dialog manager; it's now mounted inside the card so the browser opens correctly.
