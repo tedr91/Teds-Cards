@@ -1407,6 +1407,11 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
         opacity: 0.5;
         cursor: default;
       }
+      /* Entity pickers: widen the field so its dropdown (which matches the field
+         width) can show full entity names instead of clipping them. */
+      ha-entity-picker {
+        width: min(340px, 60vw);
+      }
       .unit {
         color: var(--ted-style-muted);
         font-size: 0.85rem;
