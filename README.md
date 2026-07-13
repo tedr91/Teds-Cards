@@ -937,6 +937,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.138
+
+- **Reverted v1.0.136 + v1.0.137** — rolls the navbar bottom-reserve / `reserve_content_space` changes back to the v1.0.135 behaviour.
+
 ### v1.0.135
 
 - **Navbar side-alignment fix (take 2)** — the previous attempt didn't fully fix sections collapsing when moving the navbar to a left/right position. The overflow measurement now waits until the bar's actual geometry matches the intended orientation (tall-and-narrow for a side bar) before measuring, so it never measures the wrong axis and collapses everything.
