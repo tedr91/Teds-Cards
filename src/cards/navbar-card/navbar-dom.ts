@@ -79,6 +79,21 @@ export function setNavbarBottomReserve(px: number): void {
   root.style.setProperty(BOTTOM_RESERVE_VAR, `${Math.max(0, Math.round(px))}px`);
 }
 
+/** CSS var published while a VERTICAL (left/right) bar is active: how much header
+ *  space the content should reserve — the ACTUAL header height (0 when kiosk hides
+ *  it). A side bar spans the whole content height and tracks it, so views that would
+ *  otherwise subtract a phantom header allowance (`--header-height` fallback) can use
+ *  this instead to fill the viewport. Removed for horizontal bars (→ views fall back
+ *  to their normal header term). */
+const HEADER_RESERVE_VAR = "--ted-navbar-header-reserve";
+
+/** Publish the header reserve (px) for a vertical bar, or `null` to clear it. */
+export function setNavbarHeaderReserve(px: number | null): void {
+  const root = document.documentElement;
+  if (px === null) root.style.removeProperty(HEADER_RESERVE_VAR);
+  else root.style.setProperty(HEADER_RESERVE_VAR, `${Math.max(0, Math.round(px))}px`);
+}
+
 /** The dashboard content area's viewport rect (`hui-root`), used to inset the navbar so
  *  it clears the HA sidebar. Null when hui-root isn't found. */
 export function navbarContentRect(): DOMRect | null {

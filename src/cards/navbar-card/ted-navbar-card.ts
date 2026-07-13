@@ -40,7 +40,7 @@ import {
   defaultNavButton,
   defaultNavSections,
 } from "./const";
-import { detectEditOrPreview, forceNavbarPadding, navbarContentRect, navbarHeaderHeight, removeNavbarPadding, setNavbarBottomReserve } from "./navbar-dom";
+import { detectEditOrPreview, forceNavbarPadding, navbarContentRect, navbarHeaderHeight, removeNavbarPadding, setNavbarBottomReserve, setNavbarHeaderReserve } from "./navbar-dom";
 import type { NavAlign, NavButtonConfig, NavItem, NavMenuItem, NavSection, NavZone, NavbarAlignment, NavbarCardConfig } from "./types";
 
 interface CardHelpers {
@@ -216,6 +216,7 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
     super.disconnectedCallback();
     removeNavbarPadding();
     setNavbarBottomReserve(0);
+    setNavbarHeaderReserve(null);
     this._settingsUnsub?.();
     this._settingsUnsub = undefined;
     this.removeEventListener("pointerdown", this._guardTap, true);
@@ -317,6 +318,7 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
   /** Reserve view padding so dashboard content isn't hidden under the bar. */
   private _applyPadding(): void {
     this._publishBottomReserve();
+    this._publishHeaderReserve();
     // Auto-hidden: the bar is off-screen and the reveal pill is fixed to the viewport,
     // so the scroll container needs NO forced padding. Self-sizing (grid-layout) views
     // already leave the pill's strip via `--ted-navbar-bottom-reserve`; adding a
@@ -360,6 +362,19 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
     }
     const margin = this._barType() === "float" ? 16 : 0;
     setNavbarBottomReserve(this._thickness() + margin);
+  }
+
+  /** Publish the header reserve for a VERTICAL bar so the dashboard's content-height
+   *  calc can fill the viewport instead of subtracting a phantom header allowance. A
+   *  side bar spans the full content height and tracks it, so we publish the ACTUAL
+   *  header height (0 when kiosk hides it). Horizontal bars publish nothing (views keep
+   *  their normal header term). */
+  private _publishHeaderReserve(): void {
+    if (this._editMode || !this._isVertical()) {
+      setNavbarHeaderReserve(null);
+      return;
+    }
+    setNavbarHeaderReserve(navbarHeaderHeight());
   }
 
   /** Whether auto-hide is active (configured on, and not in the editor/preview). The
