@@ -937,6 +937,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.134
+
+- **Navbar fix** — switching a navbar from bottom/top to a side (left/right) position no longer collapses its sections into the overflow menu. The overflow measurement now re-runs once the vertical layout has settled instead of measuring the old horizontal size, so you no longer have to nudge the size to fix it.
+
 ### v1.0.133
 
 - **Consistent wallpaper across views** — the Background Wallpaper now persists as you navigate between dashboard views instead of flashing or jumping to a new image. The slideshow keeps the same image and cycle position across view changes (it only advances on its own timer), so moving between Home, Alarms, Cameras, etc. no longer reshuffles the background.

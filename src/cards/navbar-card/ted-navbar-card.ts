@@ -112,6 +112,9 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
   private _hasConditional = false;
   /** Per-section (config index) visible item count when overflow trims the tail. */
   private _visible = new Map<number, number>();
+  /** Orientation the current `_visible` was measured against; a flip forces a re-measure
+   *  once the new (vertical/horizontal) layout has actually settled. */
+  private _lastVert?: boolean;
   private _resizeRaf?: number;
   /** Horizontal inset (px) applied to both sides of the centered zone so its mid-left /
    *  mid-right columns clear the pinned left / right edge zones instead of overlapping
@@ -788,6 +791,20 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
     if (!card || card.clientWidth === 0) return;
     const cs = getComputedStyle(card);
     const vert = this._isVertical();
+    // Orientation just flipped (e.g. bottom → left): the card's cross-axis size and the
+    // section extents haven't reflowed into the new layout yet, so measuring now would use
+    // the old horizontal thickness as a tiny vertical height and wrongly collapse every
+    // section (and the result would then stick). Defer one frame so the real layout settles.
+    if (this._lastVert !== undefined && this._lastVert !== vert) {
+      this._lastVert = vert;
+      this._visible.clear();
+      requestAnimationFrame(() => {
+        this._visible.clear();
+        this.requestUpdate();
+      });
+      return;
+    }
+    this._lastVert = vert;
     const cardInner = vert
       ? card.clientHeight - (parseFloat(cs.paddingTop) || 0) - (parseFloat(cs.paddingBottom) || 0)
       : card.clientWidth - (parseFloat(cs.paddingLeft) || 0) - (parseFloat(cs.paddingRight) || 0);
