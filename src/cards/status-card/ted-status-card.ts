@@ -141,11 +141,20 @@ export class TedStatusCard extends LitElement implements LovelaceCard {
     );
   }
 
-  /** The media player playback falls back to on this device (effective setting → device default). */
+  /** The player that alarms/timers/notifications fall back to on this device
+   *  (effective system-sound setting → device default). */
   private _effectiveMediaPlayer(): string | undefined {
-    const set = settingsStore.get("media_player");
+    const set = settingsStore.get("system_sound_player");
     if (typeof set === "string" && set) return set;
     return resolveDeviceMediaPlayer(this.hass);
+  }
+
+  /** The player the Music view uses on this device
+   *  (music setting → system-sound setting → device default). */
+  private _effectiveMusicPlayer(): string | undefined {
+    const music = settingsStore.get("music_player");
+    if (typeof music === "string" && music) return music;
+    return this._effectiveMediaPlayer();
   }
 
   /** The first `weather.*` entity (what the requirements check detects). */
@@ -234,13 +243,22 @@ export class TedStatusCard extends LitElement implements LovelaceCard {
       });
     }
 
-    // Media player playback target.
+    // System-sound player (alarms/timers/notifications playback target).
     const mp = this._effectiveMediaPlayer();
     rows.push({
       icon: "mdi:speaker",
-      label: "Media Player",
+      label: "System Sounds Player",
       value: mp ? `Available · ${this._entityLabel(mp)}` : "none detected",
       level: mp ? "ok" : "warn",
+    });
+
+    // Music & media player (the Music view target).
+    const music = this._effectiveMusicPlayer();
+    rows.push({
+      icon: "mdi:music",
+      label: "Music and Media Player",
+      value: music ? `Available · ${this._entityLabel(music)}` : "none detected",
+      level: music ? "ok" : "warn",
     });
 
     return rows;

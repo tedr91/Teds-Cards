@@ -27,7 +27,7 @@ these once (all via HACS) before using the Music view:
    [`mass-player-card`](https://github.com/droans/mass-player-card) Lovelace card
    (HACS → Frontend). This provides the `custom:mass-player-card` element.
 4. **Ted's Cards Backend** (`teds_cards_backend`) — needed for the per-device
-   **Settings → Media** player (this card's default source).
+   **Settings → Media → Music & media player** (this card's default source).
 
 > If `custom:mass-player-card` isn't installed, the Music view shows an "unknown
 > card" error instead of the player.
@@ -71,7 +71,8 @@ mass_config:
 
 1. **`entity`** on the card (if set) — always wins.
 2. Otherwise, when `player_source: settings` (default), this device's
-   **Settings → Media → Media player** value.
+   **Settings → Media → Music & media player**, falling back to the
+   **System sounds player**, then the device's own registered player.
 3. The resolved entity is then mapped to a **Music Assistant** player:
    - If it's already a Music Assistant `media_player`, it's used as-is.
    - Otherwise (a physical speaker) and `auto_resolve_mass_player` is on, the card
@@ -89,7 +90,7 @@ reliable result.
 
 | Option | Type | Default | Description |
 | --- | --- | --- | --- |
-| `player_source` | `settings` \| `config` | `settings` | Where the player comes from. `settings` uses the per-device Media player; `config` uses `entity`. |
+| `player_source` | `settings` \| `config` | `settings` | Where the player comes from. `settings` uses the per-device Music player (then the System sounds player, then the device's own player); `config` uses `entity`. |
 | `entity` | string | | A `media_player.*` entity. Required for `player_source: config`; overrides the Settings value when set. |
 | `auto_resolve_mass_player` | boolean | `true` | If the player isn't a Music Assistant entity, find its Music Assistant match at runtime (by device, then name). |
 | `mass_config` | map | | Extra options merged into the embedded `mass-player-card` (see its [docs](https://github.com/droans/mass-player-card#configuration)). `type` and `entities` are managed by this card. |

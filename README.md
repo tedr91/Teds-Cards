@@ -938,6 +938,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.153
+
+- **Separate players for music vs. system sounds** — **Settings → Media** now has two per-device players: **Music & media player** (used by the Music view / Music Assistant) and **System sounds player** (alarms, timers, alerts, notifications). The Music card uses the music player, falling back to the system-sounds player and then the device's own player, so single-speaker setups still work with one entry. The Status card shows both. Pairs with Ted's Cards Backend v1.0.33+.
+
 ### v1.0.152
 
 - **Settings entity pickers no longer clip names** — the entity dropdowns in Settings (Media player, Weather entity, and the Cameras / Temperatures lists) are now wider, so long entity names show in full instead of being cut off.

@@ -7,6 +7,7 @@ import {
   type LovelaceCardEditor,
 } from "custom-card-helpers";
 
+import { resolveDeviceMediaPlayer } from "../../shared/device-id";
 import { SettingsController, settingsStore } from "../../shared/settings";
 import {
   MASS_PLAYER_CARD_TYPE,
@@ -123,12 +124,16 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
 
   // --- Entity resolution -----------------------------------------------------
 
-  /** The starting media_player id — the card's `entity` or this device's setting. */
+  /** The starting media_player id — the card's `entity`, this device's music player,
+   *  then the system-sound player, then the device's own registered player. */
   private _baseEntity(): string | undefined {
     if (this._config?.entity) return this._config.entity;
     if (this._config?.player_source === "config") return undefined;
-    const setting = settingsStore.get("media_player");
-    return typeof setting === "string" && setting ? setting : undefined;
+    const music = settingsStore.get("music_player");
+    if (typeof music === "string" && music) return music;
+    const system = settingsStore.get("system_sound_player");
+    if (typeof system === "string" && system) return system;
+    return resolveDeviceMediaPlayer(this.hass);
   }
 
   private _registry(): Record<string, RegistryEntity | undefined> {
@@ -251,7 +256,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
     const title = this._config?.empty_title ?? "No player yet";
     const message =
       this._config?.empty_message ??
-      "This device hasn't been given a media player. Open Settings to choose one.";
+      "This device hasn't been given a music player. Open Settings to choose one.";
     return html`
       <div class="empty">
         <ha-svg-icon class="empty-icon" .path=${MUSIC_ICON}></ha-svg-icon>

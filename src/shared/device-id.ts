@@ -58,9 +58,9 @@ interface RegistryHass {
 
 /**
  * Resolve the media player entity that belongs to *this* client, used as the final
- * fallback for the settings `media_player` when neither a per-device nor global value
- * is set. Tries a media_player entity on this browser_mod browser's device. Returns
- * undefined when none is found.
+ * fallback for the `system_sound_player` / `music_player` settings when neither a
+ * per-device nor global value is set. Tries a media_player entity on this browser_mod
+ * browser's device. Returns undefined when none is found.
  */
 export function resolveDeviceMediaPlayer(hass: unknown): string | undefined {
   const h = hass as RegistryHass | undefined;

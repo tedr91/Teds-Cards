@@ -85,8 +85,9 @@ export const SETTINGS_DEFAULTS: SettingsMap = {
   notification_sound_warning: "default",
   notification_sound_danger: "default",
   notification_sound_tip: "default",
-  media_player: null,
-  media_player_volume: 50,
+  music_player: null,
+  music_volume: 50,
+  system_sound_player: null,
   cameras_list: [],
   cameras_layout: "auto",
   climate_list: [],
@@ -153,8 +154,9 @@ export const SETTINGS_FIELDS: SettingField[] = [
   { key: "notification_sound_danger", label: "Danger sound", group: "Notifications", kind: "media", help: "Leave empty to use the fallback above." },
   { key: "notification_sound_tip", label: "Tip sound", group: "Notifications", kind: "media", help: "\"default\" uses the fallback above." },
   // Media
-  { key: "media_player", label: "Media player", group: "Media", kind: "entity", entityDomain: "media_player", deviceOnly: true, help: "Speaker used for notifications, alarms, timers, music. Set per-device." },
-  { key: "media_player_volume", label: "Media volume", group: "Media", kind: "percent" },
+  { key: "music_player", label: "Music & media player", group: "Media", kind: "entity", entityDomain: "media_player", deviceOnly: true, help: "Speaker for the Music view / Music Assistant. Falls back to the system sounds player. Set per-device." },
+  { key: "music_volume", label: "Music volume", group: "Media", kind: "percent" },
+  { key: "system_sound_player", label: "System sounds player", group: "Media", kind: "entity", entityDomain: "media_player", deviceOnly: true, help: "Alarms, timers, alerts & notifications play on this speaker. Set per-device." },
   // Cameras
   {
     key: "cameras_layout",

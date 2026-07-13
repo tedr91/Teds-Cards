@@ -69,7 +69,7 @@ export class TedMusicCardEditor extends LitElement implements LovelaceCardEditor
 
   private _computeHelper = (schema: { name: string }): string | undefined => {
     if (schema.name === "player_source") {
-      return "\"This device's Settings player\" uses the per-device Media player from Ted's Cards Settings.";
+      return "\"This device's Settings player\" uses the per-device Music player from Ted's Cards Settings.";
     }
     if (schema.name === "auto_resolve_mass_player") {
       return "If the player isn't a Music Assistant entity, find its Music Assistant match at runtime.";

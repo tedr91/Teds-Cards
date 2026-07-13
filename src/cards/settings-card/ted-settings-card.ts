@@ -582,7 +582,9 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
           <div class="row-label">
             <span>${field.label}</span>
             <span class="help">Set on the “This device” tab.</span>
-            ${field.key === "media_player" ? this._mediaFallbackHint() : nothing}
+            ${field.key === "system_sound_player" || field.key === "music_player"
+              ? this._mediaFallbackHint()
+              : nothing}
           </div>
           <div class="row-control">
             ${this._renderControl(field, null, true, () => undefined)}
@@ -614,7 +616,9 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
         <div class="row-label">
           <span>${field.label}</span>
           ${overriding ? nothing : html`<span class="inherit-tag">Inherited</span>`}
-          ${field.key === "media_player" && !overriding ? this._mediaFallbackHint() : nothing}
+          ${(field.key === "system_sound_player" || field.key === "music_player") && !overriding
+            ? this._mediaFallbackHint()
+            : nothing}
         </div>
         <div class="row-control">
           ${this._renderControl(field, this._deviceValue(field.key), !overriding, (v) =>
