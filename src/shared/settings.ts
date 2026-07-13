@@ -119,12 +119,35 @@ class SettingsStore {
 
   /** Write a setting at a scope. Pass `value: null` (via clearValue) to inherit. */
   setValue(scope: SettingsScope, key: string, value: SettingsValue): void {
+    // Optimistically update locally so the UI (and any subscribed engine) reflects
+    // the change immediately, instead of waiting for the backend to echo it back.
+    if (scope === "global") {
+      this._snapshot.global = { ...(this._snapshot.global ?? {}), [key]: value };
+    } else {
+      const devices = { ...(this._snapshot.devices ?? {}) };
+      devices[this.deviceId] = { ...(devices[this.deviceId] ?? {}), [key]: value };
+      this._snapshot.devices = devices;
+    }
+    this._emit();
     const data: Record<string, unknown> = { key, value, scope };
     if (scope === "device") data.device_id = this.deviceId;
     this._hass?.callService?.(DOMAIN, "set_setting", data);
   }
 
   clearValue(scope: SettingsScope, key: string): void {
+    // Optimistically drop the override locally, then ask the backend to persist it.
+    if (scope === "global") {
+      const g = { ...(this._snapshot.global ?? {}) };
+      delete g[key];
+      this._snapshot.global = g;
+    } else {
+      const devices = { ...(this._snapshot.devices ?? {}) };
+      const dev = { ...(devices[this.deviceId] ?? {}) };
+      delete dev[key];
+      devices[this.deviceId] = dev;
+      this._snapshot.devices = devices;
+    }
+    this._emit();
     const data: Record<string, unknown> = { key, scope };
     if (scope === "device") data.device_id = this.deviceId;
     this._hass?.callService?.(DOMAIN, "clear_setting", data);
