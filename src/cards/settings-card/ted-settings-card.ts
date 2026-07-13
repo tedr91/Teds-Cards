@@ -425,6 +425,16 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     return resolveDeviceMediaPlayer(this.hass);
   }
 
+  /** Entity ids from a given integration platform (optionally limited to a domain). */
+  private _entitiesForPlatform(platform: string, domain?: string): string[] {
+    const reg =
+      (this.hass as unknown as { entities?: Record<string, { platform?: string } | undefined> })
+        .entities ?? {};
+    return Object.keys(reg).filter(
+      (id) => reg[id]?.platform === platform && (!domain || id.startsWith(`${domain}.`)),
+    );
+  }
+
   /** Friendly name for an entity id, or a readable "none" placeholder. */
   private _entityLabel(entityId?: string): string {
     if (!entityId) return "none detected";
@@ -527,15 +537,20 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
             (o) => html`<option value=${o.value} ?selected=${String(value) === o.value}>${o.label}</option>`,
           )}
         </select>`;
-      case "entity":
+      case "entity": {
+        const includeEntities = field.entityPlatform
+          ? this._entitiesForPlatform(field.entityPlatform, field.entityDomain)
+          : undefined;
         return html`<ha-entity-picker
           .hass=${this.hass}
           .value=${typeof value === "string" ? value : ""}
-          .includeDomains=${field.entityDomain ? [field.entityDomain] : undefined}
+          .includeDomains=${includeEntities || !field.entityDomain ? undefined : [field.entityDomain]}
+          .includeEntities=${includeEntities}
           .disabled=${disabled}
           allow-custom-entity
           @value-changed=${(e: CustomEvent) => onChange(e.detail.value || null)}
         ></ha-entity-picker>`;
+      }
       case "media":
         return html`<input
           class="txt"

@@ -938,6 +938,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.155
+
+- **Music player picker shows only Music Assistant players** — the **Music & media player** entity picker in Settings → Media now lists only Music Assistant players (matching Music Assistant's own Players list), instead of every `media_player`. The System sounds player picker still lists all speakers.
+
 ### v1.0.154
 
 - **Music view empty states use a MessageBox** — the Music view's “no player yet” and “no Music Assistant player” messages now appear in a centered MessageBox card (with a Settings button), matching the look of the other placeholder views.
