@@ -21,7 +21,8 @@ export interface MusicCardConfig extends LovelaceCardConfig {
   /** Extra options merged into the embedded `mass-player-card` config
    *  (everything except `type`/`entities`). */
   mass_config?: Record<string, unknown>;
-  /** Fill the parent (e.g. a grid-layout content area). Sets the child card's `panel`. */
+  /** Stretch the player to fill the whole area (sets the child card's `panel`).
+   *  Off (default) sizes the player to its content, centered in the view. */
   fill?: boolean;
   theme?: TedStyleTheme;
   /** Empty-state overrides (no player configured for this device). */

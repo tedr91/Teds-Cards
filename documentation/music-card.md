@@ -41,7 +41,6 @@ Drive the player from this device's Settings player (the recommended setup):
 ```yaml
 type: custom:ted-music-card
 player_source: settings
-fill: true
 ```
 
 ## Fixed player (no per-device Settings)
@@ -50,7 +49,6 @@ fill: true
 type: custom:ted-music-card
 player_source: config
 entity: media_player.kitchen_music_assistant
-fill: true
 ```
 
 ## Passing options to the player card
@@ -60,7 +58,6 @@ Anything in `mass_config` is merged into the embedded `mass-player-card`:
 ```yaml
 type: custom:ted-music-card
 player_source: settings
-fill: true
 mass_config:
   default_section: media_browser
   expressive_scheme: vibrant
@@ -96,10 +93,10 @@ reliable result.
 | `entity` | string | | A `media_player.*` entity. Required for `player_source: config`; overrides the Settings value when set. |
 | `auto_resolve_mass_player` | boolean | `true` | If the player isn't a Music Assistant entity, find its Music Assistant match at runtime (by device, then name). |
 | `mass_config` | map | | Extra options merged into the embedded `mass-player-card` (see its [docs](https://github.com/droans/mass-player-card#configuration)). `type` and `entities` are managed by this card. |
-| `fill` | boolean | `false` | Fill the parent (e.g. a grid-layout content area). Sets the player card's `panel`. |
+| `fill` | boolean | `false` | Off (default) sizes the player to its content, centered in the view. On stretches it to fill the whole area (sets the player card's `panel`). |
 | `empty_title` / `empty_message` | string | | Override the "no player configured" empty state. |
 | `unmatched_title` / `unmatched_message` | string | | Override the "no Music Assistant match" state. |
-| `settings_path` | string | `[root]/settings?tab=media` | Where the state buttons navigate. `[root]` is your dashboard root. |
+| `settings_path` | string | `[root]/settings?tab=media&scope=device` | Where the state buttons navigate. `[root]` is your dashboard root. |
 | `theme` | `ted-style` \| `ha` | | See [Appearance & theming](./README.md#appearance--theming-shared). |
 
 The card has no visible surface of its own — the Music Assistant Player Card brings

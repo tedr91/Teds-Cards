@@ -31,6 +31,9 @@ export interface SettingsCardConfig extends LovelaceCardConfig {
   auto_shrink?: boolean;
   /** URL query parameter that deep-links the active section tab. Defaults to `tab`. */
   url_param?: string;
+  /** URL query parameter that deep-links the scope (Global vs This device).
+   *  Defaults to `scope`. Accepts `global` or `device`/`this_device`/`local`. */
+  scope_param?: string;
 
   // Visual
   theme?: TedStyleTheme;

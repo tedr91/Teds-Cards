@@ -125,13 +125,14 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     ) {
       this._unsubScope ??= subscribeUiScope(() => this.requestUpdate());
     }
-    // Built-in section tabs honour a `?tab=` deep link (e.g. from the Climate card).
+    // Deep links: the active category (`?tab=`) and the scope (`?scope=`).
+    window.addEventListener("location-changed", this._onLocationChanged);
+    window.addEventListener("popstate", this._onLocationChanged);
     if (this._config?.section_tabs !== false) {
-      window.addEventListener("location-changed", this._onLocationChanged);
-      window.addEventListener("popstate", this._onLocationChanged);
       this._sectionResizeObserver = new ResizeObserver(() => this._scheduleSectionMeasure());
       this._sectionResizeObserver.observe(this);
     }
+    this._applyScopeFromUrl();
   }
 
   public disconnectedCallback(): void {
@@ -182,10 +183,49 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
   }
 
   private _onLocationChanged = (): void => {
-    if (this._config?.section_tabs === false) return;
-    const s = this._sectionFromUrl();
-    if (s && s !== this._section) this._section = s;
+    if (this._config?.section_tabs !== false) {
+      const s = this._sectionFromUrl();
+      if (s && s !== this._section) this._section = s;
+    }
+    this._applyScopeFromUrl();
   };
+
+  /** Whether this card follows the shared UI scope (vs. its own local tab state). */
+  private _usesSharedScope(): boolean {
+    return (
+      this._config?.scope === "shared" ||
+      this._config?.variant === "scope-toggle" ||
+      this._config?.section_tabs !== false
+    );
+  }
+
+  /** The scope named by the current URL's `?scope=` param, if any. */
+  private _scopeFromUrl(): "global" | "device" | undefined {
+    let raw: string | null = null;
+    try {
+      raw = new URLSearchParams(window.location.search).get(this._config?.scope_param || "scope");
+    } catch {
+      raw = null;
+    }
+    if (!raw) return undefined;
+    const v = raw.toLowerCase();
+    if (v === "global") return "global";
+    if (v === "device" || v === "this_device" || v === "this-device" || v === "local") return "device";
+    return undefined;
+  }
+
+  /** Apply a `?scope=` deep link to the shared UI scope (or local tab). */
+  private _applyScopeFromUrl(): void {
+    const s = this._scopeFromUrl();
+    if (!s) return;
+    if (s === "global" && this._config?.show_global === false) return;
+    if (s === "device" && this._config?.show_device === false) return;
+    if (this._usesSharedScope()) {
+      if (getUiScope() !== s) setUiScope(s);
+    } else if (this._tab !== s) {
+      this._tab = s;
+    }
+  }
 
   /** Groups shown as section tabs (optionally limited by the `sections` config). */
   private _sectionGroups(): ReturnType<typeof fieldsByGroup> {

@@ -7,14 +7,11 @@ import {
   type LovelaceCardEditor,
 } from "custom-card-helpers";
 
-import { registerCustomCard } from "../../shared/register-card";
 import { SettingsController, settingsStore } from "../../shared/settings";
 import {
   MASS_PLAYER_CARD_TYPE,
   MASS_PLAYER_PLATFORM,
-  MUSIC_CARD_DESCRIPTION,
   MUSIC_CARD_EDITOR_TYPE,
-  MUSIC_CARD_NAME,
   MUSIC_CARD_TYPE,
 } from "./const";
 import type { MusicCardConfig } from "./types";
@@ -55,18 +52,6 @@ type Resolution =
   | { state: "unmatched"; base: string }
   | { state: "ok"; entity: string };
 
-registerCustomCard({
-  type: MUSIC_CARD_TYPE,
-  name: MUSIC_CARD_NAME,
-  description: MUSIC_CARD_DESCRIPTION,
-  preview: true,
-  documentationURL: "https://github.com/tedr91/Teds-Cards#music-card",
-  getEntitySuggestion: (_hass, entityId) =>
-    entityId.startsWith("media_player.")
-      ? { config: { type: `custom:${MUSIC_CARD_TYPE}`, player_source: "config", entity: entityId } }
-      : null,
-});
-
 @customElement(MUSIC_CARD_TYPE)
 export class TedMusicCard extends LitElement implements LovelaceCard {
   public static async getConfigElement(): Promise<LovelaceCardEditor> {
@@ -75,7 +60,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
   }
 
   public static getStubConfig(): Omit<MusicCardConfig, "type"> {
-    return { player_source: "settings", fill: true };
+    return { player_source: "settings" };
   }
 
   @property({ attribute: false }) public hass?: HomeAssistant;
@@ -238,7 +223,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
 
   private _settingsPath(): string {
     const root = String(settingsStore.effective().dashboard_root ?? "ted-dashboard");
-    const raw = this._config?.settings_path || "[root]/settings?tab=media";
+    const raw = this._config?.settings_path || "[root]/settings?tab=media&scope=device";
     let path = raw.replace("[root]", root);
     if (!path.startsWith("/")) path = `/${path}`;
     return path;
@@ -258,7 +243,8 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
     if (res.state === "empty") return this._renderEmpty();
     if (res.state === "unmatched") return this._renderUnmatched(res.base);
     if (!this._helpers || !this._child) return html`<div class="loading"></div>`;
-    return html`<div class="player">${this._child.el}</div>`;
+    const cls = this._config.fill ? "player fill" : "player natural";
+    return html`<div class=${cls}>${this._child.el}</div>`;
   }
 
   private _renderEmpty(): TemplateResult {
@@ -300,16 +286,26 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
 
   static styles = css`
     :host {
-      display: block;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       height: 100%;
     }
     /* The mass-player-card brings its own surface, so this card is a transparent
        passthrough — no wrapping ha-card (avoids double borders and backdrop-filter/
        transform clipping of the child card). */
     .player {
+      width: 100%;
+    }
+    /* Default: let the player size to its content, centered in the view. */
+    .player.natural {
+      align-self: center;
+    }
+    /* Opt-in: stretch the player to fill the whole area (sets the child's panel mode). */
+    .player.fill {
       height: 100%;
     }
-    .player > * {
+    .player.fill > * {
       height: 100%;
     }
     .loading {

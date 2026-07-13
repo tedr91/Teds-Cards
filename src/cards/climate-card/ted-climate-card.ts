@@ -8,12 +8,9 @@ import {
   type LovelaceCardEditor,
 } from "custom-card-helpers";
 
-import { registerCustomCard } from "../../shared/register-card";
 import { SettingsController, settingsStore } from "../../shared/settings";
 import {
-  CLIMATE_CARD_DESCRIPTION,
   CLIMATE_CARD_EDITOR_TYPE,
-  CLIMATE_CARD_NAME,
   CLIMATE_CARD_TYPE,
 } from "./const";
 import type { ClimateCardConfig, ClimateLayout } from "./types";
@@ -39,18 +36,6 @@ interface GridOptions {
 }
 
 const VALID_LAYOUTS: ClimateLayout[] = ["auto", "tabbed", "vertical", "horizontal"];
-
-registerCustomCard({
-  type: CLIMATE_CARD_TYPE,
-  name: CLIMATE_CARD_NAME,
-  description: CLIMATE_CARD_DESCRIPTION,
-  preview: true,
-  documentationURL: "https://github.com/tedr91/Teds-Cards#climate-card",
-  getEntitySuggestion: (_hass, entityId) =>
-    entityId.startsWith("climate.")
-      ? { config: { type: `custom:${CLIMATE_CARD_TYPE}`, entities: [{ entity: entityId }] } }
-      : null,
-});
 
 @customElement(CLIMATE_CARD_TYPE)
 export class TedClimateCard extends LitElement implements LovelaceCard {
