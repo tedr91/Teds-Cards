@@ -130,20 +130,21 @@ export const SETTINGS_DEFAULTS: SettingsMap = {
 
 export const SETTINGS_FIELDS: SettingField[] = [
   // Timers
+  { key: "timer_alert_volume", label: "Alert volume", group: "Timers", kind: "percent" },
+  { key: "timer_alert_sound", label: "Alert sound", group: "Timers", kind: "media", help: "Leave empty for the bundled sound, or enter a media URL." },
+  { key: "timer_alert_repeat", label: "Repeat alert", group: "Timers", kind: "boolean", help: "Loop the sound until dismissed (or the notification times out)." },
   { key: "timer_snooze_enabled", label: "Enable snoozing", group: "Timers", kind: "boolean" },
   { key: "timer_snooze_minutes", label: "Snooze duration", group: "Timers", kind: "number", min: 1, max: 60, unit: "min" },
-  { key: "timer_alert_sound", label: "Alert sound", group: "Timers", kind: "media", help: "Leave empty for the bundled sound, or enter a media URL." },
-  { key: "timer_alert_volume", label: "Alert volume", group: "Timers", kind: "percent" },
-  { key: "timer_alert_repeat", label: "Repeat alert", group: "Timers", kind: "boolean", help: "Loop the sound until dismissed (or the notification times out)." },
   // Alarms
+  { key: "alarm_alert_volume", label: "Alert volume", group: "Alarms", kind: "percent" },
+  { key: "alarm_alert_sound", label: "Alert sound", group: "Alarms", kind: "media" },
+  { key: "alarm_alert_repeat", label: "Repeat alert", group: "Alarms", kind: "boolean", help: "Loop the sound until dismissed (or the notification times out)." },
   { key: "alarm_snooze_enabled", label: "Enable snoozing", group: "Alarms", kind: "boolean" },
   { key: "alarm_snooze_minutes", label: "Snooze duration", group: "Alarms", kind: "number", min: 1, max: 60, unit: "min" },
-  { key: "alarm_alert_sound", label: "Alert sound", group: "Alarms", kind: "media" },
-  { key: "alarm_alert_volume", label: "Alert volume", group: "Alarms", kind: "percent" },
-  { key: "alarm_alert_repeat", label: "Repeat alert", group: "Alarms", kind: "boolean", help: "Loop the sound until dismissed (or the notification times out)." },
   // Notifications
-  { key: "notification_sound", label: "Alert sound (default)", group: "Notifications", kind: "media", help: "Fallback sound for notifications of any severity." },
+  { key: "do_not_disturb", label: "Do Not Disturb", group: "Notifications", kind: "boolean", help: "Suppresses toasts and alert sounds on this device." },
   { key: "notification_volume", label: "Sound volume", group: "Notifications", kind: "percent" },
+  { key: "notification_sound", label: "Alert sound (default)", group: "Notifications", kind: "media", help: "Fallback sound for notifications of any severity." },
   { key: "notification_sound_info", label: "Info sound", group: "Notifications", kind: "media", help: "Leave empty to use the fallback above." },
   { key: "notification_sound_success", label: "Success sound", group: "Notifications", kind: "media", help: "Leave empty to use the fallback above." },
   { key: "notification_sound_warning", label: "Warning sound", group: "Notifications", kind: "media", help: "Leave empty to use the fallback above." },
@@ -200,10 +201,9 @@ export const SETTINGS_FIELDS: SettingField[] = [
   },
   { key: "navbar_size", label: "Size", group: "Navbar", kind: "number", min: 32, max: 96, unit: "px", help: "Bar thickness in pixels (buttons/items size from this)." },
   // General
-  { key: "do_not_disturb", label: "Do Not Disturb", group: "General", kind: "boolean", help: "Suppresses toasts and alert sounds on this device." },
-  { key: "debug_mode", label: "Debug mode", group: "General", kind: "boolean", help: "Publishes the --ted-debug CSS variable so dashboards can show layout debug outlines." },
   { key: "weather_entity", label: "Weather entity", group: "General", kind: "entity", entityDomain: "weather", help: "Default weather entity used by Ted's weather/clock cards that opt in via `backend_integration: true`." },
   { key: "background", label: "Background Wallpaper", group: "General", kind: "background", help: "Dashboard background painted by the invisible ted-background-card." },
+  { key: "debug_mode", label: "Debug mode", group: "General", kind: "boolean", help: "Publishes the --ted-debug CSS variable so dashboards can show layout debug outlines." },
   // Navigation
   { key: "auto_return_home_after", label: "Auto-return home after", group: "Navigation", kind: "number", min: 0, max: 3600, unit: "s", help: "0 = never." },
   { key: "dashboard_root", label: "Dashboard root", group: "Navigation", kind: "text" },

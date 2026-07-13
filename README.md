@@ -937,6 +937,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.143
+
+- **Settings: cleaner Background & Notifications sections** — the **Size**, **Alignment**, **Repeat**, and **Scrollable** background options are now hidden when the Background Wallpaper mode is **Solid Color** (they only apply to Image/Slideshow). **Do Not Disturb** moved from General to the top of the **Notifications** section, which is now ordered Do Not Disturb → Sound volume → Alert sound (default) → per-severity sounds.
+
 ### v1.0.142
 
 - **Navbar: no empty gaps from hidden status items** — status items that render nothing when empty (e.g. `timers`, `alarms`, `notifications` with nothing active) no longer reserve a slot in the bar. Previously their empty wrapper still took a flex-gap, which showed up as a gap between items — most visibly below the date/time item on a vertical (left/right) navbar.

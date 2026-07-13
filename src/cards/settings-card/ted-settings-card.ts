@@ -881,14 +881,14 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     const mode = (this._bgVal("background_mode", scope) as BackgroundMode) ?? "solid";
     const overriding = scope === "device" && BACKGROUND_KEYS.some((k) => k in settingsStore.deviceSettings());
 
-    const common = mode === "theme"
-      ? nothing
-      : html`
+    const common = mode === "image" || mode === "slideshow"
+      ? html`
           ${this._bgField("Size", this._bgSelect("background_size", scope, BACKGROUND_SIZE_OPTIONS, disabled))}
           ${this._bgField("Alignment", this._bgSelect("background_align", scope, BACKGROUND_ALIGN_OPTIONS, disabled))}
           ${this._bgField("Repeat", this._bgSelect("background_repeat", scope, BACKGROUND_REPEAT_OPTIONS, disabled))}
           ${this._bgField("Scrollable", this._bgSwitch("background_scroll", scope, disabled), "Scrolls with content instead of staying fixed.")}
-        `;
+        `
+      : nothing;
 
     return html`
       <div class="bg-row">
