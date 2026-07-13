@@ -937,6 +937,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.135
+
+- **Navbar side-alignment fix (take 2)** — the previous attempt didn't fully fix sections collapsing when moving the navbar to a left/right position. The overflow measurement now waits until the bar's actual geometry matches the intended orientation (tall-and-narrow for a side bar) before measuring, so it never measures the wrong axis and collapses everything.
+
 ### v1.0.134
 
 - **Navbar fix** — switching a navbar from bottom/top to a side (left/right) position no longer collapses its sections into the overflow menu. The overflow measurement now re-runs once the vertical layout has settled instead of measuring the old horizontal size, so you no longer have to nudge the size to fix it.

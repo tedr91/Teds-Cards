@@ -112,9 +112,9 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
   private _hasConditional = false;
   /** Per-section (config index) visible item count when overflow trims the tail. */
   private _visible = new Map<number, number>();
-  /** Orientation the current `_visible` was measured against; a flip forces a re-measure
-   *  once the new (vertical/horizontal) layout has actually settled. */
-  private _lastVert?: boolean;
+  /** Bounded retries while the card geometry hasn't settled into the current orientation
+   *  (e.g. right after a bottom→side flip) so overflow never measures the wrong axis. */
+  private _overflowRetries = 0;
   private _resizeRaf?: number;
   /** Horizontal inset (px) applied to both sides of the centered zone so its mid-left /
    *  mid-right columns clear the pinned left / right edge zones instead of overlapping
@@ -791,12 +791,15 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
     if (!card || card.clientWidth === 0) return;
     const cs = getComputedStyle(card);
     const vert = this._isVertical();
-    // Orientation just flipped (e.g. bottom → left): the card's cross-axis size and the
-    // section extents haven't reflowed into the new layout yet, so measuring now would use
-    // the old horizontal thickness as a tiny vertical height and wrongly collapse every
-    // section (and the result would then stick). Defer one frame so the real layout settles.
-    if (this._lastVert !== undefined && this._lastVert !== vert) {
-      this._lastVert = vert;
+    // Only measure once the card's real geometry matches the intended orientation. Right
+    // after a bottom/top → left/right flip the bar is still laid out horizontally (wide &
+    // short) for a frame, so measuring the (tiny) cross-axis would treat every section as
+    // overflowing and collapse them all — and that result would then stick. A vertical bar
+    // must be taller than it is wide (and vice-versa) before we trust the measurement; if
+    // not, defer and retry next frame (bounded, so a degenerate size can't loop forever).
+    const geometryVert = card.clientHeight > card.clientWidth;
+    if (vert !== geometryVert && this._overflowRetries < 5) {
+      this._overflowRetries += 1;
       this._visible.clear();
       requestAnimationFrame(() => {
         this._visible.clear();
@@ -804,7 +807,7 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
       });
       return;
     }
-    this._lastVert = vert;
+    this._overflowRetries = 0;
     const cardInner = vert
       ? card.clientHeight - (parseFloat(cs.paddingTop) || 0) - (parseFloat(cs.paddingBottom) || 0)
       : card.clientWidth - (parseFloat(cs.paddingLeft) || 0) - (parseFloat(cs.paddingRight) || 0);
