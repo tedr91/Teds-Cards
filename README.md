@@ -938,6 +938,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.152
+
+- **Settings entity pickers no longer clip names** — the entity dropdowns in Settings (Media player, Weather entity, and the Cameras / Temperatures lists) are now wider, so long entity names show in full instead of being cut off.
+
 ### v1.0.151
 
 - **Music Card sizes to its content** — the Music card no longer stretches the player to the full view height by default (which left a tall, gappy layout); it now sizes the player to its content, centered in the view. Set `fill: true` for the old full-height behavior.
