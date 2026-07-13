@@ -108,40 +108,74 @@ export async function uploadImage(hass: HassLike, file: File): Promise<string | 
 /**
  * Open HA's native media browser dialog to pick an image. Resolves with the
  * picked item's `media_content_id` (a `media-source://` URI), or null if
- * cancelled. HA lazy-loads this dialog on first use.
+ * cancelled.
+ *
+ * HA lazy-loads `dialog-media-player-browse` via a dynamic `import()` inside its
+ * own `showMediaBrowserDialog` helper — a path we can't reference from a custom
+ * card. Firing `show-dialog` with `customElements.whenDefined(...)` as the
+ * `dialogImport` never actually loads the chunk, so on a fresh page the dialog
+ * silently never opens. Instead we mount HA's own `<ha-selector>` media control
+ * off-screen and trigger its pick: ha-selector runs the correct import + dialog
+ * for us, and reports the choice back via `value-changed`.
  */
 export function pickMedia(
-  host: HTMLElement,
+  _host: HTMLElement,
   hass: HassLike,
   opts: { accept?: string[] } = {},
 ): Promise<string | null> {
   return new Promise((resolve) => {
     let settled = false;
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const selector = document.createElement("ha-selector") as any;
+    selector.hass = hass;
+    selector.selector = { media: { accept: opts.accept ?? ["image/*"] } };
+    selector.value = {};
+    // Keep it out of view but still clickable / event-connected.
+    Object.assign(selector.style, {
+      position: "fixed",
+      left: "-10000px",
+      top: "0",
+      width: "1px",
+      height: "1px",
+      overflow: "hidden",
+      opacity: "0",
+    } as Partial<CSSStyleDeclaration>);
+
+    const cleanup = () => {
+      selector.removeEventListener("value-changed", onValue);
+      selector.remove();
+    };
     const done = (v: string | null) => {
       if (settled) return;
       settled = true;
+      cleanup();
       resolve(v);
     };
-    host.dispatchEvent(
-      new CustomEvent("show-dialog", {
-        bubbles: true,
-        composed: true,
-        detail: {
-          dialogTag: "dialog-media-player-browse",
-          dialogImport: () => customElements.whenDefined("dialog-media-player-browse"),
-          dialogParams: {
-            hass,
-            action: "pick",
-            entityId: "browser",
-            accept: opts.accept ?? ["image/*"],
-            mediaPickedCallback: (picked: { item?: MediaItem }) => {
-              done(picked?.item?.media_content_id ?? null);
-            },
-          },
-        },
-      }),
-    );
-    // If HA can't open the dialog (chunk not available), don't hang forever.
+    const onValue = (e: Event) => {
+      const value = (e as CustomEvent).detail?.value as { media_content_id?: string } | undefined;
+      done(value?.media_content_id ?? null);
+    };
+    selector.addEventListener("value-changed", onValue);
+
+    document.body.appendChild(selector);
+
+    // ha-selector lazy-renders <ha-selector-media>, which renders a clickable
+    // ha-card that opens the media browser. Click it once it exists.
+    const tryPick = (attempt: number) => {
+      if (settled) return;
+      const inner = selector.shadowRoot?.querySelector("ha-selector-media");
+      const card = inner?.shadowRoot?.querySelector('ha-card[role="button"]') as HTMLElement | null;
+      if (card) {
+        card.click();
+        return;
+      }
+      if (attempt < 60) requestAnimationFrame(() => tryPick(attempt + 1));
+      else done(null);
+    };
+    customElements.whenDefined("ha-selector").then(() => requestAnimationFrame(() => tryPick(0)));
+
+    // Safety net: if HA can't provide the control, don't hang or leak the node.
     setTimeout(() => done(null), 60_000);
   });
 }

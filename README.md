@@ -937,6 +937,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.144
+
+- **Settings: “Select image” / “Select folder” media pickers now open** — the Background Wallpaper image and slideshow-folder pickers previously did nothing because HA's media-browser dialog was never loaded. They now open Home Assistant's native media browser reliably. Also tidied a few Settings labels/help texts.
+
 ### v1.0.143
 
 - **Settings: cleaner Background & Notifications sections** — the **Size**, **Alignment**, **Repeat**, and **Scrollable** background options are now hidden when the Background Wallpaper mode is **Solid Color** (they only apply to Image/Slideshow). **Do Not Disturb** moved from General to the top of the **Notifications** section, which is now ordered Do Not Disturb → Sound volume → Alert sound (default) → per-severity sounds.

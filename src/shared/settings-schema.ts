@@ -131,7 +131,7 @@ export const SETTINGS_DEFAULTS: SettingsMap = {
 export const SETTINGS_FIELDS: SettingField[] = [
   // Timers
   { key: "timer_alert_volume", label: "Alert volume", group: "Timers", kind: "percent" },
-  { key: "timer_alert_sound", label: "Alert sound", group: "Timers", kind: "media", help: "Leave empty for the bundled sound, or enter a media URL." },
+  { key: "timer_alert_sound", label: "Alert sound", group: "Timers", kind: "media" },
   { key: "timer_alert_repeat", label: "Repeat alert", group: "Timers", kind: "boolean", help: "Loop the sound until dismissed (or the notification times out)." },
   { key: "timer_snooze_enabled", label: "Enable snoozing", group: "Timers", kind: "boolean" },
   { key: "timer_snooze_minutes", label: "Snooze duration", group: "Timers", kind: "number", min: 1, max: 60, unit: "min" },
@@ -186,18 +186,15 @@ export const SETTINGS_FIELDS: SettingField[] = [
   // Navbar
   { key: "navbar_auto_hide", label: "Auto-hide", group: "Navbar", kind: "boolean", help: "Collapse the navbar into its edge until revealed." },
   { key: "navbar_auto_hide_delay", label: "Auto-hide delay", group: "Navbar", kind: "number", min: 1, max: 60, unit: "s", help: "Seconds before the revealed bar re-collapses." },
-  { key: "navbar_float", label: "Float", group: "Navbar", kind: "boolean", help: "Centre the bar with margins and rounded corners (horizontal bars only)." },
-  {
-    key: "navbar_position",
-    label: "Position",
-    group: "Navbar",
-    kind: "select",
+  { key: "navbar_float", label: "Float", group: "Navbar", kind: "boolean", help: "Center the bar with margins and rounded corners (horizontal bars only)." },
+  { key: "navbar_position", label: "Position", group: "Navbar", kind: "select",
     options: [
       { value: "bottom", label: "Bottom" },
       { value: "top", label: "Top" },
       { value: "left", label: "Left" },
       { value: "right", label: "Right" },
     ],
+    help: "Where the bar sits on the screen.",
   },
   { key: "navbar_size", label: "Size", group: "Navbar", kind: "number", min: 32, max: 96, unit: "px", help: "Bar thickness in pixels (buttons/items size from this)." },
   // General
@@ -208,8 +205,8 @@ export const SETTINGS_FIELDS: SettingField[] = [
   { key: "auto_return_home_after", label: "Auto-return home after", group: "Navigation", kind: "number", min: 0, max: 3600, unit: "s", help: "0 = never." },
   { key: "dashboard_root", label: "Dashboard root", group: "Navigation", kind: "text" },
   { key: "home_dashboard", label: "Home dashboard", group: "Navigation", kind: "text", rootRelative: true, help: "The view the Home button opens." },
-  { key: "alarms_dashboard", label: "Alarms dashboard", group: "Navigation", kind: "text", rootRelative: true, help: "Where the Alarms status item navigates on tap." },
-  { key: "timers_dashboard", label: "Timers dashboard", group: "Navigation", kind: "text", rootRelative: true, help: "Where the Timers status item navigates on tap." },
+  { key: "alarms_dashboard", label: "Alarms dashboard", group: "Navigation", kind: "text", rootRelative: true },
+  { key: "timers_dashboard", label: "Timers dashboard", group: "Navigation", kind: "text", rootRelative: true },
   { key: "weather_dashboard", label: "Weather dashboard", group: "Navigation", kind: "text", rootRelative: true },
   { key: "calendar_dashboard", label: "Calendar dashboard", group: "Navigation", kind: "text", rootRelative: true },
   { key: "cameras_dashboard", label: "Cameras dashboard", group: "Navigation", kind: "text", rootRelative: true },
