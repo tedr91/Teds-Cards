@@ -1572,6 +1572,37 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
         justify-content: flex-end;
       }
 
+      /* Debug outlines — visible only when Settings > General > Debug mode is on
+         (that publishes --ted-debug: solid on the document root; unset otherwise,
+         so var(--ted-debug, none) resolves to outline-style: none = invisible).
+         Colour-codes the bar, the three zones, and every section/item so it's
+         obvious where each of the 5 positional sections lands and how much space
+         the bar occupies. */
+      .navbar-card {
+        outline: 2px var(--ted-debug, none) #ff2d95; /* bar bounds — magenta */
+        outline-offset: -2px;
+      }
+      .zone.left {
+        outline: 2px var(--ted-debug, none) #ff3b30; /* left zone — red */
+      }
+      .zone.center {
+        outline: 2px var(--ted-debug, none) #34c759; /* center zone — green */
+      }
+      .zone.right {
+        outline: 2px var(--ted-debug, none) #0a84ff; /* right zone — blue */
+      }
+      .section {
+        outline: 2px var(--ted-debug, none) #ffd60a; /* each section — yellow */
+        outline-offset: -1px;
+      }
+      .section.slot-center {
+        outline-color: #30d5c8; /* the dead-centre section — teal */
+      }
+      .nav-button,
+      .nav-status {
+        outline: 1px var(--ted-debug, none) rgba(255, 255, 255, 0.7); /* each item */
+      }
+
       .nav-button {
         height: calc(var(--nav-size) - 12px);
         width: calc(var(--nav-size) - 12px);

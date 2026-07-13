@@ -937,6 +937,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.140
+
+- **Navbar debug outlines** — with Settings → General → Debug mode on, the navbar now shows colour-coded outlines: the bar bounds (magenta), the Left/Center/Right zones (red/green/blue), each section (yellow, with the dead-centre section in teal), and each item — making it obvious where the five positional sections land. No visual change when Debug mode is off.
+
 ### v1.0.139
 
 - **Restored v1.0.137 navbar behaviour** — reinstates the navbar bottom-reserve / `reserve_content_space` changes from v1.0.137 (rolling forward from the v1.0.138 revert).
