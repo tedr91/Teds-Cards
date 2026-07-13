@@ -937,6 +937,13 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.147
+
+- **Ted Background Card works without the backend** — the card now has a full editor and carries its own wallpaper config, so you can set the background per-card (solid/image/slideshow, size/align/repeat/scroll, and more) with no Ted's Cards Backend. Turn on **Use Ted's Cards Backend** to instead drive it from Settings and get per-device wallpapers; card options still override.
+- **Mood matching** — the slideshow "Type preference" is now **Mood matching** (On / Off / Force Light / Force Dark). "On" analyses each image's brightness and prefers images that match the current light/dark theme — now for **any** slideshow source, including your own folders.
+- **Enhance readability** — a new toggle (with adjustable **strength**) tones the wallpaper toward the theme's contrast so overlaid content stays legible.
+- **Built-in wallpapers over CDN** — card-only users (without the backend serving them locally) now get the bundled wallpapers too. Requires Ted's Cards Backend v1.0.32+ for backend-integrated use.
+
 ### v1.0.146
 
 - **Background uploads go to a dedicated “Ted Dash System” folder** — the Background Wallpaper **Add image** now stores uploads in a `Ted Dash System` folder under Home Assistant's **My media** (created by the Ted's Cards Backend on setup) instead of the generic image store, and **Select image** / slideshow **Select folder** open the media browser directly inside that folder. Requires Ted's Cards Backend v1.0.31+.

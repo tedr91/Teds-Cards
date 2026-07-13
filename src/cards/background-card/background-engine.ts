@@ -15,12 +15,18 @@
 
 import { settingsStore } from "../../shared/settings";
 import {
+  BACKGROUND_KEYS,
+  type BackgroundScrim,
   backgroundLayerCss,
   type BackgroundMode,
   type BackgroundTypePref,
+  DARK_LUMINANCE_THRESHOLD,
+  imageLuminance,
+  listBuiltinBackgroundsCdn,
 } from "../../shared/background";
-import type { SettingsMap } from "../../shared/settings-schema";
+import { SETTINGS_DEFAULTS, type SettingsMap } from "../../shared/settings-schema";
 import {
+  getMediaFolder,
   isMediaSourceUri,
   listBuiltinBackgrounds,
   listFolderImages,
@@ -40,6 +46,11 @@ class BackgroundEngine {
   /** Bumped on every (re)apply so stale async resolutions never win a race. */
   private gen = 0;
 
+  /** The active card's per-card background_* overrides (undefined = none). */
+  private cardConfig?: SettingsMap;
+  /** Whether the active card opts into the backend settings store. */
+  private backendInt = false;
+
   private slideUrls: string[] = [];
   private slideIdx = 0;
   private slideSig?: string;
@@ -48,12 +59,42 @@ class BackgroundEngine {
   private lastDark?: boolean;
 
   /** A card connected: keep the engine live and paint the current wallpaper. */
-  attach(hass: HassLike | undefined): void {
+  attach(hass: HassLike | undefined, config?: SettingsMap, backendInt = false): void {
     this.refCount++;
     this.hass = hass;
+    this.cardConfig = config;
+    this.backendInt = backendInt;
     this.lastDark = this._isDark();
-    if (!this.unsub) this.unsub = settingsStore.subscribe(() => this.apply());
+    // Only subscribe to the backend settings store when a card opts in.
+    if (backendInt && !this.unsub) this.unsub = settingsStore.subscribe(() => this.apply());
     this.apply();
+  }
+
+  /** Update the active card's config (e.g. edited in the card editor) + re-apply. */
+  setConfig(config: SettingsMap | undefined, backendInt: boolean): void {
+    this.cardConfig = config;
+    if (backendInt !== this.backendInt) {
+      this.backendInt = backendInt;
+      if (backendInt && !this.unsub) this.unsub = settingsStore.subscribe(() => this.apply());
+      if (!backendInt && this.unsub) {
+        this.unsub();
+        this.unsub = undefined;
+      }
+    }
+    this.apply();
+  }
+
+  /** Effective settings: card config overrides win per-field over either the
+   *  backend store (when integrated) or the plain defaults (card-only). */
+  private _effective(): SettingsMap {
+    const base: SettingsMap = this.backendInt ? settingsStore.effective() : { ...SETTINGS_DEFAULTS };
+    if (!this.cardConfig) return base;
+    const merged: SettingsMap = { ...base };
+    for (const k of BACKGROUND_KEYS) {
+      const v = this.cardConfig[k];
+      if (v !== undefined) merged[k] = v;
+    }
+    return merged;
   }
 
   /** A card disconnected. Keep the wallpaper + slideshow position; only pause
@@ -91,7 +132,7 @@ class BackgroundEngine {
 
   apply(): void {
     const gen = ++this.gen;
-    const s = settingsStore.effective();
+    const s = this._effective();
     const mode = (s.background_mode as BackgroundMode) ?? "solid";
 
     if (mode !== "slideshow") {
@@ -111,11 +152,36 @@ class BackgroundEngine {
     if (mode === "image") {
       const ref = typeof s.background_image === "string" ? s.background_image : null;
       void this._resolveRef(ref).then((url) => {
-        if (gen === this.gen) applyBackground(backgroundLayerCss(s, url));
+        if (gen === this.gen) void this._paint(s, url, gen);
       });
       return;
     }
     void this._applySlideshow(s, gen);
+  }
+
+  /** Paint a wallpaper image, compositing the readability scrim when enabled. */
+  private async _paint(s: SettingsMap, url: string | null, gen: number): Promise<void> {
+    const scrim = await this._scrimFor(s, url);
+    if (gen !== this.gen) return;
+    applyBackground(backgroundLayerCss(s, url, scrim));
+  }
+
+  /** A luminance-derived scrim that tones a clashing image toward the theme's
+   *  contrast (bright image on a dark theme → darken; dark image on a light theme
+   *  → lighten). Opacity is capped by `background_readability_strength` (0–100). */
+  private async _scrimFor(s: SettingsMap, url: string | null): Promise<BackgroundScrim | undefined> {
+    if (!url || s.background_enhance_readability === false) return undefined;
+    const strength = Math.max(0, Math.min(100, Number(s.background_readability_strength ?? 45))) / 100;
+    if (strength <= 0) return undefined;
+    const l = await imageLuminance(url);
+    if (l === null) return undefined;
+    if (this._isDark() && l > 0.55) {
+      return { color: "0,0,0", opacity: Math.min(1, (l - 0.55) / 0.45) * strength };
+    }
+    if (!this._isDark() && l < 0.45) {
+      return { color: "255,255,255", opacity: Math.min(1, (0.45 - l) / 0.45) * strength };
+    }
+    return undefined;
   }
 
   private async _applySlideshow(s: SettingsMap, gen: number): Promise<void> {
@@ -144,7 +210,7 @@ class BackgroundEngine {
       return;
     }
     if (this.slideIdx >= this.slideUrls.length) this.slideIdx = 0;
-    applyBackground(backgroundLayerCss(s, this.slideUrls[this.slideIdx]));
+    await this._paint(s, this.slideUrls[this.slideIdx], gen);
 
     // Start/keep the cycle timer. Don't restart it on a plain navigation or an
     // unrelated settings change (that would keep resetting the countdown) — only
@@ -161,7 +227,7 @@ class BackgroundEngine {
     if (this.slideUrls.length < 2) return;
     this.timer = window.setInterval(() => {
       this.slideIdx = (this.slideIdx + 1) % this.slideUrls.length;
-      applyBackground(backgroundLayerCss(settingsStore.effective(), this.slideUrls[this.slideIdx]));
+      void this._paint(this._effective(), this.slideUrls[this.slideIdx], this.gen);
     }, cycleMinutes * 60_000);
   }
 
@@ -173,20 +239,40 @@ class BackgroundEngine {
   }
 
   private async _slideshowUrls(s: SettingsMap): Promise<string[]> {
-    if (!this.hass) return [];
+    let candidates: string[];
     if (s.background_album === "folder") {
-      const folder = typeof s.background_folder === "string" ? s.background_folder : "";
+      if (!this.hass) return [];
+      let folder = typeof s.background_folder === "string" ? s.background_folder : "";
+      // Default to the backend's "Ted Dash System" media folder when none is set.
+      if (!folder) folder = (await getMediaFolder(this.hass)) ?? "";
       if (!folder) return [];
       const uris = await listFolderImages(this.hass, folder);
       const resolved = await Promise.all(uris.map((u) => this._resolveRef(u)));
-      return resolved.filter((u): u is string => !!u);
+      candidates = resolved.filter((u): u is string => !!u);
+    } else {
+      // Built-ins: served locally by the backend when integrated, else from the CDN
+      // (so card-only users without the integration still get the bundled wallpapers).
+      const cat =
+        this.backendInt && this.hass
+          ? await listBuiltinBackgrounds(this.hass)
+          : await listBuiltinBackgroundsCdn();
+      candidates = [...cat.general, ...cat.light, ...cat.dark];
     }
-    const cat = await listBuiltinBackgrounds(this.hass);
+    return this._filterByMood(candidates, s);
+  }
+
+  /** Mood matching: keep images whose luminance matches the target (theme for
+   *  "match", or forced light/dark). "all" disables filtering. Falls back to the
+   *  full list when nothing matches (or luminance couldn't be analyzed). */
+  private async _filterByMood(urls: string[], s: SettingsMap): Promise<string[]> {
     const pref = (s.background_type_pref as BackgroundTypePref) ?? "match";
-    if (pref === "all") return [...cat.general, ...cat.light, ...cat.dark];
-    if (pref === "light") return [...cat.light, ...cat.general];
-    if (pref === "dark") return [...cat.dark, ...cat.general];
-    return this._isDark() ? [...cat.dark, ...cat.general] : [...cat.light, ...cat.general];
+    if (pref === "all" || urls.length === 0) return urls;
+    const wantDark = pref === "match" ? this._isDark() : pref === "dark";
+    const tagged = await Promise.all(urls.map(async (u) => ({ u, l: await imageLuminance(u) })));
+    const matched = tagged
+      .filter(({ l }) => l !== null && l < DARK_LUMINANCE_THRESHOLD === wantDark)
+      .map((t) => t.u);
+    return matched.length ? matched : urls;
   }
 }
 

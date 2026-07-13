@@ -113,6 +113,8 @@ export const SETTINGS_DEFAULTS: SettingsMap = {
   background_type_pref: "match",
   background_shuffle: true,
   background_cycle_minutes: 30,
+  background_enhance_readability: true,
+  background_readability_strength: 45,
   dashboard_root: "ted-dashboard",
   home_dashboard: "[root]/welcome",
   alarms_dashboard: "[root]/alarms-timers?tab=alarms",
