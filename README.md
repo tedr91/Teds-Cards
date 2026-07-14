@@ -939,6 +939,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.175
+
+- **Calendar card empty/missing message centered** — the Calendar card's "No calendars yet" and "not installed" messages are now centered within the view (both vertically and horizontally), matching the other view cards.
+
 ### v1.0.174
 
 - **Calendar card refinements** — the Calendar card's **Calendar source** now defaults to **This card** (pick calendars directly), and its config-mode calendar list is **drag-to-reorder** in the visual editor. It no longer invents a default calendar list: with nothing selected it shows a clear "No calendars yet" prompt.

@@ -297,7 +297,8 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
   protected render(): TemplateResult | typeof nothing {
     if (!this._config || !this.hass) return nothing;
     if (!this._helpers || !this._child) return html`<div class="loading"></div>`;
-    if (this._childKind === "message") return html`<div class="msg">${this._child.el}</div>`;
+    if (this._childKind === "message")
+      return html`<div class="msg-wrap"><div class="msg">${this._child.el}</div></div>`;
     const cls = this._config.fill ? "calendar fill" : "calendar natural";
     return html`<div class=${cls}>${this._child.el}</div>`;
   }
@@ -351,10 +352,18 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
       height: 100%;
       min-height: 120px;
     }
-    /* Empty / missing-dependency states are rendered as a centered MessageBox card. */
+    /* Empty / missing-dependency states are rendered as a MessageBox card, centered
+       both horizontally and vertically within the card's area. */
+    .msg-wrap {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      box-sizing: border-box;
+      padding: 16px;
+    }
     .msg {
       width: min(560px, 96%);
-      margin: 0 auto;
     }
   `;
 }
