@@ -322,7 +322,15 @@ export class TedLightCardEditor extends LitElement implements LovelaceCardEditor
         required: true,
         selector: { entity: { domain: "light" } },
       },
-      { name: "name", selector: { text: {} } },
+      {
+        name: "name",
+        selector: {
+          text: {
+            placeholder:
+              this.hass?.states[this._config?.entity ?? ""]?.attributes?.friendly_name ?? "",
+          },
+        },
+      },
       { name: "icon", selector: { icon: {} } },
       {
         name: "",

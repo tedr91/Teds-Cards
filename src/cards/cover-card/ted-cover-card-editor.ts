@@ -348,7 +348,15 @@ export class TedCoverCardEditor extends LitElement implements LovelaceCardEditor
         required: true,
         selector: { entity: { domain: "cover" } },
       },
-      { name: "name", selector: { text: {} } },
+      {
+        name: "name",
+        selector: {
+          text: {
+            placeholder:
+              this.hass?.states[this._config?.entity ?? ""]?.attributes?.friendly_name ?? "",
+          },
+        },
+      },
       {
         type: "grid",
         name: "",

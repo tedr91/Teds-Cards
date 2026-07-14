@@ -152,7 +152,7 @@ export class TedClockWeatherCardEditor extends LitElement implements LovelaceCar
       },
     });
     if (cfg.time_format === "custom") {
-      clock.push({ name: "time_format_custom", selector: { text: {} } });
+      clock.push({ name: "time_format_custom", selector: { text: { placeholder: "H:MM" } } });
     }
 
     // Date Settings (show + position live under the Layout section)

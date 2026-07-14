@@ -208,7 +208,15 @@ export class TedButtonCardEditor extends LitElement implements LovelaceCardEdito
     return {
       top: [
         ...(this.trim?.entity ? [] : [{ name: "entity", selector: { entity: {} } }]),
-        { name: "name", selector: { text: {} } },
+        {
+          name: "name",
+          selector: {
+            text: {
+              placeholder:
+                this.hass?.states[this._config?.entity ?? ""]?.attributes?.friendly_name ?? "",
+            },
+          },
+        },
         { name: "icon", selector: { icon: {} } },
         {
           name: "",

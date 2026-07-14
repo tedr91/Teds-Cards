@@ -329,7 +329,7 @@ export class TedTabCardEditor extends LitElement implements LovelaceCardEditor {
 
   private _optionsSchema(tabCount: number) {
     return [
-      { name: "url_param", selector: { text: {} } },
+      { name: "url_param", selector: { text: { placeholder: "tab" } } },
       {
         type: "grid",
         name: "",

@@ -939,6 +939,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.183
+
+- **Default values shown as placeholders across card editors** — extended the muted default-value placeholder convention to more editors: the Alarm/Notification/Timer card titles show `Alarms`/`Notifications`/`Timers`, the Button/Cover/Light/Remote card name fields show the entity's friendly name, the Tab card's URL param shows `tab`, and the Clock/Weather custom time format shows `H:MM`.
+
 ### v1.0.182
 
 - **Calendar card shows default values as placeholders** — in the Calendar card editor, empty text fields now show their default value as muted placeholder text: the card name shows `Family Calendar`, and each calendar's name shows that calendar's actual friendly name. (Start of a convention we'll extend to other cards.)

@@ -59,7 +59,7 @@ export class TedNotificationCardEditor extends LitElement implements LovelaceCar
 
   private _schema() {
     return [
-      { name: "title", selector: { text: {} } },
+      { name: "title", selector: { text: { placeholder: "Notifications" } } },
       { name: "area", selector: { area: {} } },
       {
         name: "",

@@ -55,7 +55,7 @@ export class TedAlarmCardEditor extends LitElement implements LovelaceCardEditor
 
   private _schema() {
     return [
-      { name: "title", selector: { text: {} } },
+      { name: "title", selector: { text: { placeholder: "Alarms" } } },
       {
         type: "grid",
         name: "",

@@ -78,7 +78,7 @@ export class TedTimerCardEditor extends LitElement implements LovelaceCardEditor
 
   private _topSchema() {
     return [
-      { name: "title", selector: { text: {} } },
+      { name: "title", selector: { text: { placeholder: "Timers" } } },
       {
         type: "grid",
         name: "",

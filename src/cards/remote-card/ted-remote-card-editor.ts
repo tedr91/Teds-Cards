@@ -118,7 +118,15 @@ export class TedRemoteCardEditor extends LitElement implements LovelaceCardEdito
           },
         ],
       },
-      { name: "name", selector: { text: {} } },
+      {
+        name: "name",
+        selector: {
+          text: {
+            placeholder:
+              this.hass?.states[this._config?.remote_entity ?? ""]?.attributes?.friendly_name ?? "",
+          },
+        },
+      },
     ];
 
     const visual: Array<Record<string, unknown>> = [
