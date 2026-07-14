@@ -9,6 +9,7 @@ import {
 } from "custom-card-helpers";
 
 import { themedIcon } from "../../shared/icons";
+import { appearanceStyle, cssColor } from "../../shared/appearance";
 import { registerCustomCard } from "../../shared/register-card";
 import { SettingsController, settingsStore } from "../../shared/settings";
 import {
@@ -182,7 +183,7 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
       : [];
     if (cfg.calendar_source !== "settings") {
       for (const it of this._configItems(cfg)) {
-        if (it.color) colors[it.entity] = it.color;
+        if (it.color) colors[it.entity] = cssColor(it.color) ?? it.color;
         if (it.name) names[it.entity] = it.name;
         if ((it.icon_source ?? "person") === "icon") {
           delete persons[it.entity];
@@ -208,35 +209,11 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
     const showHeader = cfg.show_header !== false;
     appearance.hide_header = !showHeader;
     if (showHeader) appearance.hide_calendars = cfg.allow_calendar_toggling === false;
-    if (cfg.header_color) appearance.header_color = cfg.header_color;
+    if (cfg.header_color) appearance.header_color = cssColor(cfg.header_color);
     if (cfg.weather_sensor) appearance.header_weather_sensor = cfg.weather_sensor;
-
-    // Background colour / transparency / blur. daylight has no native background-colour
-    // or blur, so those are injected via its `uix.style` (raw CSS into its shadow DOM);
-    // transparency alone maps to daylight's native `background_opacity`.
-    const theme = cfg.theme ?? "ha";
-    let bgColor = cfg.background_color;
-    let blurPx = cfg.blur;
-    if (theme === "ted-style") {
-      if (bgColor === undefined) bgColor = "var(--ha-card-background)";
-      if (blurPx === undefined) blurPx = 14;
-    }
-    const clampPct = (n: number): number => Math.max(0, Math.min(100, n));
-    const uixParts: string[] = [];
-    if (bgColor !== undefined) {
-      const t = typeof cfg.transparency === "number" ? clampPct(cfg.transparency) : 0;
-      const fill = t > 0 ? `color-mix(in srgb, ${bgColor} ${100 - t}%, transparent)` : bgColor;
-      appearance.background_transparent = true; // our fill becomes the only body background
-      uixParts.push(`.calendar-body { background: ${fill} !important; }`);
-    } else if (typeof cfg.transparency === "number") {
-      appearance.background_opacity = clampPct(cfg.transparency);
-    }
-    if (typeof blurPx === "number" && blurPx > 0) {
-      uixParts.push(
-        `.calendar-body { backdrop-filter: blur(${blurPx}px) !important; -webkit-backdrop-filter: blur(${blurPx}px) !important; }`,
-      );
-    }
-    const uix = uixParts.length ? { uix: { style: uixParts.join("\n") } } : {};
+    // When we paint our own frosted surface behind the (shadow-DOM) calendar, make
+    // daylight's own body transparent so that surface shows through.
+    if (this._surfaceStyle()) appearance.background_transparent = true;
 
     return {
       type: DAYLIGHT_CARD_TYPE,
@@ -247,11 +224,33 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
       calendar_person_entities: persons,
       calendar_badge_icons: badgeIcons,
       readonly_calendars: readonly,
-      ...uix,
       entities,
       default_view: cfg.default_view ?? DEFAULT_CALENDAR_VIEW,
       ...(cfg.calendar_config ?? {}),
     };
+  }
+
+  /** Inline style for the frosted surface painted behind the calendar, or null when
+   *  no appearance override is active. `theme: ted-style` seeds a translucent blur. */
+  private _surfaceStyle(): Record<string, string> | null {
+    const cfg = this._config;
+    if (!cfg) return null;
+    const ted = cfg.theme === "ted-style";
+    let transparency = cfg.transparency;
+    let blur = cfg.blur;
+    if (ted) {
+      if (transparency === undefined) transparency = 30;
+      if (blur === undefined) blur = 40;
+    }
+    const hasColor = typeof cfg.background_color === "string" && cfg.background_color.length > 0;
+    const active =
+      hasColor ||
+      ted ||
+      (typeof transparency === "number" && transparency > 0) ||
+      (typeof blur === "number" && blur > 0);
+    if (!active) return null;
+    const background = cssColor(cfg.background_color) ?? "var(--ha-card-background)";
+    return appearanceStyle({ background, transparency, blur });
   }
 
   private _buildCard(): void {
@@ -383,8 +382,12 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
     if (!this._helpers || !this._child) return html`<div class="loading"></div>`;
     if (this._childKind === "message")
       return html`<div class="msg-wrap"><div class="msg">${this._child.el}</div></div>`;
-    const cls = this._config.fill ? "calendar fill" : "calendar natural";
-    return html`<div class=${cls} style=${styleMap(this._calendarStyle())}>${this._child.el}</div>`;
+    const surf = this._surfaceStyle();
+    const cls = `calendar ${this._config.fill ? "fill" : "natural"}${surf ? " styled" : ""}`;
+    return html`<div class=${cls} style=${styleMap(this._calendarStyle())}>
+      ${surf ? html`<div class="surface" style=${styleMap(surf)}></div>` : nothing}
+      ${this._child.el}
+    </div>`;
   }
 
   /** Fixed width/height for the wrapper — only when not filling and not a direct
@@ -411,6 +414,21 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
        transform clipping of the child card). */
     .calendar {
       width: 100%;
+      position: relative;
+    }
+    /* Frosted surface painted BEHIND the calendar (a sibling, not an ancestor, so it
+       never traps daylight's position:fixed event modals). daylight's own body is made
+       transparent (background_transparent) so this shows through. */
+    .calendar.styled > .surface {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      border-radius: var(--ha-card-border-radius, 12px);
+      pointer-events: none;
+    }
+    .calendar.styled > daylight-calendar-card {
+      position: relative;
+      z-index: 1;
     }
     /* Default: let the calendar size itself (its compact_height computes a
        viewport-based height). */

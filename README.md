@@ -939,6 +939,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.178
+
+- **Calendar card appearance fixes** — the Calendar card's **Appearance** section now sits above the Calendars list, its colour pickers use the same standard picker as every other Ted's Card, and **theme styling / background colour / transparency / blur** now actually take effect (rendered as a frosted surface behind the calendar instead of relying on the calendar's own CSS injection). Blur is now a 0–100% amount, and `theme: ted-style` gives a translucent, blurred frost by default.
+
 ### v1.0.177
 
 - **Calendar card — Appearance & per-calendar options** — the Calendar card editor now has an **Appearance** section (name / show name, theme styling, background colour + transparency + blur, show header + header colour, allow calendar toggling, weather sensor, and fixed width/height for non-grid layouts). Each calendar in the list also gains its own options: name, read-only, person, icon, icon source (person avatar vs icon), and colour. These map to the wrapped Daylight Calendar card's native settings (with a little injected CSS for background colour/blur, which it has no native option for).

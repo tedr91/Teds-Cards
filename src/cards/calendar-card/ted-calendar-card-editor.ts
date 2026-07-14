@@ -3,29 +3,13 @@ import { customElement, property, state } from "lit/decorators.js";
 import { type HomeAssistant, type LovelaceCardEditor, fireEvent } from "custom-card-helpers";
 
 import { CALENDAR_CARD_EDITOR_TYPE } from "./const";
+import { transparencyBlurSchema } from "../../shared/appearance";
 import type {
   CalendarCardConfig,
   CalendarIconSource,
   CalendarItemConfig,
   CalendarSource,
 } from "./types";
-
-/** Parse a `#rrggbb` string into an `[r,g,b]` array for HA's color_rgb selector. */
-function hexToRgb(hex?: string): [number, number, number] | undefined {
-  if (typeof hex !== "string") return undefined;
-  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
-  if (!m) return undefined;
-  const n = parseInt(m[1], 16);
-  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
-}
-
-/** Convert an `[r,g,b]` array back to a `#rrggbb` string. */
-function rgbToHex(rgb: unknown): string | undefined {
-  if (!Array.isArray(rgb) || rgb.length < 3) return undefined;
-  const h = (v: number): string =>
-    Math.max(0, Math.min(255, Math.round(Number(v)))).toString(16).padStart(2, "0");
-  return `#${h(rgb[0])}${h(rgb[1])}${h(rgb[2])}`;
-}
 
 // mdi:calendar — Calendars section header
 const CALENDAR_ICON_PATH =
@@ -114,13 +98,13 @@ export class TedCalendarCardEditor extends LitElement implements LovelaceCardEdi
           .computeHelper=${this._computeHelper}
           @value-changed=${this._valueChanged}
         ></ha-form>
+        ${this._renderAppearance()}
         ${source === "settings"
           ? html`<div class="settings-note">
               Calendars are chosen per-device in <b>Settings → Calendars</b>. Build the Global
               available list there, then curate each device's subset.
             </div>`
           : this._renderEntities()}
-        ${this._renderAppearance()}
       </div>
     `;
   }
@@ -134,10 +118,10 @@ export class TedCalendarCardEditor extends LitElement implements LovelaceCardEdi
       show_header: showHeader,
       theme: cfg.theme ?? "ha",
       allow_calendar_toggling: cfg.allow_calendar_toggling !== false,
-      header_color: hexToRgb(cfg.header_color),
-      background_color: hexToRgb(cfg.background_color),
-      transparency: cfg.transparency ?? 0,
-      blur: cfg.blur ?? 0,
+      header_color: cfg.header_color ?? "",
+      background_color: cfg.background_color ?? "",
+      transparency: cfg.transparency,
+      blur: cfg.blur,
       weather_sensor: cfg.weather_sensor ?? "",
       width: cfg.width,
       height: cfg.height,
@@ -155,17 +139,9 @@ export class TedCalendarCardEditor extends LitElement implements LovelaceCardEdi
       },
       { name: "theme", selector: { select: { mode: "dropdown", options: THEME_OPTIONS } } },
       ...(showHeader ? [{ name: "allow_calendar_toggling", selector: { boolean: {} } }] : []),
-      { name: "header_color", selector: { color_rgb: {} } },
-      { name: "background_color", selector: { color_rgb: {} } },
-      {
-        type: "grid",
-        name: "",
-        column_min_width: "140px",
-        schema: [
-          { name: "transparency", selector: { number: { min: 0, max: 100, mode: "slider", unit_of_measurement: "%" } } },
-          { name: "blur", selector: { number: { min: 0, max: 40, mode: "slider", unit_of_measurement: "px" } } },
-        ],
-      },
+      { name: "header_color", selector: { ui_color: {} } },
+      { name: "background_color", selector: { ui_color: {} } },
+      transparencyBlurSchema(cfg.transparency),
       { name: "weather_sensor", selector: { entity: { domain: "weather" } } },
       {
         type: "grid",
@@ -234,7 +210,7 @@ export class TedCalendarCardEditor extends LitElement implements LovelaceCardEdi
       icon_source: iconSource,
       person: item.person ?? "",
       icon: item.icon ?? "",
-      color: hexToRgb(item.color),
+      color: item.color ?? "",
     };
     const optSchema = [
       { name: "name", selector: { text: {} } },
@@ -250,7 +226,7 @@ export class TedCalendarCardEditor extends LitElement implements LovelaceCardEdi
       iconSource === "icon"
         ? { name: "icon", selector: { icon: {} } }
         : { name: "person", selector: { entity: { domain: "person" } } },
-      { name: "color", selector: { color_rgb: {} } },
+      { name: "color", selector: { ui_color: {} } },
     ];
     return html`
       <div class="cal">
@@ -388,7 +364,7 @@ export class TedCalendarCardEditor extends LitElement implements LovelaceCardEdi
     next.icon_source = src !== "person" ? src : undefined;
     if ("person" in v) next.person = (v.person as string) || undefined;
     if ("icon" in v) next.icon = (v.icon as string) || undefined;
-    next.color = rgbToHex(v.color);
+    next.color = (v.color as string) || undefined;
     items[idx] = next;
     this._commitItems(items);
   }
@@ -401,8 +377,8 @@ export class TedCalendarCardEditor extends LitElement implements LovelaceCardEdi
       show_header: v.show_header === false ? false : undefined,
       theme: v.theme && v.theme !== "ha" ? (v.theme as CalendarCardConfig["theme"]) : undefined,
       allow_calendar_toggling: v.allow_calendar_toggling === false ? false : undefined,
-      header_color: rgbToHex(v.header_color),
-      background_color: rgbToHex(v.background_color),
+      header_color: (v.header_color as string) || undefined,
+      background_color: (v.background_color as string) || undefined,
       transparency: typeof v.transparency === "number" && v.transparency > 0 ? v.transparency : undefined,
       blur: typeof v.blur === "number" && v.blur > 0 ? v.blur : undefined,
       weather_sensor: (v.weather_sensor as string) || undefined,

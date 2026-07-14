@@ -94,12 +94,12 @@ calendar_config:
 | --- | --- | --- |
 | `name` | – | The calendar title shown in the header. |
 | `show_name` | `true` | Show the title/name in the header. |
-| `theme` | `ha` | Surface styling: `ha` (Home Assistant theme) or `ted-style` (Ted's frosted theme = translucent card background + blur). |
-| `background_color` | – | Card body background colour (hex). Injected via Daylight's `uix.style`. |
-| `transparency` | `0` | Background see-through 0–100%. On its own maps to Daylight's `background_opacity`; combined with `background_color` it sets the colour's alpha. |
-| `blur` | `0` | Background blur in px (frosts whatever shows through a translucent background). |
+| `theme` | `ha` | Surface styling: `ha` (Home Assistant theme) or `ted-style` (Ted's frosted theme = translucent surface + blur, applied behind the calendar). |
+| `background_color` | – | Card background colour (standard Ted colour picker: theme colour or custom). Painted on a frosted surface behind the calendar. |
+| `transparency` | – | Background see-through 0–100% (empty = none). |
+| `blur` | – | Background blur 0–100% (empty = none) — frosts whatever shows through a translucent background. |
 | `show_header` | `true` | Show the calendar header (`hide_header` inverse). |
-| `header_color` | – | Header background colour (hex; also accepts `match-card-background`). |
+| `header_color` | – | Header background colour (standard Ted colour picker; maps to Daylight's `header_color`). |
 | `allow_calendar_toggling` | `true` | Show the calendar on/off toggle list in the header (only when the header is shown; `hide_calendars` inverse). |
 | `weather_sensor` | – | A `weather.*` entity shown in the header (`header_weather_sensor`). |
 | `width` / `height` | – | Fixed size in px. **Only** applied when the card isn't a direct item in a grid (Sections) view. |
