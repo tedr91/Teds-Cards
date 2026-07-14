@@ -100,7 +100,7 @@ reliable result.
 | `empty_title` / `empty_message` | string | | Override the "no player configured" empty state. |
 | `unmatched_title` / `unmatched_message` | string | | Override the "no Music Assistant match" state. |
 | `settings_path` | string | `[root]/settings?tab=sounds&scope=device` | Where the state buttons navigate. `[root]` is your dashboard root. |
-| `mass_setup_path` | string | `/music-assistant` | Where the unmatched state's **Music Assistant** button navigates (the Music Assistant panel). |
+| `mass_setup_path` | string | auto-detected | Where the unmatched state's **Music Assistant** button navigates. By default the card finds the Music Assistant panel automatically; set this to override it. The button is hidden if no panel is found. |
 | `theme` | `ted-style` \| `ha` | | See [Appearance & theming](./README.md#appearance--theming-shared). |
 
 The card has no visible surface of its own — the Music Assistant Player Card brings

@@ -214,6 +214,18 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
   }
 
   private _unmatchedMessageConfig(base: string): LovelaceCardConfig {
+    const massPath = this._massSetupPath();
+    const extra = massPath
+      ? [
+          {
+            label: "Music Assistant",
+            icon: themedIcon("music"),
+            variant: "secondary",
+            action: "navigate",
+            navigation_path: massPath,
+          },
+        ]
+      : [];
     return this._messageConfig(
       "warning",
       themedIcon("music-off"),
@@ -222,20 +234,25 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
         `"${this._name(base)}" isn't a Music Assistant player, and no matching one was found. ` +
           `Enable Music Assistant's "Home Assistant" player provider to expose this speaker, ` +
           "or pick a Music Assistant player in Settings → Sounds.",
-      [
-        {
-          label: "Music Assistant",
-          icon: themedIcon("music"),
-          variant: "secondary",
-          action: "navigate",
-          navigation_path: this._massSetupPath(),
-        },
-      ],
+      extra,
     );
   }
 
-  private _massSetupPath(): string {
-    return this._config?.mass_setup_path || "/music-assistant";
+  /** The Music Assistant panel path: the card's `mass_setup_path`, else the actual
+   *  Music Assistant sidebar panel discovered in `hass.panels` (undefined if none). */
+  private _massSetupPath(): string | undefined {
+    if (this._config?.mass_setup_path) return this._config.mass_setup_path;
+    const panels = this.hass?.panels as
+      | Record<string, { url_path?: string; title?: string | null; component_name?: string } | undefined>
+      | undefined;
+    if (!panels) return undefined;
+    for (const [key, p] of Object.entries(panels)) {
+      const hay = `${p?.url_path ?? key} ${p?.title ?? ""} ${p?.component_name ?? ""}`.toLowerCase();
+      if (hay.includes("music_assistant") || hay.includes("music assistant") || hay.includes("music-assistant")) {
+        return `/${p?.url_path ?? key}`;
+      }
+    }
+    return undefined;
   }
 
   // --- Render ----------------------------------------------------------------

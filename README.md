@@ -938,6 +938,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.166
+
+- **Music Assistant button opens the right panel** — the "Music Assistant" button on the Music view's no-player notice now auto-detects your actual Music Assistant panel (instead of a fixed `/music-assistant` path that bounced back to the default dashboard). The button is hidden if no Music Assistant panel is found.
+
 ### v1.0.165
 
 - **Music view — clearer "no Music Assistant player" help** — when the Music view can't find a Music Assistant player for the device's speaker, the notice now explains how to fix it (enable Music Assistant's Home Assistant player provider, or pick a player in Settings → Sounds) and adds a **Music Assistant** button that opens the Music Assistant panel (configurable via `mass_setup_path`).
