@@ -938,6 +938,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.168
+
+- **Default Music volume is now 5%** — the per-device **Music volume** setting defaults to 5% (was 50%). Devices with an existing value keep it. Pairs with Ted's Cards Backend v1.0.35+.
+
 ### v1.0.167
 
 - **Music view — step-by-step setup help** — the "No Music Assistant player" notice now lists the short steps to expose a speaker (Music Assistant → Settings → Providers → add "Home Assistant Media Players" → select the speaker). MessageBox card messages also now honour line breaks.

@@ -88,7 +88,7 @@ export const SETTINGS_DEFAULTS: SettingsMap = {
   notification_sound_danger: "default",
   notification_sound_tip: "default",
   music_player: null,
-  music_volume: 50,
+  music_volume: 5,
   system_sound_player: null,
   cameras_list: [],
   cameras_layout: "auto",
