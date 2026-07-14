@@ -102,6 +102,7 @@ export const SETTINGS_DEFAULTS: SettingsMap = {
   navbar_size: 48,
   do_not_disturb: false,
   debug_mode: false,
+  icon_set: "auto",
   weather_entity: null,
   background_mode: "solid",
   background_scroll: false,
@@ -206,6 +207,21 @@ export const SETTINGS_FIELDS: SettingField[] = [
   { key: "navbar_size", label: "Size", group: "Navbar", kind: "number", min: 32, max: 96, unit: "px", help: "Bar thickness in pixels (buttons/items size from this)." },
   // General
   { key: "weather_entity", label: "Weather entity", group: "General", kind: "entity", entityDomain: "weather", help: "Default weather entity used by Ted's weather/clock cards that opt in via `backend_integration: true`." },
+  {
+    key: "icon_set",
+    label: "Icon set",
+    group: "General",
+    kind: "select",
+    options: [
+      { value: "auto", label: "Auto (best installed)" },
+      { value: "mdi", label: "Material Design (MDI)" },
+      { value: "fluent", label: "Fluent" },
+      { value: "streamline-ultimate-color", label: "Streamline Ultimate" },
+      { value: "pepicons-print", label: "Pepicons" },
+      { value: "streamline-freehand-color", label: "Streamline Freehand" },
+    ],
+    help: "Which icon family Ted's built-in icons use. Auto picks the best installed set; a specific set falls back to Material Design when an icon isn't available.",
+  },
   { key: "background", label: "Background Wallpaper", group: "General", kind: "background", help: "Dashboard background painted by the invisible ted-background-card." },
   { key: "debug_mode", label: "Debug mode", group: "General", kind: "boolean", help: "Publishes the --ted-debug CSS variable so dashboards can show layout debug outlines." },
   // Navigation

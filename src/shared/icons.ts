@@ -12,6 +12,9 @@
  * decide availability. (Names differ between packs, hence the per-set map.)
  */
 
+import { SEMANTIC_ICONS, type IconKey } from "./icon-registry";
+import { settingsStore } from "./settings";
+
 /** Either a ready-to-use icon string, or a `{ set-prefix: icon-name }` map. */
 export type IconSpec = string | Record<string, string>;
 
@@ -67,4 +70,38 @@ export function resolveIcon(spec: IconSpec | undefined | null): string | undefin
   }
   const [prefix, name] = entries[0];
   return buildIcon(prefix, name);
+}
+
+/**
+ * Resolve an {@link IconSpec} to a concrete icon, preferring a specific set when given.
+ * When `preferred` is a real set (not `auto`) that is installed AND present in the spec,
+ * that set's name wins; otherwise falls back to {@link resolveIcon} (availability priority).
+ */
+export function resolveIconForSet(
+  spec: IconSpec | undefined | null,
+  preferred?: string,
+): string | undefined {
+  if (spec == null) return undefined;
+  if (typeof spec === "string") return spec || undefined;
+  if (preferred && preferred !== "auto") {
+    const name = spec[preferred];
+    if (name && isIconSetAvailable(preferred)) return buildIcon(preferred, name);
+  }
+  return resolveIcon(spec);
+}
+
+/** Icon sets (by priority) that are actually installed on this client. */
+export function installedIconSets(): string[] {
+  return ICON_SET_PRIORITY.filter((p) => isIconSetAvailable(p));
+}
+
+/**
+ * Resolve one of Ted's semantic icon keys ({@link IconKey}) to a concrete icon string,
+ * honouring the user's `icon_set` setting (`auto` = best installed set). Always returns
+ * a value (mdi is the guaranteed fallback).
+ */
+export function themedIcon(key: IconKey): string {
+  const spec = SEMANTIC_ICONS[key];
+  const preferred = String(settingsStore.effective().icon_set ?? "auto");
+  return resolveIconForSet(spec, preferred) ?? `mdi:${spec.mdi}`;
 }

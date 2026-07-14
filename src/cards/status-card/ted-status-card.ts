@@ -5,6 +5,7 @@ import { type HomeAssistant, type LovelaceCard } from "custom-card-helpers";
 import { tedCardThemeClass, tedStyleTheme } from "../../shared/theme";
 import { browserModId, resolveDeviceMediaPlayer, resolveDeviceName } from "../../shared/device-id";
 import { areaName, resolveDeviceArea } from "../../shared/device-area";
+import { themedIcon } from "../../shared/icons";
 import { resolveMusicPlayer, warmMassProviders } from "../../shared/music-player";
 import { SettingsController, settingsStore } from "../../shared/settings";
 import {
@@ -19,6 +20,14 @@ const SETTINGS_SENSOR = "sensor.teds_settings";
 
 /** The Ted's Cards Backend HACS integration, linked from the backend row's tooltip. */
 const BACKEND_REPO_URL = "https://github.com/tedr91/Teds-Cards-Backend";
+
+/** Status level → semantic glyph key (resolved via the configured icon set). */
+const GLYPH_KEYS = {
+  ok: "check-circle",
+  warn: "alert-circle",
+  bad: "error-circle",
+  unknown: "help-circle",
+} as const;
 
 /** The visual weight of a status row's glyph. */
 type StatusLevel = "ok" | "warn" | "bad" | "unknown";
@@ -177,11 +186,20 @@ export class TedStatusCard extends LitElement implements LovelaceCard {
     const rows: StatusRow[] = [];
     const attrs = this._reqAttrs();
 
+    // Logged-in Home Assistant user.
+    const userName = this.hass?.user?.name;
+    rows.push({
+      icon: themedIcon("account"),
+      label: "User Name",
+      value: userName || "unknown",
+      level: userName ? "ok" : "warn",
+    });
+
     // Current device's registered name + id (Ted's Cards registration → Browser Mod device name).
     const devName =
       settingsStore.registry()[settingsStore.deviceId]?.name || resolveDeviceName(this.hass);
     rows.push({
-      icon: "mdi:devices",
+      icon: themedIcon("device"),
       label: "Device Name",
       value: devName || "(unnamed)",
       hint: settingsStore.deviceId,
@@ -200,7 +218,7 @@ export class TedStatusCard extends LitElement implements LovelaceCard {
             ? " · card"
             : "";
     rows.push({
-      icon: "mdi:map-marker",
+      icon: themedIcon("location"),
       label: "Device Area",
       value: areaRes.area ? `${areaLabel}${areaSrc}` : "none set",
       hint: areaRes.area,
@@ -213,7 +231,7 @@ export class TedStatusCard extends LitElement implements LovelaceCard {
     const connected = !!settings && settings.state !== "unavailable" && settings.state !== "unknown";
     const version = typeof attrs?.version === "string" ? (attrs.version as string) : undefined;
     rows.push({
-      icon: "mdi:server-network",
+      icon: themedIcon("server"),
       label: "Ted's Cards Backend",
       value: connected ? (version ? `Connected · v${version}` : "Connected") : "Not installed",
       level: connected ? "ok" : "bad",
@@ -231,7 +249,7 @@ export class TedStatusCard extends LitElement implements LovelaceCard {
       const reqIds = this._requirementIds(attrs);
       const [rok, rtotal] = this._requirementTotals(attrs);
       rows.push({
-        icon: "mdi:clipboard-check-outline",
+        icon: themedIcon("requirements"),
         label: "Requirements",
         value: `${rok} of ${rtotal} met`,
         level: rtotal > 0 && rok === rtotal ? "ok" : "warn",
@@ -239,7 +257,7 @@ export class TedStatusCard extends LitElement implements LovelaceCard {
       });
     } else {
       rows.push({
-        icon: "mdi:clipboard-check-outline",
+        icon: themedIcon("requirements"),
         label: "Requirements",
         value: "backend not detected",
         level: "unknown",
@@ -249,14 +267,15 @@ export class TedStatusCard extends LitElement implements LovelaceCard {
     // Browser Mod registration + this browser's id.
     const bmInstalled = attrs?.browser_mod === "ok";
     const bid = browserModId();
+    const webIcon = themedIcon("web");
     if (bmInstalled && bid && this._browserRegistered(bid)) {
-      rows.push({ icon: "mdi:web", label: "Browser Mod", value: `Registered · ${bid}`, level: "ok" });
+      rows.push({ icon: webIcon, label: "Browser Mod", value: `Registered · ${bid}`, level: "ok" });
     } else if (bmInstalled && bid) {
-      rows.push({ icon: "mdi:web", label: "Browser Mod", value: `Not registered · ${bid}`, level: "warn" });
+      rows.push({ icon: webIcon, label: "Browser Mod", value: `Not registered · ${bid}`, level: "warn" });
     } else if (bmInstalled) {
-      rows.push({ icon: "mdi:web", label: "Browser Mod", value: "Installed, no browser id", level: "warn" });
+      rows.push({ icon: webIcon, label: "Browser Mod", value: "Installed, no browser id", level: "warn" });
     } else {
-      rows.push({ icon: "mdi:web", label: "Browser Mod", value: "Not installed", level: "warn" });
+      rows.push({ icon: webIcon, label: "Browser Mod", value: "Not installed", level: "warn" });
     }
 
     // Weather entity.
@@ -264,7 +283,7 @@ export class TedStatusCard extends LitElement implements LovelaceCard {
       const weatherOk = attrs.weather === "ok";
       const weatherId = weatherOk ? this._firstWeatherEntity() : undefined;
       rows.push({
-        icon: "mdi:weather-partly-cloudy",
+        icon: themedIcon("weather"),
         label: "Weather",
         value: weatherOk
           ? weatherId
@@ -279,7 +298,7 @@ export class TedStatusCard extends LitElement implements LovelaceCard {
     // System-sound player (alarms/timers/notifications playback target).
     const mp = this._effectiveMediaPlayer();
     rows.push({
-      icon: "mdi:speaker",
+      icon: themedIcon("speaker"),
       label: "System Sounds Player",
       value: mp ? `Available · ${this._entityLabel(mp)}` : "none detected",
       hint: mp,
@@ -289,7 +308,7 @@ export class TedStatusCard extends LitElement implements LovelaceCard {
     // Music & media player (the Music view target — the auto-matched MA player).
     const music = resolveMusicPlayer(this.hass);
     rows.push({
-      icon: "mdi:music",
+      icon: themedIcon("music"),
       label: "Music and Media Player",
       value:
         music.state === "ok"
@@ -308,16 +327,7 @@ export class TedStatusCard extends LitElement implements LovelaceCard {
   // --- Render ----------------------------------------------------------------
 
   private static _glyph(level: StatusLevel): string {
-    switch (level) {
-      case "ok":
-        return "mdi:check-circle";
-      case "warn":
-        return "mdi:alert-circle";
-      case "bad":
-        return "mdi:close-octagon";
-      default:
-        return "mdi:help-circle";
-    }
+    return themedIcon(GLYPH_KEYS[level]);
   }
 
   /** Map a requirement attribute value to a status level. */

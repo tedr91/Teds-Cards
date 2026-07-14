@@ -938,6 +938,11 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.161
+
+- **Icon set setting** — added **Settings → General → Icon set**. Ted's built-in icons (Status card, Settings category tabs, and more over time) now follow the chosen icon family — **Auto** (best installed), Material Design, Fluent, Streamline, or Pepicons — with a Material Design fallback when an icon isn't available in the chosen set. An internal name map reconciles the different icon names across families. Requires Ted's Cards Backend v1.0.34+.
+- **Status card — User Name** — added a **User Name** row (the logged-in Home Assistant user) at the top of the Status card.
+
 ### v1.0.160
 
 - **Exact Music Assistant provider priority** — when several Music Assistant players share the current device's area, the Music view now reads each player's real provider via the `mass_queue` integration (`get_info`) to rank them **Sonos → Chromecast → AirPlay → DLNA**, instead of guessing from the device manufacturer. It only queries in that specific tie-break case, and falls back to the previous best-effort guess when `mass_queue` isn't installed.

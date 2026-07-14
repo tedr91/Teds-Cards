@@ -15,6 +15,7 @@ import {
   subscribeUiScope,
 } from "../../shared/settings";
 import { resolveDeviceMediaPlayer } from "../../shared/device-id";
+import { resolveIconForSet } from "../../shared/icons";
 import { resolveMusicPlayer } from "../../shared/music-player";
 import {
   fieldsByGroup,
@@ -46,15 +47,6 @@ const DEFAULT_SOUND = "default";
 
 /** What each category tab shows in the strip. */
 type SectionHeaderMode = "both" | "icon" | "name";
-
-/** True when the `fluent` custom iconset is registered (new or legacy registry). */
-function hasFluentIconset(): boolean {
-  const w = window as unknown as {
-    customIcons?: Record<string, unknown>;
-    customIconsets?: Record<string, unknown>;
-  };
-  return !!(w.customIcons?.fluent || w.customIconsets?.fluent);
-}
 
 registerCustomCard({
   type: SETTINGS_CARD_TYPE,
@@ -259,11 +251,12 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     this._section = name;
   }
 
-  /** Category tab icon: the Fluent glyph when that iconset is installed, else the mdi fallback. */
+  /** Category tab icon, following the configured `icon_set` (Fluent/mdi today; mdi fallback). */
   private _groupIcon(name: string): string {
     const entry = SETTINGS_GROUP_ICONS[name];
     if (!entry) return "";
-    return hasFluentIconset() ? entry.fluent : entry.mdi;
+    const set = String(settingsStore.effective().icon_set ?? "auto");
+    return resolveIconForSet(entry, set) ?? entry.mdi;
   }
 
   /** One section tab button (shared by the visible strip and the hidden measure mirror). */
