@@ -117,7 +117,7 @@ In `config` mode each entry in `entities` may be an object with these keys (or a
 | `readonly` | `true` | Prevent editing events (`readonly_calendars`). |
 | `person` | – | A `person.*` whose avatar represents the calendar (`calendar_person_entities`). |
 | `icon` | calendar's icon | Badge icon (`calendar_badge_icons`). |
-| `icon_source` | `person` | Badge shows the linked person's avatar (`person`) or the icon (`icon`). |
+| `icon_source` | `icon` | Badge shows the icon (`icon`) or the linked person's avatar (`person`). |
 | `color` | auto | Event colour, hex (`colors`). |
 
 ---

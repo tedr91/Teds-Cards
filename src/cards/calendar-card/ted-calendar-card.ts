@@ -185,7 +185,7 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
       for (const it of this._configItems(cfg)) {
         if (it.color) colors[it.entity] = cssColor(it.color) ?? it.color;
         if (it.name) names[it.entity] = it.name;
-        if ((it.icon_source ?? "person") === "icon") {
+        if ((it.icon_source ?? "icon") === "icon") {
           delete persons[it.entity];
           if (it.icon) badgeIcons[it.entity] = it.icon;
         } else {

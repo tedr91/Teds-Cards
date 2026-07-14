@@ -43,8 +43,8 @@ const THEME_OPTIONS = [
 ];
 
 const ICON_SOURCE_OPTIONS = [
-  { value: "person", label: "Person" },
   { value: "icon", label: "Icon" },
+  { value: "person", label: "Person" },
 ];
 
 @customElement(CALENDAR_CARD_EDITOR_TYPE)
@@ -243,29 +243,34 @@ export class TedCalendarCardEditor extends LitElement implements LovelaceCardEdi
   }
 
   private _renderRow(item: CalendarItemConfig, idx: number): TemplateResult {
-    const iconSource: CalendarIconSource = item.icon_source ?? "person";
     const optData: Record<string, unknown> = {
       name: item.name ?? "",
       readonly: item.readonly !== false,
-      icon_source: iconSource,
-      person: item.person ?? "",
       icon: item.icon ?? "",
+      person: item.person ?? "",
+      icon_source: item.icon_source ?? "icon",
       color: item.color ?? "",
     };
     const optSchema = [
-      { name: "name", selector: { text: { placeholder: this._entityName(item.entity) } } },
       {
         type: "grid",
         name: "",
         column_min_width: "140px",
         schema: [
+          { name: "name", selector: { text: { placeholder: this._entityName(item.entity) } } },
           { name: "readonly", selector: { boolean: {} } },
-          { name: "icon_source", selector: { select: { mode: "dropdown", options: ICON_SOURCE_OPTIONS } } },
         ],
       },
-      iconSource === "icon"
-        ? { name: "icon", selector: { icon: {} } }
-        : { name: "person", selector: { entity: { domain: "person" } } },
+      {
+        type: "grid",
+        name: "",
+        column_min_width: "140px",
+        schema: [
+          { name: "icon", selector: { icon: {} } },
+          { name: "person", selector: { entity: { domain: "person" } } },
+        ],
+      },
+      { name: "icon_source", selector: { select: { mode: "dropdown", options: ICON_SOURCE_OPTIONS } } },
       { name: "color", selector: { ui_color: {} } },
     ];
     return html`
@@ -333,6 +338,9 @@ export class TedCalendarCardEditor extends LitElement implements LovelaceCardEdi
     if (schema.name === "header_transparency") {
       return "How see-through the header is (0 = solid). Empty follows the theme (Ted's Theme = translucent). A background blur frosts it too.";
     }
+    if (schema.name === "icon_source") {
+      return "Whether this calendar's badge shows the icon or the linked person's avatar.";
+    }
     return undefined;
   };
 
@@ -373,7 +381,7 @@ export class TedCalendarCardEditor extends LitElement implements LovelaceCardEdi
       case "readonly":
         return "Read-only";
       case "icon_source":
-        return "Icon source";
+        return "Badge source";
       case "person":
         return "Person";
       case "icon":
@@ -408,8 +416,8 @@ export class TedCalendarCardEditor extends LitElement implements LovelaceCardEdi
     const next: CalendarItemConfig = { ...cur };
     next.name = (v.name as string) || undefined;
     next.readonly = v.readonly === false ? false : undefined;
-    const src = (v.icon_source as CalendarIconSource) ?? cur.icon_source ?? "person";
-    next.icon_source = src !== "person" ? src : undefined;
+    const src = (v.icon_source as CalendarIconSource) ?? cur.icon_source ?? "icon";
+    next.icon_source = src !== "icon" ? src : undefined;
     if ("person" in v) next.person = (v.person as string) || undefined;
     if ("icon" in v) next.icon = (v.icon as string) || undefined;
     next.color = (v.color as string) || undefined;

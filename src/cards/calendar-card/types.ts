@@ -25,7 +25,7 @@ export interface CalendarItemConfig {
   person?: string;
   /** A badge icon (defaults to the calendar's own icon). */
   icon?: string;
-  /** Whether the badge shows the linked person's avatar or the icon. Default `person`. */
+  /** Whether the badge shows the linked person's avatar or the icon. Default `icon`. */
   icon_source?: CalendarIconSource;
   /** Event colour (hex, e.g. `#43a1ce`). */
   color?: string;
