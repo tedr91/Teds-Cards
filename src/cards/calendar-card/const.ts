@@ -13,6 +13,32 @@ export const DAYLIGHT_CARD_TYPE = `custom:${DAYLIGHT_CARD_TAG}`;
 /** The calendar view the wrapped card opens on by default. */
 export const DEFAULT_CALENDAR_VIEW = "month";
 
+/** Lowercase alphanumeric word tokens of a name (for person auto-matching). */
+export function nameTokens(name: string): string[] {
+  return name.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+}
+
+/** Best `person.*` entity whose name shares the most exact word tokens with the
+ *  calendar name (exact tokens, so "Ted" ≠ "Teddy"), or undefined when none match. */
+export function matchPerson(
+  states: Record<string, { attributes?: Record<string, unknown> } | undefined> | undefined,
+  calendarName: string,
+): string | undefined {
+  if (!states) return undefined;
+  const calTokens = nameTokens(calendarName);
+  if (!calTokens.length) return undefined;
+  let best: { id: string; score: number } | undefined;
+  for (const id of Object.keys(states)) {
+    if (!id.startsWith("person.")) continue;
+    const pname = states[id]?.attributes?.friendly_name;
+    if (typeof pname !== "string" || !pname) continue;
+    let shared = 0;
+    for (const t of nameTokens(pname)) if (calTokens.includes(t)) shared++;
+    if (shared > 0 && (!best || shared > best.score)) best = { id, score: shared };
+  }
+  return best?.id;
+}
+
 /**
  * Ted's baked-in Daylight Calendar configuration. Everything except `type`,
  * `entities`, and `default_view` (which the wrapper supplies) lives here, so a

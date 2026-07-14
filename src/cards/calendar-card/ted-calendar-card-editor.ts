@@ -2,7 +2,7 @@ import { LitElement, css, html, nothing, type TemplateResult } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { type HomeAssistant, type LovelaceCardEditor, fireEvent } from "custom-card-helpers";
 
-import { CALENDAR_CARD_EDITOR_TYPE } from "./const";
+import { CALENDAR_CARD_EDITOR_TYPE, matchPerson } from "./const";
 import { transparencyBlurSchema } from "../../shared/appearance";
 import type {
   CalendarCardConfig,
@@ -275,19 +275,12 @@ export class TedCalendarCardEditor extends LitElement implements LovelaceCardEdi
         ],
       },
       {
-        type: "grid",
-        name: "",
-        column_min_width: "140px",
-        schema: [
-          {
-            name: "icon",
-            selector: {
-              icon: { placeholder: this.hass?.states[item.entity]?.attributes?.icon || "mdi:calendar" },
-            },
-          },
-          { name: "person", selector: { entity: { domain: "person" } } },
-        ],
+        name: "icon",
+        selector: {
+          icon: { placeholder: this.hass?.states[item.entity]?.attributes?.icon || "mdi:calendar" },
+        },
       },
+      { name: "person", selector: { entity: { domain: "person" } } },
       { name: "color", selector: { ui_color: {} } },
     ];
     return html`
@@ -362,7 +355,7 @@ export class TedCalendarCardEditor extends LitElement implements LovelaceCardEdi
       return "How see-through the header is (0 = solid). Empty follows the theme (Ted's Theme = translucent). A background blur frosts it too.";
     }
     if (schema.name === "icon_source") {
-      return "Whether this calendar's badge shows the icon or the linked person's avatar.";
+      return "Badge shows the icon or the linked person's avatar.";
     }
     return undefined;
   };
@@ -426,8 +419,17 @@ export class TedCalendarCardEditor extends LitElement implements LovelaceCardEdi
 
   private _entityChanged(idx: number, ev: CustomEvent): void {
     ev.stopPropagation();
+    const entity = (ev.detail.value as string) ?? "";
     const items = this._items();
-    items[idx] = { ...items[idx], entity: ev.detail.value ?? "" };
+    const cur = items[idx] ?? { entity: "" };
+    const next: CalendarItemConfig = { ...cur, entity };
+    // On (initial) selection, default the Badge source to Person when a person
+    // matches the calendar's name — person takes priority when first added.
+    if (entity && next.icon_source === undefined) {
+      const calName = next.name || this._entityName(entity);
+      if (matchPerson(this.hass?.states, calName)) next.icon_source = "person";
+    }
+    items[idx] = next;
     this._commitItems(items);
   }
 

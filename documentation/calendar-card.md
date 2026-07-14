@@ -117,7 +117,7 @@ In `config` mode each entry in `entities` may be an object with these keys (or a
 | `readonly` | `true` | Prevent editing events (`readonly_calendars`). |
 | `person` | – | A `person.*` whose avatar represents the calendar (`calendar_person_entities`). |
 | `icon` | calendar's icon | Badge icon (`calendar_badge_icons`). |
-| `icon_source` | `icon` | Badge shows the icon (`icon`) or the linked person's avatar (`person`). |
+| `icon_source` | `icon` | Badge shows the icon (`icon`) or the linked person's avatar (`person`). When you add a calendar whose name matches a person (e.g. "Ted Outlook Calendar" → Ted Roberts), the editor sets this to `person` automatically. |
 | `color` | auto | Event colour, hex (`colors`). |
 
 ---

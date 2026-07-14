@@ -21,6 +21,7 @@ import {
   DAYLIGHT_CARD_TAG,
   DAYLIGHT_CARD_TYPE,
   DEFAULT_CALENDAR_VIEW,
+  matchPerson,
 } from "./const";
 import type { CalendarCardConfig, CalendarItemConfig } from "./types";
 
@@ -185,12 +186,18 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
       for (const it of this._configItems(cfg)) {
         if (it.color) colors[it.entity] = cssColor(it.color) ?? it.color;
         if (it.name) names[it.entity] = it.name;
-        if ((it.icon_source ?? "icon") === "icon") {
-          delete persons[it.entity];
+        // Resolve the person: explicit wins, else auto-match by name.
+        const calName =
+          it.name || this.hass?.states[it.entity]?.attributes?.friendly_name || it.entity;
+        const person = it.person ?? matchPerson(this.hass?.states, String(calName));
+        // Badge source: explicit wins; otherwise a matched person shows its avatar, else the icon.
+        const source = it.icon_source ?? (person ? "person" : "icon");
+        if (source === "person") {
+          if (person) persons[it.entity] = person;
+          else delete persons[it.entity];
           if (it.icon) badgeIcons[it.entity] = it.icon;
         } else {
-          if (it.person) persons[it.entity] = it.person;
-          else delete persons[it.entity];
+          delete persons[it.entity];
           if (it.icon) badgeIcons[it.entity] = it.icon;
         }
         const ri = readonly.indexOf(it.entity);
