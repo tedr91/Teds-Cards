@@ -939,6 +939,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.177
+
+- **Calendar card — Appearance & per-calendar options** — the Calendar card editor now has an **Appearance** section (name / show name, theme styling, background colour + transparency + blur, show header + header colour, allow calendar toggling, weather sensor, and fixed width/height for non-grid layouts). Each calendar in the list also gains its own options: name, read-only, person, icon, icon source (person avatar vs icon), and colour. These map to the wrapped Daylight Calendar card's native settings (with a little injected CSS for background colour/blur, which it has no native option for).
+
 ### v1.0.176
 
 - **Per-device entity lists now use inherit/override** — the **Calendars**, **Cameras**, and **Thermostats** "This device" settings now have an **Inheriting — click to override** toggle like other settings. While inheriting, the device shows the Global list (read-only); click the link icon to override and curate this device's own subset. The **Sync list** button remains (in override mode) to reset the device list to the current Global list.

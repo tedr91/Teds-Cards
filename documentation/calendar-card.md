@@ -47,7 +47,12 @@ type: custom:ted-calendar-card
 calendar_source: config
 entities:
   - calendar.family
-  - calendar.holidays_in_united_states
+  - entity: calendar.ted_outlook_calendar
+    name: Ted
+    color: "#43a1ce"
+    person: person.ted_roberts
+    icon_source: person
+    readonly: true
 default_view: week
 ```
 
@@ -82,6 +87,37 @@ calendar_config:
 | `empty_title` / `empty_message` | – | Override the empty-state message (no calendars selected). |
 | `missing_title` / `missing_message` | – | Override the missing-dependency message text. |
 | `settings_path` | `[root]/settings?tab=calendars` | Where the empty-state **Settings** button navigates. `[root]` is your dashboard root. |
+
+### Appearance
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `name` | – | The calendar title shown in the header. |
+| `show_name` | `true` | Show the title/name in the header. |
+| `theme` | `ha` | Surface styling: `ha` (Home Assistant theme) or `ted-style` (Ted's frosted theme = translucent card background + blur). |
+| `background_color` | – | Card body background colour (hex). Injected via Daylight's `uix.style`. |
+| `transparency` | `0` | Background see-through 0–100%. On its own maps to Daylight's `background_opacity`; combined with `background_color` it sets the colour's alpha. |
+| `blur` | `0` | Background blur in px (frosts whatever shows through a translucent background). |
+| `show_header` | `true` | Show the calendar header (`hide_header` inverse). |
+| `header_color` | – | Header background colour (hex; also accepts `match-card-background`). |
+| `allow_calendar_toggling` | `true` | Show the calendar on/off toggle list in the header (only when the header is shown; `hide_calendars` inverse). |
+| `weather_sensor` | – | A `weather.*` entity shown in the header (`header_weather_sensor`). |
+| `width` / `height` | – | Fixed size in px. **Only** applied when the card isn't a direct item in a grid (Sections) view. |
+
+### Per-calendar options
+
+In `config` mode each entry in `entities` may be an object with these keys (or a bare
+`calendar.*` id). Each maps to the matching Daylight per-calendar setting:
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `entity` | – | The `calendar.*` entity (required). |
+| `name` | calendar's name | Display name (`calendar_names`). |
+| `readonly` | `true` | Prevent editing events (`readonly_calendars`). |
+| `person` | – | A `person.*` whose avatar represents the calendar (`calendar_person_entities`). |
+| `icon` | calendar's icon | Badge icon (`calendar_badge_icons`). |
+| `icon_source` | `person` | Badge shows the linked person's avatar (`person`) or the icon (`icon`). |
+| `color` | auto | Event colour, hex (`colors`). |
 
 ---
 

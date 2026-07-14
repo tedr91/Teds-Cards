@@ -3,11 +3,36 @@ import { customElement, property, state } from "lit/decorators.js";
 import { type HomeAssistant, type LovelaceCardEditor, fireEvent } from "custom-card-helpers";
 
 import { CALENDAR_CARD_EDITOR_TYPE } from "./const";
-import type { CalendarCardConfig, CalendarSource } from "./types";
+import type {
+  CalendarCardConfig,
+  CalendarIconSource,
+  CalendarItemConfig,
+  CalendarSource,
+} from "./types";
+
+/** Parse a `#rrggbb` string into an `[r,g,b]` array for HA's color_rgb selector. */
+function hexToRgb(hex?: string): [number, number, number] | undefined {
+  if (typeof hex !== "string") return undefined;
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
+  if (!m) return undefined;
+  const n = parseInt(m[1], 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+
+/** Convert an `[r,g,b]` array back to a `#rrggbb` string. */
+function rgbToHex(rgb: unknown): string | undefined {
+  if (!Array.isArray(rgb) || rgb.length < 3) return undefined;
+  const h = (v: number): string =>
+    Math.max(0, Math.min(255, Math.round(Number(v)))).toString(16).padStart(2, "0");
+  return `#${h(rgb[0])}${h(rgb[1])}${h(rgb[2])}`;
+}
 
 // mdi:calendar — Calendars section header
 const CALENDAR_ICON_PATH =
   "M19,19H5V8H19M16,1V3H8V1H6V3H5C3.89,3 3,3.89 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V5C21,3.89 20.1,3 19,3H18V1M17,12H12V17H17V12Z";
+// mdi:palette — Appearance section header
+const PALETTE_ICON_PATH =
+  "M17.5,12A1.5,1.5 0 0,1 16,10.5A1.5,1.5 0 0,1 17.5,9A1.5,1.5 0 0,1 19,10.5A1.5,1.5 0 0,1 17.5,12M14.5,8A1.5,1.5 0 0,1 13,6.5A1.5,1.5 0 0,1 14.5,5A1.5,1.5 0 0,1 16,6.5A1.5,1.5 0 0,1 14.5,8M9.5,8A1.5,1.5 0 0,1 8,6.5A1.5,1.5 0 0,1 9.5,5A1.5,1.5 0 0,1 11,6.5A1.5,1.5 0 0,1 9.5,8M6.5,12A1.5,1.5 0 0,1 5,10.5A1.5,1.5 0 0,1 6.5,9A1.5,1.5 0 0,1 8,10.5A1.5,1.5 0 0,1 6.5,12M12,3A9,9 0 0,0 3,12A9,9 0 0,0 12,21A1.5,1.5 0 0,0 13.5,19.5C13.5,19.11 13.35,18.76 13.11,18.5C12.88,18.23 12.73,17.88 12.73,17.5A1.5,1.5 0 0,1 14.23,16H16A5,5 0 0,0 21,11C21,6.58 16.97,3 12,3Z";
 // mdi:drag — reorder handle
 const GRIP_ICON_PATH =
   "M7,19V17H9V19H7M11,19V17H13V19H11M15,19V17H17V19H15M7,15V13H9V15H7M11,15V13H13V15H11M15,15V13H17V15H15M7,11V9H9V11H7M11,11V9H13V11H11M15,11V9H17V11H15M7,7V5H9V7H7M11,7V5H13V7H11M15,7V5H17V7H15Z";
@@ -28,6 +53,16 @@ const VIEW_OPTIONS = [
   { value: "agenda", label: "Agenda" },
 ];
 
+const THEME_OPTIONS = [
+  { value: "ha", label: "Home Assistant Theme" },
+  { value: "ted-style", label: "Ted's Theme" },
+];
+
+const ICON_SOURCE_OPTIONS = [
+  { value: "person", label: "Person" },
+  { value: "icon", label: "Icon" },
+];
+
 @customElement(CALENDAR_CARD_EDITOR_TYPE)
 export class TedCalendarCardEditor extends LitElement implements LovelaceCardEditor {
   @property({ attribute: false }) public hass?: HomeAssistant;
@@ -37,9 +72,22 @@ export class TedCalendarCardEditor extends LitElement implements LovelaceCardEdi
     this._config = config;
   }
 
-  /** The configured calendar ids (config mode). */
-  private _entities(): string[] {
-    return (this._config?.entities ?? []).filter((id): id is string => typeof id === "string");
+  /** The calendars as item objects (bare id strings normalized to `{entity}`). */
+  private _items(): CalendarItemConfig[] {
+    return (this._config?.entities ?? []).map((e) =>
+      typeof e === "string" ? { entity: e } : { ...e },
+    );
+  }
+
+  /** Commit an items array, collapsing option-less items back to bare id strings. */
+  private _commitItems(items: CalendarItemConfig[]): void {
+    const entities = items.map((it) => {
+      const hasOpts = Object.entries(it).some(
+        ([k, v]) => k !== "entity" && v !== undefined && v !== "",
+      );
+      return hasOpts ? it : it.entity;
+    });
+    this._commit({ ...this._config, entities } as CalendarCardConfig);
   }
 
   protected render(): TemplateResult | typeof nothing {
@@ -72,12 +120,85 @@ export class TedCalendarCardEditor extends LitElement implements LovelaceCardEdi
               available list there, then curate each device's subset.
             </div>`
           : this._renderEntities()}
+        ${this._renderAppearance()}
       </div>
     `;
   }
 
+  private _renderAppearance(): TemplateResult {
+    const cfg = this._config ?? ({} as CalendarCardConfig);
+    const showHeader = cfg.show_header !== false;
+    const data: Record<string, unknown> = {
+      name: cfg.name ?? "",
+      show_name: cfg.show_name !== false,
+      show_header: showHeader,
+      theme: cfg.theme ?? "ha",
+      allow_calendar_toggling: cfg.allow_calendar_toggling !== false,
+      header_color: hexToRgb(cfg.header_color),
+      background_color: hexToRgb(cfg.background_color),
+      transparency: cfg.transparency ?? 0,
+      blur: cfg.blur ?? 0,
+      weather_sensor: cfg.weather_sensor ?? "",
+      width: cfg.width,
+      height: cfg.height,
+    };
+    const schema = [
+      { name: "name", selector: { text: {} } },
+      {
+        type: "grid",
+        name: "",
+        column_min_width: "140px",
+        schema: [
+          { name: "show_name", selector: { boolean: {} } },
+          { name: "show_header", selector: { boolean: {} } },
+        ],
+      },
+      { name: "theme", selector: { select: { mode: "dropdown", options: THEME_OPTIONS } } },
+      ...(showHeader ? [{ name: "allow_calendar_toggling", selector: { boolean: {} } }] : []),
+      { name: "header_color", selector: { color_rgb: {} } },
+      { name: "background_color", selector: { color_rgb: {} } },
+      {
+        type: "grid",
+        name: "",
+        column_min_width: "140px",
+        schema: [
+          { name: "transparency", selector: { number: { min: 0, max: 100, mode: "slider", unit_of_measurement: "%" } } },
+          { name: "blur", selector: { number: { min: 0, max: 40, mode: "slider", unit_of_measurement: "px" } } },
+        ],
+      },
+      { name: "weather_sensor", selector: { entity: { domain: "weather" } } },
+      {
+        type: "grid",
+        name: "",
+        column_min_width: "140px",
+        schema: [
+          { name: "width", selector: { number: { min: 0, mode: "box", unit_of_measurement: "px" } } },
+          { name: "height", selector: { number: { min: 0, mode: "box", unit_of_measurement: "px" } } },
+        ],
+      },
+    ];
+    return html`
+      <ha-expansion-panel outlined class="group-panel">
+        <div slot="header" class="group-header">
+          <ha-svg-icon .path=${PALETTE_ICON_PATH}></ha-svg-icon>
+          <span>Appearance</span>
+        </div>
+        <div class="group-body">
+          <ha-form
+            .hass=${this.hass}
+            .data=${data}
+            .schema=${schema}
+            .computeLabel=${this._computeLabel}
+            .computeHelper=${this._computeHelper}
+            @value-changed=${this._appearanceChanged}
+          ></ha-form>
+        </div>
+      </ha-expansion-panel>
+    `;
+  }
+
   private _renderEntities(): TemplateResult {
-    const entities = this._entities();
+    const items = this._items();
     return html`
       <ha-expansion-panel outlined class="group-panel" .expanded=${true}>
         <div slot="header" class="group-header">
@@ -94,10 +215,10 @@ export class TedCalendarCardEditor extends LitElement implements LovelaceCardEdi
         <div class="group-body">
           <ha-sortable handle-selector=".drag-handle" @item-moved=${this._moved}>
             <div class="row-list">
-              ${entities.map((id, idx) => this._renderRow(id, idx))}
+              ${items.map((item, idx) => this._renderRow(item, idx))}
             </div>
           </ha-sortable>
-          ${entities.length === 0
+          ${items.length === 0
             ? html`<div class="settings-note">No calendars yet — tap + to add one.</div>`
             : nothing}
         </div>
@@ -105,26 +226,68 @@ export class TedCalendarCardEditor extends LitElement implements LovelaceCardEdi
     `;
   }
 
-  private _renderRow(id: string, idx: number): TemplateResult {
+  private _renderRow(item: CalendarItemConfig, idx: number): TemplateResult {
+    const iconSource: CalendarIconSource = item.icon_source ?? "person";
+    const optData: Record<string, unknown> = {
+      name: item.name ?? "",
+      readonly: item.readonly !== false,
+      icon_source: iconSource,
+      person: item.person ?? "",
+      icon: item.icon ?? "",
+      color: hexToRgb(item.color),
+    };
+    const optSchema = [
+      { name: "name", selector: { text: {} } },
+      {
+        type: "grid",
+        name: "",
+        column_min_width: "140px",
+        schema: [
+          { name: "readonly", selector: { boolean: {} } },
+          { name: "icon_source", selector: { select: { mode: "dropdown", options: ICON_SOURCE_OPTIONS } } },
+        ],
+      },
+      iconSource === "icon"
+        ? { name: "icon", selector: { icon: {} } }
+        : { name: "person", selector: { entity: { domain: "person" } } },
+      { name: "color", selector: { color_rgb: {} } },
+    ];
     return html`
-      <div class="row">
-        <div class="drag-handle" @click=${this._stop} title="Drag to reorder">
-          <ha-svg-icon .path=${GRIP_ICON_PATH}></ha-svg-icon>
+      <div class="cal">
+        <div class="row">
+          <div class="drag-handle" @click=${this._stop} title="Drag to reorder">
+            <ha-svg-icon .path=${GRIP_ICON_PATH}></ha-svg-icon>
+          </div>
+          <ha-entity-picker
+            class="row-picker"
+            .hass=${this.hass}
+            .value=${item.entity}
+            .includeDomains=${["calendar"]}
+            allow-custom-entity
+            @value-changed=${(ev: CustomEvent) => this._entityChanged(idx, ev)}
+          ></ha-entity-picker>
+          <ha-icon-button
+            class="warning"
+            label="Delete calendar"
+            .path=${DELETE_ICON_PATH}
+            @click=${(ev: Event) => this._remove(idx, ev)}
+          ></ha-icon-button>
         </div>
-        <ha-entity-picker
-          class="row-picker"
-          .hass=${this.hass}
-          .value=${id}
-          .includeDomains=${["calendar"]}
-          allow-custom-entity
-          @value-changed=${(ev: CustomEvent) => this._entityChanged(idx, ev)}
-        ></ha-entity-picker>
-        <ha-icon-button
-          class="warning"
-          label="Delete calendar"
-          .path=${DELETE_ICON_PATH}
-          @click=${(ev: Event) => this._remove(idx, ev)}
-        ></ha-icon-button>
+        ${item.entity
+          ? html`<ha-expansion-panel outlined class="opt-panel">
+              <span slot="header" class="opt-header">Options</span>
+              <div class="opt-body">
+                <ha-form
+                  .hass=${this.hass}
+                  .data=${optData}
+                  .schema=${optSchema}
+                  .computeLabel=${this._computeLabel}
+                  .computeHelper=${this._computeHelper}
+                  @value-changed=${(ev: CustomEvent) => this._itemChanged(idx, ev)}
+                ></ha-form>
+              </div>
+            </ha-expansion-panel>`
+          : nothing}
       </div>
     `;
   }
@@ -139,6 +302,15 @@ export class TedCalendarCardEditor extends LitElement implements LovelaceCardEdi
     if (schema.name === "fill") {
       return "Fill the parent container (e.g. a dashboard view area) instead of sizing to content.";
     }
+    if (schema.name === "width" || schema.name === "height") {
+      return "Only used when the card isn't a direct item in a grid (Sections) view.";
+    }
+    if (schema.name === "readonly") {
+      return "Prevent editing events on this calendar.";
+    }
+    if (schema.name === "transparency") {
+      return "How see-through the card background is (0 = solid).";
+    }
     return undefined;
   };
 
@@ -150,8 +322,40 @@ export class TedCalendarCardEditor extends LitElement implements LovelaceCardEdi
         return "Default view";
       case "fill":
         return "Fill available space";
-      case "entities":
-        return "Calendars";
+      case "name":
+        return "Name";
+      case "show_name":
+        return "Show name";
+      case "show_header":
+        return "Show header";
+      case "theme":
+        return "Theme styling";
+      case "allow_calendar_toggling":
+        return "Allow calendar toggling";
+      case "header_color":
+        return "Header color";
+      case "background_color":
+        return "Background color";
+      case "transparency":
+        return "Transparency";
+      case "blur":
+        return "Background blur";
+      case "weather_sensor":
+        return "Weather sensor";
+      case "width":
+        return "Width";
+      case "height":
+        return "Height";
+      case "readonly":
+        return "Read-only";
+      case "icon_source":
+        return "Icon source";
+      case "person":
+        return "Person";
+      case "icon":
+        return "Icon";
+      case "color":
+        return "Color";
       default:
         return schema.name;
     }
@@ -167,39 +371,77 @@ export class TedCalendarCardEditor extends LitElement implements LovelaceCardEdi
 
   private _entityChanged(idx: number, ev: CustomEvent): void {
     ev.stopPropagation();
-    const entities = this._entities();
-    entities[idx] = ev.detail.value ?? "";
-    this._commit({ ...this._config, entities } as CalendarCardConfig);
+    const items = this._items();
+    items[idx] = { ...items[idx], entity: ev.detail.value ?? "" };
+    this._commitItems(items);
   }
+
+  private _itemChanged(idx: number, ev: CustomEvent): void {
+    ev.stopPropagation();
+    const v = ev.detail.value as Record<string, unknown>;
+    const items = this._items();
+    const cur = items[idx] ?? { entity: "" };
+    const next: CalendarItemConfig = { ...cur };
+    next.name = (v.name as string) || undefined;
+    next.readonly = v.readonly === false ? false : undefined;
+    const src = (v.icon_source as CalendarIconSource) ?? cur.icon_source ?? "person";
+    next.icon_source = src !== "person" ? src : undefined;
+    if ("person" in v) next.person = (v.person as string) || undefined;
+    if ("icon" in v) next.icon = (v.icon as string) || undefined;
+    next.color = rgbToHex(v.color);
+    items[idx] = next;
+    this._commitItems(items);
+  }
+
+  private _appearanceChanged = (ev: CustomEvent): void => {
+    const v = ev.detail.value as Record<string, unknown>;
+    const patch = {
+      name: (v.name as string) || undefined,
+      show_name: v.show_name === false ? false : undefined,
+      show_header: v.show_header === false ? false : undefined,
+      theme: v.theme && v.theme !== "ha" ? (v.theme as CalendarCardConfig["theme"]) : undefined,
+      allow_calendar_toggling: v.allow_calendar_toggling === false ? false : undefined,
+      header_color: rgbToHex(v.header_color),
+      background_color: rgbToHex(v.background_color),
+      transparency: typeof v.transparency === "number" && v.transparency > 0 ? v.transparency : undefined,
+      blur: typeof v.blur === "number" && v.blur > 0 ? v.blur : undefined,
+      weather_sensor: (v.weather_sensor as string) || undefined,
+      width: typeof v.width === "number" ? v.width : undefined,
+      height: typeof v.height === "number" ? v.height : undefined,
+    };
+    this._commit({ ...this._config, ...patch } as CalendarCardConfig);
+  };
 
   private _add = (ev: Event): void => {
     ev.stopPropagation();
-    const entities = [...this._entities(), ""];
-    this._commit({ ...this._config, entities } as CalendarCardConfig);
+    this._commitItems([...this._items(), { entity: "" }]);
   };
 
   private _remove(idx: number, ev: Event): void {
     ev.stopPropagation();
-    const entities = this._entities();
-    entities.splice(idx, 1);
-    this._commit({ ...this._config, entities } as CalendarCardConfig);
+    const items = this._items();
+    items.splice(idx, 1);
+    this._commitItems(items);
   }
 
   private _moved = (ev: CustomEvent): void => {
     ev.stopPropagation();
     const { oldIndex, newIndex } = ev.detail as { oldIndex: number; newIndex: number };
-    const entities = this._entities();
-    entities.splice(newIndex, 0, entities.splice(oldIndex, 1)[0]);
-    this._commit({ ...this._config, entities } as CalendarCardConfig);
+    const items = this._items();
+    items.splice(newIndex, 0, items.splice(oldIndex, 1)[0]);
+    this._commitItems(items);
   };
 
   private _commit(raw: CalendarCardConfig): void {
-    const config = { ...raw } as CalendarCardConfig;
+    const config = { ...raw } as Record<string, unknown>;
+    for (const k of Object.keys(config)) {
+      if (config[k] === undefined) delete config[k];
+    }
     if (config.calendar_source === "config") delete config.calendar_source;
     if (config.default_view === "month") delete config.default_view;
     if (config.fill === false) delete config.fill;
     if (config.calendar_source === "settings") delete config.entities;
-    this._config = config;
+    this._config = config as CalendarCardConfig;
     fireEvent(this, "config-changed", { config });
   }
 
@@ -266,6 +508,22 @@ export class TedCalendarCardEditor extends LitElement implements LovelaceCardEdi
       font-size: 0.9rem;
       line-height: 1.4;
       color: var(--secondary-text-color);
+    }
+    .cal {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .opt-panel {
+      --expansion-panel-content-padding: 0;
+      margin-left: 28px;
+    }
+    .opt-header {
+      font-size: 0.85rem;
+      color: var(--secondary-text-color);
+    }
+    .opt-body {
+      padding: 8px 12px 12px;
     }
   `;
 }

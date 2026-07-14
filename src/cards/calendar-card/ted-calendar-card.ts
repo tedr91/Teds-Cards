@@ -1,5 +1,6 @@
 import { LitElement, css, html, nothing, type TemplateResult } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
+import { styleMap } from "lit/directives/style-map.js";
 import {
   type HomeAssistant,
   type LovelaceCard,
@@ -20,7 +21,7 @@ import {
   DAYLIGHT_CARD_TYPE,
   DEFAULT_CALENDAR_VIEW,
 } from "./const";
-import type { CalendarCardConfig } from "./types";
+import type { CalendarCardConfig, CalendarItemConfig } from "./types";
 
 /** The MessageBox card used for the empty / missing-dependency states (UX consistency). */
 const MESSAGEBOX_CARD_TYPE = "custom:ted-messagebox-card";
@@ -131,11 +132,16 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
     return typeof customElements !== "undefined" && !!customElements.get(DAYLIGHT_CARD_TAG);
   }
 
+  /** The calendars as item objects (bare id strings are normalized to `{entity}`). */
+  private _configItems(config?: CalendarCardConfig): CalendarItemConfig[] {
+    return (config?.entities ?? [])
+      .map((e) => (typeof e === "string" ? { entity: e } : { ...e }))
+      .filter((i): i is CalendarItemConfig => typeof i.entity === "string" && i.entity.length > 0);
+  }
+
   /** The raw `calendar.*` ids from a config's `entities`. */
   private _configEntities(config?: CalendarCardConfig): string[] {
-    return (config?.entities ?? []).filter(
-      (id): id is string => typeof id === "string" && id.length > 0,
-    );
+    return this._configItems(config).map((i) => i.entity);
   }
 
   /** Resolve this device's calendars from settings: the device's curated subset
@@ -161,12 +167,90 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
   // --- Embedded daylight-calendar-card ---------------------------------------
 
   private _childConfig(entities: string[]): LovelaceCardConfig {
+    const cfg = this._config ?? ({} as CalendarCardConfig);
+    const base = { ...CALENDAR_DEFAULT_CONFIG } as Record<string, unknown>;
+
+    // --- Per-calendar customization (config mode only) ---
+    const asMap = (v: unknown): Record<string, string> =>
+      v && typeof v === "object" ? { ...(v as Record<string, string>) } : {};
+    const colors = asMap(base.colors);
+    const names = asMap(base.calendar_names);
+    const persons = asMap(base.calendar_person_entities);
+    const badgeIcons = asMap(base.calendar_badge_icons);
+    const readonly = Array.isArray(base.readonly_calendars)
+      ? [...(base.readonly_calendars as string[])]
+      : [];
+    if (cfg.calendar_source !== "settings") {
+      for (const it of this._configItems(cfg)) {
+        if (it.color) colors[it.entity] = it.color;
+        if (it.name) names[it.entity] = it.name;
+        if ((it.icon_source ?? "person") === "icon") {
+          delete persons[it.entity];
+          if (it.icon) badgeIcons[it.entity] = it.icon;
+        } else {
+          if (it.person) persons[it.entity] = it.person;
+          else delete persons[it.entity];
+          if (it.icon) badgeIcons[it.entity] = it.icon;
+        }
+        const ri = readonly.indexOf(it.entity);
+        if (it.readonly === false) {
+          if (ri >= 0) readonly.splice(ri, 1);
+        } else if (ri < 0) {
+          readonly.push(it.entity);
+        }
+      }
+    }
+
+    // --- Appearance ---
+    const appearance: Record<string, unknown> = {};
+    if (cfg.show_name === false) appearance.title = "";
+    else if (cfg.name) appearance.title = cfg.name;
+    const showHeader = cfg.show_header !== false;
+    appearance.hide_header = !showHeader;
+    if (showHeader) appearance.hide_calendars = cfg.allow_calendar_toggling === false;
+    if (cfg.header_color) appearance.header_color = cfg.header_color;
+    if (cfg.weather_sensor) appearance.header_weather_sensor = cfg.weather_sensor;
+
+    // Background colour / transparency / blur. daylight has no native background-colour
+    // or blur, so those are injected via its `uix.style` (raw CSS into its shadow DOM);
+    // transparency alone maps to daylight's native `background_opacity`.
+    const theme = cfg.theme ?? "ha";
+    let bgColor = cfg.background_color;
+    let blurPx = cfg.blur;
+    if (theme === "ted-style") {
+      if (bgColor === undefined) bgColor = "var(--ha-card-background)";
+      if (blurPx === undefined) blurPx = 14;
+    }
+    const clampPct = (n: number): number => Math.max(0, Math.min(100, n));
+    const uixParts: string[] = [];
+    if (bgColor !== undefined) {
+      const t = typeof cfg.transparency === "number" ? clampPct(cfg.transparency) : 0;
+      const fill = t > 0 ? `color-mix(in srgb, ${bgColor} ${100 - t}%, transparent)` : bgColor;
+      appearance.background_transparent = true; // our fill becomes the only body background
+      uixParts.push(`.calendar-body { background: ${fill} !important; }`);
+    } else if (typeof cfg.transparency === "number") {
+      appearance.background_opacity = clampPct(cfg.transparency);
+    }
+    if (typeof blurPx === "number" && blurPx > 0) {
+      uixParts.push(
+        `.calendar-body { backdrop-filter: blur(${blurPx}px) !important; -webkit-backdrop-filter: blur(${blurPx}px) !important; }`,
+      );
+    }
+    const uix = uixParts.length ? { uix: { style: uixParts.join("\n") } } : {};
+
     return {
       type: DAYLIGHT_CARD_TYPE,
-      ...CALENDAR_DEFAULT_CONFIG,
+      ...base,
+      ...appearance,
+      colors,
+      calendar_names: names,
+      calendar_person_entities: persons,
+      calendar_badge_icons: badgeIcons,
+      readonly_calendars: readonly,
+      ...uix,
       entities,
-      default_view: this._config?.default_view ?? DEFAULT_CALENDAR_VIEW,
-      ...(this._config?.calendar_config ?? {}),
+      default_view: cfg.default_view ?? DEFAULT_CALENDAR_VIEW,
+      ...(cfg.calendar_config ?? {}),
     };
   }
 
@@ -300,7 +384,21 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
     if (this._childKind === "message")
       return html`<div class="msg-wrap"><div class="msg">${this._child.el}</div></div>`;
     const cls = this._config.fill ? "calendar fill" : "calendar natural";
-    return html`<div class=${cls}>${this._child.el}</div>`;
+    return html`<div class=${cls} style=${styleMap(this._calendarStyle())}>${this._child.el}</div>`;
+  }
+
+  /** Fixed width/height for the wrapper — only when not filling and not a direct
+   *  grid (Sections) item (where the grid controls the size). */
+  private _calendarStyle(): Record<string, string> {
+    const cfg = this._config;
+    const style: Record<string, string> = {};
+    if (!cfg || cfg.fill || this.layout === "grid") return style;
+    if (typeof cfg.width === "number") style.width = `${cfg.width}px`;
+    if (typeof cfg.height === "number") {
+      style.height = `${cfg.height}px`;
+      style.overflow = "hidden";
+    }
+    return style;
   }
 
   static styles = css`
