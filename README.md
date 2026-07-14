@@ -939,6 +939,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.189
+
+- **Richer Calendars list in Settings** — collapsed calendar rows in **Settings → Calendars** now preview each calendar's configured **icon** and **name**, tint the row with a pleasant gradient of its **color**, and show the linked **person's avatar** next to the Options chevron.
+
 ### v1.0.188
 
 - **Per-calendar options in Settings → Calendars** — the same per-calendar options as the Ted's Calendar card editor (Name, Read-only, Badge source, Icon, Person, Color) are now editable in **Settings → Calendars**. Each calendar in the Global list has a chevron that expands its options; the card applies them in `calendar_source: settings` mode. Options are calendar-wide (global); each device still curates which calendars it shows.

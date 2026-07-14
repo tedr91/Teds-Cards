@@ -40,6 +40,7 @@ import {
   calendarOptionsData,
   calendarOptionsSchema,
 } from "../calendar-card/calendar-options";
+import { matchPerson } from "../calendar-card/const";
 import type { CalendarItemConfig } from "../calendar-card/types";
 import {
   SETTINGS_CARD_DESCRIPTION,
@@ -783,18 +784,36 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
       isOpen: (id: string) => boolean;
       toggle: (id: string) => void;
       body: (id: string) => TemplateResult;
+      /** Per-row icon override (e.g. a calendar's configured/own icon). */
+      icon?: (id: string) => string;
+      /** Per-row name override (e.g. a calendar's configured name). */
+      name?: (id: string) => string;
+      /** Per-row color swatch (resolved CSS color; empty = no swatch). */
+      color?: (id: string) => string;
+      /** Per-row person avatar URL (empty = none). */
+      person?: (id: string) => string;
     },
   ): TemplateResult {
     const rows = ids.map((id, idx) => {
+      const rowIcon = options?.icon?.(id) || icon;
+      const rowName = options?.name?.(id) || this._cameraName(id);
+      const rowColor = options?.color?.(id) || "";
+      const rowPerson = options?.person?.(id) || "";
       const row = html`
-        <div class="cam-item ${readonly ? "readonly" : ""}">
+        <div
+          class="cam-item ${readonly ? "readonly" : ""} ${rowColor ? "tinted" : ""}"
+          style=${rowColor ? styleMap({ "--cam-tint": rowColor }) : nothing}
+        >
           ${readonly
             ? nothing
             : html`<div class="cam-grip" title="Drag to reorder">
                 <ha-icon icon="mdi:drag"></ha-icon>
               </div>`}
-          <ha-icon class="cam-ico" .icon=${icon}></ha-icon>
-          <span class="cam-name">${this._cameraName(id)}</span>
+          <ha-icon class="cam-ico" .icon=${rowIcon}></ha-icon>
+          <span class="cam-name">${rowName}</span>
+          ${!readonly && rowPerson
+            ? html`<img class="cam-avatar" src=${rowPerson} alt="" />`
+            : nothing}
           ${!readonly && options
             ? html`<button
                 class="cam-opt ${options.isOpen(id) ? "on" : ""}"
@@ -852,6 +871,42 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
       }
     }
     return out;
+  }
+
+  /** A calendar's collapsed-row icon: its configured icon, else the entity's own
+   *  icon, else the default calendar glyph. */
+  private _calendarRowIcon(id: string): string {
+    const opt = this._calendarOptionsMap()[id] ?? {};
+    const configured = typeof opt.icon === "string" ? opt.icon : "";
+    const entityIcon = this.hass?.states[id]?.attributes?.icon;
+    return configured || (typeof entityIcon === "string" ? entityIcon : "") || "mdi:calendar";
+  }
+
+  /** A calendar's collapsed-row name: its configured name, else the friendly name. */
+  private _calendarRowName(id: string): string {
+    const opt = this._calendarOptionsMap()[id] ?? {};
+    const configured = typeof opt.name === "string" ? opt.name : "";
+    return configured || this._cameraName(id);
+  }
+
+  /** A calendar's collapsed-row color swatch (resolved CSS color), or "" when unset. */
+  private _calendarRowColor(id: string): string {
+    const opt = this._calendarOptionsMap()[id] ?? {};
+    const c = typeof opt.color === "string" ? opt.color : "";
+    return c ? (cssColor(c) ?? c) : "";
+  }
+
+  /** The avatar URL for a calendar's linked person (explicit, else auto-matched by
+   *  name), or "" when the badge source is an icon / no person / no picture. */
+  private _calendarRowPersonPicture(id: string): string {
+    const opt = this._calendarOptionsMap()[id] ?? {};
+    if (opt.icon_source === "icon") return "";
+    const explicit = typeof opt.person === "string" ? opt.person : "";
+    const name = typeof opt.name === "string" && opt.name ? opt.name : this._cameraName(id);
+    const person = explicit || matchPerson(this.hass?.states, name) || "";
+    if (!person) return "";
+    const pic = this.hass?.states[person]?.attributes?.entity_picture;
+    return typeof pic === "string" ? pic : "";
   }
 
   /** The per-calendar Options form for one calendar in the Global list. */
@@ -929,6 +984,10 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
                     isOpen: (id) => this._calOptOpen.has(id),
                     toggle: (id) => this._toggleCalOpt(id),
                     body: (id) => this._renderCalendarOptions(id),
+                    icon: (id) => this._calendarRowIcon(id),
+                    name: (id) => this._calendarRowName(id),
+                    color: (id) => this._calendarRowColor(id),
+                    person: (id) => this._calendarRowPersonPicture(id),
                   }
                 : undefined,
             )
@@ -1805,6 +1864,16 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
         opacity: 0.72;
         border-style: dashed;
       }
+      /* A calendar row tinted with a pleasant horizontal gradient of its color. */
+      .cam-item.tinted {
+        background: linear-gradient(
+          90deg,
+          color-mix(in srgb, var(--cam-tint) 34%, var(--ted-style-surface-2)) 0%,
+          color-mix(in srgb, var(--cam-tint) 12%, var(--ted-style-surface-2)) 55%,
+          var(--ted-style-surface-2) 100%
+        );
+        border-color: color-mix(in srgb, var(--cam-tint) 45%, var(--ted-style-divider));
+      }
       .cam-grip {
         display: flex;
         align-items: center;
@@ -1826,6 +1895,14 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
+      }
+      .cam-avatar {
+        flex: none;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 1px solid color-mix(in srgb, var(--ted-style-divider) 80%, transparent);
       }
       .cam-del {
         display: inline-flex;
