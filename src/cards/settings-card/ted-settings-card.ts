@@ -32,6 +32,7 @@ import {
   type BackgroundFieldsCtx,
 } from "../../shared/background";
 import { getMediaFolder, isMediaSourceUri, pickMedia, resolveMediaSource, uploadImage, uploadToMediaFolder } from "../../shared/media";
+import { backgroundEngine } from "../background-card/background-engine";
 import {
   SETTINGS_CARD_DESCRIPTION,
   SETTINGS_CARD_EDITOR_TYPE,
@@ -114,9 +115,13 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
   }
 
   private _unsubScope?: () => void;
+  /** Live readability-scrim diagnostic subscription (Debug-mode panel). */
+  private _unsubBgDiag?: () => void;
 
   public connectedCallback(): void {
     super.connectedCallback();
+    // Live wallpaper readability diagnostics for the Debug-mode panel.
+    this._unsubBgDiag ??= backgroundEngine.subscribeDiagnostic(() => this.requestUpdate());
     // Discover the dedicated wallpaper folder for uploads + the media pickers.
     if (this.hass) void getMediaFolder(this.hass).then((f) => (this._mediaFolder = f));
     // Follow the shared UI scope when this card is driven by an external toggle.
@@ -141,6 +146,8 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     super.disconnectedCallback();
     this._unsubScope?.();
     this._unsubScope = undefined;
+    this._unsubBgDiag?.();
+    this._unsubBgDiag = undefined;
     window.removeEventListener("location-changed", this._onLocationChanged);
     window.removeEventListener("popstate", this._onLocationChanged);
     this._sectionResizeObserver?.disconnect();
@@ -1029,8 +1036,31 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
               : nothing}
           </div>
           ${renderBackgroundFields(ctx)}
+          ${this._renderBgDebug()}
         </div>
       </ha-expansion-panel>
+    `;
+  }
+
+  /** A Debug-mode readout of the live readability-scrim decision, so you can see
+   *  exactly whether/why a scrim is being applied to the current wallpaper. */
+  private _renderBgDebug(): TemplateResult | typeof nothing {
+    if (settingsStore.effective().debug_mode !== true) return nothing;
+    const d = backgroundEngine.getDiagnostic();
+    const lum = d.luminance === null ? "—" : d.luminance.toFixed(2);
+    const scrim =
+      d.scrimOpacity > 0 && d.scrimColor ? `rgba(${d.scrimColor}, ${d.scrimOpacity.toFixed(2)})` : "none";
+    const url = d.url ? `…${d.url.slice(-44)}` : "—";
+    return html`
+      <div class="bg-debug">
+        <div class="bg-debug-title">Readability diagnostics (Debug mode)</div>
+        <div><b>Mode:</b> ${d.mode} • <b>Theme:</b> ${d.dark ? "dark" : "light"}</div>
+        <div><b>Enhance:</b> ${d.enhance ? "on" : "off"} • <b>Strength:</b> ${d.strength}%</div>
+        <div><b>Image:</b> ${url}</div>
+        <div><b>Luminance:</b> ${lum}</div>
+        <div><b>Scrim applied:</b> ${scrim}</div>
+        <div><b>Why:</b> ${d.reason}</div>
+      </div>
     `;
   }
 
@@ -1772,6 +1802,26 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
+      }
+      .bg-debug {
+        margin-top: 10px;
+        padding: 10px 12px;
+        border-radius: 8px;
+        border: 1px dashed var(--ted-style-divider);
+        background: var(--ted-style-surface-2);
+        font-size: 0.78rem;
+        line-height: 1.55;
+        color: var(--ted-style-muted);
+        word-break: break-all;
+      }
+      .bg-debug-title {
+        font-weight: 700;
+        color: var(--ted-style-text);
+        margin-bottom: 4px;
+      }
+      .bg-debug b {
+        color: var(--ted-style-text);
+        font-weight: 600;
       }
     `,
   ];

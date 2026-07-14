@@ -39,12 +39,40 @@ interface HassLike {
   fetchWithAuth?(path: string, init?: RequestInit): Promise<Response>;
 }
 
+/** A snapshot of the last readability-scrim decision, for the Settings debug panel. */
+export interface BackgroundDiagnostic {
+  mode: string;
+  url: string | null;
+  /** Mean image luminance 0..1, or null when it couldn't be analyzed. */
+  luminance: number | null;
+  dark: boolean;
+  enhance: boolean;
+  strength: number; // 0..100
+  scrimColor: string | null;
+  scrimOpacity: number; // 0..1
+  reason: string;
+}
+
 class BackgroundEngine {
   private refCount = 0;
   private hass?: HassLike;
   private unsub?: () => void;
   /** Bumped on every (re)apply so stale async resolutions never win a race. */
   private gen = 0;
+
+  /** Last readability-scrim decision (for the Settings debug panel). */
+  private _diag: BackgroundDiagnostic = {
+    mode: "solid",
+    url: null,
+    luminance: null,
+    dark: false,
+    enhance: true,
+    strength: 45,
+    scrimColor: null,
+    scrimOpacity: 0,
+    reason: "Not computed yet",
+  };
+  private _diagListeners = new Set<() => void>();
 
   /** The active card's per-card background_* overrides (undefined = none). */
   private cardConfig?: SettingsMap;
@@ -124,6 +152,37 @@ class BackgroundEngine {
     return !!(this.hass as unknown as { themes?: { darkMode?: boolean } })?.themes?.darkMode;
   }
 
+  /** The last readability-scrim decision. */
+  getDiagnostic(): BackgroundDiagnostic {
+    return this._diag;
+  }
+
+  /** Subscribe to readability-diagnostic changes (fires on each (re)paint). */
+  subscribeDiagnostic(cb: () => void): () => void {
+    this._diagListeners.add(cb);
+    return () => this._diagListeners.delete(cb);
+  }
+
+  private _setDiag(d: BackgroundDiagnostic): void {
+    this._diag = d;
+    for (const cb of this._diagListeners) cb();
+  }
+
+  /** Record a diagnostic for a non-image mode (no scrim ever applies). */
+  private _setModeDiag(s: SettingsMap, reason: string): void {
+    this._setDiag({
+      mode: String(s.background_mode ?? "solid"),
+      url: null,
+      luminance: null,
+      dark: this._isDark(),
+      enhance: s.background_enhance_readability !== false,
+      strength: Math.max(0, Math.min(100, Number(s.background_readability_strength ?? 45))),
+      scrimColor: null,
+      scrimOpacity: 0,
+      reason,
+    });
+  }
+
   private async _resolveRef(ref: string | null): Promise<string | null> {
     if (!ref) return null;
     if (isMediaSourceUri(ref) && this.hass) return resolveMediaSource(this.hass, ref);
@@ -142,10 +201,12 @@ class BackgroundEngine {
     }
 
     if (mode === "theme") {
+      this._setModeDiag(s, "HA Theme mode — no wallpaper painted, so no readability scrim.");
       applyBackground(null);
       return;
     }
     if (mode === "solid") {
+      this._setModeDiag(s, "Solid Color mode — the readability scrim only applies to Single Image / Slideshow.");
       applyBackground(backgroundLayerCss(s, null));
       return;
     }
@@ -170,18 +231,40 @@ class BackgroundEngine {
    *  contrast (bright image on a dark theme → darken; dark image on a light theme
    *  → lighten). Opacity is capped by `background_readability_strength` (0–100). */
   private async _scrimFor(s: SettingsMap, url: string | null): Promise<BackgroundScrim | undefined> {
-    if (!url || s.background_enhance_readability === false) return undefined;
-    const strength = Math.max(0, Math.min(100, Number(s.background_readability_strength ?? 45))) / 100;
-    if (strength <= 0) return undefined;
+    const dark = this._isDark();
+    const enhance = s.background_enhance_readability !== false;
+    const strengthPct = Math.max(0, Math.min(100, Number(s.background_readability_strength ?? 45)));
+    const strength = strengthPct / 100;
+    const mode = String(s.background_mode ?? "solid");
+    const record = (
+      luminance: number | null,
+      scrim: BackgroundScrim | undefined,
+      reason: string,
+    ): BackgroundScrim | undefined => {
+      this._setDiag({
+        mode,
+        url,
+        luminance,
+        dark,
+        enhance,
+        strength: strengthPct,
+        scrimColor: scrim?.color ?? null,
+        scrimOpacity: scrim?.opacity ?? 0,
+        reason,
+      });
+      return scrim;
+    };
+    if (!url) return record(null, undefined, "No image resolved yet.");
+    if (!enhance) return record(null, undefined, "Enhance readability is off.");
+    if (strength <= 0) return record(null, undefined, "Readability strength is 0%.");
     const l = await imageLuminance(url);
-    if (l === null) return undefined;
-    if (this._isDark() && l > 0.55) {
-      return { color: "0,0,0", opacity: Math.min(1, (l - 0.55) / 0.45) * strength };
-    }
-    if (!this._isDark() && l < 0.45) {
-      return { color: "255,255,255", opacity: Math.min(1, (0.45 - l) / 0.45) * strength };
-    }
-    return undefined;
+    if (l === null)
+      return record(null, undefined, "Could not analyze the image — the canvas is tainted (the image server sent no CORS headers), so no scrim can be computed.");
+    if (dark && l > 0.55)
+      return record(l, { color: "0,0,0", opacity: Math.min(1, (l - 0.55) / 0.45) * strength }, "Bright image on a dark theme → darkened.");
+    if (!dark && l < 0.45)
+      return record(l, { color: "255,255,255", opacity: Math.min(1, (0.45 - l) / 0.45) * strength }, "Dark image on a light theme → lightened.");
+    return record(l, undefined, "Image already matches the theme — no scrim needed.");
   }
 
   private async _applySlideshow(s: SettingsMap, gen: number): Promise<void> {
