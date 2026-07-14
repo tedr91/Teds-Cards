@@ -736,6 +736,9 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     if (field.entityDomain === "climate") {
       return { icon: "mdi:thermostat", noun: "thermostat", nounPlural: "thermostats" };
     }
+    if (field.entityDomain === "calendar") {
+      return { icon: "mdi:calendar", noun: "calendar", nounPlural: "calendars" };
+    }
     return { icon: "mdi:cctv", noun: "camera", nounPlural: "cameras" };
   }
 

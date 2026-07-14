@@ -939,6 +939,11 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.173
+
+- **Calendar card in the card picker** — the new Ted's Calendar card now appears in Home Assistant's "Add card" gallery (with its visual editor), and is suggested when you add a card from a `calendar.*` entity.
+- **Settings → Calendars wording & order** — the Calendars settings tab now uses "calendar" wording throughout (it previously showed "camera" placeholder text), and the tab now sits between **Alarms/Timers** and **Cameras**.
+
 ### v1.0.172
 
 - **New Calendar card** — added `custom:ted-calendar-card`, a calendar for the **current device** that wraps the third-party [Daylight Calendar card](https://github.com/superdingo101/daylight-calendar-card). It shows the calendars chosen per-device in the new **Settings → Calendars** list (falling back to sensible defaults), with Ted's styling baked in. If the Daylight Calendar card isn't installed, it shows a clear "not installed" message with install steps and an **Open HACS** button, and swaps itself for the real calendar automatically once it loads. Requires Ted's Cards Backend v1.0.37+.

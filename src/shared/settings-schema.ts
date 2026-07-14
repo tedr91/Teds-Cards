@@ -52,9 +52,9 @@ export const SETTINGS_GROUPS = [
   "Navbar",
   "Sounds",
   "Alarms/Timers",
+  "Calendars",
   "Cameras",
-  "Thermostats",
-  "Calendars"
+  "Thermostats"
 ] as const;
 
 /** Per-category tab icons — a Fluent icon (used when the `fluent` iconset is installed)

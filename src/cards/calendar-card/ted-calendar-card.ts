@@ -8,9 +8,12 @@ import {
 } from "custom-card-helpers";
 
 import { themedIcon } from "../../shared/icons";
+import { registerCustomCard } from "../../shared/register-card";
 import { SettingsController, settingsStore } from "../../shared/settings";
 import {
+  CALENDAR_CARD_DESCRIPTION,
   CALENDAR_CARD_EDITOR_TYPE,
+  CALENDAR_CARD_NAME,
   CALENDAR_CARD_TYPE,
   CALENDAR_DEFAULT_CONFIG,
   DAYLIGHT_CARD_TAG,
@@ -35,6 +38,18 @@ interface GridOptions {
   min_columns?: number;
   min_rows?: number;
 }
+
+registerCustomCard({
+  type: CALENDAR_CARD_TYPE,
+  name: CALENDAR_CARD_NAME,
+  description: CALENDAR_CARD_DESCRIPTION,
+  preview: true,
+  documentationURL: "https://github.com/tedr91/Teds-Cards#calendar-card",
+  getEntitySuggestion: (_hass, entityId) =>
+    entityId.startsWith("calendar.")
+      ? { config: { type: `custom:${CALENDAR_CARD_TYPE}`, calendar_source: "config", entities: [entityId] } }
+      : null,
+});
 
 @customElement(CALENDAR_CARD_TYPE)
 export class TedCalendarCard extends LitElement implements LovelaceCard {
