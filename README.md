@@ -938,6 +938,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.160
+
+- **Exact Music Assistant provider priority** — when several Music Assistant players share the current device's area, the Music view now reads each player's real provider via the `mass_queue` integration (`get_info`) to rank them **Sonos → Chromecast → AirPlay → DLNA**, instead of guessing from the device manufacturer. It only queries in that specific tie-break case, and falls back to the previous best-effort guess when `mass_queue` isn't installed.
+
 ### v1.0.159
 
 - **Device name from Browser Mod** — the Status card's Device Name now falls back to this browser's Browser Mod device name when Ted's Cards doesn't have one yet, and that name is automatically saved back to the Ted's Cards device registration. So a device you've named in Browser Mod (Settings → Devices) shows up without naming it twice.

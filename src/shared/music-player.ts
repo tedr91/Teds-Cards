@@ -26,6 +26,12 @@ const PROVIDER_ORDER: string[][] = [
   ["dlna", "upnp"],
 ];
 
+/** Cache of each Music Assistant player's true provider (from `mass_queue/get_info`),
+ *  used for exact provider-priority ranking. Falls back to device metadata until warmed. */
+const providerCache = new Map<string, string>();
+const providerInflight = new Set<string>();
+let massQueueUnavailable = false;
+
 interface RegistryEntity {
   platform?: string;
   device_id?: string | null;
@@ -80,14 +86,21 @@ function massPlayers(hass: HomeAssistant | undefined): string[] {
 }
 
 /** Priority rank of a Music Assistant player by its provider (lower = preferred);
- *  unknown providers rank last. Uses the player's device manufacturer/model/name. */
+ *  unknown providers rank last. Uses the exact provider (from `mass_queue/get_info`)
+ *  once warmed, else best-effort keywords in the device manufacturer/model/name. */
 function providerRank(hass: HomeAssistant | undefined, id: string): number {
-  const deviceId = registry(hass)[id]?.device_id ?? undefined;
-  const dev = deviceId ? devices(hass)[deviceId] : undefined;
-  const text = [dev?.manufacturer, dev?.model, dev?.name, entityName(hass, id), id]
-    .filter(Boolean)
-    .join(" ")
-    .toLowerCase();
+  const exact = providerCache.get(id);
+  let text: string;
+  if (exact !== undefined) {
+    text = exact;
+  } else {
+    const deviceId = registry(hass)[id]?.device_id ?? undefined;
+    const dev = deviceId ? devices(hass)[deviceId] : undefined;
+    text = [dev?.manufacturer, dev?.model, dev?.name, entityName(hass, id), id]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+  }
   const idx = PROVIDER_ORDER.findIndex((keys) => keys.some((k) => text.includes(k)));
   return idx === -1 ? PROVIDER_ORDER.length : idx;
 }
@@ -182,4 +195,48 @@ export function resolveMusicPlayer(
   return matched
     ? { state: "ok", entity: matched, base, matched: true }
     : { state: "unmatched", base };
+}
+
+interface WsConnHass {
+  connection?: { sendMessagePromise<T = unknown>(msg: Record<string, unknown>): Promise<T> };
+}
+
+/**
+ * Warm the exact-provider cache (via the `mass_queue/get_info` WebSocket command) for
+ * the Music Assistant players in this device's area — the only place provider priority
+ * is used. Resolves `true` when the cache changed, so the caller can re-render. No-op
+ * without `mass_queue`, without a resolvable area, or with fewer than two area players.
+ */
+export async function warmMassProviders(hass: HomeAssistant | undefined): Promise<boolean> {
+  if (massQueueUnavailable) return false;
+  const conn = (hass as WsConnHass | undefined)?.connection;
+  if (!conn?.sendMessagePromise) return false;
+  const reg = registry(hass);
+  const base = baseEntity(hass, {});
+  const baseArea = base ? (reg[base]?.area_id ?? null) : null;
+  if (!baseArea) return false;
+  const sameArea = massPlayers(hass).filter((id) => reg[id]?.area_id === baseArea);
+  if (sameArea.length < 2) return false;
+  const ids = sameArea.filter((id) => !providerCache.has(id) && !providerInflight.has(id));
+  if (ids.length === 0) return false;
+  let changed = false;
+  await Promise.all(
+    ids.map(async (id) => {
+      providerInflight.add(id);
+      try {
+        const info = await conn.sendMessagePromise<{ provider?: string }>({
+          type: "mass_queue/get_info",
+          entity_id: id,
+        });
+        providerCache.set(id, typeof info?.provider === "string" ? info.provider.toLowerCase() : "");
+        changed = true;
+      } catch (err) {
+        // Stop trying if the command isn't registered (mass_queue not installed).
+        if ((err as { code?: string })?.code === "unknown_command") massQueueUnavailable = true;
+      } finally {
+        providerInflight.delete(id);
+      }
+    }),
+  );
+  return changed;
 }

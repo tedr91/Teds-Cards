@@ -5,7 +5,7 @@ import { type HomeAssistant, type LovelaceCard } from "custom-card-helpers";
 import { tedCardThemeClass, tedStyleTheme } from "../../shared/theme";
 import { browserModId, resolveDeviceMediaPlayer, resolveDeviceName } from "../../shared/device-id";
 import { areaName, resolveDeviceArea } from "../../shared/device-area";
-import { resolveMusicPlayer } from "../../shared/music-player";
+import { resolveMusicPlayer, warmMassProviders } from "../../shared/music-player";
 import { SettingsController, settingsStore } from "../../shared/settings";
 import {
   REQUIREMENT_LABELS,
@@ -85,6 +85,12 @@ export class TedStatusCard extends LitElement implements LovelaceCard {
   public disconnectedCallback(): void {
     document.removeEventListener("click", this._onDocClick);
     super.disconnectedCallback();
+  }
+
+  protected updated(): void {
+    // Warm the exact Music Assistant provider cache so the Music player row ranks
+    // same-area players correctly (Sonos → Chromecast → AirPlay → DLNA).
+    if (this.hass) void warmMassProviders(this.hass).then((c) => c && this.requestUpdate());
   }
 
   /** Close any tap-pinned tooltip when clicking anywhere outside a tip row. */

@@ -10,6 +10,7 @@ import {
 import { SettingsController, settingsStore } from "../../shared/settings";
 import {
   resolveMusicPlayer,
+  warmMassProviders,
   type MusicPlayerResolution,
 } from "../../shared/music-player";
 import { MASS_PLAYER_CARD_TYPE, MUSIC_CARD_EDITOR_TYPE, MUSIC_CARD_TYPE } from "./const";
@@ -99,6 +100,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
 
   protected updated(changed: Map<string, unknown>): void {
     if (changed.has("hass")) this._propagateHass();
+    if (this.hass) void warmMassProviders(this.hass).then((c) => c && this.requestUpdate());
   }
 
   // --- Entity resolution -----------------------------------------------------
