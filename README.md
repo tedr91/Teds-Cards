@@ -938,6 +938,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.171
+
+- **Wallpaper readability diagnostics** — with Settings → General → Debug mode on, the Background Wallpaper section now shows a live readout of the readability-scrim decision (mode, theme, enhance/strength, image, measured luminance, the scrim actually applied, and a plain-English reason). Makes it obvious whether the "Enhance readability" setting is doing anything — e.g. when the image can't be analyzed (CORS-tainted) or already matches the theme.
+
 ### v1.0.170
 
 - **Music card `fill` sizes to the content area** — `fill: true` now sizes the embedded player to the dashboard content area (like other full-page cards) instead of Music Assistant's panel mode, which hard-coded the viewport height and overflowed past the header/navbar.
