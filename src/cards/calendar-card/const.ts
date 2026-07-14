@@ -39,8 +39,6 @@ export const CALENDAR_DEFAULT_CONFIG: Record<string, unknown> = {
   show_event_location: true,
   use_short_location: true,
   event_location_font_size: 9,
-  background_opacity: 0,
-  header_background_opacity: 0,
   event_calendar_friendly_name: false,
   event_title_prefix: "none",
   combine_style: "bars",
@@ -76,8 +74,6 @@ export const CALENDAR_DEFAULT_CONFIG: Record<string, unknown> = {
   compact_height: true,
   compact_header: true,
   hide_calendar_names: true,
-  header_background_transparent: false,
-  background_transparent: false,
   colors: {
     "calendar.birthdays_2": "#00c700",
     "calendar.chanisha_s_gmail_com": "#9c5fff",

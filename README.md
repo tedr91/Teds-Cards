@@ -939,6 +939,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.179
+
+- **Calendar card transparency fix** — the Calendar card's **Transparency** (and background colour / blur / Ted theme) now take effect. The card was baking in `background_opacity: 0`, which caused the underlying Daylight card to ignore the transparency request; it now drives the native `background_opacity` so the frosted surface (and the dashboard wallpaper) shows through.
+
 ### v1.0.178
 
 - **Calendar card appearance fixes** — the Calendar card's **Appearance** section now sits above the Calendars list, its colour pickers use the same standard picker as every other Ted's Card, and **theme styling / background colour / transparency / blur** now actually take effect (rendered as a frosted surface behind the calendar instead of relying on the calendar's own CSS injection). Blur is now a 0–100% amount, and `theme: ted-style` gives a translucent, blurred frost by default.

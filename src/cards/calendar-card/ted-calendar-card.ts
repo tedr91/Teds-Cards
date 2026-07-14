@@ -212,8 +212,10 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
     if (cfg.header_color) appearance.header_color = cssColor(cfg.header_color);
     if (cfg.weather_sensor) appearance.header_weather_sensor = cfg.weather_sensor;
     // When we paint our own frosted surface behind the (shadow-DOM) calendar, make
-    // daylight's own body transparent so that surface shows through.
-    if (this._surfaceStyle()) appearance.background_transparent = true;
+    // daylight's own body fully transparent so that surface shows through. Use the
+    // NATIVE `background_opacity` (100) — daylight ignores the legacy
+    // `background_transparent` boolean whenever `background_opacity` is present.
+    if (this._surfaceStyle()) appearance.background_opacity = 100;
 
     return {
       type: DAYLIGHT_CARD_TYPE,
