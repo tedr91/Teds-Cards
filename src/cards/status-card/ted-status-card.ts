@@ -3,7 +3,7 @@ import { customElement, property, state } from "lit/decorators.js";
 import { type HomeAssistant, type LovelaceCard } from "custom-card-helpers";
 
 import { tedCardThemeClass, tedStyleTheme } from "../../shared/theme";
-import { browserModId, resolveDeviceMediaPlayer } from "../../shared/device-id";
+import { browserModId, resolveDeviceMediaPlayer, resolveDeviceName } from "../../shared/device-id";
 import { areaName, resolveDeviceArea } from "../../shared/device-area";
 import { resolveMusicPlayer } from "../../shared/music-player";
 import { SettingsController, settingsStore } from "../../shared/settings";
@@ -171,8 +171,9 @@ export class TedStatusCard extends LitElement implements LovelaceCard {
     const rows: StatusRow[] = [];
     const attrs = this._reqAttrs();
 
-    // Current device's registered name + id.
-    const devName = settingsStore.registry()[settingsStore.deviceId]?.name;
+    // Current device's registered name + id (Ted's Cards registration → Browser Mod device name).
+    const devName =
+      settingsStore.registry()[settingsStore.deviceId]?.name || resolveDeviceName(this.hass);
     rows.push({
       icon: "mdi:devices",
       label: "Device Name",

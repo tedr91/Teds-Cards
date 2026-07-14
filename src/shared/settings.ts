@@ -9,7 +9,7 @@
  */
 import type { ReactiveController, ReactiveControllerHost } from "lit";
 
-import { resolveDeviceId, resolveDeviceMediaPlayer } from "./device-id";
+import { resolveDeviceId, resolveDeviceMediaPlayer, resolveDeviceName } from "./device-id";
 import { resolveDeviceArea } from "./device-area";
 import { clientInfo } from "./client-info";
 import { SETTINGS_DEFAULTS, type SettingsMap, type SettingsValue } from "./settings-schema";
@@ -52,6 +52,7 @@ class SettingsStore {
   private _listeners = new Set<() => void>();
   private _registeredArea?: string | null;
   private _registeredMp?: string | null;
+  private _registeredName?: string | null;
   private _registeredClient?: string;
   private _loaded = false;
 
@@ -192,23 +193,27 @@ class SettingsStore {
     if (!conn?.sendMessagePromise) return;
     const area = resolveDeviceArea(hass as never, undefined).area ?? null;
     const mediaPlayer = resolveDeviceMediaPlayer(hass) ?? null;
+    const name = resolveDeviceName(hass) ?? null;
     const client = clientInfo();
     const clientSig = `${client.width}x${client.height}:${client.orientation}:${client.form_factor}`;
     if (
       area === this._registeredArea &&
       mediaPlayer === this._registeredMp &&
+      name === this._registeredName &&
       clientSig === this._registeredClient
     ) {
       return;
     }
     this._registeredArea = area;
     this._registeredMp = mediaPlayer;
+    this._registeredName = name;
     this._registeredClient = clientSig;
     conn
       .sendMessagePromise({
         type: `${DOMAIN}/register_device`,
         device_id: this.deviceId,
         area,
+        name,
         media_player: mediaPlayer,
         client_width: client.width,
         client_height: client.height,
@@ -219,6 +224,7 @@ class SettingsStore {
         // Allow a later retry if registration failed (e.g. transient).
         this._registeredArea = undefined;
         this._registeredMp = undefined;
+        this._registeredName = undefined;
         this._registeredClient = undefined;
       });
   }

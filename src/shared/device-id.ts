@@ -53,7 +53,10 @@ export function resolveDeviceId(): string {
 /** Minimal registry shapes (present on `hass` at runtime, not in the typed HA). */
 interface RegistryHass {
   entities?: Record<string, { device_id?: string | null } | undefined>;
-  devices?: Record<string, { identifiers?: [string, string][] } | undefined>;
+  devices?: Record<
+    string,
+    { identifiers?: [string, string][]; name?: string | null; name_by_user?: string | null } | undefined
+  >;
 }
 
 /**
@@ -80,6 +83,23 @@ export function resolveDeviceMediaPlayer(hass: unknown): string | undefined {
       for (const [entityId, ent] of Object.entries(h.entities)) {
         if (ent?.device_id === deviceId && entityId.startsWith("media_player.")) return entityId;
       }
+    }
+  }
+  return undefined;
+}
+
+/**
+ * The user-facing name of the browser_mod device for *this* client (its
+ * `name_by_user`, else `name`), or undefined when there's no registered device.
+ */
+export function resolveDeviceName(hass: unknown): string | undefined {
+  const h = hass as RegistryHass | undefined;
+  const bid = browserModId();
+  if (!bid || !h?.devices) return undefined;
+  for (const dev of Object.values(h.devices)) {
+    if (dev?.identifiers?.some((i) => i[0] === "browser_mod" && i[1] === bid)) {
+      const name = dev.name_by_user || dev.name;
+      return typeof name === "string" && name ? name : undefined;
     }
   }
   return undefined;
