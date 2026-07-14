@@ -231,9 +231,12 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
       themedIcon("music-off"),
       this._config?.unmatched_title ?? "No Music Assistant player",
       this._config?.unmatched_message ??
-        `"${this._name(base)}" isn't a Music Assistant player, and no matching one was found. ` +
-          `Enable Music Assistant's "Home Assistant" player provider to expose this speaker, ` +
-          "or pick a Music Assistant player in Settings → Sounds.",
+        `"${this._name(base)}" isn't a Music Assistant player, and no matching one was found.\n\n` +
+          "Expose it in Music Assistant:\n" +
+          "1. Music Assistant → Settings → Providers.\n" +
+          "2. Add a Player Provider → “Home Assistant Media Players”.\n" +
+          "3. Select this speaker, then Save.\n\n" +
+          "Or pick a Music Assistant player in Settings → Sounds.",
       extra,
     );
   }

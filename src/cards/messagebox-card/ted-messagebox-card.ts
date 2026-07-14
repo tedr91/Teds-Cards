@@ -325,6 +325,7 @@ export class TedMessageBoxCard extends LitElement implements LovelaceCard {
         font-size: 0.92em;
         line-height: 1.35;
         opacity: 0.92;
+        white-space: pre-line;
       }
       .mb-docs {
         font-size: 0.9em;

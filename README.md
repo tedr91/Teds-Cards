@@ -938,6 +938,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.167
+
+- **Music view — step-by-step setup help** — the "No Music Assistant player" notice now lists the short steps to expose a speaker (Music Assistant → Settings → Providers → add "Home Assistant Media Players" → select the speaker). MessageBox card messages also now honour line breaks.
+
 ### v1.0.166
 
 - **Music Assistant button opens the right panel** — the "Music Assistant" button on the Music view's no-player notice now auto-detects your actual Music Assistant panel (instead of a fixed `/music-assistant` path that bounced back to the default dashboard). The button is hidden if no Music Assistant panel is found.
