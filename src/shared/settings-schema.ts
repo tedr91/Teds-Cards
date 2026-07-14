@@ -4,7 +4,13 @@
  * MUST stay in sync with the backend's `SETTINGS_DEFAULTS` in `const.py`.
  */
 
-export type SettingsValue = boolean | number | string | string[] | null;
+export type SettingsValue =
+  | boolean
+  | number
+  | string
+  | string[]
+  | { [key: string]: unknown }
+  | null;
 export type SettingsMap = Record<string, SettingsValue>;
 
 /** How a setting is edited / rendered in the Settings card. */
@@ -94,6 +100,7 @@ export const SETTINGS_DEFAULTS: SettingsMap = {
   system_sound_player: null,
   cameras_list: [],
   calendars_list: [],
+  calendar_options: {},
   cameras_layout: "auto",
   climate_list: [],
   climate_layout: "auto",

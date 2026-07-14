@@ -34,6 +34,14 @@ import {
 import { getMediaFolder, isMediaSourceUri, pickMedia, resolveMediaSource, uploadImage, uploadToMediaFolder } from "../../shared/media";
 import { backgroundEngine } from "../background-card/background-engine";
 import {
+  applyCalendarOptionChange,
+  calendarOptionHelper,
+  calendarOptionLabel,
+  calendarOptionsData,
+  calendarOptionsSchema,
+} from "../calendar-card/calendar-options";
+import type { CalendarItemConfig } from "../calendar-card/types";
+import {
   SETTINGS_CARD_DESCRIPTION,
   SETTINGS_CARD_EDITOR_TYPE,
   SETTINGS_CARD_NAME,
@@ -88,6 +96,8 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
   @state() private _sectionMode: SectionHeaderMode = "both";
   /** Fields the user is actively overriding on this device but hasn't stored a value for yet. */
   private _editing = new Set<string>();
+  /** Which calendars have their per-calendar Options disclosure open (by entity id). */
+  @state() private _calOptOpen = new Set<string>();
   /** Resolved display URLs for media-source:// wallpaper thumbnails (uri → url). */
   private _bgThumbs = new Map<string, string>();
   /** media-source URI of the backend's "Ted Dash System" wallpaper folder (or null). */
@@ -760,16 +770,23 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
   }
 
   /** A list of entity rows. Editable (drag to reorder + remove) unless `readonly`,
-   *  in which case it's a static, non-interactive display (used for the inherited view). */
+   *  in which case it's a static, non-interactive display (used for the inherited view).
+   *  When `options` is provided (Calendars Global list), each row gains a collapsible
+   *  per-calendar Options disclosure. */
   private _renderCameraChips(
     ids: string[],
     icon: string,
     onRemove: (idx: number) => void,
     onMove: (from: number, to: number) => void,
     readonly = false,
+    options?: {
+      isOpen: (id: string) => boolean;
+      toggle: (id: string) => void;
+      body: (id: string) => TemplateResult;
+    },
   ): TemplateResult {
-    const rows = ids.map(
-      (id, idx) => html`
+    const rows = ids.map((id, idx) => {
+      const row = html`
         <div class="cam-item ${readonly ? "readonly" : ""}">
           ${readonly
             ? nothing
@@ -778,14 +795,28 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
               </div>`}
           <ha-icon class="cam-ico" .icon=${icon}></ha-icon>
           <span class="cam-name">${this._cameraName(id)}</span>
+          ${!readonly && options
+            ? html`<button
+                class="cam-opt ${options.isOpen(id) ? "on" : ""}"
+                title="Options"
+                @click=${() => options.toggle(id)}
+              >
+                <ha-icon icon=${options.isOpen(id) ? "mdi:chevron-up" : "mdi:chevron-down"}></ha-icon>
+              </button>`
+            : nothing}
           ${readonly
             ? nothing
             : html`<button class="cam-del" title="Remove" @click=${() => onRemove(idx)}>
                 <ha-icon icon="mdi:close"></ha-icon>
               </button>`}
         </div>
-      `,
-    );
+      `;
+      if (!options) return row;
+      return html`<div class="cam-entry">
+        ${row}
+        ${options.isOpen(id) ? html`<div class="cam-opt-body">${options.body(id)}</div>` : nothing}
+      </div>`;
+    });
     if (readonly) return html`<div class="cam-list">${rows}</div>`;
     return html`
       <ha-sortable
@@ -798,6 +829,62 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
         <div class="cam-list">${rows}</div>
       </ha-sortable>
     `;
+  }
+
+  // --- Per-calendar options (Calendars Global list; calendar-wide, stored global) ---
+
+  private _toggleCalOpt(id: string): void {
+    const next = new Set(this._calOptOpen);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    this._calOptOpen = next;
+  }
+
+  /** The global per-calendar options map, keyed by calendar entity id. */
+  private _calendarOptionsMap(): Record<string, Record<string, unknown>> {
+    const v = this._globalValue("calendar_options");
+    const out: Record<string, Record<string, unknown>> = {};
+    if (v && typeof v === "object" && !Array.isArray(v)) {
+      for (const [id, opt] of Object.entries(v as Record<string, unknown>)) {
+        if (opt && typeof opt === "object" && !Array.isArray(opt)) {
+          out[id] = { ...(opt as Record<string, unknown>) };
+        }
+      }
+    }
+    return out;
+  }
+
+  /** The per-calendar Options form for one calendar in the Global list. */
+  private _renderCalendarOptions(id: string): TemplateResult {
+    const opt = this._calendarOptionsMap()[id] ?? {};
+    const item = { entity: id, ...(opt as Partial<CalendarItemConfig>) } as CalendarItemConfig;
+    return html`
+      <ha-form
+        .hass=${this.hass}
+        .data=${calendarOptionsData(this.hass, item)}
+        .schema=${calendarOptionsSchema(this.hass, item)}
+        .computeLabel=${(s: { name: string }) => calendarOptionLabel(s.name)}
+        .computeHelper=${(s: { name: string }) => calendarOptionHelper(s.name)}
+        @value-changed=${(ev: CustomEvent) => this._calendarOptionChanged(id, ev)}
+      ></ha-form>
+    `;
+  }
+
+  private _calendarOptionChanged(id: string, ev: CustomEvent): void {
+    ev.stopPropagation();
+    const v = ev.detail.value as Record<string, unknown>;
+    const map = this._calendarOptionsMap();
+    const cur = { entity: id, ...(map[id] ?? {}) } as CalendarItemConfig;
+    const next = applyCalendarOptionChange(this.hass, cur, v);
+    // Store only real options (drop the entity key + empty/undefined values).
+    const opt: Record<string, unknown> = {};
+    for (const [k, val] of Object.entries(next)) {
+      if (k === "entity" || val === undefined || val === "") continue;
+      opt[k] = val;
+    }
+    if (Object.keys(opt).length) map[id] = opt;
+    else delete map[id];
+    this._setGlobal("calendar_options", map);
   }
 
   private _renderCamerasGlobal(field: SettingField): TemplateResult {
@@ -836,6 +923,14 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
                 n.splice(to, 0, n.splice(from, 1)[0]);
                 setList(n);
               },
+              false,
+              admin && domain === "calendar"
+                ? {
+                    isOpen: (id) => this._calOptOpen.has(id),
+                    toggle: (id) => this._toggleCalOpt(id),
+                    body: (id) => this._renderCalendarOptions(id),
+                  }
+                : undefined,
             )
           : html`<div class="help">No ${meta.nounPlural} yet — add one below or tap “Auto-populate”.</div>`}
         ${admin && remaining.length
@@ -1749,6 +1844,33 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
       }
       .cam-del ha-icon {
         --mdc-icon-size: 18px;
+      }
+      .cam-entry {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      .cam-opt {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        border-radius: 8px;
+        border: none;
+        background: none;
+        color: var(--ted-style-muted);
+        cursor: pointer;
+      }
+      .cam-opt:hover,
+      .cam-opt.on {
+        color: var(--primary-color, #3f7cf0);
+      }
+      .cam-opt ha-icon {
+        --mdc-icon-size: 20px;
+      }
+      .cam-opt-body {
+        padding: 4px 8px 8px 30px;
       }
       .cam-add {
         max-width: 260px;

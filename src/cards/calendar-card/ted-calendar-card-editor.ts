@@ -4,9 +4,13 @@ import { type HomeAssistant, type LovelaceCardEditor, fireEvent } from "custom-c
 
 import { CALENDAR_CARD_EDITOR_TYPE, matchPerson } from "./const";
 import { transparencyBlurSchema } from "../../shared/appearance";
+import {
+  applyCalendarOptionChange,
+  calendarOptionsData,
+  calendarOptionsSchema,
+} from "./calendar-options";
 import type {
   CalendarCardConfig,
-  CalendarIconSource,
   CalendarItemConfig,
   CalendarSource,
 } from "./types";
@@ -43,11 +47,6 @@ const VIEW_OPTIONS = [
 const THEME_OPTIONS = [
   { value: "ha", label: "Home Assistant Theme" },
   { value: "ted-style", label: "Ted's Theme" },
-];
-
-const ICON_SOURCE_OPTIONS = [
-  { value: "icon", label: "Icon" },
-  { value: "person", label: "Person" },
 ];
 
 @customElement(CALENDAR_CARD_EDITOR_TYPE)
@@ -255,38 +254,8 @@ export class TedCalendarCardEditor extends LitElement implements LovelaceCardEdi
   }
 
   private _renderRow(item: CalendarItemConfig, idx: number): TemplateResult {
-    // Show the effective person in the field — the explicit one, or the auto-matched
-    // one (unless the badge source is explicitly Icon).
-    const autoPerson =
-      item.icon_source === "icon" ? "" : (matchPerson(this.hass?.states, item.name || this._entityName(item.entity)) ?? "");
-    const optData: Record<string, unknown> = {
-      name: item.name ?? "",
-      readonly: item.readonly !== false,
-      icon: item.icon ?? "",
-      person: item.person ?? autoPerson,
-      icon_source: item.icon_source ?? "icon",
-      color: item.color ?? "",
-    };
-    const optSchema = [
-      { name: "readonly", selector: { boolean: {} } },
-      {
-        type: "grid",
-        name: "",
-        column_min_width: "140px",
-        schema: [
-          { name: "name", selector: { text: { placeholder: this._entityName(item.entity) } } },
-          { name: "icon_source", selector: { select: { mode: "dropdown", options: ICON_SOURCE_OPTIONS } } },
-        ],
-      },
-      {
-        name: "icon",
-        selector: {
-          icon: { placeholder: this.hass?.states[item.entity]?.attributes?.icon || "mdi:calendar" },
-        },
-      },
-      { name: "person", selector: { entity: { domain: "person" } } },
-      { name: "color", selector: { ui_color: {} } },
-    ];
+    const optData = calendarOptionsData(this.hass, item);
+    const optSchema = calendarOptionsSchema(this.hass, item);
     return html`
       <div class="cal">
         <div class="row">
@@ -442,20 +411,7 @@ export class TedCalendarCardEditor extends LitElement implements LovelaceCardEdi
     const v = ev.detail.value as Record<string, unknown>;
     const items = this._items();
     const cur = items[idx] ?? { entity: "" };
-    const next: CalendarItemConfig = { ...cur };
-    next.name = (v.name as string) || undefined;
-    next.readonly = v.readonly === false ? false : undefined;
-    const src = (v.icon_source as CalendarIconSource) ?? cur.icon_source ?? "icon";
-    next.icon_source = src !== "icon" ? src : undefined;
-    if ("person" in v) {
-      const p = (v.person as string) || undefined;
-      // Don't persist a person that just equals the auto-match (keeps it dynamic + config clean).
-      const auto = matchPerson(this.hass?.states, next.name || this._entityName(cur.entity));
-      next.person = p && p !== auto ? p : undefined;
-    }
-    if ("icon" in v) next.icon = (v.icon as string) || undefined;
-    next.color = (v.color as string) || undefined;
-    items[idx] = next;
+    items[idx] = applyCalendarOptionChange(this.hass, cur, v);
     this._commitItems(items);
   }
 

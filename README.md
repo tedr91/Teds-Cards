@@ -939,6 +939,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.188
+
+- **Per-calendar options in Settings → Calendars** — the same per-calendar options as the Ted's Calendar card editor (Name, Read-only, Badge source, Icon, Person, Color) are now editable in **Settings → Calendars**. Each calendar in the Global list has a chevron that expands its options; the card applies them in `calendar_source: settings` mode. Options are calendar-wide (global); each device still curates which calendars it shows.
+
 ### v1.0.187
 
 - **Calendar card person badges fixed** — when a calendar's badge source is a person, the card now drops any icon badge so the person's avatar actually shows (previously a baked/set icon could render over the avatar). The editor's per-calendar **Person** field also shows the auto-matched person instead of staying blank.

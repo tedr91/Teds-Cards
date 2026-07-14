@@ -158,12 +158,35 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
     return chosen.filter((id) => global.includes(id));
   }
 
+  /** The global per-calendar options map (keyed by calendar entity id), edited in
+   *  Settings → Calendars. These are calendar-wide (not per-device). */
+  private _calendarOptionsMap(): Record<string, Partial<CalendarItemConfig>> {
+    const v = settingsStore.globalSettings().calendar_options;
+    const out: Record<string, Partial<CalendarItemConfig>> = {};
+    if (v && typeof v === "object" && !Array.isArray(v)) {
+      for (const [id, opt] of Object.entries(v as Record<string, unknown>)) {
+        if (opt && typeof opt === "object" && !Array.isArray(opt)) {
+          out[id] = opt as Partial<CalendarItemConfig>;
+        }
+      }
+    }
+    return out;
+  }
+
+  /** The calendars to show as item objects, in order — from config, or from this
+   *  device's settings merged with the global per-calendar options. */
+  private _items(): CalendarItemConfig[] {
+    if (this._config?.calendar_source === "settings") {
+      const opts = this._calendarOptionsMap();
+      return this._settingsEntities().map((id) => ({ entity: id, ...(opts[id] ?? {}) }));
+    }
+    return this._configItems(this._config);
+  }
+
   /** The calendars to show, in order — from config or this device's settings.
    *  Empty (nothing selected) renders the empty state, not a fallback list. */
   private _entities(): string[] {
-    return this._config?.calendar_source === "settings"
-      ? this._settingsEntities()
-      : this._configEntities(this._config);
+    return this._items().map((i) => i.entity);
   }
 
   // --- Embedded daylight-calendar-card ---------------------------------------
@@ -182,32 +205,30 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
     const readonly = Array.isArray(base.readonly_calendars)
       ? [...(base.readonly_calendars as string[])]
       : [];
-    if (cfg.calendar_source !== "settings") {
-      for (const it of this._configItems(cfg)) {
-        if (it.color) colors[it.entity] = cssColor(it.color) ?? it.color;
-        if (it.name) names[it.entity] = it.name;
-        // Resolve the person: explicit wins, else auto-match by name.
-        const calName =
-          it.name || this.hass?.states[it.entity]?.attributes?.friendly_name || it.entity;
-        const person = it.person ?? matchPerson(this.hass?.states, String(calName));
-        // Badge source: explicit wins; otherwise a matched person shows its avatar, else the icon.
-        const source = it.icon_source ?? (person ? "person" : "icon");
-        if (source === "person") {
-          if (person) persons[it.entity] = person;
-          else delete persons[it.entity];
-          // The avatar IS the badge — drop any icon badge (baked or set) so it doesn't
-          // override the person avatar in daylight.
-          delete badgeIcons[it.entity];
-        } else {
-          delete persons[it.entity];
-          if (it.icon) badgeIcons[it.entity] = it.icon;
-        }
-        const ri = readonly.indexOf(it.entity);
-        if (it.readonly === false) {
-          if (ri >= 0) readonly.splice(ri, 1);
-        } else if (ri < 0) {
-          readonly.push(it.entity);
-        }
+    for (const it of this._items()) {
+      if (it.color) colors[it.entity] = cssColor(it.color) ?? it.color;
+      if (it.name) names[it.entity] = it.name;
+      // Resolve the person: explicit wins, else auto-match by name.
+      const calName =
+        it.name || this.hass?.states[it.entity]?.attributes?.friendly_name || it.entity;
+      const person = it.person ?? matchPerson(this.hass?.states, String(calName));
+      // Badge source: explicit wins; otherwise a matched person shows its avatar, else the icon.
+      const source = it.icon_source ?? (person ? "person" : "icon");
+      if (source === "person") {
+        if (person) persons[it.entity] = person;
+        else delete persons[it.entity];
+        // The avatar IS the badge — drop any icon badge (baked or set) so it doesn't
+        // override the person avatar in daylight.
+        delete badgeIcons[it.entity];
+      } else {
+        delete persons[it.entity];
+        if (it.icon) badgeIcons[it.entity] = it.icon;
+      }
+      const ri = readonly.indexOf(it.entity);
+      if (it.readonly === false) {
+        if (ri >= 0) readonly.splice(ri, 1);
+      } else if (ri < 0) {
+        readonly.push(it.entity);
       }
     }
 
