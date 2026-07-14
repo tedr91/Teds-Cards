@@ -101,6 +101,9 @@ export const SETTINGS_DEFAULTS: SettingsMap = {
   cameras_list: [],
   calendars_list: [],
   calendar_options: {},
+  calendar_name: null,
+  calendar_theme: "ha",
+  calendar_view: "month",
   cameras_layout: "auto",
   climate_list: [],
   climate_layout: "auto",
@@ -199,6 +202,31 @@ export const SETTINGS_FIELDS: SettingField[] = [
   },
   { key: "climate_list", label: "Thermostats", group: "Thermostats", kind: "entity-list", entityDomain: "climate", help: "Global lists the available thermostats; each device curates its own subset." },
   // Calendars
+  { key: "calendar_name", label: "Name", group: "Calendars", kind: "text", help: "Title shown at the top of the calendar. Leave empty for no title." },
+  {
+    key: "calendar_theme",
+    label: "Theme",
+    group: "Calendars",
+    kind: "select",
+    options: [
+      { value: "ha", label: "Home Assistant Theme" },
+      { value: "ted-style", label: "Ted's Theme" },
+    ],
+    help: "Ted's Theme adds a frosted, translucent surface behind the calendar.",
+  },
+  {
+    key: "calendar_view",
+    label: "Default view",
+    group: "Calendars",
+    kind: "select",
+    options: [
+      { value: "month", label: "Month" },
+      { value: "week", label: "Week" },
+      { value: "schedule", label: "Schedule" },
+      { value: "agenda", label: "Agenda" },
+    ],
+    help: "The view the calendar opens on.",
+  },
   { key: "calendars_list", label: "Calendars", group: "Calendars", kind: "entity-list", entityDomain: "calendar", help: "Global lists the available calendars; each device curates its own subset. Shown by Ted's Calendar card." },
   // Navbar
   { key: "navbar_auto_hide", label: "Auto-hide", group: "Navbar", kind: "boolean", help: "Collapse the navbar into its edge until revealed." },

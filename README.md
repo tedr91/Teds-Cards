@@ -939,6 +939,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.190
+
+- **Calendar appearance in Settings** — **Settings → Calendars** now exposes card-level **Name**, **Theme** (Home Assistant vs. Ted's Theme), and **Default view** (Month/Week/Schedule/Agenda) above the calendars list. Ted's Calendar card applies them in settings mode; a card's own YAML still wins where set.
+
 ### v1.0.189
 
 - **Richer Calendars list in Settings** — collapsed calendar rows in **Settings → Calendars** now preview each calendar's configured **icon** and **name**, tint the row with a pleasant gradient of its **color**, and show the linked **person's avatar** next to the Options chevron.

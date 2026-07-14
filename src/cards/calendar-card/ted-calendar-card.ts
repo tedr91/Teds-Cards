@@ -189,6 +189,49 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
     return this._items().map((i) => i.entity);
   }
 
+  /** Whether calendars are sourced from this device's Settings (vs. the card's config). */
+  private _settingsMode(): boolean {
+    return this._config?.calendar_source === "settings";
+  }
+
+  /** The effective card-level Calendar setting (device ⊕ global ⊕ default). */
+  private _calendarSetting(key: string): unknown {
+    return settingsStore.effective()[key];
+  }
+
+  /** Resolved theme: the card's YAML wins, else (settings mode) the `calendar_theme`
+   *  setting, else undefined (Home Assistant theme). */
+  private _resolvedTheme(): string | undefined {
+    if (this._config?.theme) return this._config.theme;
+    if (this._settingsMode()) {
+      const v = this._calendarSetting("calendar_theme");
+      if (typeof v === "string" && v) return v;
+    }
+    return undefined;
+  }
+
+  /** Resolved default view: the card's YAML wins, else (settings mode) the
+   *  `calendar_view` setting, else the built-in default. */
+  private _resolvedView(): string {
+    if (this._config?.default_view) return this._config.default_view;
+    if (this._settingsMode()) {
+      const v = this._calendarSetting("calendar_view");
+      if (typeof v === "string" && v) return v;
+    }
+    return DEFAULT_CALENDAR_VIEW;
+  }
+
+  /** Resolved title: the card's YAML wins, else (settings mode) the `calendar_name`
+   *  setting, else undefined (no title). */
+  private _resolvedName(): string | undefined {
+    if (this._config?.name !== undefined) return this._config.name;
+    if (this._settingsMode()) {
+      const v = this._calendarSetting("calendar_name");
+      if (typeof v === "string" && v) return v;
+    }
+    return undefined;
+  }
+
   // --- Embedded daylight-calendar-card ---------------------------------------
 
   private _childConfig(entities: string[]): LovelaceCardConfig {
@@ -234,8 +277,9 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
 
     // --- Appearance ---
     const appearance: Record<string, unknown> = {};
+    const resolvedName = this._resolvedName();
     if (cfg.show_name === false) appearance.title = "";
-    else if (cfg.name) appearance.title = cfg.name;
+    else if (resolvedName) appearance.title = resolvedName;
     const showHeader = cfg.show_header !== false;
     appearance.hide_header = !showHeader;
     if (showHeader) appearance.hide_calendars = cfg.allow_calendar_toggling === false;
@@ -243,7 +287,7 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
     // Header transparency defaults from the theme (like the body): `ted-style` seeds a
     // translucent header so the frosted look is cohesive out of the box.
     let headerTransparency = cfg.header_transparency;
-    if (headerTransparency === undefined && cfg.theme === "ted-style") headerTransparency = 30;
+    if (headerTransparency === undefined && this._resolvedTheme() === "ted-style") headerTransparency = 30;
     if (typeof headerTransparency === "number") {
       appearance.header_background_opacity = Math.max(0, Math.min(100, headerTransparency));
     }
@@ -264,7 +308,7 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
       calendar_badge_icons: badgeIcons,
       readonly_calendars: readonly,
       entities,
-      default_view: cfg.default_view ?? DEFAULT_CALENDAR_VIEW,
+      default_view: this._resolvedView(),
       ...(cfg.calendar_config ?? {}),
     };
   }
@@ -274,7 +318,7 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
   private _surfaceStyle(): Record<string, string> | null {
     const cfg = this._config;
     if (!cfg) return null;
-    const ted = cfg.theme === "ted-style";
+    const ted = this._resolvedTheme() === "ted-style";
     let transparency = cfg.transparency;
     let blur = cfg.blur;
     if (ted) {
