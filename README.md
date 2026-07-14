@@ -938,6 +938,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.158
+
+- **Status card shows this device's name & area** — added **Device Name** and **Device Area** rows at the top of the Status card (with the resolved area's source, e.g. Browser Mod), so you can quickly confirm how the current device is identified.
+
 ### v1.0.157
 
 - **The auto-matched Music Assistant player is now visible** — when the Music view has to auto-match a Music Assistant player (because the Music player is left unset), the **Status card** row and the **Settings → Media** hint now show which Music Assistant player was found, labelled "auto-matched", so it's clear what's playing. All three (Music view, Settings, Status) now share the same resolution logic.

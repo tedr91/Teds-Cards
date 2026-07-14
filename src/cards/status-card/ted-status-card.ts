@@ -4,6 +4,7 @@ import { type HomeAssistant, type LovelaceCard } from "custom-card-helpers";
 
 import { tedCardThemeClass, tedStyleTheme } from "../../shared/theme";
 import { browserModId, resolveDeviceMediaPlayer } from "../../shared/device-id";
+import { areaName, resolveDeviceArea } from "../../shared/device-area";
 import { resolveMusicPlayer } from "../../shared/music-player";
 import { SettingsController, settingsStore } from "../../shared/settings";
 import {
@@ -169,6 +170,35 @@ export class TedStatusCard extends LitElement implements LovelaceCard {
   private _rows(): StatusRow[] {
     const rows: StatusRow[] = [];
     const attrs = this._reqAttrs();
+
+    // Current device's registered name + id.
+    const devName = settingsStore.registry()[settingsStore.deviceId]?.name;
+    rows.push({
+      icon: "mdi:devices",
+      label: "Device Name",
+      value: devName || "(unnamed)",
+      hint: settingsStore.deviceId,
+      level: devName ? "ok" : "warn",
+    });
+
+    // Current device's resolved area.
+    const areaRes = resolveDeviceArea(this.hass);
+    const areaLabel = areaName(this.hass, areaRes.area) ?? areaRes.area;
+    const areaSrc =
+      areaRes.source === "browser_mod"
+        ? " · Browser Mod"
+        : areaRes.source === "local"
+          ? " · saved on device"
+          : areaRes.source === "config"
+            ? " · card"
+            : "";
+    rows.push({
+      icon: "mdi:map-marker",
+      label: "Device Area",
+      value: areaRes.area ? `${areaLabel}${areaSrc}` : "none set",
+      hint: areaRes.area,
+      level: areaRes.area ? "ok" : "warn",
+    });
 
     // Ted's Backend connection + version (top of the list — it's the funnel that
     // powers every other check).
