@@ -18,7 +18,6 @@ import {
   CALENDAR_DEFAULT_CONFIG,
   DAYLIGHT_CARD_TAG,
   DAYLIGHT_CARD_TYPE,
-  DEFAULT_CALENDAR_ENTITIES,
   DEFAULT_CALENDAR_VIEW,
 } from "./const";
 import type { CalendarCardConfig } from "./types";
@@ -59,7 +58,7 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
   }
 
   public static getStubConfig(): Omit<CalendarCardConfig, "type"> {
-    return { calendar_source: "settings" };
+    return { calendar_source: "config" };
   }
 
   @property({ attribute: false }) public hass?: HomeAssistant;
@@ -140,24 +139,23 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
   }
 
   /** Resolve this device's calendars from settings: the device's curated subset
-   *  (else the global available list), always limited to the global allow-list. */
+   *  (else the global list), always limited to the global allow-list. When the
+   *  global list is empty, nothing is available (the Global list is the gate). */
   private _settingsEntities(): string[] {
     const asIds = (v: unknown): string[] =>
       Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
     const global = asIds(settingsStore.globalSettings().calendars_list);
     const device = settingsStore.deviceSettings();
     const chosen = "calendars_list" in device ? asIds(device.calendars_list) : global;
-    return global.length ? chosen.filter((id) => global.includes(id)) : chosen;
+    return chosen.filter((id) => global.includes(id));
   }
 
-  /** The calendars to show, in order — from config or this device's settings, with
-   *  the baked-in default calendars as a final fallback so the card always works. */
+  /** The calendars to show, in order — from config or this device's settings.
+   *  Empty (nothing selected) renders the empty state, not a fallback list. */
   private _entities(): string[] {
-    const chosen =
-      this._config?.calendar_source === "config"
-        ? this._configEntities(this._config)
-        : this._settingsEntities();
-    return chosen.length ? chosen : DEFAULT_CALENDAR_ENTITIES;
+    return this._config?.calendar_source === "settings"
+      ? this._settingsEntities()
+      : this._configEntities(this._config);
   }
 
   // --- Embedded daylight-calendar-card ---------------------------------------

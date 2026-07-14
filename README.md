@@ -939,6 +939,11 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.174
+
+- **Calendar card refinements** — the Calendar card's **Calendar source** now defaults to **This card** (pick calendars directly), and its config-mode calendar list is **drag-to-reorder** in the visual editor. It no longer invents a default calendar list: with nothing selected it shows a clear "No calendars yet" prompt.
+- **Global list is the gate for entity-list settings** — for **Calendars**, **Cameras**, and **Thermostats**, the per-device picker now only offers entities from the **Global** available list. When the Global list is empty, the per-device page prompts you to build the Global list first instead of listing every entity.
+
 ### v1.0.173
 
 - **Calendar card in the card picker** — the new Ted's Calendar card now appears in Home Assistant's "Add card" gallery (with its visual editor), and is suggested when you add a card from a `calendar.*` entity.

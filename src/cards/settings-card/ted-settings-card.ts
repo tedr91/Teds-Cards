@@ -858,15 +858,14 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
 
   private _renderCamerasDevice(field: SettingField): TemplateResult {
     const meta = this._listMeta(field);
-    const domain = field.entityDomain ?? "camera";
     const global = this._camerasArray(this._globalValue(field.key));
     const raw = settingsStore.deviceSettings();
     const hasDevice = field.key in raw;
     const stored = hasDevice ? this._camerasArray(raw[field.key]) : [];
-    // Only global entities are choosable; hide any stale ids once a global list exists.
-    const valid = global.length ? stored.filter((id) => global.includes(id)) : stored;
-    const pool = global.length ? global : this._allCameras(domain);
-    const remaining = pool.filter((id) => !valid.includes(id));
+    // The Global "available list" is the gate: only global entities are choosable,
+    // and an empty Global list means nothing is available for any device to pick.
+    const valid = stored.filter((id) => global.includes(id));
+    const remaining = global.filter((id) => !valid.includes(id));
     const setList = (next: string[]): void => this._setDevice(field.key, next);
     return html`
       <div class="cam-row">
@@ -876,7 +875,9 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
             <span class="help">
               ${hasDevice
                 ? `The ${meta.nounPlural} this device shows.`
-                : `Not customized — this device shows all available ${meta.nounPlural}.`}
+                : global.length
+                  ? `Not customized — this device shows all available ${meta.nounPlural}.`
+                  : `No ${meta.nounPlural} are available yet — add them to the Global list first.`}
             </span>
           </div>
           <button class="cam-btn" @click=${() => this._syncDevice(field)}>
@@ -914,7 +915,12 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
               <option value="">${`Add a ${meta.noun}…`}</option>
               ${remaining.map((id) => html`<option value=${id}>${this._cameraName(id)}</option>`)}
             </select>`
-          : nothing}
+          : !global.length
+            ? html`<div class="help">
+                Add ${meta.nounPlural} to the <b>Global</b> list first, then choose which ones
+                this device shows.
+              </div>`
+            : nothing}
       </div>
     `;
   }

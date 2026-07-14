@@ -74,12 +74,12 @@ calendar_config:
 
 | Option | Default | Description |
 | --- | --- | --- |
-| `calendar_source` | `settings` | Where the calendars come from: `settings` (this device's Calendars list) or `config` (the card's `entities`). |
+| `calendar_source` | `config` | Where the calendars come from: `config` (the card's `entities`) or `settings` (this device's Calendars list). |
 | `entities` | – | `calendar.*` entities to show when `calendar_source: config`. |
 | `default_view` | `month` | The Daylight Calendar view to open on (`month`, `week`, `schedule`, `agenda`). |
 | `fill` | `false` | Fill the parent area (e.g. a dashboard view content cell) instead of sizing to content. |
 | `calendar_config` | `{}` | Extra options merged into the embedded Daylight Calendar card (wins over the baked-in defaults). |
-| `empty_title` / `empty_message` | – | Override the empty-state message (settings mode with no calendars and no fallback). |
+| `empty_title` / `empty_message` | – | Override the empty-state message (no calendars selected). |
 | `missing_title` / `missing_message` | – | Override the missing-dependency message text. |
 | `settings_path` | `[root]/settings?tab=calendars` | Where the empty-state **Settings** button navigates. `[root]` is your dashboard root. |
 
@@ -87,8 +87,10 @@ calendar_config:
 
 ## How the calendars are chosen
 
-In `settings` mode the card uses this device's per-device **Calendars** list from
-**Settings → Calendars** (the global list defines the available calendars; each device
-curates its own subset). If neither the Settings list nor the card's `entities` resolve
-any calendars, the card falls back to Ted's baked-in default calendars, so it always shows
-something out of the box.
+In `settings` mode the card shows this device's per-device **Calendars** list from
+**Settings → Calendars**. The **Global** list defines the available calendars (the
+allow-list); each device then curates its own subset. If a device hasn't customized its
+list, it shows the whole Global list. If no calendars are selected (the Global list is
+empty), the card shows an empty **"No calendars yet"** prompt with a Settings button
+rather than picking calendars for you. Ted's styling defaults (colours, names, combined
+calendars, badges, etc.) still apply to whichever calendars you choose.

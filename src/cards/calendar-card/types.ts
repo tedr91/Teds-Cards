@@ -4,10 +4,9 @@ import type { TedStyleTheme } from "../../shared/types";
 
 /**
  * Where the calendar entities come from.
- * - `settings` (default) — this device's `calendars_list` (Settings → Calendars).
- * - `config`             — the card's own `entities`.
- * In both cases, if none resolve, the card falls back to its baked-in default
- * calendars so it works out of the box.
+ * - `config` (default) — the card's own `entities`.
+ * - `settings`         — this device's `calendars_list` (Settings → Calendars).
+ * If none resolve, the card shows its empty state (it doesn't invent calendars).
  */
 export type CalendarSource = "settings" | "config";
 
@@ -15,7 +14,7 @@ export interface CalendarCardConfig extends LovelaceCardConfig {
   type: string;
   /** Explicit `calendar.*` entities. Used when `calendar_source: config`. */
   entities?: string[];
-  /** Where the calendar entities come from. Defaults to `settings`. */
+  /** Where the calendar entities come from. Defaults to `config`. */
   calendar_source?: CalendarSource;
   /** The Daylight Calendar view to open on (`month`, `week`, `schedule`, `agenda`, …). */
   default_view?: string;

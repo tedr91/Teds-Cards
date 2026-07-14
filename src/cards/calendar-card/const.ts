@@ -13,18 +13,6 @@ export const DAYLIGHT_CARD_TYPE = `custom:${DAYLIGHT_CARD_TAG}`;
 /** The calendar view the wrapped card opens on by default. */
 export const DEFAULT_CALENDAR_VIEW = "month";
 
-/** Fallback calendar entities used when neither the card config nor this device's
- *  Settings "Calendars" list supplies any (so the card works out of the box). */
-export const DEFAULT_CALENDAR_ENTITIES = [
-  "calendar.holidays_in_united_states",
-  "calendar.birthdays_2",
-  "calendar.family",
-  "calendar.chanisha_s_gmail_com",
-  "calendar.ted_outlook_calendar",
-  "calendar.hockey_canadian_bacon",
-  "calendar.hockey_maple_bars",
-];
-
 /**
  * Ted's baked-in Daylight Calendar configuration. Everything except `type`,
  * `entities`, and `default_view` (which the wrapper supplies) lives here, so a
