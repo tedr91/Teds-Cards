@@ -37,8 +37,28 @@ interface GridOptions {
 interface RegistryEntity {
   platform?: string;
   device_id?: string | null;
+  area_id?: string | null;
 }
-type RegistryHass = HomeAssistant & { entities?: Record<string, RegistryEntity | undefined> };
+interface RegistryDevice {
+  manufacturer?: string | null;
+  model?: string | null;
+  name?: string | null;
+}
+type RegistryHass = HomeAssistant & {
+  entities?: Record<string, RegistryEntity | undefined>;
+  devices?: Record<string, RegistryDevice | undefined>;
+};
+
+/** When several Music Assistant players share an area, prefer these providers in
+ *  order. Each entry lists keywords looked for in the player's device
+ *  manufacturer / model / name (Music Assistant sets the device manufacturer to the
+ *  real manufacturer, or the provider name when unknown). */
+const PROVIDER_ORDER: string[][] = [
+  ["sonos"],
+  ["chromecast", "google cast", "google", "cast", "nest"],
+  ["airplay", "apple"],
+  ["dlna", "upnp"],
+];
 
 /** Outcome of resolving the player entity for this device. */
 type Resolution =
@@ -134,6 +154,23 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
     return (this.hass as RegistryHass | undefined)?.entities ?? {};
   }
 
+  private _devices(): Record<string, RegistryDevice | undefined> {
+    return (this.hass as RegistryHass | undefined)?.devices ?? {};
+  }
+
+  /** Priority rank of a Music Assistant player by its provider (lower = preferred);
+   *  unknown providers rank last. Uses the player's device manufacturer/model/name. */
+  private _providerRank(id: string): number {
+    const deviceId = this._registry()[id]?.device_id ?? undefined;
+    const dev = deviceId ? this._devices()[deviceId] : undefined;
+    const text = [dev?.manufacturer, dev?.model, dev?.name, this._name(id), id]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+    const idx = PROVIDER_ORDER.findIndex((keys) => keys.some((k) => text.includes(k)));
+    return idx === -1 ? PROVIDER_ORDER.length : idx;
+  }
+
   private _isMassPlayer(id: string): boolean {
     return this._registry()[id]?.platform === MASS_PLAYER_PLATFORM;
   }
@@ -151,27 +188,63 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
     return typeof fn === "string" ? fn : id;
   }
 
-  /** Best-effort: find the Music Assistant player matching a physical speaker. */
+  /** Best-effort: find the Music Assistant player matching a physical speaker.
+   *  Tiers: same HA device → exact name → best name-token overlap (area as a tie-breaker). */
   private _matchMassPlayer(base: string): string | undefined {
+    const reg = this._registry();
     const candidates = this._massPlayers();
     if (candidates.length === 0) return undefined;
-    // 1) Same underlying HA device.
-    const baseDevice = this._registry()[base]?.device_id ?? null;
+
+    // 1) Same underlying HA device — the strongest signal.
+    const baseDevice = reg[base]?.device_id ?? null;
     if (baseDevice) {
-      const byDevice = candidates.find((id) => this._registry()[id]?.device_id === baseDevice);
+      const byDevice = candidates.find((id) => reg[id]?.device_id === baseDevice);
       if (byDevice) return byDevice;
     }
-    // 2) Matching friendly name (exact, then containment).
-    const norm = (s: string): string => s.toLowerCase().replace(/[^a-z0-9]+/g, "");
-    const target = norm(this._name(base));
-    if (target) {
-      const exact = candidates.find((id) => norm(this._name(id)) === target);
+
+    const tokenize = (s: string): string[] => s.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+    const baseTokens = tokenize(this._name(base));
+    const baseJoined = baseTokens.join("");
+    const baseArea = reg[base]?.area_id ?? null;
+
+    // 2) Exact normalized name.
+    if (baseJoined) {
+      const exact = candidates.find((id) => tokenize(this._name(id)).join("") === baseJoined);
       if (exact) return exact;
-      const partial = candidates.find((id) => {
-        const n = norm(this._name(id));
-        return n.length > 2 && (n.includes(target) || target.includes(n));
-      });
-      if (partial) return partial;
+    }
+    if (baseTokens.length === 0) return undefined;
+
+    // 3) Rank the rest by name-token overlap; a shared area breaks ties.
+    let best: { id: string; score: number } | undefined;
+    for (const id of candidates) {
+      const cTokens = tokenize(this._name(id));
+      if (cTokens.length === 0) continue;
+      const lenGap = Math.abs(cTokens.length - baseTokens.length);
+      let score: number;
+      if (
+        baseTokens.every((t) => cTokens.includes(t)) ||
+        cTokens.every((t) => baseTokens.includes(t))
+      ) {
+        // One name's tokens fully contain the other (e.g. "Office" ↔ "Office Speaker").
+        score = 60 - lenGap * 5;
+      } else {
+        const shared = baseTokens.filter((t) => cTokens.includes(t)).length;
+        if (shared === 0) continue;
+        score = 20 + shared * 5 - lenGap * 3;
+      }
+      if (baseArea && reg[id]?.area_id === baseArea) score += 15;
+      if (!best || score > best.score) best = { id, score };
+    }
+    if (best && best.score >= 25) return best.id;
+
+    // 4) No name match — fall back to a Music Assistant player in the same area,
+    //    preferring providers in order (Sonos → Chromecast → AirPlay → DLNA).
+    if (baseArea) {
+      const inArea = candidates.filter((id) => reg[id]?.area_id === baseArea);
+      if (inArea.length) {
+        inArea.sort((a, b) => this._providerRank(a) - this._providerRank(b));
+        return inArea[0];
+      }
     }
     return undefined;
   }
