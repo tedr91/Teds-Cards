@@ -15,6 +15,7 @@ import {
   subscribeUiScope,
 } from "../../shared/settings";
 import { resolveDeviceMediaPlayer } from "../../shared/device-id";
+import { resolveMusicPlayer } from "../../shared/music-player";
 import {
   fieldsByGroup,
   SETTINGS_DEFAULTS,
@@ -449,6 +450,31 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     >`;
   }
 
+  /** The fallback hint for the music player — shows the auto-matched Music Assistant player. */
+  private _musicFallbackHint(): TemplateResult {
+    const res = resolveMusicPlayer(this.hass);
+    if (res.state === "ok") {
+      return html`<span class="help"
+        >When unset, uses this device's Music Assistant player:
+        <b>${this._entityLabel(res.entity)}</b>${res.matched ? " (auto-matched)" : nothing}</span
+      >`;
+    }
+    if (res.state === "unmatched") {
+      return html`<span class="help"
+        >No Music Assistant player found for this device (nearest speaker:
+        <b>${this._entityLabel(res.base)}</b>).</span
+      >`;
+    }
+    return html`<span class="help">No music player found for this device.</span>`;
+  }
+
+  /** The correct fallback hint for a media-player field key. */
+  private _fallbackHintFor(key: string): TemplateResult | typeof nothing {
+    if (key === "music_player") return this._musicFallbackHint();
+    if (key === "system_sound_player") return this._mediaFallbackHint();
+    return nothing;
+  }
+
   private _toggleOverride(field: SettingField, on: boolean): void {
     if (on) {
       // Mark as editing so the control enables even when the inherited value is
@@ -597,9 +623,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
           <div class="row-label">
             <span>${field.label}</span>
             <span class="help">Set on the “This device” tab.</span>
-            ${field.key === "system_sound_player" || field.key === "music_player"
-              ? this._mediaFallbackHint()
-              : nothing}
+            ${this._fallbackHintFor(field.key)}
           </div>
           <div class="row-control">
             ${this._renderControl(field, null, true, () => undefined)}
@@ -632,7 +656,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
           <span>${field.label}</span>
           ${overriding ? nothing : html`<span class="inherit-tag">Inherited</span>`}
           ${(field.key === "system_sound_player" || field.key === "music_player") && !overriding
-            ? this._mediaFallbackHint()
+            ? this._fallbackHintFor(field.key)
             : nothing}
         </div>
         <div class="row-control">

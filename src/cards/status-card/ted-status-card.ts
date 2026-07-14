@@ -4,6 +4,7 @@ import { type HomeAssistant, type LovelaceCard } from "custom-card-helpers";
 
 import { tedCardThemeClass, tedStyleTheme } from "../../shared/theme";
 import { browserModId, resolveDeviceMediaPlayer } from "../../shared/device-id";
+import { resolveMusicPlayer } from "../../shared/music-player";
 import { SettingsController, settingsStore } from "../../shared/settings";
 import {
   REQUIREMENT_LABELS,
@@ -151,14 +152,6 @@ export class TedStatusCard extends LitElement implements LovelaceCard {
     return resolveDeviceMediaPlayer(this.hass);
   }
 
-  /** The player the Music view uses on this device
-   *  (music setting → system-sound setting → device default). */
-  private _effectiveMusicPlayer(): string | undefined {
-    const music = settingsStore.get("music_player");
-    if (typeof music === "string" && music) return music;
-    return this._effectiveMediaPlayer();
-  }
-
   /** The first `weather.*` entity (what the requirements check detects). */
   private _firstWeatherEntity(): string | undefined {
     const states = this.hass?.states;
@@ -256,14 +249,20 @@ export class TedStatusCard extends LitElement implements LovelaceCard {
       level: mp ? "ok" : "warn",
     });
 
-    // Music & media player (the Music view target).
-    const music = this._effectiveMusicPlayer();
+    // Music & media player (the Music view target — the auto-matched MA player).
+    const music = resolveMusicPlayer(this.hass);
     rows.push({
       icon: "mdi:music",
       label: "Music and Media Player",
-      value: music ? `Available · ${this._entityLabel(music)}` : "none detected",
-      hint: music,
-      level: music ? "ok" : "warn",
+      value:
+        music.state === "ok"
+          ? `${music.matched ? "Auto-matched" : "Available"} · ${this._entityLabel(music.entity)}`
+          : music.state === "unmatched"
+            ? "No Music Assistant player"
+            : "none detected",
+      hint:
+        music.state === "ok" ? music.entity : music.state === "unmatched" ? music.base : undefined,
+      level: music.state === "ok" ? "ok" : "warn",
     });
 
     return rows;
