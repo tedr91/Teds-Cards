@@ -24,6 +24,9 @@ const GRIP_ICON_PATH =
 const DELETE_ICON_PATH = "M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z";
 // mdi:plus
 const PLUS_ICON_PATH = "M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z";
+// mdi:chevron-down / mdi:chevron-up — the in-row Options disclosure
+const CHEVRON_DOWN_PATH = "M7.41,8.58L12,13.17L16.59,8.58L18,10L12,16L6,10L7.41,8.58Z";
+const CHEVRON_UP_PATH = "M7.41,15.41L12,10.83L16.59,15.41L18,14L12,8L6,14L7.41,15.41Z";
 
 const SOURCE_OPTIONS = [
   { value: "config", label: "This card (choose below)" },
@@ -51,6 +54,15 @@ const ICON_SOURCE_OPTIONS = [
 export class TedCalendarCardEditor extends LitElement implements LovelaceCardEditor {
   @property({ attribute: false }) public hass?: HomeAssistant;
   @state() private _config?: CalendarCardConfig;
+  /** Which calendar rows have their Options disclosure open (by index). */
+  @state() private _openRows = new Set<number>();
+
+  private _toggleRow(idx: number): void {
+    const next = new Set(this._openRows);
+    if (next.has(idx)) next.delete(idx);
+    else next.add(idx);
+    this._openRows = next;
+  }
 
   public setConfig(config: CalendarCardConfig): void {
     this._config = config;
@@ -252,13 +264,14 @@ export class TedCalendarCardEditor extends LitElement implements LovelaceCardEdi
       color: item.color ?? "",
     };
     const optSchema = [
+      { name: "readonly", selector: { boolean: {} } },
       {
         type: "grid",
         name: "",
         column_min_width: "140px",
         schema: [
           { name: "name", selector: { text: { placeholder: this._entityName(item.entity) } } },
-          { name: "readonly", selector: { boolean: {} } },
+          { name: "icon_source", selector: { select: { mode: "dropdown", options: ICON_SOURCE_OPTIONS } } },
         ],
       },
       {
@@ -266,11 +279,15 @@ export class TedCalendarCardEditor extends LitElement implements LovelaceCardEdi
         name: "",
         column_min_width: "140px",
         schema: [
-          { name: "icon", selector: { icon: {} } },
+          {
+            name: "icon",
+            selector: {
+              icon: { placeholder: this.hass?.states[item.entity]?.attributes?.icon || "mdi:calendar" },
+            },
+          },
           { name: "person", selector: { entity: { domain: "person" } } },
         ],
       },
-      { name: "icon_source", selector: { select: { mode: "dropdown", options: ICON_SOURCE_OPTIONS } } },
       { name: "color", selector: { ui_color: {} } },
     ];
     return html`
@@ -287,6 +304,15 @@ export class TedCalendarCardEditor extends LitElement implements LovelaceCardEdi
             allow-custom-entity
             @value-changed=${(ev: CustomEvent) => this._entityChanged(idx, ev)}
           ></ha-entity-picker>
+          ${item.entity
+            ? html`<ha-icon-button
+                class="opt-toggle"
+                label="Options"
+                title="Options"
+                .path=${this._openRows.has(idx) ? CHEVRON_UP_PATH : CHEVRON_DOWN_PATH}
+                @click=${() => this._toggleRow(idx)}
+              ></ha-icon-button>`
+            : nothing}
           <ha-icon-button
             class="warning"
             label="Delete calendar"
@@ -294,20 +320,17 @@ export class TedCalendarCardEditor extends LitElement implements LovelaceCardEdi
             @click=${(ev: Event) => this._remove(idx, ev)}
           ></ha-icon-button>
         </div>
-        ${item.entity
-          ? html`<ha-expansion-panel outlined class="opt-panel">
-              <span slot="header" class="opt-header">Options</span>
-              <div class="opt-body">
-                <ha-form
-                  .hass=${this.hass}
-                  .data=${optData}
-                  .schema=${optSchema}
-                  .computeLabel=${this._computeLabel}
-                  .computeHelper=${this._computeHelper}
-                  @value-changed=${(ev: CustomEvent) => this._itemChanged(idx, ev)}
-                ></ha-form>
-              </div>
-            </ha-expansion-panel>`
+        ${item.entity && this._openRows.has(idx)
+          ? html`<div class="opt-body">
+              <ha-form
+                .hass=${this.hass}
+                .data=${optData}
+                .schema=${optSchema}
+                .computeLabel=${this._computeLabel}
+                .computeHelper=${this._computeHelper}
+                @value-changed=${(ev: CustomEvent) => this._itemChanged(idx, ev)}
+              ></ha-form>
+            </div>`
           : nothing}
       </div>
     `;
@@ -459,6 +482,7 @@ export class TedCalendarCardEditor extends LitElement implements LovelaceCardEdi
     ev.stopPropagation();
     const items = this._items();
     items.splice(idx, 1);
+    this._openRows = new Set();
     this._commitItems(items);
   }
 
@@ -467,6 +491,7 @@ export class TedCalendarCardEditor extends LitElement implements LovelaceCardEdi
     const { oldIndex, newIndex } = ev.detail as { oldIndex: number; newIndex: number };
     const items = this._items();
     items.splice(newIndex, 0, items.splice(oldIndex, 1)[0]);
+    this._openRows = new Set();
     this._commitItems(items);
   };
 
@@ -562,6 +587,10 @@ export class TedCalendarCardEditor extends LitElement implements LovelaceCardEdi
     }
     .opt-body {
       padding: 8px 12px 12px;
+    }
+    .opt-toggle {
+      color: var(--secondary-text-color);
+      flex: none;
     }
     .sub-panel {
       --expansion-panel-content-padding: 0;

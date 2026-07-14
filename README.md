@@ -939,6 +939,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.185
+
+- **Calendar card per-calendar Options polish** — each calendar's Options now open from a chevron toggle inside the row (between the entity and the delete button) rather than a separate panel, the fields are grouped as Read-only, Name / Badge source, Icon / Person, Color, and the Icon field now has a label and previews the calendar's own icon.
+
 ### v1.0.184
 
 - **Calendar card per-calendar Options tidied** — each calendar's Options now group as Name / Read-only, Icon / Person, Badge source, and Color. The badge source (renamed from "Icon source") now defaults to **Icon** and both the icon and person fields are always shown.
