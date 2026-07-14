@@ -939,6 +939,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.181
+
+- **Calendar card respects translucent themes** — when the active Home Assistant theme uses translucent card surfaces (e.g. Windows 11 / Mica / macOS themes), the Calendar card's frosted surface now inherits the theme's backdrop blur instead of appearing merely see-through. An explicit background blur or 100% transparency still overrides it.
+
 ### v1.0.180
 
 - **Calendar card Appearance reorganised + header transparency** — the Calendar card editor's Appearance section is now grouped into collapsible **Header** (show header / header colour / header transparency, show name / name, show calendar badges) and **Advanced Visuals** (background colour, transparency, blur, width/height) subsections, with Theme styling and Weather sensor at the top. Added **Header transparency** (Daylight's `header_background_opacity`); the card-wide blur frosts a translucent header too.

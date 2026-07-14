@@ -324,7 +324,7 @@ export class TedCalendarCardEditor extends LitElement implements LovelaceCardEdi
       return "Show the calendar badge row you can tap to toggle each calendar's visibility.";
     }
     if (schema.name === "header_transparency") {
-      return "How see-through the header is (0 = solid). A background blur frosts it too.";
+      return "How see-through the header is (0 = solid). Empty follows the theme (Ted's Theme = translucent). A background blur frosts it too.";
     }
     return undefined;
   };

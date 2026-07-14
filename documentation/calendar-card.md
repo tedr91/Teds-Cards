@@ -100,7 +100,7 @@ calendar_config:
 | `blur` | – | Background blur 0–100% (empty = none) — frosts whatever shows through a translucent background. |
 | `show_header` | `true` | Show the calendar header (`hide_header` inverse). |
 | `header_color` | – | Header background colour (standard Ted colour picker; maps to Daylight's `header_color`). |
-| `header_transparency` | – | Header background see-through 0–100% (maps to Daylight's `header_background_opacity`). A card-wide `blur` frosts it. |
+| `header_transparency` | theme | Header background see-through 0–100% (maps to Daylight's `header_background_opacity`). Empty follows the theme (`ted-style` = 30). A card-wide `blur` frosts it. |
 | `allow_calendar_toggling` | `true` | Show the calendar on/off toggle list in the header (only when the header is shown; `hide_calendars` inverse). |
 | `weather_sensor` | – | A `weather.*` entity shown in the header (`header_weather_sensor`). |
 | `width` / `height` | – | Fixed size in px. **Only** applied when the card isn't a direct item in a grid (Sections) view. |

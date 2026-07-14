@@ -210,8 +210,12 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
     appearance.hide_header = !showHeader;
     if (showHeader) appearance.hide_calendars = cfg.allow_calendar_toggling === false;
     if (cfg.header_color) appearance.header_color = cssColor(cfg.header_color);
-    if (typeof cfg.header_transparency === "number") {
-      appearance.header_background_opacity = Math.max(0, Math.min(100, cfg.header_transparency));
+    // Header transparency defaults from the theme (like the body): `ted-style` seeds a
+    // translucent header so the frosted look is cohesive out of the box.
+    let headerTransparency = cfg.header_transparency;
+    if (headerTransparency === undefined && cfg.theme === "ted-style") headerTransparency = 30;
+    if (typeof headerTransparency === "number") {
+      appearance.header_background_opacity = Math.max(0, Math.min(100, headerTransparency));
     }
     if (cfg.weather_sensor) appearance.header_weather_sensor = cfg.weather_sensor;
     // When we paint our own frosted surface behind the (shadow-DOM) calendar, make
@@ -423,13 +427,18 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
     }
     /* Frosted surface painted BEHIND the calendar (a sibling, not an ancestor, so it
        never traps daylight's position:fixed event modals). daylight's own body is made
-       transparent (background_transparent) so this shows through. */
+       transparent (background_opacity: 100) so this shows through. The theme's
+       backdrop-filter is the default so TRANSLUCENT HA themes (Win11/Mica/macOS) still
+       frost this custom surface; an explicit blur (or 100% transparency) overrides it
+       inline via appearanceStyle. */
     .calendar.styled > .surface {
       position: absolute;
       inset: 0;
       z-index: 0;
       border-radius: var(--ha-card-border-radius, 12px);
       pointer-events: none;
+      backdrop-filter: var(--ha-card-backdrop-filter, none);
+      -webkit-backdrop-filter: var(--ha-card-backdrop-filter, none);
     }
     .calendar.styled > daylight-calendar-card {
       position: relative;
