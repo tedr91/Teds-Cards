@@ -53,6 +53,9 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
   private _child?: { el: LovelaceCard; json: string };
   private _childKind?: "player" | "message";
   private _lastPropagatedHass?: HomeAssistant;
+  /** Tracks the resolved player's last observed state to detect a fresh playback start. */
+  private _lastPlayEntity?: string;
+  private _lastPlayState?: string;
 
   public constructor() {
     super();
@@ -100,8 +103,39 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
   }
 
   protected updated(changed: Map<string, unknown>): void {
-    if (changed.has("hass")) this._propagateHass();
+    if (changed.has("hass")) {
+      this._propagateHass();
+      this._maybeApplyStartVolume();
+    }
     if (this.hass) void warmMassProviders(this.hass).then((c) => c && this.requestUpdate());
+  }
+
+  /** On the leading edge of playback starting, set the player to this device's
+   *  "Music volume" setting so a fresh session starts at the configured volume. */
+  private _maybeApplyStartVolume(): void {
+    if (this._config?.apply_music_volume === false || !this.hass) return;
+    const res = this._resolve();
+    if (res.state !== "ok") {
+      this._lastPlayEntity = undefined;
+      this._lastPlayState = undefined;
+      return;
+    }
+    const entity = res.entity;
+    const state = this.hass.states[entity]?.state;
+    const prevEntity = this._lastPlayEntity;
+    const prevState = this._lastPlayState;
+    this._lastPlayEntity = entity;
+    this._lastPlayState = state;
+    // Only act on an observed transition INTO "playing" for the same player (not on
+    // first mount, an entity switch, or a resume from paused/buffering).
+    if (entity !== prevEntity || prevState === undefined || state !== "playing") return;
+    if (prevState === "playing" || prevState === "paused" || prevState === "buffering") return;
+    const vol = settingsStore.get("music_volume");
+    if (typeof vol !== "number") return;
+    void this.hass.callService("media_player", "volume_set", {
+      entity_id: entity,
+      volume_level: Math.max(0, Math.min(1, vol / 100)),
+    });
   }
 
   // --- Entity resolution -----------------------------------------------------

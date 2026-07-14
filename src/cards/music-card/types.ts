@@ -24,6 +24,9 @@ export interface MusicCardConfig extends LovelaceCardConfig {
   /** Stretch the player to fill the whole area (sets the child card's `panel`).
    *  Off (default) sizes the player to its content, centered in the view. */
   fill?: boolean;
+  /** Set the player to this device's "Music volume" setting when playback first
+   *  starts (the leading edge of playing). Default true. */
+  apply_music_volume?: boolean;
   theme?: TedStyleTheme;
   /** Empty-state overrides (no player configured for this device). */
   empty_title?: string;

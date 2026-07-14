@@ -938,6 +938,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.169
+
+- **Music starts at your Music volume** — when playback first starts from the Music view, the player is set to this device's **Music volume** setting (Settings → Sounds → Music). Disable per-card with `apply_music_volume: false`.
+
 ### v1.0.168
 
 - **Default Music volume is now 5%** — the per-device **Music volume** setting defaults to 5% (was 50%). Devices with an existing value keep it. Pairs with Ted's Cards Backend v1.0.35+.

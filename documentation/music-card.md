@@ -97,6 +97,7 @@ reliable result.
 | `auto_resolve_mass_player` | boolean | `true` | If the player isn't a Music Assistant entity, find its Music Assistant match at runtime (by device, then name). |
 | `mass_config` | map | | Extra options merged into the embedded `mass-player-card` (see its [docs](https://github.com/droans/mass-player-card#configuration)). `type` and `entities` are managed by this card. |
 | `fill` | boolean | `false` | Off (default) sizes the player to its content, centered in the view. On stretches it to fill the whole area (sets the player card's `panel`). |
+| `apply_music_volume` | boolean | `true` | When playback first starts, set the player to this device's **Music volume** setting (Settings → Sounds → Music). Set `false` to leave the volume untouched. |
 | `empty_title` / `empty_message` | string | | Override the "no player configured" empty state. |
 | `unmatched_title` / `unmatched_message` | string | | Override the "no Music Assistant match" state. |
 | `settings_path` | string | `[root]/settings?tab=sounds&scope=device` | Where the state buttons navigate. `[root]` is your dashboard root. |
