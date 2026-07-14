@@ -7,6 +7,7 @@ import {
   type LovelaceCardEditor,
 } from "custom-card-helpers";
 
+import { themedIcon } from "../../shared/icons";
 import { SettingsController, settingsStore } from "../../shared/settings";
 import {
   resolveMusicPlayer,
@@ -191,7 +192,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
       actions: [
         {
           label: "Settings",
-          icon: "mdi:cog",
+          icon: themedIcon("settings"),
           variant: "primary",
           action: "navigate",
           navigation_path: this._settingsPath(),
@@ -203,7 +204,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
   private _emptyMessageConfig(): LovelaceCardConfig {
     return this._messageConfig(
       "info",
-      "mdi:music",
+      themedIcon("music"),
       this._config?.empty_title ?? "No music player yet",
       this._config?.empty_message ??
         "This device hasn't been given a music player. Open Settings to choose one.",
@@ -213,7 +214,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
   private _unmatchedMessageConfig(base: string): LovelaceCardConfig {
     return this._messageConfig(
       "warning",
-      "mdi:music-note-off",
+      themedIcon("music-off"),
       this._config?.unmatched_title ?? "No Music Assistant player",
       this._config?.unmatched_message ??
         `"${this._name(base)}" isn't a Music Assistant player, and no matching one was found. ` +

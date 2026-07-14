@@ -8,19 +8,13 @@ import {
   type LovelaceCardEditor,
 } from "custom-card-helpers";
 
+import { themedIcon } from "../../shared/icons";
 import { SettingsController, settingsStore } from "../../shared/settings";
 import {
   CLIMATE_CARD_EDITOR_TYPE,
   CLIMATE_CARD_TYPE,
 } from "./const";
 import type { ClimateCardConfig, ClimateLayout } from "./types";
-
-// mdi:thermostat — empty-state illustration.
-const THERMOSTAT_ICON =
-  "M16.95,16.95C16.95,16.95 16.95,16.95 16.95,16.95C18.58,15.32 19.5,13.11 19.5,10.8C19.5,8.5 18.58,6.28 16.95,4.66C15.33,3.03 13.11,2.11 10.81,2.11C8.5,2.11 6.28,3.03 4.66,4.66L6.07,6.07C7.32,4.81 9.03,4.11 10.81,4.11C12.58,4.11 14.29,4.81 15.54,6.07C16.8,7.32 17.5,9.03 17.5,10.8C17.5,12.58 16.8,14.29 15.54,15.54L16.95,16.95M12,8A2,2 0 0,0 10,10C10,10.74 10.4,11.38 11,11.72V22H13V11.72C13.6,11.38 14,10.74 14,10A2,2 0 0,0 12,8Z";
-// mdi:cog — empty-state "Settings" button.
-const COG_ICON =
-  "M12,15.5A3.5,3.5 0 0,1 8.5,12A3.5,3.5 0 0,1 12,8.5A3.5,3.5 0 0,1 15.5,12A3.5,3.5 0 0,1 12,15.5M19.43,12.97C19.47,12.65 19.5,12.33 19.5,12C19.5,11.67 19.47,11.34 19.43,11L21.54,9.37C21.73,9.22 21.78,8.95 21.66,8.73L19.66,5.27C19.54,5.05 19.27,4.96 19.05,5.05L16.56,6.05C16.04,5.66 15.5,5.32 14.87,5.07L14.5,2.42C14.46,2.18 14.25,2 14,2H10C9.75,2 9.54,2.18 9.5,2.42L9.13,5.07C8.5,5.32 7.96,5.66 7.44,6.05L4.95,5.05C4.73,4.96 4.46,5.05 4.34,5.27L2.34,8.73C2.21,8.95 2.27,9.22 2.46,9.37L4.57,11C4.53,11.34 4.5,11.67 4.5,12C4.5,12.33 4.53,12.65 4.57,12.97L2.46,14.63C2.27,14.78 2.21,15.05 2.34,15.27L4.34,18.73C4.46,18.95 4.73,19.03 4.95,18.95L7.44,17.94C7.96,18.34 8.5,18.68 9.13,18.93L9.5,21.58C9.54,21.82 9.75,22 10,22H14C14.25,22 14.46,21.82 14.5,21.58L14.87,18.93C15.5,18.67 16.04,18.34 16.56,17.94L19.05,18.95C19.27,19.03 19.54,18.95 19.66,18.73L21.66,15.27C21.78,15.05 21.73,14.78 21.54,14.63L19.43,12.97Z";
 
 /** Home Assistant's `loadCardHelpers()` return shape (only what this card uses). */
 interface CardHelpers {
@@ -269,11 +263,11 @@ export class TedClimateCard extends LitElement implements LovelaceCard {
       "This device hasn't been given any thermostats. Open Settings to choose which ones to show.";
     return html`
       <div class="empty">
-        <ha-svg-icon class="empty-icon" .path=${THERMOSTAT_ICON}></ha-svg-icon>
+        <ha-icon class="empty-icon" .icon=${themedIcon("thermostat")}></ha-icon>
         <div class="empty-title">${title}</div>
         <div class="empty-msg">${message}</div>
         <button type="button" class="empty-btn" @click=${this._openSettings}>
-          <ha-svg-icon .path=${COG_ICON}></ha-svg-icon>
+          <ha-icon .icon=${themedIcon("settings")}></ha-icon>
           <span>Settings</span>
         </button>
       </div>

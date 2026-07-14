@@ -15,7 +15,7 @@ import {
   subscribeUiScope,
 } from "../../shared/settings";
 import { resolveDeviceMediaPlayer } from "../../shared/device-id";
-import { resolveIconForSet } from "../../shared/icons";
+import { resolveIconForSet, isIconSetAvailable } from "../../shared/icons";
 import { resolveMusicPlayer } from "../../shared/music-player";
 import {
   fieldsByGroup,
@@ -257,6 +257,17 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     if (!entry) return "";
     const set = String(settingsStore.effective().icon_set ?? "auto");
     return resolveIconForSet(entry, set) ?? entry.mdi;
+  }
+
+  /** Select options, annotating icon-set choices that aren't installed on this client. */
+  private _selectOptions(field: SettingField): { value: string; label: string }[] {
+    const opts = field.options ?? [];
+    if (field.key !== "icon_set") return opts;
+    return opts.map((o) =>
+      o.value === "auto" || isIconSetAvailable(o.value)
+        ? o
+        : { value: o.value, label: `${o.label} — not installed` },
+    );
   }
 
   /** One section tab button (shared by the visible strip and the hidden measure mirror). */
@@ -552,7 +563,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
           ?disabled=${disabled}
           @change=${(e: Event) => onChange((e.target as HTMLSelectElement).value)}
         >
-          ${(field.options ?? []).map(
+          ${this._selectOptions(field).map(
             (o) => html`<option value=${o.value} ?selected=${String(value) === o.value}>${o.label}</option>`,
           )}
         </select>`;

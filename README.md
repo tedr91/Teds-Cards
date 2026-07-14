@@ -938,6 +938,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.162
+
+- **Icon set — broader coverage & clearer picker** — the **Icon set** dropdown now marks families that aren't installed as "— not installed", the Music/Climate/Camera cards' built-in icons now follow the chosen icon set, and Streamline names were added for several icons (device, weather, settings, thermostat, camera). Icons still fall back to Material Design when a set doesn't provide one.
+
 ### v1.0.161
 
 - **Icon set setting** — added **Settings → General → Icon set**. Ted's built-in icons (Status card, Settings category tabs, and more over time) now follow the chosen icon family — **Auto** (best installed), Material Design, Fluent, Streamline, or Pepicons — with a Material Design fallback when an icon isn't available in the chosen set. An internal name map reconciles the different icon names across families. Requires Ted's Cards Backend v1.0.34+.
