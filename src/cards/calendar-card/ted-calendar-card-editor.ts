@@ -63,6 +63,13 @@ export class TedCalendarCardEditor extends LitElement implements LovelaceCardEdi
     );
   }
 
+  /** Friendly name of an entity (the default a field falls back to), else the id. */
+  private _entityName(id?: string): string {
+    if (!id) return "";
+    const fn = this.hass?.states[id]?.attributes?.friendly_name;
+    return typeof fn === "string" && fn ? fn : id;
+  }
+
   /** Commit an items array, collapsing option-less items back to bare id strings. */
   private _commitItems(items: CalendarItemConfig[]): void {
     const entities = items.map((it) => {
@@ -143,7 +150,7 @@ export class TedCalendarCardEditor extends LitElement implements LovelaceCardEdi
         column_min_width: "140px",
         schema: [
           { name: "show_name", selector: { boolean: {} } },
-          { name: "name", selector: { text: {} } },
+          { name: "name", selector: { text: { placeholder: "Family Calendar" } } },
         ],
       },
       { name: "allow_calendar_toggling", selector: { boolean: {} } },
@@ -246,7 +253,7 @@ export class TedCalendarCardEditor extends LitElement implements LovelaceCardEdi
       color: item.color ?? "",
     };
     const optSchema = [
-      { name: "name", selector: { text: {} } },
+      { name: "name", selector: { text: { placeholder: this._entityName(item.entity) } } },
       {
         type: "grid",
         name: "",

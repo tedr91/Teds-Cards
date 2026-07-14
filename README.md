@@ -939,6 +939,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.182
+
+- **Calendar card shows default values as placeholders** — in the Calendar card editor, empty text fields now show their default value as muted placeholder text: the card name shows `Family Calendar`, and each calendar's name shows that calendar's actual friendly name. (Start of a convention we'll extend to other cards.)
+
 ### v1.0.181
 
 - **Calendar card respects translucent themes** — when the active Home Assistant theme uses translucent card surfaces (e.g. Windows 11 / Mica / macOS themes), the Calendar card's frosted surface now inherits the theme's backdrop blur instead of appearing merely see-through. An explicit background blur or 100% transparency still overrides it.
