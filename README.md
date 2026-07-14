@@ -31,6 +31,7 @@ After spending months attempting to find an "on/off/brightness" switch that I li
 | Room Card | `custom:ted-room-card` | Overview card for a Home Assistant area. |
 | Camera Card | `custom:ted-camera-card` | One or more camera feeds (auto thumbnail or live stream) in single, quad, or multi layouts. |
 | Music Card | `custom:ted-music-card` | Music Assistant player for the current device (wraps droans/mass-player-card; requires it + `mass_queue`). |
+| Calendar Card | `custom:ted-calendar-card` | Calendar for the current device (wraps superdingo101/daylight-calendar-card; requires it). |
 | Navbar Card | `custom:ted-navbar-card` | Navigation bar pinned to the top or bottom, with buttons and status items in left/center/right zones. |
 | Alarm Card | `custom:ted-alarm-card` | Add, view, and enable/disable alarms (requires the Ted's Cards Backend integration). |
 | Timer Card | `custom:ted-timer-card` | Start, view, and cancel countdown timers (requires the Ted's Cards Backend integration). |
@@ -937,6 +938,10 @@ options as the Alarm card apply.
 
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
+
+### v1.0.172
+
+- **New Calendar card** — added `custom:ted-calendar-card`, a calendar for the **current device** that wraps the third-party [Daylight Calendar card](https://github.com/superdingo101/daylight-calendar-card). It shows the calendars chosen per-device in the new **Settings → Calendars** list (falling back to sensible defaults), with Ted's styling baked in. If the Daylight Calendar card isn't installed, it shows a clear "not installed" message with install steps and an **Open HACS** button, and swaps itself for the real calendar automatically once it loads. Requires Ted's Cards Backend v1.0.37+.
 
 ### v1.0.171
 

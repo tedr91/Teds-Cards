@@ -14,6 +14,7 @@ picker, where most have a visual editor).
 | [Cover](./cover-card.md) | `custom:ted-cover-card` | Tap-to-control card for blinds, shades, garage doors. |
 | [Camera](./camera-card.md) | `custom:ted-camera-card` | One or more camera feeds (thumbnail or live). |
 | [Music](./music-card.md) | `custom:ted-music-card` | Music Assistant player for this device (wraps mass-player-card). |
+| [Calendar](./calendar-card.md) | `custom:ted-calendar-card` | Calendar for this device (wraps daylight-calendar-card). |
 | [Remote](./remote-card.md) | `custom:ted-remote-card` | Remote control for Apple TV / Kaleidescape. |
 | [Clock / Weather](./clock-weather-card.md) | `custom:ted-clock-weather-card` | A large clock with date and current weather. |
 | [Room](./room-card.md) | `custom:ted-room-card` | Room dashboard: status strip + sections of light/cover/button cards. |
@@ -42,6 +43,10 @@ The **Music** card additionally needs the third-party
 [Music Assistant Player Card](https://github.com/droans/mass-player-card) and its
 [`mass_queue`](https://github.com/droans/mass_queue) integration — see the
 [Music card docs](./music-card.md#requirements).
+
+The **Calendar** card additionally needs the third-party
+[Daylight Calendar Card](https://github.com/superdingo101/daylight-calendar-card) — see the
+[Calendar card docs](./calendar-card.md#requirements).
 
 ---
 

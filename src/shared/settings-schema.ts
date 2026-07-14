@@ -53,7 +53,8 @@ export const SETTINGS_GROUPS = [
   "Sounds",
   "Alarms/Timers",
   "Cameras",
-  "Thermostats"
+  "Thermostats",
+  "Calendars"
 ] as const;
 
 /** Per-category tab icons — a Fluent icon (used when the `fluent` iconset is installed)
@@ -66,6 +67,7 @@ export const SETTINGS_GROUP_ICONS: Record<string, { fluent: string; mdi: string 
   "Alarms/Timers": { fluent: "fluent:clock-alarm-24-regular", mdi: "mdi:alarm" },
   Cameras: { fluent: "fluent:video-24-regular", mdi: "mdi:cctv" },
   Thermostats: { fluent: "fluent:temperature-24-regular", mdi: "mdi:thermometer" },
+  Calendars: { fluent: "fluent:calendar-ltr-24-regular", mdi: "mdi:calendar" },
 };
 
 /** Default values — must match the backend `SETTINGS_DEFAULTS`. */
@@ -91,6 +93,7 @@ export const SETTINGS_DEFAULTS: SettingsMap = {
   music_volume: 5,
   system_sound_player: null,
   cameras_list: [],
+  calendars_list: [],
   cameras_layout: "auto",
   climate_list: [],
   climate_layout: "auto",
@@ -188,6 +191,8 @@ export const SETTINGS_FIELDS: SettingField[] = [
     help: "How this device arranges its thermostats on the Climate view.",
   },
   { key: "climate_list", label: "Thermostats", group: "Thermostats", kind: "entity-list", entityDomain: "climate", help: "Global lists the available thermostats; each device curates its own subset." },
+  // Calendars
+  { key: "calendars_list", label: "Calendars", group: "Calendars", kind: "entity-list", entityDomain: "calendar", help: "Global lists the available calendars; each device curates its own subset. Shown by Ted's Calendar card." },
   // Navbar
   { key: "navbar_auto_hide", label: "Auto-hide", group: "Navbar", kind: "boolean", help: "Collapse the navbar into its edge until revealed." },
   { key: "navbar_auto_hide_delay", label: "Auto-hide delay", group: "Navbar", kind: "number", min: 1, max: 60, unit: "s", help: "Seconds before the revealed bar re-collapses." },

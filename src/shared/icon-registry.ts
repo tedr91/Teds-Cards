@@ -29,6 +29,8 @@ export type IconKey =
   | "settings"
   | "thermostat"
   | "camera"
+  | "calendar"
+  | "calendar-off"
   | "check-circle"
   | "alert-circle"
   | "error-circle"
@@ -60,6 +62,12 @@ export const SEMANTIC_ICONS: Record<IconKey, IconNames> = {
     "streamline-ultimate-color": "temperature-thermometer-high",
   },
   camera: { mdi: "cctv", fluent: "video-24-regular", "streamline-ultimate-color": "shield-monitor" },
+  calendar: {
+    mdi: "calendar-month",
+    fluent: "calendar-ltr-24-regular",
+    "streamline-ultimate-color": "calendar-1",
+  },
+  "calendar-off": { mdi: "calendar-remove", fluent: "calendar-cancel-24-regular" },
   "check-circle": { mdi: "check-circle", fluent: "checkmark-circle-24-filled" },
   "alert-circle": { mdi: "alert-circle", fluent: "warning-24-filled" },
   "error-circle": { mdi: "close-octagon", fluent: "dismiss-circle-24-filled" },
