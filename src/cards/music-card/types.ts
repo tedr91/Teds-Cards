@@ -21,7 +21,8 @@ export interface MusicCardConfig extends LovelaceCardConfig {
   /** Extra options merged into the embedded `mass-player-card` config
    *  (everything except `type`/`entities`). */
   mass_config?: Record<string, unknown>;
-  /** Stretch the player to fill the whole area (sets the child card's `panel`).
+  /** Stretch the player to fill the dashboard content area (sizes the embedded
+   *  mass-player-card to the content area's height, minus its own tab bar).
    *  Off (default) sizes the player to its content, centered in the view. */
   fill?: boolean;
   /** Set the player to this device's "Music volume" setting when playback first

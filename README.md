@@ -938,6 +938,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.170
+
+- **Music card `fill` sizes to the content area** — `fill: true` now sizes the embedded player to the dashboard content area (like other full-page cards) instead of Music Assistant's panel mode, which hard-coded the viewport height and overflowed past the header/navbar.
+
 ### v1.0.169
 
 - **Music starts at your Music volume** — when playback first starts from the Music view, the player is set to this device's **Music volume** setting (Settings → Sounds → Music). Disable per-card with `apply_music_volume: false`.

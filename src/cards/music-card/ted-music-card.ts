@@ -156,10 +156,13 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
   // --- Embedded mass-player-card ---------------------------------------------
 
   private _childConfig(entity: string): LovelaceCardConfig {
+    // NOTE: `fill` is handled purely with CSS (see the `.player.fill` styles) by
+    // driving mass-player-card's `--mass-player-card-section-height`. We do NOT set
+    // its `panel` option: panel mode hard-codes the card height to window.innerHeight
+    // (an inline style we can't override), which overflows past our header/navbar.
     return {
       type: MASS_PLAYER_CARD_TYPE,
       entities: [entity],
-      ...(this._config?.fill ? { panel: true } : {}),
       ...(this._config?.mass_config ?? {}),
     };
   }
@@ -319,9 +322,22 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
     .player.natural {
       align-self: center;
     }
-    /* Opt-in: stretch the player to fill the whole area (sets the child's panel mode). */
+    /* Opt-in: fill the dashboard content area. mass-player-card's own panel mode
+       hard-codes its height to window.innerHeight (unoverridable inline style), which
+       overflows past our header/navbar. Instead we size it via its public
+       --mass-player-card-section-height token: total card height = that + the card's
+       internal tab bar (--navbar-height: 4em). We mirror shared/layout-content.yaml's
+       content-area height and subtract 4em so the card lands exactly on the content
+       area. */
     .player.fill {
       height: 100%;
+      --mass-player-card-section-height: calc(
+        100dvh - var(
+            --ted-navbar-header-reserve,
+            var(--kiosk-header-height, var(--header-height, 56px))
+          ) - var(--safe-area-inset-top, 0px) -
+          var(--ted-navbar-bottom-reserve, 48px) - 24px - 4em
+      );
     }
     .player.fill > * {
       height: 100%;
