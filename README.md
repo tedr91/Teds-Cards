@@ -939,6 +939,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.176
+
+- **Per-device entity lists now use inherit/override** — the **Calendars**, **Cameras**, and **Thermostats** "This device" settings now have an **Inheriting — click to override** toggle like other settings. While inheriting, the device shows the Global list (read-only); click the link icon to override and curate this device's own subset. The **Sync list** button remains (in override mode) to reset the device list to the current Global list.
+
 ### v1.0.175
 
 - **Calendar card empty/missing message centered** — the Calendar card's "No calendars yet" and "not installed" messages are now centered within the view (both vertically and horizontally), matching the other view cards.

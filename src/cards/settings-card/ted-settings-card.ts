@@ -759,13 +759,34 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     return typeof fn === "string" && fn ? fn : id;
   }
 
-  /** A reorderable, removable list of entity rows. */
+  /** A list of entity rows. Editable (drag to reorder + remove) unless `readonly`,
+   *  in which case it's a static, non-interactive display (used for the inherited view). */
   private _renderCameraChips(
     ids: string[],
     icon: string,
     onRemove: (idx: number) => void,
     onMove: (from: number, to: number) => void,
+    readonly = false,
   ): TemplateResult {
+    const rows = ids.map(
+      (id, idx) => html`
+        <div class="cam-item ${readonly ? "readonly" : ""}">
+          ${readonly
+            ? nothing
+            : html`<div class="cam-grip" title="Drag to reorder">
+                <ha-icon icon="mdi:drag"></ha-icon>
+              </div>`}
+          <ha-icon class="cam-ico" .icon=${icon}></ha-icon>
+          <span class="cam-name">${this._cameraName(id)}</span>
+          ${readonly
+            ? nothing
+            : html`<button class="cam-del" title="Remove" @click=${() => onRemove(idx)}>
+                <ha-icon icon="mdi:close"></ha-icon>
+              </button>`}
+        </div>
+      `,
+    );
+    if (readonly) return html`<div class="cam-list">${rows}</div>`;
     return html`
       <ha-sortable
         handle-selector=".cam-grip"
@@ -774,22 +795,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
           onMove(oldIndex, newIndex);
         }}
       >
-        <div class="cam-list">
-          ${ids.map(
-            (id, idx) => html`
-              <div class="cam-item">
-                <div class="cam-grip" title="Drag to reorder">
-                  <ha-icon icon="mdi:drag"></ha-icon>
-                </div>
-                <ha-icon class="cam-ico" .icon=${icon}></ha-icon>
-                <span class="cam-name">${this._cameraName(id)}</span>
-                <button class="cam-del" title="Remove" @click=${() => onRemove(idx)}>
-                  <ha-icon icon="mdi:close"></ha-icon>
-                </button>
-              </div>
-            `,
-          )}
-        </div>
+        <div class="cam-list">${rows}</div>
       </ha-sortable>
     `;
   }
@@ -859,31 +865,73 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
   private _renderCamerasDevice(field: SettingField): TemplateResult {
     const meta = this._listMeta(field);
     const global = this._camerasArray(this._globalValue(field.key));
-    const raw = settingsStore.deviceSettings();
-    const hasDevice = field.key in raw;
-    const stored = hasDevice ? this._camerasArray(raw[field.key]) : [];
-    // The Global "available list" is the gate: only global entities are choosable,
-    // and an empty Global list means nothing is available for any device to pick.
+    const overriding = this._deviceOverriding(field.key);
+
+    const head = (
+      tag: TemplateResult | typeof nothing,
+      help: string,
+      extra: TemplateResult | typeof nothing = nothing,
+    ): TemplateResult => html`
+      <div class="cam-head">
+        <div class="row-label">
+          <span>${field.label} — this device</span>
+          ${tag}
+          <span class="help">${help}</span>
+        </div>
+        <div class="cam-head-actions">
+          ${extra}
+          <button
+            class="ovr ${overriding ? "on" : ""}"
+            title=${overriding ? "Overriding — click to inherit" : "Inheriting — click to override"}
+            @click=${() => this._toggleOverride(field, !overriding)}
+          >
+            <ha-icon .icon=${overriding ? "mdi:link-off" : "mdi:link-variant"}></ha-icon>
+          </button>
+        </div>
+      </div>
+    `;
+
+    // Inheriting: read-only view of the Global list; click the link icon to override.
+    if (!overriding) {
+      return html`
+        <div class="cam-row">
+          ${head(
+            html`<span class="inherit-tag">Inherited</span>`,
+            global.length
+              ? `Inheriting the Global list — ${global.length} ${global.length === 1 ? meta.noun : meta.nounPlural}. Click the link icon to customize this device.`
+              : `No ${meta.nounPlural} in the Global list yet.`,
+          )}
+          ${global.length
+            ? this._renderCameraChips(
+                global,
+                meta.icon,
+                () => {},
+                () => {},
+                true,
+              )
+            : nothing}
+        </div>
+      `;
+    }
+
+    // Overriding: this device curates its own subset of the Global list.
+    const stored = this._camerasArray(settingsStore.deviceSettings()[field.key]);
     const valid = stored.filter((id) => global.includes(id));
     const remaining = global.filter((id) => !valid.includes(id));
     const setList = (next: string[]): void => this._setDevice(field.key, next);
     return html`
       <div class="cam-row">
-        <div class="cam-head">
-          <div class="row-label">
-            <span>${field.label} — this device</span>
-            <span class="help">
-              ${hasDevice
-                ? `The ${meta.nounPlural} this device shows.`
-                : global.length
-                  ? `Not customized — this device shows all available ${meta.nounPlural}.`
-                  : `No ${meta.nounPlural} are available yet — add them to the Global list first.`}
-            </span>
-          </div>
-          <button class="cam-btn" @click=${() => this._syncDevice(field)}>
+        ${head(
+          nothing,
+          `The ${meta.nounPlural} this device shows.`,
+          html`<button
+            class="cam-btn"
+            title="Reset to the current Global list"
+            @click=${() => this._syncDevice(field)}
+          >
             <ha-icon icon="mdi:sync"></ha-icon><span>Sync list</span>
-          </button>
-        </div>
+          </button>`,
+        )}
         ${valid.length
           ? this._renderCameraChips(
               valid,
@@ -899,9 +947,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
                 setList(n);
               },
             )
-          : html`<div class="help">
-              No ${meta.nounPlural} selected yet — add from the list or tap “Sync list”.
-            </div>`}
+          : html`<div class="help">No ${meta.nounPlural} selected — add from the list below.</div>`}
         ${remaining.length
           ? html`<select
               class="sel cam-add"
@@ -925,8 +971,8 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     `;
   }
 
-  /** Reconcile the device list with the global list: keep still-valid cameras in
-   *  order, append newly-available global cameras, drop any no longer offered. */
+  /** Reset this device's override to the current Global list (keep still-valid entries
+   *  in order, then append any newly-available Global entries). */
   private _syncDevice(field: SettingField): void {
     const global = this._camerasArray(this._globalValue(field.key));
     const raw = settingsStore.deviceSettings();
@@ -1622,6 +1668,12 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
         justify-content: space-between;
         gap: 12px;
       }
+      .cam-head-actions {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        flex: none;
+      }
       .cam-btn {
         display: inline-flex;
         align-items: center;
@@ -1653,6 +1705,10 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
         border-radius: 8px;
         border: 1px solid var(--ted-style-divider);
         background: var(--ted-style-surface-2);
+      }
+      .cam-item.readonly {
+        opacity: 0.72;
+        border-style: dashed;
       }
       .cam-grip {
         display: flex;
