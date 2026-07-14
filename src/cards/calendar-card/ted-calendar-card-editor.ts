@@ -112,37 +112,56 @@ export class TedCalendarCardEditor extends LitElement implements LovelaceCardEdi
   private _renderAppearance(): TemplateResult {
     const cfg = this._config ?? ({} as CalendarCardConfig);
     const showHeader = cfg.show_header !== false;
-    const data: Record<string, unknown> = {
-      name: cfg.name ?? "",
-      show_name: cfg.show_name !== false,
+
+    const themeData = { theme: cfg.theme ?? "ha" };
+    const themeSchema = [
+      { name: "theme", selector: { select: { mode: "dropdown", options: THEME_OPTIONS } } },
+    ];
+
+    const headerData = {
       show_header: showHeader,
-      theme: cfg.theme ?? "ha",
-      allow_calendar_toggling: cfg.allow_calendar_toggling !== false,
       header_color: cfg.header_color ?? "",
-      background_color: cfg.background_color ?? "",
-      transparency: cfg.transparency,
-      blur: cfg.blur,
-      weather_sensor: cfg.weather_sensor ?? "",
-      width: cfg.width,
-      height: cfg.height,
+      header_transparency: cfg.header_transparency,
+      show_name: cfg.show_name !== false,
+      name: cfg.name ?? "",
+      allow_calendar_toggling: cfg.allow_calendar_toggling !== false,
     };
-    const schema = [
-      { name: "name", selector: { text: {} } },
+    const headerSchema = [
+      {
+        type: "grid",
+        name: "",
+        column_min_width: "140px",
+        schema: [
+          { name: "show_header", selector: { boolean: {} } },
+          { name: "header_color", selector: { ui_color: {} } },
+        ],
+      },
+      { name: "header_transparency", selector: { number: { min: 0, max: 100, step: 1, mode: "box", unit_of_measurement: "%" } } },
       {
         type: "grid",
         name: "",
         column_min_width: "140px",
         schema: [
           { name: "show_name", selector: { boolean: {} } },
-          { name: "show_header", selector: { boolean: {} } },
+          { name: "name", selector: { text: {} } },
         ],
       },
-      { name: "theme", selector: { select: { mode: "dropdown", options: THEME_OPTIONS } } },
-      ...(showHeader ? [{ name: "allow_calendar_toggling", selector: { boolean: {} } }] : []),
-      { name: "header_color", selector: { ui_color: {} } },
+      { name: "allow_calendar_toggling", selector: { boolean: {} } },
+    ];
+
+    const weatherData = { weather_sensor: cfg.weather_sensor ?? "" };
+    const weatherSchema = [{ name: "weather_sensor", selector: { entity: { domain: "weather" } } }];
+
+    const advData = {
+      background_color: cfg.background_color ?? "",
+      transparency: cfg.transparency,
+      blur: cfg.blur,
+      width: cfg.width,
+      height: cfg.height,
+    };
+    const advSchema = [
       { name: "background_color", selector: { ui_color: {} } },
       transparencyBlurSchema(cfg.transparency),
-      { name: "weather_sensor", selector: { entity: { domain: "weather" } } },
       {
         type: "grid",
         name: "",
@@ -153,6 +172,18 @@ export class TedCalendarCardEditor extends LitElement implements LovelaceCardEdi
         ],
       },
     ];
+
+    const form = (data: unknown, schema: unknown): TemplateResult => html`
+      <ha-form
+        .hass=${this.hass}
+        .data=${data}
+        .schema=${schema}
+        .computeLabel=${this._computeLabel}
+        .computeHelper=${this._computeHelper}
+        @value-changed=${this._appearanceChanged}
+      ></ha-form>
+    `;
+
     return html`
       <ha-expansion-panel outlined class="group-panel">
         <div slot="header" class="group-header">
@@ -160,14 +191,16 @@ export class TedCalendarCardEditor extends LitElement implements LovelaceCardEdi
           <span>Appearance</span>
         </div>
         <div class="group-body">
-          <ha-form
-            .hass=${this.hass}
-            .data=${data}
-            .schema=${schema}
-            .computeLabel=${this._computeLabel}
-            .computeHelper=${this._computeHelper}
-            @value-changed=${this._appearanceChanged}
-          ></ha-form>
+          ${form(themeData, themeSchema)}
+          <ha-expansion-panel outlined class="sub-panel">
+            <span slot="header" class="sub-head">Header</span>
+            <div class="sub-body">${form(headerData, headerSchema)}</div>
+          </ha-expansion-panel>
+          ${form(weatherData, weatherSchema)}
+          <ha-expansion-panel outlined class="sub-panel">
+            <span slot="header" class="sub-head">Advanced Visuals</span>
+            <div class="sub-body">${form(advData, advSchema)}</div>
+          </ha-expansion-panel>
         </div>
       </ha-expansion-panel>
     `;
@@ -287,6 +320,12 @@ export class TedCalendarCardEditor extends LitElement implements LovelaceCardEdi
     if (schema.name === "transparency") {
       return "How see-through the card background is (0 = solid).";
     }
+    if (schema.name === "allow_calendar_toggling") {
+      return "Show the calendar badge row you can tap to toggle each calendar's visibility.";
+    }
+    if (schema.name === "header_transparency") {
+      return "How see-through the header is (0 = solid). A background blur frosts it too.";
+    }
     return undefined;
   };
 
@@ -307,9 +346,11 @@ export class TedCalendarCardEditor extends LitElement implements LovelaceCardEdi
       case "theme":
         return "Theme styling";
       case "allow_calendar_toggling":
-        return "Allow calendar toggling";
+        return "Show calendar badges";
       case "header_color":
         return "Header color";
+      case "header_transparency":
+        return "Header transparency";
       case "background_color":
         return "Background color";
       case "transparency":
@@ -371,21 +412,27 @@ export class TedCalendarCardEditor extends LitElement implements LovelaceCardEdi
 
   private _appearanceChanged = (ev: CustomEvent): void => {
     const v = ev.detail.value as Record<string, unknown>;
-    const patch = {
-      name: (v.name as string) || undefined,
-      show_name: v.show_name === false ? false : undefined,
-      show_header: v.show_header === false ? false : undefined,
-      theme: v.theme && v.theme !== "ha" ? (v.theme as CalendarCardConfig["theme"]) : undefined,
-      allow_calendar_toggling: v.allow_calendar_toggling === false ? false : undefined,
-      header_color: (v.header_color as string) || undefined,
-      background_color: (v.background_color as string) || undefined,
-      transparency: typeof v.transparency === "number" && v.transparency > 0 ? v.transparency : undefined,
-      blur: typeof v.blur === "number" && v.blur > 0 ? v.blur : undefined,
-      weather_sensor: (v.weather_sensor as string) || undefined,
-      width: typeof v.width === "number" ? v.width : undefined,
-      height: typeof v.height === "number" ? v.height : undefined,
-    };
-    this._commit({ ...this._config, ...patch } as CalendarCardConfig);
+    const patch: Record<string, unknown> = { ...this._config };
+    if ("name" in v) patch.name = (v.name as string) || undefined;
+    if ("show_name" in v) patch.show_name = v.show_name === false ? false : undefined;
+    if ("show_header" in v) patch.show_header = v.show_header === false ? false : undefined;
+    if ("theme" in v) patch.theme = v.theme && v.theme !== "ha" ? v.theme : undefined;
+    if ("allow_calendar_toggling" in v)
+      patch.allow_calendar_toggling = v.allow_calendar_toggling === false ? false : undefined;
+    if ("header_color" in v) patch.header_color = (v.header_color as string) || undefined;
+    if ("header_transparency" in v)
+      patch.header_transparency =
+        typeof v.header_transparency === "number" && v.header_transparency > 0
+          ? v.header_transparency
+          : undefined;
+    if ("background_color" in v) patch.background_color = (v.background_color as string) || undefined;
+    if ("transparency" in v)
+      patch.transparency = typeof v.transparency === "number" && v.transparency > 0 ? v.transparency : undefined;
+    if ("blur" in v) patch.blur = typeof v.blur === "number" && v.blur > 0 ? v.blur : undefined;
+    if ("weather_sensor" in v) patch.weather_sensor = (v.weather_sensor as string) || undefined;
+    if ("width" in v) patch.width = typeof v.width === "number" ? v.width : undefined;
+    if ("height" in v) patch.height = typeof v.height === "number" ? v.height : undefined;
+    this._commit(patch as CalendarCardConfig);
   };
 
   private _add = (ev: Event): void => {
@@ -499,6 +546,17 @@ export class TedCalendarCardEditor extends LitElement implements LovelaceCardEdi
       color: var(--secondary-text-color);
     }
     .opt-body {
+      padding: 8px 12px 12px;
+    }
+    .sub-panel {
+      --expansion-panel-content-padding: 0;
+      margin-top: 6px;
+    }
+    .sub-head {
+      font-weight: 500;
+      font-size: 0.9rem;
+    }
+    .sub-body {
       padding: 8px 12px 12px;
     }
   `;

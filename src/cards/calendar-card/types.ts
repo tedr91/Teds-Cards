@@ -57,6 +57,8 @@ export interface CalendarCardConfig extends LovelaceCardConfig {
   show_header?: boolean;
   /** Header background colour (hex). */
   header_color?: string;
+  /** Header background transparency 0–100 (% see-through). A card-wide `blur` frosts it. */
+  header_transparency?: number;
   /** Allow toggling calendars on/off from the header. Default true (only when the header is shown). */
   allow_calendar_toggling?: boolean;
   /** A `weather.*` entity shown in the header. */
