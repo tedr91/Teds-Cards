@@ -195,7 +195,9 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
         if (source === "person") {
           if (person) persons[it.entity] = person;
           else delete persons[it.entity];
-          if (it.icon) badgeIcons[it.entity] = it.icon;
+          // The avatar IS the badge — drop any icon badge (baked or set) so it doesn't
+          // override the person avatar in daylight.
+          delete badgeIcons[it.entity];
         } else {
           delete persons[it.entity];
           if (it.icon) badgeIcons[it.entity] = it.icon;

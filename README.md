@@ -939,6 +939,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.187
+
+- **Calendar card person badges fixed** — when a calendar's badge source is a person, the card now drops any icon badge so the person's avatar actually shows (previously a baked/set icon could render over the avatar). The editor's per-calendar **Person** field also shows the auto-matched person instead of staying blank.
+
 ### v1.0.186
 
 - **Calendar card auto-matches people to calendars** — when a calendar has no person set, the card matches one by name (e.g. "Ted Outlook Calendar" → person "Ted Roberts", "Teddy…" → Teddy) and shows their avatar. Adding such a calendar in the editor also auto-selects **Badge source: Person**. Setting a person or badge source explicitly overrides it.
