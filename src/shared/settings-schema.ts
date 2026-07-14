@@ -41,6 +41,8 @@ export interface SettingField {
   /** Root-relative dashboard path: rendered with a fixed `<dashboard_root>/` prefix,
    *  stored as `[root]/<segment>` (so the value stays root-portable). */
   rootRelative?: boolean;
+  /** Grouped under a collapsible "Advanced" section at the bottom of its group. */
+  advanced?: boolean;
 }
 
 export const SETTINGS_GROUPS = [
@@ -214,16 +216,16 @@ export const SETTINGS_FIELDS: SettingField[] = [
     kind: "select",
     options: [
       { value: "auto", label: "Auto (best installed)" },
-      { value: "mdi", label: "Material Design (MDI)" },
       { value: "fluent", label: "Fluent" },
       { value: "streamline-ultimate-color", label: "Streamline Ultimate" },
-      { value: "pepicons-print", label: "Pepicons" },
       { value: "streamline-freehand-color", label: "Streamline Freehand" },
+      { value: "pepicons-print", label: "Pepicons" },
+      { value: "mdi", label: "Material Design (MDI)" },
     ],
     help: "Which icon family Ted's built-in icons use. Auto picks the best installed set; a specific set falls back to Material Design when an icon isn't available.",
   },
   { key: "background", label: "Background Wallpaper", group: "General", kind: "background", help: "Dashboard background painted by the invisible ted-background-card." },
-  { key: "debug_mode", label: "Debug mode", group: "General", kind: "boolean", help: "Publishes the --ted-debug CSS variable so dashboards can show layout debug outlines." },
+  { key: "debug_mode", label: "Debug mode", group: "General", kind: "boolean", advanced: true, help: "Publishes the --ted-debug CSS variable so dashboards can show layout debug outlines." },
   // Navigation
   { key: "auto_return_home_after", label: "Auto-return home after", group: "Navigation", kind: "number", min: 0, max: 3600, unit: "s", help: "0 = never." },
   { key: "dashboard_root", label: "Dashboard root", group: "Navigation", kind: "text" },

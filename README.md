@@ -938,6 +938,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.163
+
+- **Settings card — friendlier layout** — the **Background Wallpaper** settings are now a collapsible section that shows the current mode (Solid Color / Image / Slideshow / Theme) when collapsed, and a new collapsible **Advanced** section now holds **Debug mode**. The **Icon set** dropdown was also reordered (Auto, Fluent, Streamline Ultimate, Streamline Freehand, Pepicons, Material Design).
+
 ### v1.0.162
 
 - **Icon set — broader coverage & clearer picker** — the **Icon set** dropdown now marks families that aren't installed as "— not installed", the Music/Climate/Camera cards' built-in icons now follow the chosen icon set, and Streamline names were added for several icons (device, weather, settings, thermostat, camera). Icons still fall back to Material Design when a set doesn't provide one.

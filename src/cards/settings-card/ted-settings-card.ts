@@ -617,6 +617,27 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     return bundled("notification");
   }
 
+  /** Render a group's fields: normal fields inline, `advanced` ones inside a
+   *  collapsible "Advanced" panel at the bottom. */
+  private _renderFields(fields: SettingField[], scope: "global" | "device"): TemplateResult {
+    const row = (f: SettingField): TemplateResult =>
+      scope === "global" ? this._renderGlobalRow(f) : this._renderDeviceRow(f);
+    const normal = fields.filter((f) => !f.advanced);
+    const advanced = fields.filter((f) => f.advanced);
+    return html`
+      ${normal.map(row)}
+      ${advanced.length
+        ? html`<ha-expansion-panel outlined class="sub-panel">
+            <div slot="header" class="sub-head">
+              <ha-icon icon=${this._groupIcon("Advanced") || "mdi:tune"}></ha-icon>
+              <span>Advanced</span>
+            </div>
+            <div class="sub-body">${advanced.map(row)}</div>
+          </ha-expansion-panel>`
+        : nothing}
+    `;
+  }
+
   private _renderGlobalRow(field: SettingField): TemplateResult {
     if (field.kind === "entity-list") return this._renderCamerasGlobal(field);
     if (field.kind === "background") return this._renderBackground(field, "global");
@@ -956,25 +977,39 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
       pickFolder: () => void this._pickBgFolder(scope),
     };
 
+    const modeVal = String(this._bgVal("background_mode", scope) ?? "solid");
+    const MODE_LABELS: Record<string, string> = {
+      solid: "Solid Color",
+      image: "Image",
+      slideshow: "Slideshow",
+      theme: "Theme",
+    };
+
     return html`
-      <div class="bg-row">
-        <div class="cam-head">
-          <div class="row-label">
-            <span>${field.label}${scope === "device" ? " — this device" : ""}</span>
-            ${scope === "device" && !overriding
-              ? html`<span class="help">Not customized — this device follows the Global wallpaper.</span>`
-              : field.help
-                ? html`<span class="help">${field.help}</span>`
-                : nothing}
-          </div>
-          ${scope === "device" && overriding
-            ? html`<button class="cam-btn" @click=${() => this._resetBgDevice()}>
-                <ha-icon icon="mdi:backup-restore"></ha-icon><span>Reset</span>
-              </button>`
-            : nothing}
+      <ha-expansion-panel outlined class="sub-panel bg-panel">
+        <div slot="header" class="sub-head">
+          <ha-icon icon="mdi:image-multiple-outline"></ha-icon>
+          <span class="sub-head-label">${field.label}${scope === "device" ? " — this device" : ""}</span>
+          <span class="sub-head-value">${MODE_LABELS[modeVal] ?? modeVal}</span>
         </div>
-        ${renderBackgroundFields(ctx)}
-      </div>
+        <div class="bg-row">
+          <div class="cam-head">
+            <div class="row-label">
+              ${scope === "device" && !overriding
+                ? html`<span class="help">Not customized — this device follows the Global wallpaper.</span>`
+                : field.help
+                  ? html`<span class="help">${field.help}</span>`
+                  : nothing}
+            </div>
+            ${scope === "device" && overriding
+              ? html`<button class="cam-btn" @click=${() => this._resetBgDevice()}>
+                  <ha-icon icon="mdi:backup-restore"></ha-icon><span>Reset</span>
+                </button>`
+              : nothing}
+          </div>
+          ${renderBackgroundFields(ctx)}
+        </div>
+      </ha-expansion-panel>
     `;
   }
 
@@ -1130,11 +1165,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
                 </div>
                 <div class="groups">
                   ${activeGroup
-                    ? html`<div class="group">
-                        ${activeGroup.fields.map((f) =>
-                          scope === "global" ? this._renderGlobalRow(f) : this._renderDeviceRow(f),
-                        )}
-                      </div>`
+                    ? html`<div class="group">${this._renderFields(activeGroup.fields, scope)}</div>`
                     : nothing}
                 </div>
               `}
@@ -1183,9 +1214,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
                   (g) => html`
                     <div class="group">
                       <div class="group-title">${g.group}</div>
-                      ${g.fields.map((f) =>
-                        tab === "global" ? this._renderGlobalRow(f) : this._renderDeviceRow(f),
-                      )}
+                      ${this._renderFields(g.fields, tab)}
                     </div>
                   `,
                 )}
@@ -1613,6 +1642,39 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
         flex-direction: column;
         gap: 10px;
         padding: 8px 0;
+      }
+      /* Collapsible sub-sections (Background, Advanced). */
+      ha-expansion-panel.sub-panel {
+        --expansion-panel-summary-padding: 0 8px;
+        --expansion-panel-content-padding: 0 8px 8px;
+        border-radius: 10px;
+        margin: 4px 0;
+        --ha-card-border-color: var(--ted-style-divider);
+      }
+      .sub-head {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+        font-weight: 500;
+      }
+      .sub-head ha-icon {
+        --mdc-icon-size: 20px;
+        color: var(--ted-style-muted);
+        flex: 0 0 auto;
+      }
+      .sub-head-label {
+        flex: 1 1 auto;
+        min-width: 0;
+      }
+      .sub-head-value {
+        color: var(--ted-style-muted);
+        font-size: 0.9em;
+        font-weight: 400;
+      }
+      .sub-body {
+        display: flex;
+        flex-direction: column;
       }
       .bg-field {
         display: flex;
