@@ -938,6 +938,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.165
+
+- **Music view — clearer "no Music Assistant player" help** — when the Music view can't find a Music Assistant player for the device's speaker, the notice now explains how to fix it (enable Music Assistant's Home Assistant player provider, or pick a player in Settings → Sounds) and adds a **Music Assistant** button that opens the Music Assistant panel (configurable via `mass_setup_path`).
+
 ### v1.0.164
 
 - **Settings tabs reorganised** — the **Media** tab is now **Sounds**, with the System sounds player at the top and collapsible **Music**, **Notifications**, **Alarms**, and **Timers** sections (the Notifications tab was folded in here; Alarm/Timer *volume* + *sound* moved here as "Alarms/Timers volume/sound"). The **Alarms** and **Timers** tabs are combined into one **Alarms/Timers** tab with collapsible Alarms and Timers sections. The **Temperatures** tab is renamed **Thermostats**. (Setting values are unchanged — nothing to reconfigure.)

@@ -33,4 +33,7 @@ export interface MusicCardConfig extends LovelaceCardConfig {
   unmatched_message?: string;
   /** Where the empty-state "Settings" button navigates. Supports `[root]`. */
   settings_path?: string;
+  /** Where the unmatched-state "Music Assistant" button navigates (the MA panel).
+   *  Defaults to `/music-assistant`. */
+  mass_setup_path?: string;
 }

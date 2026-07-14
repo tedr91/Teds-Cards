@@ -79,7 +79,9 @@ mass_config:
      looks for a Music Assistant player on the **same device**, then one with a
      **matching name**.
    - If no Music Assistant player is found, the card shows a short "No Music
-     Assistant player" note with a **Settings** button.
+     Assistant player" note with a **Settings** button and a **Music Assistant**
+     button. Enabling Music Assistant's **Home Assistant** player provider (so your
+     speakers are exposed as Music Assistant players) is the most reliable fix.
 
 Pick this device's **Music Assistant** player directly in Settings for the most
 reliable result.
@@ -98,6 +100,7 @@ reliable result.
 | `empty_title` / `empty_message` | string | | Override the "no player configured" empty state. |
 | `unmatched_title` / `unmatched_message` | string | | Override the "no Music Assistant match" state. |
 | `settings_path` | string | `[root]/settings?tab=sounds&scope=device` | Where the state buttons navigate. `[root]` is your dashboard root. |
+| `mass_setup_path` | string | `/music-assistant` | Where the unmatched state's **Music Assistant** button navigates (the Music Assistant panel). |
 | `theme` | `ted-style` \| `ha` | | See [Appearance & theming](./README.md#appearance--theming-shared). |
 
 The card has no visible surface of its own — the Music Assistant Player Card brings

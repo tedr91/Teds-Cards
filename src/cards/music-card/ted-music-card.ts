@@ -182,6 +182,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
     icon: string,
     title: string,
     message: string,
+    extraActions: Record<string, unknown>[] = [],
   ): LovelaceCardConfig {
     return {
       type: MESSAGEBOX_CARD_TYPE,
@@ -197,6 +198,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
           action: "navigate",
           navigation_path: this._settingsPath(),
         },
+        ...extraActions,
       ],
     };
   }
@@ -218,8 +220,22 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
       this._config?.unmatched_title ?? "No Music Assistant player",
       this._config?.unmatched_message ??
         `"${this._name(base)}" isn't a Music Assistant player, and no matching one was found. ` +
-          "Pick this device's Music Assistant player in Settings → Sounds.",
+          `Enable Music Assistant's "Home Assistant" player provider to expose this speaker, ` +
+          "or pick a Music Assistant player in Settings → Sounds.",
+      [
+        {
+          label: "Music Assistant",
+          icon: themedIcon("music"),
+          variant: "secondary",
+          action: "navigate",
+          navigation_path: this._massSetupPath(),
+        },
+      ],
     );
+  }
+
+  private _massSetupPath(): string {
+    return this._config?.mass_setup_path || "/music-assistant";
   }
 
   // --- Render ----------------------------------------------------------------
