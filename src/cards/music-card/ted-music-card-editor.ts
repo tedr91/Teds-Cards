@@ -52,7 +52,7 @@ export class TedMusicCardEditor extends LitElement implements LovelaceCardEditor
         ></ha-form>
         ${source === "settings"
           ? html`<div class="settings-note">
-              The player is chosen per-device in <b>Settings → Media</b>. Non-Music-Assistant
+              The player is chosen per-device in <b>Settings → Sounds</b>. Non-Music-Assistant
               speakers are matched to their Music Assistant player automatically when possible.
             </div>`
           : html`<ha-entity-picker

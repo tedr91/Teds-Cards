@@ -48,6 +48,15 @@ const DEFAULT_SOUND = "default";
 /** What each category tab shows in the strip. */
 type SectionHeaderMode = "both" | "icon" | "name";
 
+/** Icons for the collapsible subsection headers ({ fluent, mdi } — resolved via icon set). */
+const SUBSECTION_ICONS: Record<string, { fluent: string; mdi: string }> = {
+  Music: { fluent: "fluent:music-note-2-24-regular", mdi: "mdi:music" },
+  Notifications: { fluent: "fluent:alert-24-regular", mdi: "mdi:bell-outline" },
+  Alarms: { fluent: "fluent:clock-alarm-24-regular", mdi: "mdi:alarm" },
+  Timers: { fluent: "fluent:timer-24-regular", mdi: "mdi:timer-outline" },
+  Advanced: { fluent: "fluent:options-24-regular", mdi: "mdi:tune" },
+};
+
 registerCustomCard({
   type: SETTINGS_CARD_TYPE,
   name: SETTINGS_CARD_NAME,
@@ -617,25 +626,37 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     return bundled("notification");
   }
 
-  /** Render a group's fields: normal fields inline, `advanced` ones inside a
-   *  collapsible "Advanced" panel at the bottom. */
+  /** Render a group's fields: un-subsectioned fields inline, then a collapsible panel
+   *  per named `subsection` (in first-appearance order) at the bottom. */
   private _renderFields(fields: SettingField[], scope: "global" | "device"): TemplateResult {
     const row = (f: SettingField): TemplateResult =>
       scope === "global" ? this._renderGlobalRow(f) : this._renderDeviceRow(f);
-    const normal = fields.filter((f) => !f.advanced);
-    const advanced = fields.filter((f) => f.advanced);
+    const inline = fields.filter((f) => !f.subsection);
+    const order: string[] = [];
+    for (const f of fields) {
+      if (f.subsection && !order.includes(f.subsection)) order.push(f.subsection);
+    }
     return html`
-      ${normal.map(row)}
-      ${advanced.length
-        ? html`<ha-expansion-panel outlined class="sub-panel">
-            <div slot="header" class="sub-head">
-              <ha-icon icon=${this._groupIcon("Advanced") || "mdi:tune"}></ha-icon>
-              <span>Advanced</span>
-            </div>
-            <div class="sub-body">${advanced.map(row)}</div>
-          </ha-expansion-panel>`
-        : nothing}
+      ${inline.map(row)}
+      ${order.map(
+        (name) => html`<ha-expansion-panel outlined class="sub-panel">
+          <div slot="header" class="sub-head">
+            <ha-icon icon=${this._subsectionIcon(name)}></ha-icon>
+            <span class="sub-head-label">${name}</span>
+          </div>
+          <div class="sub-body">
+            ${fields.filter((f) => f.subsection === name).map(row)}
+          </div>
+        </ha-expansion-panel>`,
+      )}
     `;
+  }
+
+  /** Icon for a collapsible subsection header, following the configured icon set. */
+  private _subsectionIcon(name: string): string {
+    const set = String(settingsStore.effective().icon_set ?? "auto");
+    const entry = SUBSECTION_ICONS[name];
+    return (entry && resolveIconForSet(entry, set)) || "mdi:tune";
   }
 
   private _renderGlobalRow(field: SettingField): TemplateResult {
@@ -701,7 +722,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
   }
 
   // --- Entity-list field (Global = available allow-list; Device = curated subset) ---
-  //     Shared by Cameras (camera.*) and Temperatures (climate.*), keyed by field.entityDomain.
+  //     Shared by Cameras (camera.*) and Thermostats (climate.*), keyed by field.entityDomain.
 
   /** Per-domain presentation: list icon and the noun used in labels/buttons. */
   private _listMeta(field: SettingField): { icon: string; noun: string; nounPlural: string } {

@@ -5,7 +5,7 @@
 A Music Assistant player UI for the **current device**. It wraps the third-party
 [**Music Assistant Player Card**](https://github.com/droans/mass-player-card)
 (`custom:mass-player-card`) and feeds it the media player chosen for this device in
-**Settings → Media** — so one shared dashboard shows the right player on each device.
+**Settings → Sounds** — so one shared dashboard shows the right player on each device.
 
 If the device's media player is a physical speaker rather than its Music Assistant
 entity, the card tries to find the matching Music Assistant player automatically.
@@ -27,7 +27,7 @@ these once (all via HACS) before using the Music view:
    [`mass-player-card`](https://github.com/droans/mass-player-card) Lovelace card
    (HACS → Frontend). This provides the `custom:mass-player-card` element.
 4. **Ted's Cards Backend** (`teds_cards_backend`) — needed for the per-device
-   **Settings → Media → Music & media player** (this card's default source).
+   **Settings → Sounds → Music player** (this card's default source).
 
 > If `custom:mass-player-card` isn't installed, the Music view shows an "unknown
 > card" error instead of the player.
@@ -71,7 +71,7 @@ mass_config:
 
 1. **`entity`** on the card (if set) — always wins.
 2. Otherwise, when `player_source: settings` (default), this device's
-   **Settings → Media → Music & media player**, falling back to the
+   **Settings → Sounds → Music player**, falling back to the
    **System sounds player**, then the device's own registered player.
 3. The resolved entity is then mapped to a **Music Assistant** player:
    - If it's already a Music Assistant `media_player`, it's used as-is.
@@ -97,7 +97,7 @@ reliable result.
 | `fill` | boolean | `false` | Off (default) sizes the player to its content, centered in the view. On stretches it to fill the whole area (sets the player card's `panel`). |
 | `empty_title` / `empty_message` | string | | Override the "no player configured" empty state. |
 | `unmatched_title` / `unmatched_message` | string | | Override the "no Music Assistant match" state. |
-| `settings_path` | string | `[root]/settings?tab=media&scope=device` | Where the state buttons navigate. `[root]` is your dashboard root. |
+| `settings_path` | string | `[root]/settings?tab=sounds&scope=device` | Where the state buttons navigate. `[root]` is your dashboard root. |
 | `theme` | `ted-style` \| `ha` | | See [Appearance & theming](./README.md#appearance--theming-shared). |
 
 The card has no visible surface of its own — the Music Assistant Player Card brings

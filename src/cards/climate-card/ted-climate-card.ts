@@ -244,7 +244,7 @@ export class TedClimateCard extends LitElement implements LovelaceCard {
 
   private _settingsPath(): string {
     const root = String(settingsStore.effective().dashboard_root ?? "ted-dashboard");
-    const raw = this._config?.settings_path || "[root]/settings?tab=temperatures";
+    const raw = this._config?.settings_path || "[root]/settings?tab=thermostats";
     let path = raw.replace("[root]", root);
     if (!path.startsWith("/")) path = `/${path}`;
     return path;

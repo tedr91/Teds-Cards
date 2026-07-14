@@ -79,7 +79,7 @@ export class TedClimateCardEditor extends LitElement implements LovelaceCardEdit
         ></ha-form>
         ${source === "settings"
           ? html`<div class="settings-note">
-              Thermostats are chosen per-device in <b>Settings → Temperatures</b>. Global lists the
+              Thermostats are chosen per-device in <b>Settings → Thermostats</b>. Global lists the
               available thermostats; each device curates its own subset.
             </div>`
           : this._renderEntities()}
@@ -142,7 +142,7 @@ export class TedClimateCardEditor extends LitElement implements LovelaceCardEdit
 
   private _computeHelper = (schema: { name: string }): string | undefined => {
     if (schema.name === "climate_source") {
-      return "\"This device's Settings list\" shows the per-device Temperatures list from Ted's Cards Settings.";
+      return "\"This device's Settings list\" shows the per-device Thermostats list from Ted's Cards Settings.";
     }
     if (schema.name === "fill") {
       return "Fill the parent container (e.g. a dashboard view area) instead of sizing to content.";

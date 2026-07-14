@@ -41,20 +41,19 @@ export interface SettingField {
   /** Root-relative dashboard path: rendered with a fixed `<dashboard_root>/` prefix,
    *  stored as `[root]/<segment>` (so the value stays root-portable). */
   rootRelative?: boolean;
-  /** Grouped under a collapsible "Advanced" section at the bottom of its group. */
-  advanced?: boolean;
+  /** Grouped under a collapsible subsection (by this name) at the bottom of its group,
+   *  after the group's un-subsectioned fields. */
+  subsection?: string;
 }
 
 export const SETTINGS_GROUPS = [
   "General",
   "Navigation",
   "Navbar",
-  "Notifications",
-  "Alarms",
-  "Timers",
-  "Media",
+  "Sounds",
+  "Alarms/Timers",
   "Cameras",
-  "Temperatures"
+  "Thermostats"
 ] as const;
 
 /** Per-category tab icons — a Fluent icon (used when the `fluent` iconset is installed)
@@ -63,12 +62,10 @@ export const SETTINGS_GROUP_ICONS: Record<string, { fluent: string; mdi: string 
   General: { fluent: "fluent:settings-24-regular", mdi: "mdi:tune" },
   Navigation: { fluent: "fluent:dashboard-20-regular", mdi: "mdi:navigation-variant-outline" },
   Navbar: { fluent: "fluent:panel-bottom-20-filled", mdi: "mdi:dock-bottom" },
-  Notifications: { fluent: "fluent:alert-24-regular", mdi: "mdi:bell-outline" },
-  Alarms: { fluent: "fluent:clock-alarm-24-regular", mdi: "mdi:alarm" },
-  Timers: { fluent: "fluent:timer-24-regular", mdi: "mdi:timer-outline" },
-  Media: { fluent: "fluent:play-circle-24-regular", mdi: "mdi:play-circle-outline" },
+  Sounds: { fluent: "fluent:speaker-2-24-regular", mdi: "mdi:volume-high" },
+  "Alarms/Timers": { fluent: "fluent:clock-alarm-24-regular", mdi: "mdi:alarm" },
   Cameras: { fluent: "fluent:video-24-regular", mdi: "mdi:cctv" },
-  Temperatures: { fluent: "fluent:temperature-24-regular", mdi: "mdi:thermometer" },
+  Thermostats: { fluent: "fluent:temperature-24-regular", mdi: "mdi:thermometer" },
 };
 
 /** Default values — must match the backend `SETTINGS_DEFAULTS`. */
@@ -138,31 +135,29 @@ export const SETTINGS_DEFAULTS: SettingsMap = {
 };
 
 export const SETTINGS_FIELDS: SettingField[] = [
-  // Timers
-  { key: "timer_alert_volume", label: "Alert volume", group: "Timers", kind: "percent" },
-  { key: "timer_alert_sound", label: "Alert sound", group: "Timers", kind: "media" },
-  { key: "timer_alert_repeat", label: "Repeat alert", group: "Timers", kind: "boolean", help: "Loop the sound until dismissed (or the notification times out)." },
-  { key: "timer_snooze_enabled", label: "Enable snoozing", group: "Timers", kind: "boolean" },
-  { key: "timer_snooze_minutes", label: "Snooze duration", group: "Timers", kind: "number", min: 1, max: 60, unit: "min" },
-  // Alarms
-  { key: "alarm_alert_volume", label: "Alert volume", group: "Alarms", kind: "percent" },
-  { key: "alarm_alert_sound", label: "Alert sound", group: "Alarms", kind: "media" },
-  { key: "alarm_alert_repeat", label: "Repeat alert", group: "Alarms", kind: "boolean", help: "Loop the sound until dismissed (or the notification times out)." },
-  { key: "alarm_snooze_enabled", label: "Enable snoozing", group: "Alarms", kind: "boolean" },
-  { key: "alarm_snooze_minutes", label: "Snooze duration", group: "Alarms", kind: "number", min: 1, max: 60, unit: "min" },
-  // Notifications
-  { key: "do_not_disturb", label: "Do Not Disturb", group: "Notifications", kind: "boolean", help: "Suppresses toasts and alert sounds on this device." },
-  { key: "notification_volume", label: "Sound volume", group: "Notifications", kind: "percent" },
-  { key: "notification_sound", label: "Alert sound (default)", group: "Notifications", kind: "media", help: "Fallback sound for notifications of any severity." },
-  { key: "notification_sound_info", label: "Info sound", group: "Notifications", kind: "media", help: "Leave empty to use the fallback above." },
-  { key: "notification_sound_success", label: "Success sound", group: "Notifications", kind: "media", help: "Leave empty to use the fallback above." },
-  { key: "notification_sound_warning", label: "Warning sound", group: "Notifications", kind: "media", help: "Leave empty to use the fallback above." },
-  { key: "notification_sound_danger", label: "Danger sound", group: "Notifications", kind: "media", help: "Leave empty to use the fallback above." },
-  { key: "notification_sound_tip", label: "Tip sound", group: "Notifications", kind: "media", help: "\"default\" uses the fallback above." },
-  // Media
-  { key: "music_player", label: "Music & media player", group: "Media", kind: "entity", entityDomain: "media_player", entityPlatform: "music_assistant", deviceOnly: true, help: "Music Assistant player for the Music view. Falls back to the system sounds player. Set per-device." },
-  { key: "music_volume", label: "Music volume", group: "Media", kind: "percent" },
-  { key: "system_sound_player", label: "System sounds player", group: "Media", kind: "entity", entityDomain: "media_player", deviceOnly: true, help: "Alarms, timers, alerts & notifications play on this speaker. Set per-device." },
+  // Sounds
+  { key: "system_sound_player", label: "System sounds player", group: "Sounds", kind: "entity", entityDomain: "media_player", deviceOnly: true, help: "Alarms, timers, alerts & notifications play on this speaker. Set per-device." },
+  { key: "music_player", label: "Music player", group: "Sounds", subsection: "Music", kind: "entity", entityDomain: "media_player", entityPlatform: "music_assistant", deviceOnly: true, help: "Music Assistant player for the Music view. Falls back to the system sounds player. Set per-device." },
+  { key: "music_volume", label: "Music volume", group: "Sounds", subsection: "Music", kind: "percent" },
+  { key: "do_not_disturb", label: "Do Not Disturb", group: "Sounds", subsection: "Notifications", kind: "boolean", help: "Suppresses toasts and alert sounds on this device." },
+  { key: "notification_volume", label: "Sound volume", group: "Sounds", subsection: "Notifications", kind: "percent" },
+  { key: "notification_sound", label: "Alert sound (default)", group: "Sounds", subsection: "Notifications", kind: "media", help: "Fallback sound for notifications of any severity." },
+  { key: "notification_sound_info", label: "Info sound", group: "Sounds", subsection: "Notifications", kind: "media", help: "Leave empty to use the fallback above." },
+  { key: "notification_sound_success", label: "Success sound", group: "Sounds", subsection: "Notifications", kind: "media", help: "Leave empty to use the fallback above." },
+  { key: "notification_sound_warning", label: "Warning sound", group: "Sounds", subsection: "Notifications", kind: "media", help: "Leave empty to use the fallback above." },
+  { key: "notification_sound_danger", label: "Danger sound", group: "Sounds", subsection: "Notifications", kind: "media", help: "Leave empty to use the fallback above." },
+  { key: "notification_sound_tip", label: "Tip sound", group: "Sounds", subsection: "Notifications", kind: "media", help: "\"default\" uses the fallback above." },
+  { key: "alarm_alert_volume", label: "Alarms volume", group: "Sounds", subsection: "Alarms", kind: "percent" },
+  { key: "alarm_alert_sound", label: "Alarms sound", group: "Sounds", subsection: "Alarms", kind: "media" },
+  { key: "timer_alert_volume", label: "Timers volume", group: "Sounds", subsection: "Timers", kind: "percent" },
+  { key: "timer_alert_sound", label: "Timers sound", group: "Sounds", subsection: "Timers", kind: "media" },
+  // Alarms/Timers
+  { key: "alarm_alert_repeat", label: "Repeat alert", group: "Alarms/Timers", subsection: "Alarms", kind: "boolean", help: "Loop the sound until dismissed (or the notification times out)." },
+  { key: "alarm_snooze_enabled", label: "Enable snoozing", group: "Alarms/Timers", subsection: "Alarms", kind: "boolean" },
+  { key: "alarm_snooze_minutes", label: "Snooze duration", group: "Alarms/Timers", subsection: "Alarms", kind: "number", min: 1, max: 60, unit: "min" },
+  { key: "timer_alert_repeat", label: "Repeat alert", group: "Alarms/Timers", subsection: "Timers", kind: "boolean", help: "Loop the sound until dismissed (or the notification times out)." },
+  { key: "timer_snooze_enabled", label: "Enable snoozing", group: "Alarms/Timers", subsection: "Timers", kind: "boolean" },
+  { key: "timer_snooze_minutes", label: "Snooze duration", group: "Alarms/Timers", subsection: "Timers", kind: "number", min: 1, max: 60, unit: "min" },
   // Cameras
   {
     key: "cameras_layout",
@@ -178,11 +173,11 @@ export const SETTINGS_FIELDS: SettingField[] = [
     help: "How this device arranges its cameras on the Cameras view.",
   },
   { key: "cameras_list", label: "Cameras", group: "Cameras", kind: "entity-list", entityDomain: "camera", help: "Global lists the available cameras; each device curates its own subset." },
-  // Temperatures
+  // Thermostats
   {
     key: "climate_layout",
     label: "Layout",
-    group: "Temperatures",
+    group: "Thermostats",
     kind: "select",
     options: [
       { value: "auto", label: "Auto grid" },
@@ -192,7 +187,7 @@ export const SETTINGS_FIELDS: SettingField[] = [
     ],
     help: "How this device arranges its thermostats on the Climate view.",
   },
-  { key: "climate_list", label: "Thermostats", group: "Temperatures", kind: "entity-list", entityDomain: "climate", help: "Global lists the available thermostats; each device curates its own subset." },
+  { key: "climate_list", label: "Thermostats", group: "Thermostats", kind: "entity-list", entityDomain: "climate", help: "Global lists the available thermostats; each device curates its own subset." },
   // Navbar
   { key: "navbar_auto_hide", label: "Auto-hide", group: "Navbar", kind: "boolean", help: "Collapse the navbar into its edge until revealed." },
   { key: "navbar_auto_hide_delay", label: "Auto-hide delay", group: "Navbar", kind: "number", min: 1, max: 60, unit: "s", help: "Seconds before the revealed bar re-collapses." },
@@ -225,7 +220,7 @@ export const SETTINGS_FIELDS: SettingField[] = [
     help: "Which icon family Ted's built-in icons use. Auto picks the best installed set; a specific set falls back to Material Design when an icon isn't available.",
   },
   { key: "background", label: "Background Wallpaper", group: "General", kind: "background", help: "Dashboard background painted by the invisible ted-background-card." },
-  { key: "debug_mode", label: "Debug mode", group: "General", kind: "boolean", advanced: true, help: "Publishes the --ted-debug CSS variable so dashboards can show layout debug outlines." },
+  { key: "debug_mode", label: "Debug mode", group: "General", kind: "boolean", subsection: "Advanced", help: "Publishes the --ted-debug CSS variable so dashboards can show layout debug outlines." },
   // Navigation
   { key: "auto_return_home_after", label: "Auto-return home after", group: "Navigation", kind: "number", min: 0, max: 3600, unit: "s", help: "0 = never." },
   { key: "dashboard_root", label: "Dashboard root", group: "Navigation", kind: "text" },

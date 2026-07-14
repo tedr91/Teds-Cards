@@ -4,7 +4,7 @@ import type { TedStyleTheme } from "../../shared/types";
 
 /**
  * Where the player entity comes from.
- * - `settings` (default) — this device's `media_player` setting (Settings → Media).
+ * - `settings` (default) — this device's `music_player` setting (Settings → Sounds).
  * - `config`             — the card's own `entity`.
  */
 export type MusicPlayerSource = "settings" | "config";

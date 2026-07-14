@@ -22,7 +22,7 @@ export interface ClimateCardConfig extends LovelaceCardConfig {
   /** The thermostats shown in the card. Omit when `climate_source: settings`. */
   entities?: (string | ClimateItemConfig)[];
   /** Where the thermostat list comes from. `config` (default) uses `entities`;
-   *  `settings` uses this device's per-device Temperatures list. */
+   *  `settings` uses this device's per-device Thermostats list. */
   climate_source?: "config" | "settings";
   /** Arrangement of the thermostats. In `settings` mode (and when unset) it comes
    *  from this device's `climate_layout` setting; otherwise defaults to `auto`. */

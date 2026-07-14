@@ -159,7 +159,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
 
   private _settingsPath(): string {
     const root = String(settingsStore.effective().dashboard_root ?? "ted-dashboard");
-    const raw = this._config?.settings_path || "[root]/settings?tab=media&scope=device";
+    const raw = this._config?.settings_path || "[root]/settings?tab=sounds&scope=device";
     let path = raw.replace("[root]", root);
     if (!path.startsWith("/")) path = `/${path}`;
     return path;
@@ -218,7 +218,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
       this._config?.unmatched_title ?? "No Music Assistant player",
       this._config?.unmatched_message ??
         `"${this._name(base)}" isn't a Music Assistant player, and no matching one was found. ` +
-          "Pick this device's Music Assistant player in Settings → Media.",
+          "Pick this device's Music Assistant player in Settings → Sounds.",
     );
   }
 
