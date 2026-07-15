@@ -83,6 +83,12 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
   private _fitAttempts = 0;
   private _prevFitHeight?: number;
   private _fitRaf?: number;
+  // Track daylight's runtime view (from its selector) so our setConfig calls preserve it
+  // — daylight's own setConfig resets its view to `default_view`.
+  private _viewObs?: MutationObserver;
+  private _observedChildEl?: LovelaceCard;
+  private _lastRuntimeView?: string;
+  private _viewCheckRaf?: number;
 
   public constructor() {
     super();
@@ -109,8 +115,13 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
     super.disconnectedCallback();
     this._resizeObs?.disconnect();
     this._resizeObs = undefined;
+    this._viewObs?.disconnect();
+    this._viewObs = undefined;
+    this._observedChildEl = undefined;
     if (this._fitRaf != null) cancelAnimationFrame(this._fitRaf);
     this._fitRaf = undefined;
+    if (this._viewCheckRaf != null) cancelAnimationFrame(this._viewCheckRaf);
+    this._viewCheckRaf = undefined;
   }
 
   public setConfig(config: CalendarCardConfig): void {
@@ -148,6 +159,7 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
 
   protected updated(changed: Map<string, unknown>): void {
     if (changed.has("hass")) this._propagateHass();
+    this._ensureViewObserver();
     this._scheduleFitMeasure();
   }
 
@@ -440,7 +452,10 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
       hide_times_for_calendars: hideTimes,
       hide_badge_calendars: hideBadges,
       entities,
-      default_view: this._resolvedView(),
+      // Mirror daylight's CURRENT view so our setConfig (which daylight resets to
+      // default_view) preserves the user's selector choice; falls back to the resolved
+      // default on first render.
+      default_view: this._runtimeView() ?? this._resolvedView(),
       ...(cfg.calendar_config ?? {}),
     };
   }
@@ -520,6 +535,48 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
     return !!this._config?.fill || typeof this._config?.height === "number";
   }
 
+  /** daylight's CURRENT runtime view (from its view selector), e.g. `week-standard` for
+   *  Schedule. daylight's setConfig resets its view to `default_view`, so we read this to
+   *  mirror it back and preserve the user's choice. Undefined when not readable. */
+  private _runtimeView(): string | undefined {
+    const el = this._child?.el as (HTMLElement & { _viewMode?: unknown }) | undefined;
+    if (!el) return undefined;
+    const sel =
+      (el.querySelector?.("#view-mode-select") as HTMLSelectElement | null) ??
+      (el.shadowRoot?.querySelector?.("#view-mode-select") as HTMLSelectElement | null) ??
+      null;
+    if (sel?.value) return sel.value;
+    return typeof el._viewMode === "string" ? el._viewMode : undefined;
+  }
+
+  /** Re-attach the mutation observer that watches daylight for a view switch (its own
+   *  selector) so we can re-fit when the user switches to Schedule. */
+  private _ensureViewObserver(): void {
+    const el = this._child?.el;
+    if (el === this._observedChildEl) return;
+    this._viewObs?.disconnect();
+    this._observedChildEl = el;
+    this._lastRuntimeView = this._runtimeView();
+    if (!el || typeof MutationObserver === "undefined") {
+      this._viewObs = undefined;
+      return;
+    }
+    this._viewObs = new MutationObserver(() => this._onChildMutated());
+    this._viewObs.observe(el as Node, { childList: true, subtree: true });
+  }
+
+  private _onChildMutated(): void {
+    if (this._viewCheckRaf != null || typeof requestAnimationFrame === "undefined") return;
+    this._viewCheckRaf = requestAnimationFrame(() => {
+      this._viewCheckRaf = undefined;
+      const v = this._runtimeView();
+      if (v !== this._lastRuntimeView) {
+        this._lastRuntimeView = v;
+        this.requestUpdate(); // re-mirror default_view + re-run the fit for the new view
+      }
+    });
+  }
+
   /** True when the user/YAML pinned height_scale explicitly (we then don't auto-fit). */
   private _heightScalePinned(): boolean {
     return (this._config?.calendar_config as { height_scale?: unknown } | undefined)?.height_scale !== undefined;
@@ -556,8 +613,17 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
     if (this._childKind !== "calendar" || !this._child || !this._daylightInstalled()) return;
     if (!this._boundedHeight() || this._heightScalePinned()) return;
 
+    // height_scale only affects the Schedule (week-standard) view. On any other runtime
+    // view, don't fit — and drop any scale we applied so it renders naturally.
+    const runtimeView = this._runtimeView();
+    if (runtimeView && runtimeView !== "week-standard") {
+      this._fitting = false;
+      if (this._heightScale !== 1) this._heightScale = 1;
+      return;
+    }
+
     // A signature of everything that affects the fit; changing it restarts the fit.
-    const key = `${Math.round(this.clientHeight / 6)}|${this._resolvedView()}|${this._entities().join(",")}`;
+    const key = `${Math.round(this.clientHeight / 6)}|${runtimeView ?? this._resolvedView()}|${this._entities().join(",")}`;
     if (key !== this._fitKey) {
       this._fitKey = key;
       this._fitting = true;
