@@ -23,6 +23,9 @@ export interface CalendarItemConfig {
   readonly?: boolean;
   /** Whether this calendar's badge is shown in the header. Default true. */
   show_badge?: boolean;
+  /** Whether birthday cake day-badges are shown for this calendar. Default true.
+   *  Birthday-named calendars badge all events; others badge birthday-titled events. */
+  show_birthday_badge?: boolean;
   /** Whether to hide event times on this calendar (all-day style). Default false. */
   hide_times?: boolean;
   /** A `person.*` entity whose avatar represents this calendar. */

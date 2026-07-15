@@ -9,7 +9,7 @@ import {
 } from "custom-card-helpers";
 
 import { themedIcon } from "../../shared/icons";
-import { appearanceStyle, cssColor } from "../../shared/appearance";
+import { appearanceStyle, cssColor, fadeColor } from "../../shared/appearance";
 import { registerCustomCard } from "../../shared/register-card";
 import { SettingsController, settingsStore } from "../../shared/settings";
 import {
@@ -247,19 +247,49 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
     return !!(this.hass as unknown as { themes?: { darkMode?: boolean } })?.themes?.darkMode;
   }
 
-  /** Auto day-badges: a single cake on any day that has a birthday event — matched by
-   *  event title containing "birthday", OR by an event from any calendar whose name
-   *  contains "birthday". The icon follows this device's configured icon set. */
-  private _birthdayBadges(): Record<string, unknown>[] {
-    const anyList: Record<string, unknown>[] = [{ event: { title_contains: "birthday" } }];
-    const states = this.hass?.states ?? {};
-    for (const id of Object.keys(states)) {
-      if (!id.startsWith("calendar.")) continue;
-      const fn = states[id]?.attributes?.friendly_name;
-      const name = typeof fn === "string" && fn ? fn : id;
-      if (/birthday/i.test(name)) anyList.push({ event: { calendar: id } });
+  /** Auto day-badges: a cake on birthday events, one badge per calendar (unless the
+   *  calendar's `show_birthday_badge` is off). Calendars whose name contains "birthday"
+   *  badge every event; other calendars badge only their birthday-titled events. Each
+   *  badge is tinted with the calendar's resolved colour at 50% opacity; the icon
+   *  follows the configured icon set. `colors` is the resolved id → colour map. */
+  private _birthdayBadges(colors: Record<string, string>): Record<string, unknown>[] {
+    const icon = themedIcon("cake");
+    const badges: Record<string, unknown>[] = [];
+    for (const it of this._items()) {
+      if (it.show_birthday_badge === false) continue;
+      const name =
+        it.name || this.hass?.states[it.entity]?.attributes?.friendly_name || it.entity;
+      const conditions: Record<string, unknown> = { calendar: it.entity };
+      if (!/birthday/i.test(String(name))) conditions.title = "birthday";
+      const badge: Record<string, unknown> = { conditions, icon };
+      const color = colors[it.entity];
+      if (color) badge.background_color = this._fadeBadgeColor(color);
+      badges.push(badge);
     }
-    return [{ match: { any: anyList }, icon: themedIcon("cake") }];
+    return badges;
+  }
+
+  /** A calendar colour at ~50% opacity for a badge background. Hex → `rgba()` (a format
+   *  daylight accepts); other formats fall back to a `color-mix()` fade. */
+  private _fadeBadgeColor(color: string): string {
+    const s = color.trim();
+    const hex6 = /^#([0-9a-fA-F]{6})$/.exec(s);
+    const hex3 = /^#([0-9a-fA-F]{3})$/.exec(s);
+    const hex = hex6
+      ? hex6[1]
+      : hex3
+        ? hex3[1]
+            .split("")
+            .map((c) => c + c)
+            .join("")
+        : undefined;
+    if (hex) {
+      const r = parseInt(hex.slice(0, 2), 16);
+      const g = parseInt(hex.slice(2, 4), 16);
+      const b = parseInt(hex.slice(4, 6), 16);
+      return `rgba(${r}, ${g}, ${b}, 0.5)`;
+    }
+    return fadeColor(s, 50);
   }
 
   // --- Embedded daylight-calendar-card ---------------------------------------
@@ -367,7 +397,7 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
     // day_badges; an explicit `calendar_config.day_badges` overrides.
     {
       const baseBadges = Array.isArray(base.day_badges) ? (base.day_badges as unknown[]) : [];
-      appearance.day_badges = [...baseBadges, ...this._birthdayBadges()];
+      appearance.day_badges = [...baseBadges, ...this._birthdayBadges(colors)];
     }
 
     return {

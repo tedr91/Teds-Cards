@@ -322,6 +322,9 @@ export class TedCalendarCardEditor extends LitElement implements LovelaceCardEdi
     if (schema.name === "show_badge") {
       return "Show this calendar's badge in the header (tap to toggle its events).";
     }
+    if (schema.name === "show_birthday_badge") {
+      return "Show a cake badge on birthday events — all events for calendars named \"birthday\", otherwise events whose title contains \"birthday\".";
+    }
     if (schema.name === "hide_times") {
       return "Hide event start/end times on this calendar (show them as all-day).";
     }
@@ -383,6 +386,8 @@ export class TedCalendarCardEditor extends LitElement implements LovelaceCardEdi
         return "Read-only";
       case "show_badge":
         return "Show badge in header";
+      case "show_birthday_badge":
+        return "Show birthday badge";
       case "hide_times":
         return "Hide times";
       case "icon_source":

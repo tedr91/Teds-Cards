@@ -37,6 +37,7 @@ export function calendarOptionsData(
     name: item.name ?? "",
     readonly: item.readonly !== false,
     show_badge: item.show_badge !== false,
+    show_birthday_badge: item.show_birthday_badge !== false,
     hide_times: item.hide_times === true,
     icon: item.icon ?? "",
     person: item.person ?? autoPerson,
@@ -61,7 +62,15 @@ export function calendarOptionsSchema(
         { name: "show_badge", selector: { boolean: {} } },
       ],
     },
-    { name: "hide_times", selector: { boolean: {} } },
+    {
+      type: "grid",
+      name: "",
+      column_min_width: "140px",
+      schema: [
+        { name: "hide_times", selector: { boolean: {} } },
+        { name: "show_birthday_badge", selector: { boolean: {} } },
+      ],
+    },
     {
       type: "grid",
       name: "",
@@ -96,6 +105,7 @@ export function applyCalendarOptionChange(
   next.name = (v.name as string) || undefined;
   next.readonly = v.readonly === false ? false : undefined;
   next.show_badge = v.show_badge === false ? false : undefined;
+  next.show_birthday_badge = v.show_birthday_badge === false ? false : undefined;
   next.hide_times = v.hide_times === true ? true : undefined;
   const match = matchPerson(hass?.states, next.name || calendarEntityName(hass, cur.entity));
   const explicitPerson = (v.person as string) || cur.person || "";
@@ -123,6 +133,8 @@ export function calendarOptionLabel(name: string): string {
       return "Read-only";
     case "show_badge":
       return "Show badge in header";
+    case "show_birthday_badge":
+      return "Show birthday badge";
     case "hide_times":
       return "Hide times";
     case "icon_source":
@@ -145,6 +157,8 @@ export function calendarOptionHelper(name: string): string | undefined {
       return "Prevent editing events on this calendar.";
     case "show_badge":
       return "Show this calendar's badge in the header (tap to toggle its events).";
+    case "show_birthday_badge":
+      return "Show a cake badge on birthday events — all events for calendars named \"birthday\", otherwise events whose title contains \"birthday\".";
     case "hide_times":
       return "Hide event start/end times on this calendar (show them as all-day).";
     case "icon_source":

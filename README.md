@@ -939,6 +939,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.198
+
+- **Per-calendar “Show birthday badge”** — each calendar now has a toggle (default on) controlling its cake day-badges: calendars named “birthday” badge every event, others badge only birthday-titled events. Each badge is tinted with the calendar's color at 50% opacity.
+
 ### v1.0.197
 
 - **Automatic birthday cake badges** — the Calendar card now shows a cake day-badge on any day with a birthday event (matched by an event title containing "birthday", or an event from any calendar whose name contains "birthday"). The cake icon follows your **Icon set** setting.
