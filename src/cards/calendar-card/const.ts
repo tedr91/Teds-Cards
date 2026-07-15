@@ -48,7 +48,7 @@ export function matchPerson(
 export const CALENDAR_DEFAULT_CONFIG: Record<string, unknown> = {
   first_day_of_week: 0,
   week_days: [0, 1, 2, 3, 4, 5, 6],
-  week_start_hour: 6,
+  week_start_hour: 8,
   week_end_hour: 23,
   lock_schedule_hours: true,
   hide_the_past: false,
