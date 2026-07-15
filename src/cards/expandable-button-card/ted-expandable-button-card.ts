@@ -191,7 +191,7 @@ export class TedExpandableButtonCard extends LitElement implements LovelaceCard 
       >
         ${this._triggerEl ? this._triggerEl.el : nothing}
         ${this._config.group_indicator
-          ? html`<ha-icon class="ebc-group-badge" .icon=${GROUP_BADGE_ICON}></ha-icon>`
+          ? html`<span class="ebc-group-badge"><ha-icon .icon=${GROUP_BADGE_ICON}></ha-icon></span>`
           : nothing}
       </button>
       <div
@@ -304,17 +304,21 @@ export class TedExpandableButtonCard extends LitElement implements LovelaceCard 
         top: 1px;
         z-index: 2;
         box-sizing: border-box;
-        width: 14px;
-        height: 14px;
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        --mdc-icon-size: 10px;
-        color: var(--ted-style-on-accent, #06121b);
-        background: var(--ted-style-accent);
+        width: 14px;
+        height: 14px;
         border-radius: 50%;
+        background: var(--ted-style-accent);
         box-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
         pointer-events: none;
+      }
+      .ebc-group-badge ha-icon {
+        --mdc-icon-size: 10px;
+        width: 10px;
+        height: 10px;
+        color: var(--ted-style-on-accent, #06121b);
       }
       .ebc-trigger > * {
         display: block;
