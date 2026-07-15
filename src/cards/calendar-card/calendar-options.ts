@@ -36,6 +36,7 @@ export function calendarOptionsData(
   return {
     name: item.name ?? "",
     readonly: item.readonly !== false,
+    show_badge: item.show_badge !== false,
     hide_times: item.hide_times === true,
     icon: item.icon ?? "",
     person: item.person ?? autoPerson,
@@ -51,7 +52,15 @@ export function calendarOptionsSchema(
   item: CalendarItemConfig,
 ): unknown[] {
   return [
-    { name: "readonly", selector: { boolean: {} } },
+    {
+      type: "grid",
+      name: "",
+      column_min_width: "140px",
+      schema: [
+        { name: "readonly", selector: { boolean: {} } },
+        { name: "show_badge", selector: { boolean: {} } },
+      ],
+    },
     { name: "hide_times", selector: { boolean: {} } },
     {
       type: "grid",
@@ -86,6 +95,7 @@ export function applyCalendarOptionChange(
   const next: CalendarItemConfig = { ...cur };
   next.name = (v.name as string) || undefined;
   next.readonly = v.readonly === false ? false : undefined;
+  next.show_badge = v.show_badge === false ? false : undefined;
   next.hide_times = v.hide_times === true ? true : undefined;
   const match = matchPerson(hass?.states, next.name || calendarEntityName(hass, cur.entity));
   const explicitPerson = (v.person as string) || cur.person || "";
@@ -111,6 +121,8 @@ export function calendarOptionLabel(name: string): string {
       return "Name";
     case "readonly":
       return "Read-only";
+    case "show_badge":
+      return "Show badge in header";
     case "hide_times":
       return "Hide times";
     case "icon_source":
@@ -131,6 +143,8 @@ export function calendarOptionHelper(name: string): string | undefined {
   switch (name) {
     case "readonly":
       return "Prevent editing events on this calendar.";
+    case "show_badge":
+      return "Show this calendar's badge in the header (tap to toggle its events).";
     case "hide_times":
       return "Hide event start/end times on this calendar (show them as all-day).";
     case "icon_source":

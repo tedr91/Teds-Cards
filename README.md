@@ -939,6 +939,11 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.195
+
+- **Emphasize weekdays** — a new calendar-wide option (**Settings → Calendars**, also in the card editor) that slightly dims weekend cells so the work week stands out (via a daylight `day_styles` rule).
+- **Per-calendar “Show badge in header”** — each calendar's Options gained a toggle (next to Read-only) to hide its badge from the header.
+
 ### v1.0.194
 
 - **Calendar week start hour** — the Calendar card's baked Week/Schedule view now starts at 8 AM (was 6 AM).

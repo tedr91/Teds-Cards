@@ -21,6 +21,8 @@ export interface CalendarItemConfig {
   name?: string;
   /** Whether events on this calendar are read-only (no editing). Default true. */
   readonly?: boolean;
+  /** Whether this calendar's badge is shown in the header. Default true. */
+  show_badge?: boolean;
   /** Whether to hide event times on this calendar (all-day style). Default false. */
   hide_times?: boolean;
   /** A `person.*` entity whose avatar represents this calendar. */
@@ -49,6 +51,8 @@ export interface CalendarCardConfig extends LovelaceCardConfig {
   show_name?: boolean;
   /** Surface styling: `ha` (Home Assistant theme, default) or `ted` (Ted's frosted theme). */
   theme?: TedStyleTheme;
+  /** Slightly dim weekends so weekdays stand out (adds a daylight `day_styles` rule). */
+  emphasize_weekdays?: boolean;
   /** Card background colour (hex). Overrides the theme surface. */
   background_color?: string;
   /** Background transparency 0–100 (% see-through). */

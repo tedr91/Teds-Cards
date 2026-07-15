@@ -104,6 +104,7 @@ export const SETTINGS_DEFAULTS: SettingsMap = {
   calendar_name: "Family Calendar",
   calendar_theme: "ha",
   calendar_view: "month",
+  calendar_emphasize_weekdays: false,
   cameras_layout: "auto",
   climate_list: [],
   climate_layout: "auto",
@@ -227,6 +228,7 @@ export const SETTINGS_FIELDS: SettingField[] = [
     ],
     help: "The view the calendar opens on.",
   },
+  { key: "calendar_emphasize_weekdays", label: "Emphasize weekdays", group: "Calendars", kind: "boolean", help: "Slightly dim weekends so weekdays stand out." },
   { key: "calendars_list", label: "Calendars", group: "Calendars", kind: "entity-list", entityDomain: "calendar", help: "Global lists the available calendars; each device curates its own subset. Shown by Ted's Calendar card." },
   // Navbar
   { key: "navbar_auto_hide", label: "Auto-hide", group: "Navbar", kind: "boolean", help: "Collapse the navbar into its edge until revealed." },

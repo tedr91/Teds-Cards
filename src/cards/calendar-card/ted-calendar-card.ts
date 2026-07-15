@@ -232,6 +232,16 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
     return undefined;
   }
 
+  /** Resolved "emphasize weekdays": the card's YAML wins, else (settings mode) the
+   *  `calendar_emphasize_weekdays` setting, else false. */
+  private _resolvedEmphasizeWeekdays(): boolean {
+    if (typeof this._config?.emphasize_weekdays === "boolean") {
+      return this._config.emphasize_weekdays;
+    }
+    if (this._settingsMode()) return this._calendarSetting("calendar_emphasize_weekdays") === true;
+    return false;
+  }
+
   // --- Embedded daylight-calendar-card ---------------------------------------
 
   private _childConfig(entities: string[]): LovelaceCardConfig {
@@ -250,6 +260,9 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
       : [];
     const hideTimes = Array.isArray(base.hide_times_for_calendars)
       ? [...(base.hide_times_for_calendars as string[])]
+      : [];
+    const hideBadges = Array.isArray(base.hide_badge_calendars)
+      ? [...(base.hide_badge_calendars as string[])]
       : [];
     for (const it of this._items()) {
       if (it.color) colors[it.entity] = cssColor(it.color) ?? it.color;
@@ -283,6 +296,13 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
       } else if (it.hide_times === false) {
         if (ti >= 0) hideTimes.splice(ti, 1);
       }
+      // Header badge: hidden when the calendar's "Show badge in header" is off (default on).
+      const bi = hideBadges.indexOf(it.entity);
+      if (it.show_badge === false) {
+        if (bi < 0) hideBadges.push(it.entity);
+      } else if (bi >= 0) {
+        hideBadges.splice(bi, 1);
+      }
     }
 
     // --- Appearance ---
@@ -308,6 +328,13 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
     // `background_transparent` boolean whenever `background_opacity` is present.
     if (this._surfaceStyle()) appearance.background_opacity = 100;
 
+    // Emphasize weekdays: dim the weekend cells so the work week stands out. Appended
+    // to any baked/config day_styles; an explicit `calendar_config.day_styles` overrides.
+    if (this._resolvedEmphasizeWeekdays()) {
+      const baseDayStyles = Array.isArray(base.day_styles) ? (base.day_styles as unknown[]) : [];
+      appearance.day_styles = [...baseDayStyles, { condition: "weekend", style: { opacity: 0.72 } }];
+    }
+
     return {
       type: DAYLIGHT_CARD_TYPE,
       ...base,
@@ -318,6 +345,7 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
       calendar_badge_icons: badgeIcons,
       readonly_calendars: readonly,
       hide_times_for_calendars: hideTimes,
+      hide_badge_calendars: hideBadges,
       entities,
       default_view: this._resolvedView(),
       ...(cfg.calendar_config ?? {}),

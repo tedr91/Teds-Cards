@@ -131,9 +131,10 @@ export class TedCalendarCardEditor extends LitElement implements LovelaceCardEdi
     const cfg = this._config ?? ({} as CalendarCardConfig);
     const showHeader = cfg.show_header !== false;
 
-    const themeData = { theme: cfg.theme ?? "ha" };
+    const themeData = { theme: cfg.theme ?? "ha", emphasize_weekdays: cfg.emphasize_weekdays === true };
     const themeSchema = [
       { name: "theme", selector: { select: { mode: "dropdown", options: THEME_OPTIONS } } },
+      { name: "emphasize_weekdays", selector: { boolean: {} } },
     ];
 
     const headerData = {
@@ -318,6 +319,9 @@ export class TedCalendarCardEditor extends LitElement implements LovelaceCardEdi
     if (schema.name === "readonly") {
       return "Prevent editing events on this calendar.";
     }
+    if (schema.name === "show_badge") {
+      return "Show this calendar's badge in the header (tap to toggle its events).";
+    }
     if (schema.name === "hide_times") {
       return "Hide event start/end times on this calendar (show them as all-day).";
     }
@@ -332,6 +336,9 @@ export class TedCalendarCardEditor extends LitElement implements LovelaceCardEdi
     }
     if (schema.name === "icon_source") {
       return "Badge shows the icon or the linked person's avatar.";
+    }
+    if (schema.name === "emphasize_weekdays") {
+      return "Slightly dim weekends so weekdays stand out.";
     }
     return undefined;
   };
@@ -352,6 +359,8 @@ export class TedCalendarCardEditor extends LitElement implements LovelaceCardEdi
         return "Show header";
       case "theme":
         return "Theme styling";
+      case "emphasize_weekdays":
+        return "Emphasize weekdays";
       case "allow_calendar_toggling":
         return "Show calendar badges";
       case "header_color":
@@ -372,6 +381,8 @@ export class TedCalendarCardEditor extends LitElement implements LovelaceCardEdi
         return "Height";
       case "readonly":
         return "Read-only";
+      case "show_badge":
+        return "Show badge in header";
       case "hide_times":
         return "Hide times";
       case "icon_source":
@@ -427,6 +438,8 @@ export class TedCalendarCardEditor extends LitElement implements LovelaceCardEdi
     if ("show_name" in v) patch.show_name = v.show_name === false ? false : undefined;
     if ("show_header" in v) patch.show_header = v.show_header === false ? false : undefined;
     if ("theme" in v) patch.theme = v.theme && v.theme !== "ha" ? v.theme : undefined;
+    if ("emphasize_weekdays" in v)
+      patch.emphasize_weekdays = v.emphasize_weekdays === true ? true : undefined;
     if ("allow_calendar_toggling" in v)
       patch.allow_calendar_toggling = v.allow_calendar_toggling === false ? false : undefined;
     if ("header_color" in v) patch.header_color = (v.header_color as string) || undefined;
