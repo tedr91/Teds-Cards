@@ -23,7 +23,8 @@ export type SettingKind =
   | "media"
   | "select"
   | "entity-list"
-  | "background";
+  | "background"
+  | "launcher";
 
 export interface SettingField {
   key: string;
@@ -113,6 +114,13 @@ export const SETTINGS_DEFAULTS: SettingsMap = {
   navbar_float: false,
   navbar_position: "bottom",
   navbar_size: 48,
+  launcher_enabled: true,
+  launcher_section: "center",
+  launcher_combine_groups: true,
+  launcher_list: [],
+  launcher_options: {},
+  launcher_highlight_active: true,
+  launcher_active_color: null,
   do_not_disturb: false,
   debug_mode: false,
   icon_set: "auto",
@@ -244,6 +252,7 @@ export const SETTINGS_FIELDS: SettingField[] = [
     help: "Where the bar sits on the screen.",
   },
   { key: "navbar_size", label: "Size", group: "Navbar", kind: "number", min: 32, max: 96, unit: "px", help: "Bar thickness in pixels (buttons/items size from this)." },
+  { key: "launcher", label: "Launcher Buttons", group: "Navbar", kind: "launcher", help: "Auto-discovered buttons that navigate to this dashboard's views. Shown on navbars with backend_integration." },
   // General
   { key: "weather_entity", label: "Weather entity", group: "General", kind: "entity", entityDomain: "weather", help: "Default weather entity used by Ted's weather/clock cards that opt in via `backend_integration: true`." },
   {

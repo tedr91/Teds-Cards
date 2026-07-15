@@ -41,6 +41,16 @@ import {
   defaultNavSections,
 } from "./const";
 import { detectEditOrPreview, forceNavbarPadding, navbarContentRect, navbarHeaderHeight, removeNavbarPadding, setNavbarBottomReserve, setNavbarHeaderReserve } from "./navbar-dom";
+import {
+  buildLauncherButtons,
+  effectiveLauncherPaths,
+  launcherOptionsMap,
+  launcherSectionIndex,
+  readCurrentViewPath,
+  readDashboardUrlPath,
+  readLovelaceViews,
+  resolveLauncherViews,
+} from "../../shared/launcher";
 import type { NavAlign, NavButtonConfig, NavItem, NavMenuItem, NavSection, NavZone, NavbarAlignment, NavbarCardConfig } from "./types";
 
 interface CardHelpers {
@@ -103,6 +113,9 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
 
   private _helpers?: CardHelpers;
   private _buttonEls = new Map<string, ButtonEntry>();
+  /** Cached launcher (View Launcher) buttons for this render cycle; invalidated on
+   *  settings change, navigation, and config change. */
+  private _launcherCache?: NavButtonConfig[];
   private _editMode = false;
   /** Shared controller for status-item brightness/volume popovers. */
   private _slider = new StatusSliderController(this);
@@ -238,6 +251,7 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
     if (changed.has("_config")) {
       this._hasConditional = this._computeHasConditional();
       this._visible.clear();
+      this._launcherCache = undefined;
       this._buildButtonElements();
       this._applyPadding();
       this._syncClockTimer();
@@ -459,6 +473,9 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
       if (!ah) this._clearHide();
     }
     this._visible.clear();
+    // Launcher buttons are driven by settings — rebuild them when settings change.
+    this._launcherCache = undefined;
+    this._buildButtonElements();
     this.requestUpdate();
   };
 
@@ -613,7 +630,7 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
   private _buildButtonElements(): void {
     if (!this._helpers || !this._config) return;
     const next = new Map<string, ButtonEntry>();
-    (this._config.sections ?? []).forEach((section, sIdx) => {
+    this._effectiveSections().forEach((section, sIdx) => {
       this._collectButtonEls(this._sectionItems(section), `${sIdx}`, next);
     });
     this._buttonEls = next;
@@ -757,17 +774,64 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
   }
 
   /** The five fixed sections, padded/defaulted so index maps to a known slot. Locked
-   *  sections (0/2/4) always take their fixed alignment; mids (1/3) honour their config. */
+   *  sections (0/2/4) always take their fixed alignment; mids (1/3) honour their config.
+   *  When the View Launcher is enabled, its buttons are prepended into the target section. */
   private _effectiveSections(): NavSection[] {
     const cfg = this._config?.sections ?? [];
+    const launcher = this._launcherItems();
+    const targetIdx = launcher.length ? launcherSectionIndex(this._launcherSectionValue()) : -1;
     return SECTION_SLOTS.map((_slot, i) => {
       const s: NavSection = cfg[i] ?? {};
       const align: NavAlign = NAV_SECTION_ALIGN_LOCKED[i]
         ? NAV_SECTION_DEFAULT_ALIGN[i]
         : (s.align ?? NAV_SECTION_DEFAULT_ALIGN[i]);
       const priority = typeof s.priority === "number" ? s.priority : NAV_SECTION_DEFAULT_PRIORITY[i];
-      return { ...s, align, priority };
+      const base: NavSection = { ...s, align, priority };
+      if (i === targetIdx) base.items = [...launcher, ...(s.items ?? s.buttons ?? [])];
+      return base;
     });
+  }
+
+  // --- View Launcher --------------------------------------------------------
+
+  /** Whether the Settings-driven View Launcher buttons are active on this navbar. */
+  private _launcherEnabled(): boolean {
+    if (!this._backendIntegration()) return false;
+    return this._settingOverride("launcher_enabled") !== false;
+  }
+
+  private _launcherSectionValue(): string {
+    const v = this._settingOverride("launcher_section");
+    return typeof v === "string" && v ? v : "center";
+  }
+
+  /** The device's curated view-path subset, else the global available list. */
+  private _launcherList(): string[] {
+    const dev = settingsStore.deviceSettings().launcher_list;
+    if (Array.isArray(dev) && dev.length) return dev as string[];
+    const glob = settingsStore.globalSettings().launcher_list;
+    return Array.isArray(glob) ? (glob as string[]) : [];
+  }
+
+  /** Build (memoized) the launcher's navbar buttons, or [] when disabled/unavailable. */
+  private _launcherItems(): NavButtonConfig[] {
+    if (this._launcherCache) return this._launcherCache;
+    if (!this._launcherEnabled()) return (this._launcherCache = []);
+    const discovered = readLovelaceViews();
+    if (!discovered.length) return (this._launcherCache = []);
+    const paths = effectiveLauncherPaths(this._launcherList(), discovered);
+    const views = resolveLauncherViews(paths, discovered);
+    const activeColorRaw = this._settingOverride("launcher_active_color");
+    this._launcherCache = buildLauncherButtons({
+      views,
+      options: launcherOptionsMap(this._settingOverride("launcher_options")),
+      combine: this._settingOverride("launcher_combine_groups") !== false,
+      dashboardUrlPath: readDashboardUrlPath(),
+      currentViewPath: readCurrentViewPath(),
+      highlightActive: this._settingOverride("launcher_highlight_active") !== false,
+      activeColor: typeof activeColorRaw === "string" && activeColorRaw ? activeColorRaw : undefined,
+    });
+    return this._launcherCache;
   }
 
   /** Re-measure overflow on viewport resize, resetting trims so sections can regrow. */
@@ -791,7 +855,10 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
 
   /** Re-evaluate conditional items on navigation (view change) or VA responsive change. */
   private _onVisibilityEvent = (): void => {
-    if (!this._hasConditional) return;
+    const launcherActive = this._launcherEnabled();
+    if (!this._hasConditional && !launcherActive) return;
+    // Navigation changes the current view — refresh the active-view highlight.
+    if (launcherActive) this._launcherCache = undefined;
     this._visible.clear();
     this._buildButtonElements();
     this.requestUpdate();

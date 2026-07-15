@@ -1,8 +1,8 @@
-import { LitElement, css, html, nothing, type TemplateResult } from "lit";
+import { LitElement, css, html, nothing, type PropertyValues, type TemplateResult } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { classMap } from "lit/directives/class-map.js";
 import { styleMap } from "lit/directives/style-map.js";
-import { type HomeAssistant, type LovelaceCard, type LovelaceCardEditor } from "custom-card-helpers";
+import { type HomeAssistant, type LovelaceCard, type LovelaceCardConfig, type LovelaceCardEditor } from "custom-card-helpers";
 
 import { appearanceStyle, cssColor } from "../../shared/appearance";
 import { brushedOverlay, tedCardThemeClass, tedStyleTheme } from "../../shared/theme";
@@ -49,6 +49,18 @@ import {
 } from "../calendar-card/calendar-options";
 import { matchPerson } from "../calendar-card/const";
 import type { CalendarItemConfig } from "../calendar-card/types";
+import { BUTTON_CARD_TYPE } from "../button-card/const";
+import type { NavButtonSize } from "../navbar-card/types";
+import {
+  effectiveLauncherPaths,
+  groupLauncherViews,
+  LAUNCHER_SECTIONS,
+  launcherOptionsMap,
+  readLovelaceViews,
+  resolveLauncherViews,
+  type LauncherButtonOptions,
+  type LauncherViewInfo,
+} from "../../shared/launcher";
 import {
   SETTINGS_CARD_DESCRIPTION,
   SETTINGS_CARD_EDITOR_TYPE,
@@ -73,6 +85,57 @@ const SUBSECTION_ICONS: Record<string, { fluent: string; mdi: string }> = {
   Timers: { fluent: "fluent:timer-24-regular", mdi: "mdi:timer-outline" },
   Advanced: { fluent: "fluent:options-24-regular", mdi: "mdi:tune" },
 };
+
+/** Button Card editor sections hidden for a launcher button (its tap navigates to a
+ *  view, and it's always grid-embedded, so entity/state/interactions/size don't apply). */
+const LAUNCHER_BUTTON_TRIM = {
+  entity: true,
+  backgroundOn: true,
+  state: true,
+  interactions: true,
+  size: true,
+} as const;
+
+/** ha-form schema for a launcher button's "Button size" (nav-only). */
+const LAUNCHER_SIZE_SCHEMA = [
+  {
+    name: "nav_button_size",
+    selector: { select: { mode: "dropdown", options: [
+      { value: "normal", label: "Normal" },
+      { value: "wide", label: "Wide" },
+    ] } },
+  },
+];
+
+/** ha-form schema for the group-level launcher settings. */
+const LAUNCHER_SETTINGS_SCHEMA = [
+  { name: "launcher_enabled", selector: { boolean: {} } },
+  {
+    name: "launcher_section",
+    selector: { select: { mode: "dropdown", options: LAUNCHER_SECTIONS.map((s) => ({ value: s.value, label: s.label })) } },
+  },
+  { name: "launcher_combine_groups", selector: { boolean: {} } },
+  { name: "launcher_highlight_active", selector: { boolean: {} } },
+  { name: "launcher_active_color", selector: { ui_color: {} } },
+];
+
+const LAUNCHER_LABELS: Record<string, string> = {
+  launcher_enabled: "Enabled",
+  launcher_section: "Section",
+  launcher_combine_groups: "Combine view groups",
+  launcher_highlight_active: "Highlight current view",
+  launcher_active_color: "Active color",
+  nav_button_size: "Button size",
+};
+
+/** Group-level launcher setting keys persisted from the settings ha-form. */
+const LAUNCHER_SETTING_KEYS = [
+  "launcher_enabled",
+  "launcher_section",
+  "launcher_combine_groups",
+  "launcher_highlight_active",
+  "launcher_active_color",
+] as const;
 
 registerCustomCard({
   type: SETTINGS_CARD_TYPE,
@@ -106,6 +169,11 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
   private _editing = new Set<string>();
   /** Which calendars have their per-calendar Options disclosure open (by entity id). */
   @state() private _calOptOpen = new Set<string>();
+  /** Which launcher buttons have their options disclosure open (by view path). */
+  @state() private _launcherOptOpen = new Set<string>();
+  /** Embedded (controlled) Button Card editors for launcher options, by view path. */
+  private _launcherEditors = new Map<string, { el: LovelaceCardEditor; json: string }>();
+  private _launcherCreating = new Set<string>();
   /** The anchor calendar id whose "Link a calendar" chooser is open (or none). */
   @state() private _linkFor?: string;
   /** Search query in the "Link a calendar" chooser. */
@@ -183,6 +251,11 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
       cancelAnimationFrame(this._sectionMeasureRaf);
       this._sectionMeasureRaf = undefined;
     }
+  }
+
+  protected willUpdate(changed: PropertyValues): void {
+    // Keep the embedded launcher button editors in sync with open rows + hass.
+    if (changed.has("_launcherOptOpen") || changed.has("hass")) this._syncLauncherEditors();
   }
 
   protected updated(): void {
@@ -695,6 +768,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
   private _renderGlobalRow(field: SettingField): TemplateResult {
     if (field.kind === "entity-list") return this._renderCamerasGlobal(field);
     if (field.kind === "background") return this._renderBackground(field, "global");
+    if (field.kind === "launcher") return this._renderLauncher("global");
     // Device-only fields (e.g. the media player) have no sensible global value.
     if (field.deviceOnly) {
       return html`
@@ -728,6 +802,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
   private _renderDeviceRow(field: SettingField): TemplateResult {
     if (field.kind === "entity-list") return this._renderCamerasDevice(field);
     if (field.kind === "background") return this._renderBackground(field, "device");
+    if (field.kind === "launcher") return this._renderLauncher("device");
     const overriding = this._deviceOverriding(field.key);
     return html`
       <div class="row">
@@ -811,8 +886,14 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
       personMuted?: (id: string) => boolean;
       /** Whether to show the virtual-group indicator icon on the row. */
       badge?: (id: string) => boolean;
+      /** The group-indicator icon (defaults to the calendar-multiple glyph). */
+      badgeIcon?: string;
       /** A "linked to <group>" tag for calendars linked into a virtual calendar. */
       tag?: (id: string) => string;
+      /** Word shown before the tag's group name (defaults to "linked to"). */
+      tagPrefix?: string;
+      /** When false, a tagged row keeps its drag handle + remove button (defaults true). */
+      tagLocksRow?: boolean;
       /** Whether to hide the Options disclosure (for grouped member rows). */
       optionsHidden?: (id: string) => boolean;
     },
@@ -827,12 +908,13 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
       const rowTag = options?.tag?.(id) || "";
       const optHidden = options?.optionsHidden?.(id) || false;
       const isLinked = !!rowTag;
+      const locked = isLinked && options?.tagLocksRow !== false;
       const row = html`
         <div
           class="cam-item ${readonly ? "readonly" : ""} ${rowColor && !isLinked ? "tinted" : ""} ${isLinked ? "linked" : ""}"
           style=${rowColor && !isLinked ? styleMap({ "--cam-tint": rowColor }) : nothing}
         >
-          ${readonly || isLinked
+          ${readonly || locked
             ? nothing
             : html`<div class="cam-grip" title="Drag to reorder">
                 <ha-icon icon="mdi:drag"></ha-icon>
@@ -840,10 +922,10 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
           <ha-icon class="cam-ico" .icon=${rowIcon}></ha-icon>
           <span class="cam-name">${rowName}</span>
           ${rowBadge
-            ? html`<ha-icon class="cam-groupico" icon="mdi:calendar-multiple" title="Virtual group"></ha-icon>`
+            ? html`<ha-icon class="cam-groupico" .icon=${options?.badgeIcon || "mdi:calendar-multiple"} title="Group"></ha-icon>`
             : nothing}
           ${rowTag
-            ? html`<span class="cam-tag" title="Linked to ${rowTag}">linked to ${rowTag}</span>`
+            ? html`<span class="cam-tag" title="${options?.tagPrefix || "linked to"} ${rowTag}">${options?.tagPrefix || "linked to"} ${rowTag}</span>`
             : nothing}
           ${!readonly && rowPerson
             ? html`<img
@@ -862,7 +944,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
                 <ha-icon icon=${options.isOpen(id) ? "mdi:chevron-up" : "mdi:chevron-down"}></ha-icon>
               </button>`
             : nothing}
-          ${readonly || isLinked
+          ${readonly || locked
             ? nothing
             : html`<button class="cam-del" title="Remove" @click=${() => onRemove(idx)}>
                 <ha-icon icon="mdi:close"></ha-icon>
@@ -1467,6 +1549,399 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
   private _resetBgDevice(): void {
     for (const k of BACKGROUND_KEYS) settingsStore.clearValue("device", k);
     this.requestUpdate();
+  }
+
+  // --- View Launcher (Navbar group) -----------------------------------------
+
+  private _launcherLabel = (s: { name: string }): string => LAUNCHER_LABELS[s.name] ?? s.name;
+
+  private _toggleLauncherOpt(path: string): void {
+    const next = new Set(this._launcherOptOpen);
+    if (next.has(path)) next.delete(path);
+    else next.add(path);
+    this._launcherOptOpen = next;
+  }
+
+  /** The global per-view launcher options map, keyed by view path. */
+  private _launcherOptionsMap(): Record<string, LauncherButtonOptions> {
+    return launcherOptionsMap(this._globalValue("launcher_options"));
+  }
+
+  private _launcherView(path: string, discovered: LauncherViewInfo[]): LauncherViewInfo | undefined {
+    return discovered.find((v) => v.path === path);
+  }
+
+  private _launcherRowIcon(path: string, discovered: LauncherViewInfo[]): string {
+    const opt = this._launcherOptionsMap()[path] ?? {};
+    if (typeof opt.icon === "string" && opt.icon) return opt.icon;
+    return this._launcherView(path, discovered)?.icon || "mdi:gesture-tap-button";
+  }
+
+  private _launcherRowName(path: string, discovered: LauncherViewInfo[]): string {
+    const opt = this._launcherOptionsMap()[path] ?? {};
+    if (typeof opt.name === "string" && opt.name) return opt.name;
+    return this._launcherView(path, discovered)?.title || path;
+  }
+
+  private _renderLauncher(scope: "global" | "device"): TemplateResult {
+    const enabled = this._globalValue("launcher_enabled") !== false;
+    return html`
+      <ha-expansion-panel outlined class="sub-panel">
+        <div slot="header" class="sub-head">
+          <ha-icon icon="mdi:rocket-launch-outline"></ha-icon>
+          <span class="sub-head-label">Launcher Buttons${scope === "device" ? " — this device" : ""}</span>
+          <span class="sub-head-value">${enabled ? "On" : "Off"}</span>
+        </div>
+        <div class="bg-row">
+          ${scope === "global" ? this._renderLauncherGlobal() : this._renderLauncherDevice()}
+        </div>
+      </ha-expansion-panel>
+    `;
+  }
+
+  /** The ordered display views with grouping info (members contiguous under primary). */
+  private _launcherDisplay(
+    discovered: LauncherViewInfo[],
+  ): { views: LauncherViewInfo[]; groupOf: Map<string, { primary: boolean; group: string }> } {
+    const combine = this._globalValue("launcher_combine_groups") !== false;
+    const paths = effectiveLauncherPaths(this._camerasArray(this._globalValue("launcher_list")), discovered);
+    const groups = groupLauncherViews(resolveLauncherViews(paths, discovered), combine);
+    const views: LauncherViewInfo[] = [];
+    const groupOf = new Map<string, { primary: boolean; group: string }>();
+    for (const g of groups) {
+      if (g.isGroup) {
+        const ordered = [g.primary, ...g.members.filter((m) => m.path !== g.primary.path)];
+        for (const v of ordered) {
+          views.push(v);
+          groupOf.set(v.path, { primary: v.path === g.primary.path, group: g.primary.title });
+        }
+      } else {
+        views.push(g.primary);
+      }
+    }
+    return { views, groupOf };
+  }
+
+  private _renderLauncherGlobal(): TemplateResult {
+    const admin = this._isAdmin();
+    const discovered = readLovelaceViews();
+    const { views, groupOf } = this._launcherDisplay(discovered);
+    const displayPaths = views.map((v) => v.path);
+    const setList = (next: string[]): void => this._setGlobal("launcher_list", next);
+    const remaining = discovered.filter((v) => !displayPaths.includes(v.path));
+    const activeColor = this._globalValue("launcher_active_color");
+
+    return html`
+      <ha-form
+        .hass=${this.hass}
+        .data=${{
+          launcher_enabled: this._globalValue("launcher_enabled") !== false,
+          launcher_section: String(this._globalValue("launcher_section") ?? "center"),
+          launcher_combine_groups: this._globalValue("launcher_combine_groups") !== false,
+          launcher_highlight_active: this._globalValue("launcher_highlight_active") !== false,
+          launcher_active_color: typeof activeColor === "string" && activeColor ? activeColor : undefined,
+        }}
+        .schema=${LAUNCHER_SETTINGS_SCHEMA}
+        .disabled=${!admin}
+        .computeLabel=${this._launcherLabel}
+        @value-changed=${this._onLauncherSettingsChanged}
+      ></ha-form>
+      <div class="cam-row">
+        <div class="cam-head">
+          <div class="row-label"><span>Buttons — available views &amp; settings</span></div>
+          ${admin
+            ? html`<button class="cam-btn" @click=${() => this._autoPopulateLauncher(discovered)}>
+                <ha-icon icon="mdi:auto-fix"></ha-icon><span>Auto-populate</span>
+              </button>`
+            : nothing}
+        </div>
+        ${!discovered.length
+          ? html`<div class="help">No dashboard views found.</div>`
+          : displayPaths.length
+            ? this._renderCameraChips(
+                displayPaths,
+                "mdi:gesture-tap-button",
+                (idx) => {
+                  const n = [...displayPaths];
+                  n.splice(idx, 1);
+                  setList(n);
+                },
+                (from, to) => {
+                  const n = [...displayPaths];
+                  n.splice(to, 0, n.splice(from, 1)[0]);
+                  setList(n);
+                },
+                false,
+                admin
+                  ? {
+                      isOpen: (id) => this._launcherOptOpen.has(id),
+                      toggle: (id) => this._toggleLauncherOpt(id),
+                      body: (id) => this._renderLauncherOptions(id, discovered),
+                      icon: (id) => this._launcherRowIcon(id, discovered),
+                      name: (id) => this._launcherRowName(id, discovered),
+                      badge: (id) => groupOf.get(id)?.primary === true,
+                      badgeIcon: "mdi:animation",
+                      tag: (id) => {
+                        const g = groupOf.get(id);
+                        return g && !g.primary ? g.group : "";
+                      },
+                      tagPrefix: "in",
+                      tagLocksRow: false,
+                    }
+                  : undefined,
+              )
+            : html`<div class="help">No views selected — add one below or tap “Auto-populate”.</div>`}
+        ${admin && remaining.length
+          ? html`<select
+              class="sel cam-add"
+              @change=${(e: Event) => {
+                const sel = e.target as HTMLSelectElement;
+                const v = sel.value;
+                if (v) setList([...displayPaths, v]);
+                sel.value = "";
+              }}
+            >
+              <option value="">Add a view…</option>
+              ${remaining.map((v) => html`<option value=${v.path}>${v.title}</option>`)}
+            </select>`
+          : nothing}
+      </div>
+    `;
+  }
+
+  /** A launcher button's collapsible options body: Button size + an embedded Button Card
+   *  editor (Name / Icon / Badge / Dynamic highlighting). */
+  private _renderLauncherOptions(path: string, discovered: LauncherViewInfo[]): TemplateResult {
+    const opt = this._launcherOptionsMap()[path] ?? {};
+    const editor = this._launcherEditors.get(path);
+    void discovered;
+    return html`
+      <ha-form
+        .hass=${this.hass}
+        .data=${{ nav_button_size: opt.nav_button_size ?? "normal" }}
+        .schema=${LAUNCHER_SIZE_SCHEMA}
+        .computeLabel=${this._launcherLabel}
+        @value-changed=${(ev: CustomEvent) => this._onLauncherSizeChanged(path, ev)}
+      ></ha-form>
+      ${editor ? editor.el : html`<div class="help">Loading…</div>`}
+    `;
+  }
+
+  private _autoPopulateLauncher(discovered: LauncherViewInfo[]): void {
+    this._setGlobal("launcher_list", discovered.filter((v) => !v.subview).map((v) => v.path));
+  }
+
+  private _onLauncherSettingsChanged = (ev: CustomEvent): void => {
+    ev.stopPropagation();
+    if (!this._isAdmin()) return;
+    const v = ev.detail.value as Record<string, unknown>;
+    for (const key of LAUNCHER_SETTING_KEYS) {
+      if (!(key in v)) continue;
+      let val = v[key] as SettingsValue;
+      if (key === "launcher_active_color" && (val === "" || val == null)) val = null;
+      if (val !== this._globalValue(key)) this._setGlobal(key, val);
+    }
+  };
+
+  private _onLauncherSizeChanged(path: string, ev: CustomEvent): void {
+    ev.stopPropagation();
+    const v = ev.detail.value as { nav_button_size?: string };
+    const prev = { ...(this._launcherOptionsMap()[path] ?? {}) };
+    if (v.nav_button_size && v.nav_button_size !== "normal") prev.nav_button_size = v.nav_button_size as NavButtonSize;
+    else delete prev.nav_button_size;
+    this._storeLauncherOption(path, prev);
+  }
+
+  /** Persist a launcher button's options (dropping empties; removing an emptied entry). */
+  private _storeLauncherOption(path: string, opt: LauncherButtonOptions): void {
+    const map = this._launcherOptionsMap();
+    const clean: Record<string, unknown> = {};
+    for (const [k, val] of Object.entries(opt)) {
+      if (val === undefined || val === "" || val === null) continue;
+      clean[k] = val;
+    }
+    if (Object.keys(clean).length) map[path] = clean as LauncherButtonOptions;
+    else delete map[path];
+    this._setGlobal("launcher_options", map as unknown as SettingsValue);
+  }
+
+  /** The Button Card config a launcher button's embedded editor edits. */
+  private _launcherEditorConfig(path: string, discovered: LauncherViewInfo[]): LovelaceCardConfig {
+    const opt = this._launcherOptionsMap()[path] ?? {};
+    const view = this._launcherView(path, discovered);
+    const { nav_button_size, ...rest } = opt;
+    void nav_button_size;
+    return {
+      type: `custom:${BUTTON_CARD_TYPE}`,
+      icon: (typeof opt.icon === "string" && opt.icon) || view?.icon || "mdi:gesture-tap-button",
+      name: (typeof opt.name === "string" && opt.name) || view?.title || path,
+      ...rest,
+    } as LovelaceCardConfig;
+  }
+
+  private _onLauncherEditorChanged(path: string, ev: CustomEvent): void {
+    const cfg = ev.detail?.config as Record<string, unknown> | undefined;
+    if (!cfg) return;
+    // Drop keys the launcher manages itself (navigation target + always grid-embedded).
+    const { type, entity, tap_action, hold_action, double_tap_action, width, height, ...rest } = cfg;
+    void type;
+    void entity;
+    void tap_action;
+    void hold_action;
+    void double_tap_action;
+    void width;
+    void height;
+    const next: LauncherButtonOptions = { ...(rest as LauncherButtonOptions) };
+    const prevSize = this._launcherOptionsMap()[path]?.nav_button_size;
+    if (prevSize) next.nav_button_size = prevSize;
+    this._storeLauncherOption(path, next);
+    // Push the derived config back to the controlled editor so it doesn't revert.
+    const entry = this._launcherEditors.get(path);
+    if (entry) {
+      const editorCfg = this._launcherEditorConfig(path, readLovelaceViews());
+      const json = JSON.stringify(editorCfg);
+      if (entry.json !== json) {
+        entry.json = json;
+        entry.el.setConfig(editorCfg);
+      }
+    }
+  }
+
+  private _syncLauncherEditors(): void {
+    if (!this.hass) return;
+    for (const path of [...this._launcherEditors.keys()]) {
+      if (!this._launcherOptOpen.has(path)) this._launcherEditors.delete(path);
+    }
+    const discovered = readLovelaceViews();
+    for (const path of this._launcherOptOpen) {
+      const entry = this._launcherEditors.get(path);
+      if (entry) {
+        entry.el.hass = this.hass;
+        continue;
+      }
+      void this._createLauncherEditor(path, discovered);
+    }
+  }
+
+  private async _createLauncherEditor(path: string, discovered: LauncherViewInfo[]): Promise<void> {
+    if (this._launcherCreating.has(path)) return;
+    const cardClass = customElements.get(BUTTON_CARD_TYPE) as
+      | (CustomElementConstructor & { getConfigElement?: () => Promise<LovelaceCardEditor> })
+      | undefined;
+    if (!cardClass?.getConfigElement) return;
+    this._launcherCreating.add(path);
+    try {
+      const el = await cardClass.getConfigElement();
+      el.hass = this.hass;
+      (el as unknown as { trim?: typeof LAUNCHER_BUTTON_TRIM }).trim = LAUNCHER_BUTTON_TRIM;
+      const cfg = this._launcherEditorConfig(path, discovered);
+      el.setConfig(cfg);
+      el.addEventListener("config-changed", (ev: Event) => {
+        ev.stopPropagation();
+        this._onLauncherEditorChanged(path, ev as CustomEvent);
+      });
+      this._launcherEditors.set(path, { el, json: JSON.stringify(cfg) });
+      this.requestUpdate();
+    } finally {
+      this._launcherCreating.delete(path);
+    }
+  }
+
+  private _renderLauncherDevice(): TemplateResult {
+    const discovered = readLovelaceViews();
+    const key = "launcher_list";
+    const globalList = effectiveLauncherPaths(this._camerasArray(this._globalValue(key)), discovered);
+    const overriding = this._deviceOverriding(key);
+    const chipOptions = {
+      isOpen: () => false,
+      toggle: () => {},
+      body: () => html``,
+      icon: (id: string) => this._launcherRowIcon(id, discovered),
+      name: (id: string) => this._launcherRowName(id, discovered),
+      optionsHidden: () => true,
+    };
+    const head = (tag: TemplateResult | typeof nothing, help: string, extra: TemplateResult | typeof nothing = nothing): TemplateResult => html`
+      <div class="cam-head">
+        <div class="row-label">
+          <span>Buttons — this device</span>
+          ${tag}
+          <span class="help">${help}</span>
+        </div>
+        <div class="cam-head-actions">
+          ${extra}
+          <button
+            class="ovr ${overriding ? "on" : ""}"
+            title=${overriding ? "Overriding — click to inherit" : "Inheriting — click to override"}
+            @click=${() => this._toggleOverride({ key, label: "Launcher Buttons", group: "Navbar", kind: "launcher" } as SettingField, !overriding)}
+          >
+            <ha-icon .icon=${overriding ? "mdi:link-off" : "mdi:link-variant"}></ha-icon>
+          </button>
+        </div>
+      </div>
+    `;
+
+    if (!overriding) {
+      return html`
+        <div class="cam-row">
+          ${head(
+            html`<span class="inherit-tag">Inherited</span>`,
+            globalList.length
+              ? `Inheriting the Global list — ${globalList.length} view${globalList.length === 1 ? "" : "s"}. Options are set on the Global tab.`
+              : "No views in the Global list yet.",
+          )}
+          ${globalList.length
+            ? this._renderCameraChips(globalList, "mdi:gesture-tap-button", () => {}, () => {}, true, chipOptions)
+            : nothing}
+        </div>
+      `;
+    }
+
+    const stored = this._camerasArray(settingsStore.deviceSettings()[key]);
+    const valid = stored.filter((id) => globalList.includes(id));
+    const remaining = globalList.filter((id) => !valid.includes(id));
+    const setList = (next: string[]): void => this._setDevice(key, next);
+    return html`
+      <div class="cam-row">
+        ${head(
+          nothing,
+          "The launcher buttons this device shows.",
+          html`<button class="cam-btn" title="Reset to the current Global list" @click=${() => setList([...globalList])}>
+            <ha-icon icon="mdi:sync"></ha-icon><span>Sync list</span>
+          </button>`,
+        )}
+        ${valid.length
+          ? this._renderCameraChips(
+              valid,
+              "mdi:gesture-tap-button",
+              (idx) => {
+                const n = [...valid];
+                n.splice(idx, 1);
+                setList(n);
+              },
+              (from, to) => {
+                const n = [...valid];
+                n.splice(to, 0, n.splice(from, 1)[0]);
+                setList(n);
+              },
+              false,
+              chipOptions,
+            )
+          : html`<div class="help">No views selected — add from the list below.</div>`}
+        ${remaining.length
+          ? html`<select
+              class="sel cam-add"
+              @change=${(e: Event) => {
+                const sel = e.target as HTMLSelectElement;
+                if (sel.value) setList([...valid, sel.value]);
+                sel.value = "";
+              }}
+            >
+              <option value="">Add a view…</option>
+              ${remaining.map((p) => html`<option value=${p}>${this._launcherRowName(p, discovered)}</option>`)}
+            </select>`
+          : nothing}
+      </div>
+    `;
   }
 
   protected render(): TemplateResult | typeof nothing {
