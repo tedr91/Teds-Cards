@@ -843,6 +843,9 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
       views,
       options: launcherOptionsMap(this._settingOverride("launcher_options")),
       combine: this._settingOverride("launcher_combine_groups") !== false,
+      quickLaunch:
+        this._settingOverride("launcher_combine_groups") !== false &&
+        this._settingOverride("launcher_quick_launch") !== false,
       dashboardUrlPath: root,
       dashboardKeyByPath: dashboardKeyByViewPath(eff),
       currentViewPath: readCurrentViewPath(),
@@ -1490,8 +1493,9 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
         opacity: 1;
       }
       /* Soft edge vignette behind the reveal pill so it stays legible over busy
-         wallpapers. A wide linear fade rising from the screen edge (variant B2). */
-      .nav-pill::after {
+         wallpapers. Spans the FULL bar width and hugs the very screen edge (drawn on
+         the navbar itself, not the small pill), fading inward (variant B2). */
+      .navbar.auto-hide::after {
         content: "";
         position: absolute;
         z-index: -1;
@@ -1499,15 +1503,14 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
         pointer-events: none;
         transition: opacity 0.25s ease;
       }
-      .navbar.collapsed .nav-pill::after {
+      .navbar.collapsed::after {
         opacity: 1;
       }
-      .navbar.bottom .nav-pill::after {
-        left: 50%;
+      .navbar.bottom.auto-hide::after {
+        left: 0;
+        right: 0;
         bottom: 0;
-        transform: translateX(-50%);
-        width: 220px;
-        height: 44px;
+        height: 56px;
         background: linear-gradient(
           to top,
           rgba(0, 0, 0, 0.58),
@@ -1515,12 +1518,11 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
           transparent
         );
       }
-      .navbar.top .nav-pill::after {
-        left: 50%;
+      .navbar.top.auto-hide::after {
+        left: 0;
+        right: 0;
         top: 0;
-        transform: translateX(-50%);
-        width: 220px;
-        height: 44px;
+        height: 56px;
         background: linear-gradient(
           to bottom,
           rgba(0, 0, 0, 0.58),
@@ -1528,12 +1530,11 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
           transparent
         );
       }
-      .navbar.left .nav-pill::after {
-        top: 50%;
+      .navbar.left.auto-hide::after {
+        top: 0;
+        bottom: 0;
         left: 0;
-        transform: translateY(-50%);
-        width: 44px;
-        height: 220px;
+        width: 56px;
         background: linear-gradient(
           to right,
           rgba(0, 0, 0, 0.58),
@@ -1541,12 +1542,11 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
           transparent
         );
       }
-      .navbar.right .nav-pill::after {
-        top: 50%;
+      .navbar.right.auto-hide::after {
+        top: 0;
+        bottom: 0;
         right: 0;
-        transform: translateY(-50%);
-        width: 44px;
-        height: 220px;
+        width: 56px;
         background: linear-gradient(
           to left,
           rgba(0, 0, 0, 0.58),

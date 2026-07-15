@@ -939,6 +939,12 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.224
+
+- **Launcher scrim spans the edge** — the auto-hide reveal pill's scrim now spans the full bar width and hugs the very screen edge (per orientation) instead of floating behind the pill.
+- **Launcher settings polish** — “Combine view groups” is now **“Auto-combine similar views”** (with an `e.g. Home*, Calendar*` hint) and sits just above the Buttons list; Button color / Highlight color share a row.
+- **Quick launch groups** — new toggle (on by default; requires auto-combine): single tap on a launcher group navigates to its dashboard while a hold opens the group popout. When off, a tap opens the popout as before.
+
 ### v1.0.223
 
 - **Auto-hide pill scrim redesigned** — replaced the floating radial oval behind the navbar reveal pill with a soft edge vignette that fades up from the screen edge (per orientation), so it reads as a natural edge shadow instead of a shape.

@@ -10,6 +10,7 @@ import type {
 } from "custom-card-helpers";
 
 import { registerCustomCard } from "../../shared/register-card";
+import { runTedAction } from "../../shared/actions";
 import { tedCardThemeClass, tedStyleTheme } from "../../shared/theme";
 import { BUTTON_CARD_TYPE } from "../button-card/const";
 import {
@@ -72,6 +73,11 @@ export class TedExpandableButtonCard extends LitElement implements LovelaceCard 
   private _triggerEl?: CardEntry;
   private _childEls = new Map<string, CardEntry>();
 
+  /** Quick-launch hold detection: tap navigates, a sustained press opens the popout. */
+  private static readonly HOLD_MS = 500;
+  private _holdTimer?: number;
+  private _held = false;
+
   public setConfig(config: ExpandableButtonCardConfig): void {
     if (!config) throw new Error("Invalid configuration");
     this._config = { ...config };
@@ -106,7 +112,7 @@ export class TedExpandableButtonCard extends LitElement implements LovelaceCard 
   /** The trigger looks like a Button Card; its own tap/hold/double actions are disabled
    *  so a tap only opens the popup (the native popover invoker handles that). */
   private _triggerConfig(): LovelaceCardConfig {
-    const { items, popup_layout, popup_max_columns, popup_title, popup_style, popup_item_size, ...rest } =
+    const { items, popup_layout, popup_max_columns, popup_title, popup_style, popup_item_size, quick_launch, tap_action, ...rest } =
       this._config ?? {};
     void items;
     void popup_layout;
@@ -114,6 +120,8 @@ export class TedExpandableButtonCard extends LitElement implements LovelaceCard 
     void popup_title;
     void popup_style;
     void popup_item_size;
+    void quick_launch;
+    void tap_action;
     void (rest as { group_indicator?: boolean }).group_indicator;
     return {
       ...rest,
@@ -166,6 +174,54 @@ export class TedExpandableButtonCard extends LitElement implements LovelaceCard 
     return child.type === `custom:${EXPANDABLE_BUTTON_CARD_TYPE}`;
   }
 
+  /** True when this trigger uses quick-launch (single tap navigates, hold opens popout). */
+  private get _quickLaunch(): boolean {
+    return this._config?.quick_launch === true && !!this._config?.tap_action;
+  }
+
+  /** Programmatically open the popout (used by a quick-launch hold). */
+  private _openPopover(): void {
+    const el = this.shadowRoot?.getElementById(POPOVER_ID) as
+      | (HTMLElement & { showPopover?: () => void })
+      | null;
+    el?.showPopover?.();
+  }
+
+  private _onTriggerPointerDown = (): void => {
+    if (!this._quickLaunch) return;
+    this._held = false;
+    if (this._holdTimer) window.clearTimeout(this._holdTimer);
+    this._holdTimer = window.setTimeout(() => {
+      this._holdTimer = undefined;
+      this._held = true;
+      this._openPopover();
+    }, TedExpandableButtonCard.HOLD_MS);
+  };
+
+  private _onTriggerPointerUp = (): void => {
+    if (!this._quickLaunch) return;
+    if (this._holdTimer) {
+      window.clearTimeout(this._holdTimer);
+      this._holdTimer = undefined;
+    }
+    if (this._held) {
+      this._held = false;
+      return;
+    }
+    if (this.hass && this._config?.tap_action)
+      runTedAction(this, this.hass, { tap_action: this._config.tap_action }, "tap", {
+        backendIntegration: true,
+      });
+  };
+
+  private _onTriggerPointerCancel = (): void => {
+    if (this._holdTimer) {
+      window.clearTimeout(this._holdTimer);
+      this._holdTimer = undefined;
+    }
+    this._held = false;
+  };
+
   /** Bottom dot indicators: one per view in the group, capped at 4. */
   private _renderGroupDots(): TemplateResult | typeof nothing {
     const count = Math.min(4, (this._config?.items ?? []).length);
@@ -197,8 +253,12 @@ export class TedExpandableButtonCard extends LitElement implements LovelaceCard 
           grouped: this._config.group_indicator === true,
           "grouped-hl": this._config.group_indicator === true && !!this._config.ring,
         })}
-        popovertarget=${POPOVER_ID}
+        popovertarget=${this._quickLaunch ? nothing : POPOVER_ID}
         aria-haspopup="true"
+        @pointerdown=${this._onTriggerPointerDown}
+        @pointerup=${this._onTriggerPointerUp}
+        @pointerleave=${this._onTriggerPointerCancel}
+        @pointercancel=${this._onTriggerPointerCancel}
       >
         ${this._triggerEl ? this._triggerEl.el : nothing}
         ${this._config.group_indicator ? this._renderGroupDots() : nothing}

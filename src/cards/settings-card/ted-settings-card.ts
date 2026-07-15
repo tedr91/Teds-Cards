@@ -108,23 +108,30 @@ const LAUNCHER_SIZE_SCHEMA = [
   },
 ];
 
-/** ha-form schema for the group-level launcher settings. */
+/** ha-form schema for the group-level launcher settings. Combine + quick-launch are
+ *  rendered separately (just above the Buttons list) so they can carry rich helper text. */
 const LAUNCHER_SETTINGS_SCHEMA = [
   { name: "launcher_enabled", selector: { boolean: {} } },
   {
     name: "launcher_section",
     selector: { select: { mode: "dropdown", options: LAUNCHER_SECTIONS.map((s) => ({ value: s.value, label: s.label })) } },
   },
-  { name: "launcher_combine_groups", selector: { boolean: {} } },
-  { name: "launcher_button_color", selector: { ui_color: {} } },
+  {
+    name: "launcher_colors",
+    type: "grid",
+    schema: [
+      { name: "launcher_button_color", selector: { ui_color: {} } },
+      { name: "launcher_highlight_color", selector: { ui_color: {} } },
+    ],
+  },
   { name: "launcher_highlight_active", selector: { boolean: {} } },
-  { name: "launcher_highlight_color", selector: { ui_color: {} } },
 ];
 
 const LAUNCHER_LABELS: Record<string, string> = {
   launcher_enabled: "Enabled",
   launcher_section: "Section",
-  launcher_combine_groups: "Combine view groups",
+  launcher_combine_groups: "Auto-combine similar views",
+  launcher_quick_launch: "Quick launch groups",
   launcher_button_color: "Button color",
   launcher_highlight_active: "Highlight current view",
   launcher_highlight_color: "Highlight color",
@@ -136,6 +143,7 @@ const LAUNCHER_SETTING_KEYS = [
   "launcher_enabled",
   "launcher_section",
   "launcher_combine_groups",
+  "launcher_quick_launch",
   "launcher_button_color",
   "launcher_highlight_active",
   "launcher_highlight_color",
@@ -1637,6 +1645,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
 
     return html`
       ${this._renderLauncherSettingsForm("global")}
+      ${this._renderLauncherCombineBlock("global")}
       <div class="cam-row">
         <div class="cam-head">
           <div class="row-label"><span>Buttons — available views &amp; settings</span></div>
@@ -1735,7 +1744,6 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
         .data=${{
           launcher_enabled: val("launcher_enabled") !== false,
           launcher_section: String(val("launcher_section") ?? "center"),
-          launcher_combine_groups: val("launcher_combine_groups") !== false,
           launcher_button_color: typeof buttonColor === "string" && buttonColor ? buttonColor : undefined,
           launcher_highlight_active: val("launcher_highlight_active") !== false,
           launcher_highlight_color: typeof highlightColor === "string" && highlightColor ? highlightColor : undefined,
@@ -1745,6 +1753,50 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
         .computeLabel=${this._launcherLabel}
         @value-changed=${(ev: CustomEvent) => this._onLauncherSettingsChanged(ev, scope)}
       ></ha-form>
+    `;
+  }
+
+  /** The grouping toggles (Auto-combine + Quick launch), rendered just above the Buttons
+   *  list so their richer helper text (incl. a link into the Navigation tab) reads inline. */
+  private _renderLauncherCombineBlock(scope: "global" | "device"): TemplateResult {
+    const val = (k: string): SettingsValue => (scope === "global" ? this._globalValue(k) : this._deviceValue(k));
+    const disabled = scope === "global" && !this._isAdmin();
+    const combine = val("launcher_combine_groups") !== false;
+    const quick = val("launcher_quick_launch") !== false;
+    const set = (k: string, v: SettingsValue): void => {
+      if (scope === "global") {
+        if (this._isAdmin()) this._setGlobal(k, v);
+      } else this._setDevice(k, v);
+    };
+    return html`
+      <div class="row">
+        <div class="row-label">
+          <span>Auto-combine similar views</span>
+          <span class="help">e.g. Home*, Calendar*, etc.</span>
+        </div>
+        <div class="row-control">
+          <ha-switch
+            .checked=${combine}
+            .disabled=${disabled}
+            @change=${(e: Event) => set("launcher_combine_groups", (e.target as HTMLInputElement).checked)}
+          ></ha-switch>
+        </div>
+      </div>
+      <div class="row">
+        <div class="row-label">
+          <span>Quick launch groups</span>
+          <span class="help">Single tap on a group opens the corresponding
+            <button class="link-inline" @click=${() => this._selectSection("Navigation")}>navigation dashboard</button>;
+            hold on a group opens the group selector popout.</span>
+        </div>
+        <div class="row-control">
+          <ha-switch
+            .checked=${quick}
+            .disabled=${disabled || !combine}
+            @change=${(e: Event) => set("launcher_quick_launch", (e.target as HTMLInputElement).checked)}
+          ></ha-switch>
+        </div>
+      </div>
     `;
   }
 
@@ -1895,6 +1947,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
           : nothing}
       </div>
       ${this._renderLauncherSettingsForm("device")}
+      ${this._renderLauncherCombineBlock("device")}
     `;
     const chipOptions = {
       isOpen: () => false,
@@ -2418,6 +2471,16 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
       .help {
         font-size: 0.78rem;
         color: var(--ted-style-muted);
+      }
+      .link-inline {
+        display: inline;
+        padding: 0;
+        border: none;
+        background: none;
+        font: inherit;
+        color: var(--ted-style-accent, var(--primary-color));
+        text-decoration: underline;
+        cursor: pointer;
       }
       .inherit-tag {
         font-size: 0.72rem;

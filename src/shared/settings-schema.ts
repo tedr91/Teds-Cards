@@ -117,6 +117,7 @@ export const SETTINGS_DEFAULTS: SettingsMap = {
   launcher_enabled: true,
   launcher_section: "center",
   launcher_combine_groups: true,
+  launcher_quick_launch: true,
   launcher_list: [],
   launcher_options: {},
   launcher_highlight_active: true,

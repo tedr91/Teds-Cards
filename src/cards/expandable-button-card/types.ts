@@ -28,6 +28,9 @@ export interface ExpandableButtonCardConfig extends ButtonCardConfig {
   popup_item_size?: number;
   /** Show a small "group" glyph in the trigger's corner (e.g. for combined launcher groups). */
   group_indicator?: boolean;
+  /** Quick-launch: single tap on the trigger runs its `tap_action` (navigate) and a hold
+   *  opens the popout — instead of a tap opening the popout. */
+  quick_launch?: boolean;
   /** Flip the trigger icon (e.g. a chevron) 180° while the popup is open. Defaults to true. */
   flip_icon?: boolean;
 }

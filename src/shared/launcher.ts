@@ -257,6 +257,9 @@ interface BuildLauncherParams {
   navTheme?: string;
   /** The navbar's button size (px), so a group popup's buttons match the bar. */
   navButtonSize?: number;
+  /** Quick-launch groups: a group's trigger single-tap navigates to its dashboard and
+   *  hold opens the popout (instead of a tap opening the popout). */
+  quickLaunch?: boolean;
 }
 
 /** Capitalize the first letter (e.g. a group prefix `home` → `Home`). */
@@ -286,15 +289,19 @@ function launcherPopupStyle(background?: string, transparency?: number, blur?: n
 /** Build a plain launcher button (a Button Card) that navigates to a view: via the
  *  root-portable `navigate-dashboard` action when the view is exposed as a dashboard-path
  *  setting, else a plain `navigate` to its path. */
+function viewTapAction(view: LauncherViewInfo, p: BuildLauncherParams): NavButtonConfig["tap_action"] {
+  const dashKey = p.dashboardKeyByPath[view.path];
+  return (dashKey
+    ? { action: "navigate-dashboard", dashboard: dashKey }
+    : { action: "navigate", navigation_path: launcherViewNavPath(p.dashboardUrlPath, view) }) as unknown as NavButtonConfig["tap_action"];
+}
+
 function plainButton(view: LauncherViewInfo, p: BuildLauncherParams, showName: boolean): NavButtonConfig {
   const opt = p.options[view.path] ?? {};
   const active = p.highlightActive && view.path === p.currentViewPath;
   const color = p.buttonColor || "white";
   const iconOpt = typeof opt.icon === "string" ? opt.icon : undefined;
-  const dashKey = p.dashboardKeyByPath[view.path];
-  const tap_action = (dashKey
-    ? { action: "navigate-dashboard", dashboard: dashKey }
-    : { action: "navigate", navigation_path: launcherViewNavPath(p.dashboardUrlPath, view) }) as unknown as NavButtonConfig["tap_action"];
+  const tap_action = viewTapAction(view, p);
   const btn: NavButtonConfig = {
     ...launcherButtonBase(color, p.navTheme || "ha"),
     ...opt,
@@ -345,6 +352,12 @@ export function buildLauncherButtons(p: BuildLauncherParams): NavButtonConfig[] 
       items: group.members.map((m) => plainButton(m, p, false)),
       tap_action: undefined,
     } as NavButtonConfig;
+    // Quick-launch: the group's trigger single-taps to its primary/dashboard and a hold
+    // opens the popout. Otherwise a tap opens the popout (trigger has no tap action).
+    if (p.quickLaunch) {
+      (trigger as unknown as { quick_launch?: boolean }).quick_launch = true;
+      trigger.tap_action = viewTapAction(group.primary, p);
+    }
     if (groupActive) {
       trigger.ring = p.highlightColor || "accent";
       trigger.transparency = 60;
