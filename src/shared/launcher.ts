@@ -218,8 +218,8 @@ export function effectiveLauncherPaths(list: string[], discovered: LauncherViewI
   return discovered.filter((v) => !v.subview).map((v) => v.path);
 }
 
-/** Base styling for every launcher button: an accent-tinted surface with an accent icon
- *  (the look the active view used to have — now the default for all launcher buttons). */
+/** Base styling for every launcher button: a tinted surface + matching icon in the
+ *  configured button color (defaults to white). */
 function launcherButtonBase(color: string): Partial<NavButtonConfig> {
   return {
     icon_scale: 140,
@@ -243,7 +243,10 @@ interface BuildLauncherParams {
   dashboardKeyByPath: Record<string, string>;
   currentViewPath?: string;
   highlightActive: boolean;
-  activeColor?: string;
+  /** Tint/icon color of every launcher button (default white). */
+  buttonColor?: string;
+  /** Ring color marking the current view's button (default accent). */
+  highlightColor?: string;
 }
 
 /** Build a plain launcher button (a Button Card) that navigates to a view: via the
@@ -252,7 +255,7 @@ interface BuildLauncherParams {
 function plainButton(view: LauncherViewInfo, p: BuildLauncherParams, showName: boolean): NavButtonConfig {
   const opt = p.options[view.path] ?? {};
   const active = p.highlightActive && view.path === p.currentViewPath;
-  const color = p.activeColor || "primary";
+  const color = p.buttonColor || "white";
   const iconOpt = typeof opt.icon === "string" ? opt.icon : undefined;
   const dashKey = p.dashboardKeyByPath[view.path];
   const tap_action = (dashKey
@@ -267,7 +270,7 @@ function plainButton(view: LauncherViewInfo, p: BuildLauncherParams, showName: b
     tap_action,
   };
   if (showName) btn.show_name = opt.show_name ?? true;
-  if (active) btn.ring = color;
+  if (active) btn.ring = p.highlightColor || "accent";
   return btn;
 }
 
@@ -279,7 +282,7 @@ function plainButton(view: LauncherViewInfo, p: BuildLauncherParams, showName: b
 export function buildLauncherButtons(p: BuildLauncherParams): NavButtonConfig[] {
   const primaryPaths = new Set(Object.keys(p.dashboardKeyByPath));
   const groups = groupLauncherViews(p.views, p.combine, primaryPaths);
-  const color = p.activeColor || "primary";
+  const color = p.buttonColor || "white";
   return groups.map((group) => {
     if (!group.isGroup) return plainButton(group.primary, p, false);
     const primaryOpt = p.options[group.primary.path] ?? {};
@@ -297,7 +300,7 @@ export function buildLauncherButtons(p: BuildLauncherParams): NavButtonConfig[] 
       items: group.members.map((m) => plainButton(m, p, true)),
       tap_action: undefined,
     } as NavButtonConfig;
-    if (groupActive) trigger.ring = color;
+    if (groupActive) trigger.ring = p.highlightColor || "accent";
     return trigger;
   });
 }

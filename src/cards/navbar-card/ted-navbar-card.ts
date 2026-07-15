@@ -822,7 +822,8 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
     if (!discovered.length) return (this._launcherCache = []);
     const paths = effectiveLauncherPaths(this._launcherList(), discovered);
     const views = resolveLauncherViews(paths, discovered);
-    const activeColorRaw = this._settingOverride("launcher_active_color");
+    const buttonColorRaw = this._settingOverride("launcher_button_color");
+    const highlightColorRaw = this._settingOverride("launcher_highlight_color");
     const eff = settingsStore.effective();
     const root = String(eff.dashboard_root || readDashboardUrlPath() || "ted-dashboard");
     this._launcherCache = buildLauncherButtons({
@@ -833,7 +834,8 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
       dashboardKeyByPath: dashboardKeyByViewPath(eff),
       currentViewPath: readCurrentViewPath(),
       highlightActive: this._settingOverride("launcher_highlight_active") !== false,
-      activeColor: typeof activeColorRaw === "string" && activeColorRaw ? activeColorRaw : undefined,
+      buttonColor: typeof buttonColorRaw === "string" && buttonColorRaw ? buttonColorRaw : undefined,
+      highlightColor: typeof highlightColorRaw === "string" && highlightColorRaw ? highlightColorRaw : undefined,
     });
     return this._launcherCache;
   }

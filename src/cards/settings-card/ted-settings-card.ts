@@ -116,16 +116,18 @@ const LAUNCHER_SETTINGS_SCHEMA = [
     selector: { select: { mode: "dropdown", options: LAUNCHER_SECTIONS.map((s) => ({ value: s.value, label: s.label })) } },
   },
   { name: "launcher_combine_groups", selector: { boolean: {} } },
+  { name: "launcher_button_color", selector: { ui_color: {} } },
   { name: "launcher_highlight_active", selector: { boolean: {} } },
-  { name: "launcher_active_color", selector: { ui_color: {} } },
+  { name: "launcher_highlight_color", selector: { ui_color: {} } },
 ];
 
 const LAUNCHER_LABELS: Record<string, string> = {
   launcher_enabled: "Enabled",
   launcher_section: "Section",
   launcher_combine_groups: "Combine view groups",
+  launcher_button_color: "Button color",
   launcher_highlight_active: "Highlight current view",
-  launcher_active_color: "Button color",
+  launcher_highlight_color: "Highlight color",
   nav_button_size: "Button size",
 };
 
@@ -134,8 +136,9 @@ const LAUNCHER_SETTING_KEYS = [
   "launcher_enabled",
   "launcher_section",
   "launcher_combine_groups",
+  "launcher_button_color",
   "launcher_highlight_active",
-  "launcher_active_color",
+  "launcher_highlight_color",
 ] as const;
 
 registerCustomCard({
@@ -1631,7 +1634,8 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     const displayPaths = views.map((v) => v.path);
     const setList = (next: string[]): void => this._setGlobal("launcher_list", next);
     const remaining = discovered.filter((v) => !displayPaths.includes(v.path));
-    const activeColor = this._globalValue("launcher_active_color");
+    const buttonColor = this._globalValue("launcher_button_color");
+    const highlightColor = this._globalValue("launcher_highlight_color");
 
     return html`
       <ha-form
@@ -1640,8 +1644,9 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
           launcher_enabled: this._globalValue("launcher_enabled") !== false,
           launcher_section: String(this._globalValue("launcher_section") ?? "center"),
           launcher_combine_groups: this._globalValue("launcher_combine_groups") !== false,
+          launcher_button_color: typeof buttonColor === "string" && buttonColor ? buttonColor : undefined,
           launcher_highlight_active: this._globalValue("launcher_highlight_active") !== false,
-          launcher_active_color: typeof activeColor === "string" && activeColor ? activeColor : undefined,
+          launcher_highlight_color: typeof highlightColor === "string" && highlightColor ? highlightColor : undefined,
         }}
         .schema=${LAUNCHER_SETTINGS_SCHEMA}
         .disabled=${!admin}
@@ -1740,7 +1745,8 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     for (const key of LAUNCHER_SETTING_KEYS) {
       if (!(key in v)) continue;
       let val = v[key] as SettingsValue;
-      if (key === "launcher_active_color" && (val === "" || val == null)) val = null;
+      if ((key === "launcher_button_color" || key === "launcher_highlight_color") && (val === "" || val == null))
+        val = null;
       if (val !== this._globalValue(key)) this._setGlobal(key, val);
     }
   };
