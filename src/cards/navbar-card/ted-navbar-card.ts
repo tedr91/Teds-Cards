@@ -1489,6 +1489,37 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
       .navbar.collapsed .nav-pill:hover::before {
         opacity: 1;
       }
+      /* Soft scrim behind the reveal pill so it stays legible over busy wallpapers. */
+      .nav-pill::after {
+        content: "";
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        z-index: -1;
+        border-radius: 999px;
+        opacity: 0;
+        transition: opacity 0.25s ease;
+        background: radial-gradient(
+          closest-side,
+          rgba(0, 0, 0, 0.35),
+          rgba(0, 0, 0, 0.16) 55%,
+          transparent
+        );
+      }
+      .navbar.collapsed .nav-pill::after {
+        opacity: 1;
+      }
+      .navbar.bottom .nav-pill::after,
+      .navbar.top .nav-pill::after {
+        width: 150px;
+        height: 26px;
+      }
+      .navbar.left .nav-pill::after,
+      .navbar.right .nav-pill::after {
+        width: 26px;
+        height: 150px;
+      }
       /* Unread notifications: the collapsed pill glows accent and slowly pulses. */
       .navbar.collapsed .nav-pill.has-unread::before {
         background: var(--ted-style-accent);

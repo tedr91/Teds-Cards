@@ -939,6 +939,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.222
+
+- **Auto-hide pill scrim** — added a soft scrim behind the navbar reveal pill so it stays legible over busy wallpapers.
+
 ### v1.0.221
 
 - **Notification pill glow** — when the navbar is auto-hidden and you have unread notifications, the reveal pill now glows in the accent color and slowly pulses (respects reduced-motion).
