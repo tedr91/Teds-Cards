@@ -284,11 +284,13 @@ export class TedCalendarCardEditor extends LitElement implements LovelaceCardEdi
       ></ha-form>
     `;
     return html`
-      <div class="cal">
+      <div class="cal ${inGroup ? "linked" : ""}">
         <div class="row">
-          <div class="drag-handle" @click=${this._stop} title="Drag to reorder">
-            <ha-svg-icon .path=${GRIP_ICON_PATH}></ha-svg-icon>
-          </div>
+          ${inGroup
+            ? nothing
+            : html`<div class="drag-handle" @click=${this._stop} title="Drag to reorder">
+                <ha-svg-icon .path=${GRIP_ICON_PATH}></ha-svg-icon>
+              </div>`}
           <ha-entity-picker
             class="row-picker"
             .hass=${this.hass}
@@ -300,7 +302,9 @@ export class TedCalendarCardEditor extends LitElement implements LovelaceCardEdi
           ${item.virtual
             ? html`<ha-svg-icon class="vc-badge" .path=${GROUP_ICON_PATH} title="Virtual group"></ha-svg-icon>`
             : nothing}
-          ${inGroup ? html`<span class="vc-tag" title="Joined into ${inGroup}">In ${inGroup}</span>` : nothing}
+          ${inGroup
+            ? html`<span class="vc-tag" title="Linked to ${inGroup}">linked to ${inGroup}</span>`
+            : nothing}
           ${item.entity && !inGroup
             ? html`<ha-icon-button
                 class="opt-toggle"
@@ -310,12 +314,14 @@ export class TedCalendarCardEditor extends LitElement implements LovelaceCardEdi
                 @click=${() => this._toggleRow(idx)}
               ></ha-icon-button>`
             : nothing}
-          <ha-icon-button
-            class="warning"
-            label="Delete calendar"
-            .path=${DELETE_ICON_PATH}
-            @click=${(ev: Event) => this._remove(idx, ev)}
-          ></ha-icon-button>
+          ${inGroup
+            ? nothing
+            : html`<ha-icon-button
+                class="warning"
+                label="Delete calendar"
+                .path=${DELETE_ICON_PATH}
+                @click=${(ev: Event) => this._remove(idx, ev)}
+              ></ha-icon-button>`}
         </div>
         ${open
           ? html`<div class="opt-body">
@@ -644,6 +650,9 @@ export class TedCalendarCardEditor extends LitElement implements LovelaceCardEdi
       display: flex;
       flex-direction: column;
       gap: 6px;
+    }
+    .cal.linked {
+      margin-left: 28px;
     }
     .opt-panel {
       --expansion-panel-content-padding: 0;

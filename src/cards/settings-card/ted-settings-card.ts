@@ -810,7 +810,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
       personMuted?: (id: string) => boolean;
       /** Whether to show the virtual-group indicator icon on the row. */
       badge?: (id: string) => boolean;
-      /** A "In <group>" tag for calendars grouped into a virtual calendar. */
+      /** A "linked to <group>" tag for calendars linked into a virtual calendar. */
       tag?: (id: string) => string;
       /** Whether to hide the Options disclosure (for grouped member rows). */
       optionsHidden?: (id: string) => boolean;
@@ -825,12 +825,13 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
       const rowBadge = options?.badge?.(id) || false;
       const rowTag = options?.tag?.(id) || "";
       const optHidden = options?.optionsHidden?.(id) || false;
+      const isLinked = !!rowTag;
       const row = html`
         <div
-          class="cam-item ${readonly ? "readonly" : ""} ${rowColor ? "tinted" : ""}"
+          class="cam-item ${readonly ? "readonly" : ""} ${rowColor ? "tinted" : ""} ${isLinked ? "linked" : ""}"
           style=${rowColor ? styleMap({ "--cam-tint": rowColor }) : nothing}
         >
-          ${readonly
+          ${readonly || isLinked
             ? nothing
             : html`<div class="cam-grip" title="Drag to reorder">
                 <ha-icon icon="mdi:drag"></ha-icon>
@@ -840,7 +841,9 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
           ${rowBadge
             ? html`<ha-icon class="cam-groupico" icon="mdi:calendar-multiple" title="Virtual group"></ha-icon>`
             : nothing}
-          ${rowTag ? html`<span class="cam-tag" title="Joined into ${rowTag}">In ${rowTag}</span>` : nothing}
+          ${rowTag
+            ? html`<span class="cam-tag" title="Linked to ${rowTag}">linked to ${rowTag}</span>`
+            : nothing}
           ${!readonly && rowPerson
             ? html`<img
                 class="cam-avatar ${rowPersonMuted ? "muted" : ""}"
@@ -858,7 +861,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
                 <ha-icon icon=${options.isOpen(id) ? "mdi:chevron-up" : "mdi:chevron-down"}></ha-icon>
               </button>`
             : nothing}
-          ${readonly
+          ${readonly || isLinked
             ? nothing
             : html`<button class="cam-del" title="Remove" @click=${() => onRemove(idx)}>
                 <ha-icon icon="mdi:close"></ha-icon>
@@ -2041,6 +2044,10 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
       .cam-item.readonly {
         opacity: 0.72;
         border-style: dashed;
+      }
+      /* A calendar linked into a virtual group: indented to read as a child row. */
+      .cam-item.linked {
+        margin-left: 28px;
       }
       /* A calendar row tinted with a pleasant horizontal gradient of its color. */
       .cam-item.tinted {

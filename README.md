@@ -939,6 +939,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.204
+
+- Linked-calendar rows now read clearly as children of their virtual group: the badge says **"linked to <group>"** (was "In <group>"), the drag-to-reorder grip and delete button are hidden on linked rows, and the rows are indented. Applies to the card editor and **Settings → Calendars**.
+
 ### v1.0.203
 
 - Refined the virtual-calendar member UX: renamed the toggle to **"Virtual (linked calendars)"**, the member list heading to **"Linked Calendars"** (shown directly below the toggle when enabled), and replaced the inline join field with a **"+ Link a calendar"** button that opens a searchable picker popup — matching the **"+ Add a calendar"** flow. Works in the card editor and **Settings → Calendars**.
