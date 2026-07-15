@@ -939,6 +939,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.218
+
+- **Launcher group indicator** — the stacked-card shadow now hides while a group button is the current view, so its highlight reads cleanly.
+
 ### v1.0.217
 
 - **Launcher group indicator** — simplified the group button's stacked-card shadow to a single offset shadow.

@@ -191,7 +191,12 @@ export class TedExpandableButtonCard extends LitElement implements LovelaceCard 
     return html`
       <button
         id=${TRIGGER_ID}
-        class=${classMap({ "ebc-trigger": true, "flip-icon": flip, grouped: this._config.group_indicator === true })}
+        class=${classMap({
+          "ebc-trigger": true,
+          "flip-icon": flip,
+          grouped: this._config.group_indicator === true,
+          "grouped-hl": this._config.group_indicator === true && !!this._config.ring,
+        })}
         popovertarget=${POPOVER_ID}
         aria-haspopup="true"
       >
@@ -304,6 +309,10 @@ export class TedExpandableButtonCard extends LitElement implements LovelaceCard 
       .ebc-trigger.grouped {
         border-radius: var(--ted-style-radius, 12px);
         box-shadow: 3px -3px 0 -1px rgba(255, 255, 255, 0.16);
+      }
+      /* Hide the stacked-card shadow while the group is the current view (highlighted). */
+      .ebc-trigger.grouped-hl {
+        box-shadow: none;
       }
       /* Dot indicators (one per view, max 4) along the bottom of a group button. */
       .ebc-dots {
