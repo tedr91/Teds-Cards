@@ -939,6 +939,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.201
+
+- **Schedule auto-fit now navbar/header-aware** — the fit measures against the card's actual grid-cell height (which already accounts for the HA header and navbar reserves) instead of daylight's own viewport-based sizing, so the Schedule grid fits the truly visible area with no cut-off.
+
 ### v1.0.200
 
 - **Schedule auto-fit follows the view selector** — switching to Schedule via daylight's own view selector now auto-fits, and changing views/resizing no longer snaps a month-default card back to Month (the card preserves daylight's current view across updates).

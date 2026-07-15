@@ -590,23 +590,37 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
     });
   }
 
-  /** Find the tallest internally-scrolling descendant of the daylight card (searching
-   *  both its light children and its shadow root), or undefined when nothing overflows. */
-  private _findScroller(): HTMLElement | undefined {
-    const el = this._child?.el as HTMLElement | undefined;
-    if (!el) return undefined;
-    const roots: ParentNode[] = [el];
-    if (el.shadowRoot) roots.push(el.shadowRoot);
-    let best: HTMLElement | undefined;
-    for (const root of roots) {
-      for (const node of Array.from(root.querySelectorAll<HTMLElement>("*"))) {
-        if (node.scrollHeight - node.clientHeight <= 2) continue;
-        const oy = getComputedStyle(node).overflowY;
-        if (oy !== "auto" && oy !== "scroll") continue;
-        if (!best || node.clientHeight > best.clientHeight) best = node;
+  /** Fit metrics: the AVAILABLE height is our `.calendar` element's clientHeight — it
+   *  fills the dashboard's grid cell, which is sized by the layout's magic calc (already
+   *  subtracting the HA header + navbar reserves). CONTENT is how tall the daylight grid
+   *  actually wants to be, measured as the lowest content extent below the cell's top
+   *  (its own overflow, plus any internal grid scroller — daylight v4 sizes its Schedule
+   *  grid to the viewport in its own shadow DOM, so we measure absolute extent, not the
+   *  scroller's own too-tall viewport). Returns undefined when not measurable. */
+  private _fitMetrics(): { avail: number; content: number } | undefined {
+    const calEl = this.renderRoot?.querySelector?.(".calendar") as HTMLElement | null;
+    if (!calEl) return undefined;
+    const avail = calEl.clientHeight;
+    if (avail <= 0) return undefined;
+    const calTop = calEl.getBoundingClientRect().top;
+    let content = calEl.scrollHeight;
+    const dl = this._child?.el as HTMLElement | undefined;
+    if (dl) {
+      content = Math.max(content, dl.scrollHeight);
+      const roots: ParentNode[] = [dl];
+      if (dl.shadowRoot) roots.push(dl.shadowRoot);
+      for (const root of roots) {
+        for (const node of Array.from(root.querySelectorAll<HTMLElement>("*"))) {
+          if (node.scrollHeight - node.clientHeight <= 2) continue;
+          const oy = getComputedStyle(node).overflowY;
+          if (oy !== "auto" && oy !== "scroll") continue;
+          // Absolute bottom of this scroller's content, relative to the cell's top.
+          const top = node.getBoundingClientRect().top - calTop;
+          content = Math.max(content, top + node.scrollHeight);
+        }
       }
     }
-    return best;
+    return { avail, content };
   }
 
   private _runFit(): void {
@@ -636,34 +650,36 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
     }
     if (!this._fitting) return;
 
-    const scroller = this._findScroller();
-    if (!scroller) {
-      this._fitting = false; // no overflow — it already fits
+    const m = this._fitMetrics();
+    if (!m) {
+      this._fitting = false;
       return;
     }
-    const contentH = scroller.scrollHeight;
-    const viewportH = scroller.clientHeight;
-
-    // Bail if a scale change didn't move the content (height_scale not in effect here,
-    // e.g. a non-Schedule view), or we've iterated enough / can't shrink further.
+    const { avail, content } = m;
+    if (content - avail <= 2) {
+      this._fitting = false; // it already fits the magic-calc'd height
+      return;
+    }
+    // Bail if a scale change didn't move the content (height_scale not in effect here),
+    // or we've iterated enough.
     if (
       this._fitAttempts > 0 &&
       this._prevFitHeight != null &&
-      Math.abs(contentH - this._prevFitHeight) < 2
+      Math.abs(content - this._prevFitHeight) < 2
     ) {
       this._fitting = false;
       return;
     }
-    if (this._fitAttempts >= 6 || viewportH <= 0) {
+    if (this._fitAttempts >= 6) {
       this._fitting = false;
       return;
     }
-    const next = Math.min(1, Math.max(0.35, this._heightScale * (viewportH / contentH) * 0.98));
+    const next = Math.min(1, Math.max(0.35, this._heightScale * (avail / content) * 0.98));
     if (next >= this._heightScale - 0.005) {
       this._fitting = false; // converged or hit the floor
       return;
     }
-    this._prevFitHeight = contentH;
+    this._prevFitHeight = content;
     this._fitAttempts += 1;
     this._heightScale = next; // triggers a re-render + another measure pass
   }
