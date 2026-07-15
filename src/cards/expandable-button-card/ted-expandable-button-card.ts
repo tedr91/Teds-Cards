@@ -300,12 +300,10 @@ export class TedExpandableButtonCard extends LitElement implements LovelaceCard 
         cursor: pointer;
         -webkit-tap-highlight-color: transparent;
       }
-      /* Combined-group trigger: a subtle "deck" of stacked cards behind it. */
+      /* Combined-group trigger: a subtle single "card behind" shadow. */
       .ebc-trigger.grouped {
         border-radius: var(--ted-style-radius, 12px);
-        box-shadow:
-          3px -3px 0 -1px rgba(255, 255, 255, 0.16),
-          6px -6px 0 -2px rgba(255, 255, 255, 0.1);
+        box-shadow: 3px -3px 0 -1px rgba(255, 255, 255, 0.16);
       }
       /* Dot indicators (one per view, max 4) along the bottom of a group button. */
       .ebc-dots {
