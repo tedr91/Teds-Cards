@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Launcher · combined-group badge options</title>
+    <style>
+      :root {
+        --accent: #4cc2ff;
+        --bsize: 15px;
+        --bar: rgba(38, 42, 52, 0.92);
+        --tile: rgba(255, 255, 255, 0.16);
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        color: #eef1f6;
+        min-height: 100vh;
+        background:
+          radial-gradient(120% 120% at 20% 0%, #6b5f8a 0%, #40405f 45%, #2a2f3f 100%), #2a2f3f;
+        padding: 26px clamp(16px, 4vw, 48px) 64px;
+      }
+      h1 { font-size: 20px; font-weight: 650; margin: 0 0 4px; }
+      p.sub { margin: 0 0 20px; color: #c7cdda; font-size: 13px; }
+      .controls {
+        display: flex; flex-wrap: wrap; gap: 20px; align-items: center;
+        background: rgba(0,0,0,.25); border: 1px solid rgba(255,255,255,.12);
+        border-radius: 12px; padding: 12px 16px; margin-bottom: 26px; backdrop-filter: blur(6px);
+      }
+      .controls label { font-size: 13px; display: inline-flex; align-items: center; gap: 8px; }
+      .controls input[type="color"] { width: 34px; height: 26px; border: none; background: none; cursor: pointer; }
+      .swatches { display: inline-flex; gap: 6px; }
+      .swatches button { width: 22px; height: 22px; border-radius: 50%; border: 2px solid rgba(255,255,255,.5); cursor: pointer; padding: 0; }
+
+      .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 16px; }
+      .variant { background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1); border-radius: 14px; padding: 14px; }
+      .variant h3 { margin: 0 0 12px; font-size: 13.5px; font-weight: 600; }
+
+      /* A mini navbar strip so the badge reads against real neighbours. */
+      .strip {
+        display: flex; gap: 8px; align-items: center; justify-content: center;
+        background: var(--bar); border-radius: 14px; padding: 10px 12px; backdrop-filter: blur(10px);
+      }
+      .tile {
+        position: relative; width: 40px; height: 40px; border-radius: 11px;
+        display: grid; place-items: center; background: var(--tile); flex: none;
+      }
+      .tile > .home { width: 22px; height: 22px; fill: #7fc6ef; }
+
+      /* Group badge */
+      .badge { position: absolute; display: grid; place-items: center; width: var(--bsize); height: var(--bsize); z-index: 2; pointer-events: none; }
+      .badge svg { width: 72%; height: 72%; }
+      /* positions */
+      .pos-br { right: 1px; bottom: 1px; }
+      .pos-tr { right: 1px; top: 1px; }
+      .pos-tl { left: 1px; top: 1px; }
+      .pos-bl { left: 1px; bottom: 1px; }
+      .pos-bc { left: 50%; bottom: -3px; transform: translateX(-50%); }
+      /* treatments */
+      .plain svg { fill: var(--accent); filter: drop-shadow(0 1px 1.5px rgba(0,0,0,.6)); }
+      .chip-accent { background: var(--accent); border-radius: 50%; box-shadow: 0 1px 2px rgba(0,0,0,.4); }
+      .chip-accent svg { fill: #06121b; }
+      .chip-dark { background: rgba(18,20,26,.9); border-radius: 50%; box-shadow: 0 1px 2px rgba(0,0,0,.4); }
+      .chip-dark svg { fill: var(--accent); }
+      .chip-light { background: #fff; border-radius: 50%; box-shadow: 0 1px 2px rgba(0,0,0,.4); }
+      .chip-light svg { fill: var(--accent); }
+      .chip-ring { background: rgba(18,20,26,.9); border-radius: 50%; box-shadow: 0 0 0 1.5px var(--accent); }
+      .chip-ring svg { fill: #fff; }
+      .pill { width: auto; height: calc(var(--bsize) - 1px); padding: 0 5px; border-radius: 999px; }
+      .big { --bsize: 18px; }
+      .sm { --bsize: 13px; }
+
+      code { font-size: 10.5px; color: #a9d0ff; display: block; margin-top: 10px; }
+    </style>
+  </head>
+  <body>
+    <h1>Launcher — combined-group badge</h1>
+    <p class="sub">The middle tile is a combined group (like your <b>Home</b> button). Compare badge position, color &amp; chip. Adjust the accent + size to taste.</p>
+
+    <div class="controls">
+      <label>Badge color <input id="accent" type="color" value="#4cc2ff" /></label>
+      <span class="swatches" id="swatches"></span>
+      <label>Size <input id="size" type="range" min="11" max="20" value="15" /></label>
+      <label>Bar
+        <select id="bar">
+          <option value="rgba(38,42,52,0.92)" selected>Dark (yours)</option>
+          <option value="rgba(38,42,52,0.55)">Dark glass</option>
+          <option value="rgba(245,247,250,0.85)">Light</option>
+        </select>
+      </label>
+    </div>
+
+    <div class="grid" id="grid"></div>
+
+    <script>
+      const HOME = '<svg class="home" viewBox="0 0 24 24"><path d="M10,20V14H14V20H19V12H22L12,3L2,12H5V20H10Z"/></svg>';
+      const GRP =
+        '<svg viewBox="0 0 24 24"><path d="M16,13C15.71,13 15.38,13 15.03,13.05C16.19,13.89 17,15 17,16.5V19H23V16.5C23,14.17 18.33,13 16,13M8,13C5.67,13 1,14.17 1,16.5V19H15V16.5C15,14.17 10.33,13 8,13M8,11A3,3 0 0,0 11,8A3,3 0 0,0 8,5A3,3 0 0,0 5,8A3,3 0 0,0 8,11M16,11A3,3 0 0,0 19,8A3,3 0 0,0 16,5C15.71,5 15.42,5.04 15.14,5.09C15.68,5.85 16,6.79 16,8C16,9.21 15.68,10.15 15.14,10.91C15.42,10.96 15.71,11 16,11Z"/></svg>';
+
+      const variants = [
+        ["Current — plain, bottom-right", "pos-br plain"],
+        ["Accent chip · bottom-right", "pos-br chip-accent"],
+        ["Dark chip · bottom-right", "pos-br chip-dark"],
+        ["Light chip · bottom-right", "pos-br chip-light"],
+        ["Ring chip · bottom-right", "pos-br chip-ring"],
+        ["Accent chip · top-right", "pos-tr chip-accent"],
+        ["Accent chip · top-left", "pos-tl chip-accent"],
+        ["Dark chip · bottom-left", "pos-bl chip-dark"],
+        ["Accent pill · bottom-center", "pos-bc chip-accent pill"],
+        ["Accent chip · larger", "pos-br chip-accent big"],
+        ["Accent chip · smaller", "pos-br chip-accent sm"],
+        ["Light chip · top-right", "pos-tr chip-light"],
+      ];
+
+      const grid = document.getElementById("grid");
+      for (const [title, cls] of variants) {
+        const el = document.createElement("div");
+        el.className = "variant";
+        el.innerHTML =
+          '<h3>' + title + '</h3>' +
+          '<div class="strip">' +
+            '<div class="tile">' + HOME + '</div>' +
+            '<div class="tile">' + HOME + '<span class="badge ' + cls + '">' + GRP + '</span></div>' +
+            '<div class="tile">' + HOME + '</div>' +
+          '</div>' +
+          '<code>.' + cls.split(" ").join(" .") + '</code>';
+        grid.appendChild(el);
+      }
+
+      const root = document.documentElement.style;
+      document.getElementById("accent").addEventListener("input", (e) => root.setProperty("--accent", e.target.value));
+      document.getElementById("size").addEventListener("input", (e) => root.setProperty("--bsize", e.target.value + "px"));
+      document.getElementById("bar").addEventListener("change", (e) => root.setProperty("--bar", e.target.value));
+
+      const sw = document.getElementById("swatches");
+      for (const c of ["#4cc2ff", "#3f7cf0", "#12b886", "#f59f00", "#e64980", "#ffffff"]) {
+        const b = document.createElement("button");
+        b.style.background = c; b.title = c;
+        b.addEventListener("click", () => { root.setProperty("--accent", c); document.getElementById("accent").value = c; });
+        sw.appendChild(b);
+      }
+    </script>
+  </body>
+</html>

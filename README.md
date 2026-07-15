@@ -939,6 +939,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.213
+
+- **Launcher group badge** — the combined-group indicator is now a filled accent chip in the button's top-left corner, so it's clearly visible.
+
 ### v1.0.212
 
 - **Launcher group polish** — combined launcher buttons now show a small group glyph, their popup matches the navbar's theme/surface and button size, popup buttons are icon-only with per-button tooltips, and each popup opens with the group's shared prefix (e.g. “Home”) as its heading.

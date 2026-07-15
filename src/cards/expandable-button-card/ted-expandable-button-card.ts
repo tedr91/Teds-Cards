@@ -296,16 +296,25 @@ export class TedExpandableButtonCard extends LitElement implements LovelaceCard 
         cursor: pointer;
         -webkit-tap-highlight-color: transparent;
       }
-      /* Small corner glyph marking the trigger as a group of buttons. */
+      /* Small corner glyph marking the trigger as a group of buttons: an accent chip
+         in the top-left corner. */
       .ebc-group-badge {
         position: absolute;
-        right: 1px;
-        bottom: 1px;
+        left: 1px;
+        top: 1px;
         z-index: 2;
-        --mdc-icon-size: 13px;
-        color: var(--ted-style-accent);
+        box-sizing: border-box;
+        width: 14px;
+        height: 14px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        --mdc-icon-size: 10px;
+        color: var(--ted-style-on-accent, #06121b);
+        background: var(--ted-style-accent);
+        border-radius: 50%;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
         pointer-events: none;
-        filter: drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.55));
       }
       .ebc-trigger > * {
         display: block;
