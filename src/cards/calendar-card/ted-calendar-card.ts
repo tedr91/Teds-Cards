@@ -247,6 +247,21 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
     return !!(this.hass as unknown as { themes?: { darkMode?: boolean } })?.themes?.darkMode;
   }
 
+  /** Auto day-badges: a single cake on any day that has a birthday event — matched by
+   *  event title containing "birthday", OR by an event from any calendar whose name
+   *  contains "birthday". The icon follows this device's configured icon set. */
+  private _birthdayBadges(): Record<string, unknown>[] {
+    const anyList: Record<string, unknown>[] = [{ event: { title_contains: "birthday" } }];
+    const states = this.hass?.states ?? {};
+    for (const id of Object.keys(states)) {
+      if (!id.startsWith("calendar.")) continue;
+      const fn = states[id]?.attributes?.friendly_name;
+      const name = typeof fn === "string" && fn ? fn : id;
+      if (/birthday/i.test(name)) anyList.push({ event: { calendar: id } });
+    }
+    return [{ match: { any: anyList }, icon: themedIcon("cake") }];
+  }
+
   // --- Embedded daylight-calendar-card ---------------------------------------
 
   private _childConfig(entities: string[]): LovelaceCardConfig {
@@ -342,8 +357,17 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
       const background_color = this._isDarkMode() ? "#FFFFFF14" : "#00000014";
       appearance.day_styles = [
         ...baseDayStyles,
-        { condition: "weekend", style: { opacity: 0.72, background_color } },
+        { condition: "weekend", style: { background_color } },
+//        { condition: "weekend", style: { opacity: 0.72, background_color } },
       ];
+    }
+
+    // Auto birthday cake badges (always on): any day with a birthday-titled event, or an
+    // event from a calendar whose name contains "birthday". Appended to any baked/config
+    // day_badges; an explicit `calendar_config.day_badges` overrides.
+    {
+      const baseBadges = Array.isArray(base.day_badges) ? (base.day_badges as unknown[]) : [];
+      appearance.day_badges = [...baseBadges, ...this._birthdayBadges()];
     }
 
     return {

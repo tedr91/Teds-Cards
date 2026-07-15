@@ -939,6 +939,11 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.197
+
+- **Automatic birthday cake badges** — the Calendar card now shows a cake day-badge on any day with a birthday event (matched by an event title containing "birthday", or an event from any calendar whose name contains "birthday"). The cake icon follows your **Icon set** setting.
+- **Emphasize weekdays** now applies only the subtle background tint (no dim).
+
 ### v1.0.196
 
 - **Emphasize weekdays** — now on by default, and the weekend cells also get a subtle theme-adaptive background tint (slightly darker in light mode, lighter in dark mode) in addition to the dim.
