@@ -4,7 +4,7 @@
  * person / color). Used by BOTH the Ted's Calendar card editor and the Ted's
  * Cards Settings card (Calendars tab), so the two stay in sync.
  */
-import { html, nothing, type TemplateResult } from "lit";
+import { html, type TemplateResult } from "lit";
 import type { HomeAssistant } from "custom-card-helpers";
 
 import { matchPerson } from "./const";
@@ -51,6 +51,14 @@ export function calendarOptionsData(
 
 /** ha-form schema for a calendar item's per-calendar options. Defaults are shown as
  *  muted placeholders (the entity's friendly name / its own icon). */
+/** The standalone "Virtual" toggle schema (rendered above the linked-calendars UI). */
+export function calendarVirtualToggleSchema(): unknown[] {
+  return [{ name: "virtual", selector: { boolean: {} } }];
+}
+
+/** ha-form schema for a calendar item's per-calendar options (excluding the Virtual
+ *  toggle, which is rendered separately so the linked-calendars UI can sit below it).
+ *  Defaults are shown as muted placeholders (the entity's friendly name / its own icon). */
 export function calendarOptionsSchema(
   hass: HomeAssistant | undefined,
   item: CalendarItemConfig,
@@ -60,7 +68,6 @@ export function calendarOptionsSchema(
     ? { name: "virtual_name", selector: { text: { placeholder: "Group" } } }
     : { name: "name", selector: { text: { placeholder: calendarEntityName(hass, item.entity) } } };
   return [
-    { name: "virtual", selector: { boolean: {} } },
     {
       type: "grid",
       name: "",
@@ -111,26 +118,29 @@ export function applyCalendarOptionChange(
 ): CalendarItemConfig {
   const next: CalendarItemConfig = { ...cur };
   if ("name" in v) next.name = (v.name as string) || undefined;
-  next.virtual = v.virtual === true ? true : undefined;
+  if ("virtual" in v) next.virtual = v.virtual === true ? true : undefined;
   if ("virtual_name" in v) next.virtual_name = (v.virtual_name as string) || undefined;
-  next.readonly = v.readonly === false ? false : undefined;
-  next.show_badge = v.show_badge === false ? false : undefined;
-  next.show_birthday_badge = v.show_birthday_badge === false ? false : undefined;
-  next.hide_times = v.hide_times === true ? true : undefined;
-  const match = matchPerson(hass?.states, next.name || calendarEntityName(hass, cur.entity));
-  const explicitPerson = (v.person as string) || cur.person || "";
-  // Auto default: Person when one is available, else Icon. Store the chosen source
-  // ONLY when it overrides that default (so "Icon" IS persisted when a person matches).
-  const autoDefault: CalendarIconSource = explicitPerson || match ? "person" : "icon";
-  const chosen = (v.icon_source as CalendarIconSource) ?? cur.icon_source ?? autoDefault;
-  next.icon_source = chosen === autoDefault ? undefined : chosen;
-  if ("person" in v) {
-    const p = (v.person as string) || undefined;
-    // Don't persist a person that just equals the auto-match (keeps it dynamic + clean).
-    next.person = p && p !== match ? p : undefined;
+  if ("readonly" in v) next.readonly = v.readonly === false ? false : undefined;
+  if ("show_badge" in v) next.show_badge = v.show_badge === false ? false : undefined;
+  if ("show_birthday_badge" in v)
+    next.show_birthday_badge = v.show_birthday_badge === false ? false : undefined;
+  if ("hide_times" in v) next.hide_times = v.hide_times === true ? true : undefined;
+  if ("icon_source" in v || "person" in v) {
+    const match = matchPerson(hass?.states, next.name || calendarEntityName(hass, cur.entity));
+    const explicitPerson = (v.person as string) || cur.person || "";
+    // Auto default: Person when one is available, else Icon. Store the chosen source
+    // ONLY when it overrides that default (so "Icon" IS persisted when a person matches).
+    const autoDefault: CalendarIconSource = explicitPerson || match ? "person" : "icon";
+    const chosen = (v.icon_source as CalendarIconSource) ?? cur.icon_source ?? autoDefault;
+    next.icon_source = chosen === autoDefault ? undefined : chosen;
+    if ("person" in v) {
+      const p = (v.person as string) || undefined;
+      // Don't persist a person that just equals the auto-match (keeps it dynamic + clean).
+      next.person = p && p !== match ? p : undefined;
+    }
   }
   if ("icon" in v) next.icon = (v.icon as string) || undefined;
-  next.color = (v.color as string) || undefined;
+  if ("color" in v) next.color = (v.color as string) || undefined;
   return next;
 }
 
@@ -140,7 +150,7 @@ export function calendarOptionLabel(name: string): string {
     case "name":
       return "Name";
     case "virtual":
-      return "Virtual (group calendars)";
+      return "Virtual (linked calendars)";
     case "virtual_name":
       return "Virtual name";
     case "readonly":
@@ -220,17 +230,22 @@ export function virtualGroupNameFor(
   return "";
 }
 
-/** A self-contained, reorderable picker for a virtual group's member calendars. Uses
+/** A self-contained "Linked Calendars" block: a heading, a reorderable list of member
+ *  chips, and a "+ Link a calendar" button (which opens the host's link chooser). Uses
  *  inline styles so it works inside any host (card editor or Settings). */
 export function renderVirtualMembers(
   hass: HomeAssistant | undefined,
   members: string[],
-  candidateIds: string[],
   onChange: (next: string[]) => void,
+  onLink: () => void,
 ): TemplateResult {
-  const remaining = candidateIds.filter((id) => !members.includes(id));
   const chip =
     "display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px;" +
+    "border:1px solid var(--divider-color,rgba(120,120,120,0.22));" +
+    "background:var(--secondary-background-color,rgba(0,0,0,0.04));";
+  const btn =
+    "display:inline-flex;align-items:center;gap:6px;align-self:flex-start;font:inherit;" +
+    "font-size:0.85rem;padding:6px 10px;border-radius:8px;cursor:pointer;color:inherit;" +
     "border:1px solid var(--divider-color,rgba(120,120,120,0.22));" +
     "background:var(--secondary-background-color,rgba(0,0,0,0.04));";
   const move = (from: number, to: number): void => {
@@ -239,55 +254,122 @@ export function renderVirtualMembers(
     onChange(n);
   };
   return html`
-    <div style="display:flex;flex-direction:column;gap:6px;margin-top:6px;">
-      <ha-sortable
-        handle-selector=".vc-grip"
-        @item-moved=${(e: CustomEvent) => {
-          const { oldIndex, newIndex } = e.detail as { oldIndex: number; newIndex: number };
-          move(oldIndex, newIndex);
-        }}
-      >
-        <div style="display:flex;flex-direction:column;gap:6px;">
-          ${members.map(
-            (id, idx) => html`<div style=${chip}>
-              <div class="vc-grip" style="display:flex;cursor:grab;color:var(--secondary-text-color);touch-action:none;" title="Drag to reorder">
-                <ha-icon icon="mdi:drag"></ha-icon>
-              </div>
-              <ha-icon icon="mdi:calendar" style="flex:none;color:var(--secondary-text-color);--mdc-icon-size:20px;"></ha-icon>
-              <span style="flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
-                ${calendarEntityName(hass, id)}
-              </span>
-              <ha-icon-button
-                label="Remove"
-                .path=${"M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z"}
-                @click=${() => {
-                  const n = [...members];
-                  n.splice(idx, 1);
-                  onChange(n);
-                }}
-              ></ha-icon-button>
-            </div>`,
-          )}
+    <div style="margin:6px 0 2px;">
+      <div style="font-size:0.78rem;font-weight:600;color:var(--secondary-text-color);margin-bottom:4px;">
+        Linked Calendars
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px;">
+        <ha-sortable
+          handle-selector=".vc-grip"
+          @item-moved=${(e: CustomEvent) => {
+            const { oldIndex, newIndex } = e.detail as { oldIndex: number; newIndex: number };
+            move(oldIndex, newIndex);
+          }}
+        >
+          <div style="display:flex;flex-direction:column;gap:6px;">
+            ${members.map(
+              (id, idx) => html`<div style=${chip}>
+                <div class="vc-grip" style="display:flex;cursor:grab;color:var(--secondary-text-color);touch-action:none;" title="Drag to reorder">
+                  <ha-icon icon="mdi:drag"></ha-icon>
+                </div>
+                <ha-icon icon="mdi:calendar" style="flex:none;color:var(--secondary-text-color);--mdc-icon-size:20px;"></ha-icon>
+                <span style="flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                  ${calendarEntityName(hass, id)}
+                </span>
+                <ha-icon-button
+                  label="Remove"
+                  .path=${"M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z"}
+                  @click=${() => {
+                    const n = [...members];
+                    n.splice(idx, 1);
+                    onChange(n);
+                  }}
+                ></ha-icon-button>
+              </div>`,
+            )}
+          </div>
+        </ha-sortable>
+        <button style=${btn} @click=${onLink}>
+          <ha-icon icon="mdi:plus" style="--mdc-icon-size:18px;"></ha-icon><span>Link a calendar</span>
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+/** A searchable "Link a calendar" chooser modal, rendered as a sibling by the host.
+ *  `candidates` are the calendars that may still be linked into the group. */
+export function renderVirtualLinkModal(
+  hass: HomeAssistant | undefined,
+  candidates: string[],
+  query: string,
+  setQuery: (q: string) => void,
+  pick: (id: string) => void,
+  close: () => void,
+): TemplateResult {
+  const q = query.trim().toLowerCase();
+  const filtered = candidates.filter(
+    (id) => !q || calendarEntityName(hass, id).toLowerCase().includes(q) || id.toLowerCase().includes(q),
+  );
+  const sheet =
+    "width:min(420px,100%);max-height:min(70vh,560px);display:flex;flex-direction:column;box-sizing:border-box;" +
+    "background:var(--card-background-color,#fff);color:var(--primary-text-color,#111);" +
+    "border:1px solid var(--divider-color,rgba(120,120,120,0.22));border-radius:12px;" +
+    "box-shadow:0 12px 40px rgba(0,0,0,0.4);";
+  const input =
+    "width:100%;box-sizing:border-box;font:inherit;color:var(--primary-text-color,#111);" +
+    "background:var(--secondary-background-color,rgba(0,0,0,0.04));" +
+    "border:1px solid var(--divider-color,rgba(120,120,120,0.22));border-radius:6px;padding:10px 12px;outline:none;";
+  const item =
+    "display:flex;align-items:center;gap:10px;width:100%;box-sizing:border-box;text-align:left;font:inherit;" +
+    "padding:8px 10px;border-radius:8px;border:1px solid transparent;background:none;color:inherit;cursor:pointer;";
+  return html`
+    <div
+      style="position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(0,0,0,0.45);"
+      @click=${close}
+    >
+      <div style=${sheet} @click=${(e: Event) => e.stopPropagation()}>
+        <div style="font-size:1.05rem;font-weight:600;padding:16px 16px 4px;">Link a calendar</div>
+        <div style="padding:8px 16px;">
+          <input
+            style=${input}
+            type="text"
+            placeholder="Search calendars…"
+            .value=${query}
+            @input=${(e: Event) => setQuery((e.target as HTMLInputElement).value)}
+          />
         </div>
-      </ha-sortable>
-      ${members.length === 0
-        ? html`<div style="color:var(--secondary-text-color);font-size:0.85rem;">
-            No calendars joined yet — add one below.
-          </div>`
-        : nothing}
-      ${remaining.length
-        ? html`<ha-entity-picker
-            .hass=${hass}
-            .value=${""}
-            .includeEntities=${remaining}
-            allow-custom-entity
-            label="Join a calendar"
-            @value-changed=${(e: CustomEvent) => {
-              const id = e.detail.value as string;
-              if (id && !members.includes(id)) onChange([...members, id]);
-            }}
-          ></ha-entity-picker>`
-        : nothing}
+        <div style="display:flex;flex-direction:column;gap:4px;overflow:auto;padding:4px 12px;">
+          ${filtered.length
+            ? filtered.map(
+                (id) => html`<button
+                  style=${item}
+                  @click=${() => pick(id)}
+                  @mouseover=${(e: Event) =>
+                    ((e.currentTarget as HTMLElement).style.background =
+                      "var(--secondary-background-color,rgba(0,0,0,0.04))")}
+                  @mouseout=${(e: Event) =>
+                    ((e.currentTarget as HTMLElement).style.background = "none")}
+                >
+                  <ha-icon icon="mdi:calendar" style="flex:none;color:var(--secondary-text-color);"></ha-icon>
+                  <span style="flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                    ${calendarEntityName(hass, id)}
+                  </span>
+                </button>`,
+              )
+            : html`<div style="padding:16px;text-align:center;color:var(--secondary-text-color);font-size:0.85rem;">
+                ${q ? "No calendars match." : "No more calendars to link."}
+              </div>`}
+        </div>
+        <div style="display:flex;justify-content:flex-end;padding:10px 16px 14px;">
+          <button
+            style="font:inherit;font-size:0.85rem;padding:6px 12px;border-radius:8px;cursor:pointer;border:1px solid var(--divider-color,rgba(120,120,120,0.22));background:var(--secondary-background-color,rgba(0,0,0,0.04));color:inherit;"
+            @click=${close}
+          >
+            Done
+          </button>
+        </div>
+      </div>
     </div>
   `;
 }

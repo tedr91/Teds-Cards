@@ -8,6 +8,8 @@ import {
   applyCalendarOptionChange,
   calendarOptionsData,
   calendarOptionsSchema,
+  calendarVirtualToggleSchema,
+  renderVirtualLinkModal,
   renderVirtualMembers,
   virtualGroupNameFor,
   virtualJoinCandidates,
@@ -61,6 +63,10 @@ export class TedCalendarCardEditor extends LitElement implements LovelaceCardEdi
   @state() private _config?: CalendarCardConfig;
   /** Which calendar rows have their Options disclosure open (by index). */
   @state() private _openRows = new Set<number>();
+  /** The row index whose "Link a calendar" chooser is open (or none). */
+  @state() private _linkFor?: number;
+  /** Search query in the "Link a calendar" chooser. */
+  @state() private _linkQuery = "";
 
   private _toggleRow(idx: number): void {
     const next = new Set(this._openRows);
@@ -130,6 +136,7 @@ export class TedCalendarCardEditor extends LitElement implements LovelaceCardEdi
             </div>`
           : this._renderEntities()}
       </div>
+      ${this._renderLinkModal()}
     `;
   }
 
@@ -265,9 +272,17 @@ export class TedCalendarCardEditor extends LitElement implements LovelaceCardEdi
     const optData = calendarOptionsData(this.hass, item);
     const optSchema = calendarOptionsSchema(this.hass, item);
     const inGroup = virtualGroupNameFor(this.hass, item.entity, items);
-    const available = items.map((i) => i.entity).filter((e): e is string => !!e);
-    const candidates = virtualJoinCandidates(available, item.entity, items);
     const open = !!item.entity && this._openRows.has(idx) && !inGroup;
+    const form = (schema: unknown): TemplateResult => html`
+      <ha-form
+        .hass=${this.hass}
+        .data=${optData}
+        .schema=${schema}
+        .computeLabel=${this._computeLabel}
+        .computeHelper=${this._computeHelper}
+        @value-changed=${(ev: CustomEvent) => this._itemChanged(idx, ev)}
+      ></ha-form>
+    `;
     return html`
       <div class="cal">
         <div class="row">
@@ -304,25 +319,16 @@ export class TedCalendarCardEditor extends LitElement implements LovelaceCardEdi
         </div>
         ${open
           ? html`<div class="opt-body">
-              <ha-form
-                .hass=${this.hass}
-                .data=${optData}
-                .schema=${optSchema}
-                .computeLabel=${this._computeLabel}
-                .computeHelper=${this._computeHelper}
-                @value-changed=${(ev: CustomEvent) => this._itemChanged(idx, ev)}
-              ></ha-form>
+              ${form(calendarVirtualToggleSchema())}
               ${item.virtual
-                ? html`<div class="vc-section">
-                    <div class="vc-label">Join calendars</div>
-                    ${renderVirtualMembers(
-                      this.hass,
-                      item.virtual_members ?? [],
-                      candidates,
-                      (next) => this._membersChanged(idx, next),
-                    )}
-                  </div>`
+                ? renderVirtualMembers(
+                    this.hass,
+                    item.virtual_members ?? [],
+                    (next) => this._membersChanged(idx, next),
+                    () => this._openLink(idx),
+                  )
                 : nothing}
+              ${form(optSchema)}
             </div>`
           : nothing}
       </div>
@@ -475,6 +481,37 @@ export class TedCalendarCardEditor extends LitElement implements LovelaceCardEdi
     const cur = items[idx] ?? { entity: "" };
     items[idx] = { ...cur, virtual_members: members.length ? members : undefined };
     this._commitItems(items);
+  }
+
+  private _openLink(idx: number): void {
+    this._linkQuery = "";
+    this._linkFor = idx;
+  }
+
+  private _closeLink(): void {
+    this._linkFor = undefined;
+  }
+
+  /** The "Link a calendar" chooser modal (sibling of the editor content). */
+  private _renderLinkModal(): TemplateResult | typeof nothing {
+    const idx = this._linkFor;
+    if (idx == null) return nothing;
+    const items = this._items();
+    const cur = items[idx];
+    if (!cur) return nothing;
+    const members = cur.virtual_members ?? [];
+    const available = items.map((i) => i.entity).filter((e): e is string => !!e);
+    const candidates = virtualJoinCandidates(available, cur.entity, items).filter(
+      (c) => !members.includes(c),
+    );
+    return renderVirtualLinkModal(
+      this.hass,
+      candidates,
+      this._linkQuery,
+      (q) => (this._linkQuery = q),
+      (memberId) => this._membersChanged(idx, [...members, memberId]),
+      () => this._closeLink(),
+    );
   }
 
   private _appearanceChanged = (ev: CustomEvent): void => {

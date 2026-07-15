@@ -40,6 +40,8 @@ import {
   calendarOptionLabel,
   calendarOptionsData,
   calendarOptionsSchema,
+  calendarVirtualToggleSchema,
+  renderVirtualLinkModal,
   renderVirtualMembers,
   virtualGroupNameFor,
   virtualJoinCandidates,
@@ -103,6 +105,10 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
   private _editing = new Set<string>();
   /** Which calendars have their per-calendar Options disclosure open (by entity id). */
   @state() private _calOptOpen = new Set<string>();
+  /** The anchor calendar id whose "Link a calendar" chooser is open (or none). */
+  @state() private _linkFor?: string;
+  /** Search query in the "Link a calendar" chooser. */
+  @state() private _linkQuery = "";
   /** The entity-list field whose "Add" chooser popup is open (Global scope), or none. */
   @state() private _addListField?: SettingField;
   /** Search query in the "Add" chooser popup. */
@@ -952,36 +958,66 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     return this._calendarOptionsMap()[id]?.icon_source === "icon";
   }
 
-  /** The per-calendar Options form for one calendar in the Global list. */
+  /** The per-calendar Options form for one calendar in the Global list. The Virtual
+   *  toggle sits at the top; when on, the Linked Calendars block appears directly below
+   *  it, above the rest of the options. */
   private _renderCalendarOptions(id: string): TemplateResult {
     const opt = this._calendarOptionsMap()[id] ?? {};
     const item = { entity: id, ...(opt as Partial<CalendarItemConfig>) } as CalendarItemConfig;
-    const candidates = virtualJoinCandidates(
-      this._camerasArray(this._globalValue("calendars_list")),
-      id,
-      this._calendarItems(),
-    );
-    return html`
+    const form = (schema: unknown): TemplateResult => html`
       <ha-form
         .hass=${this.hass}
         .data=${calendarOptionsData(this.hass, item)}
-        .schema=${calendarOptionsSchema(this.hass, item)}
+        .schema=${schema}
         .computeLabel=${(s: { name: string }) => calendarOptionLabel(s.name)}
         .computeHelper=${(s: { name: string }) => calendarOptionHelper(s.name)}
         @value-changed=${(ev: CustomEvent) => this._calendarOptionChanged(id, ev)}
       ></ha-form>
-      ${item.virtual
-        ? html`<div class="cam-vc">
-            <div class="cam-vc-label">Join calendars</div>
-            ${renderVirtualMembers(
-              this.hass,
-              Array.isArray(item.virtual_members) ? item.virtual_members : [],
-              candidates,
-              (next) => this._calendarMembersChanged(id, next),
-            )}
-          </div>`
-        : nothing}
     `;
+    return html`
+      ${form(calendarVirtualToggleSchema())}
+      ${item.virtual
+        ? renderVirtualMembers(
+            this.hass,
+            Array.isArray(item.virtual_members) ? item.virtual_members : [],
+            (next) => this._calendarMembersChanged(id, next),
+            () => this._openLink(id),
+          )
+        : nothing}
+      ${form(calendarOptionsSchema(this.hass, item))}
+    `;
+  }
+
+  private _openLink(id: string): void {
+    this._linkQuery = "";
+    this._linkFor = id;
+  }
+
+  private _closeLink(): void {
+    this._linkFor = undefined;
+  }
+
+  /** The "Link a calendar" chooser modal (sibling of the card). */
+  private _renderLinkModal(): TemplateResult | typeof nothing {
+    const id = this._linkFor;
+    if (!id) return nothing;
+    const map = this._calendarOptionsMap();
+    const members = Array.isArray(map[id]?.virtual_members)
+      ? (map[id]!.virtual_members as string[])
+      : [];
+    const candidates = virtualJoinCandidates(
+      this._camerasArray(this._globalValue("calendars_list")),
+      id,
+      this._calendarItems(),
+    ).filter((c) => !members.includes(c));
+    return renderVirtualLinkModal(
+      this.hass,
+      candidates,
+      this._linkQuery,
+      (q) => (this._linkQuery = q),
+      (memberId) => this._calendarMembersChanged(id, [...members, memberId]),
+      () => this._closeLink(),
+    );
   }
 
   /** Calendar items (global list ids merged with their options), for virtual grouping. */
@@ -1569,7 +1605,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
                 </div>
               `}
         </ha-card>
-        ${this._renderAddListModal()}
+        ${this._renderAddListModal()}${this._renderLinkModal()}
       `;
     }
 
@@ -1621,7 +1657,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
               </div>
             `}
       </ha-card>
-      ${this._renderAddListModal()}
+      ${this._renderAddListModal()}${this._renderLinkModal()}
     `;
   }
 

@@ -939,6 +939,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.203
+
+- Refined the virtual-calendar member UX: renamed the toggle to **"Virtual (linked calendars)"**, the member list heading to **"Linked Calendars"** (shown directly below the toggle when enabled), and replaced the inline join field with a **"+ Link a calendar"** button that opens a searchable picker popup — matching the **"+ Add a calendar"** flow. Works in the card editor and **Settings → Calendars**.
+
 ### v1.0.202
 
 - **Virtual calendars** — any calendar in the list can now be turned into a **Virtual** group (toggle at the top of its options): give it a **Virtual name** and a reorderable **"Join calendars"** picker to group other calendars under one name/color/icon in the header. Joined calendars are tagged **"In <group>"**. Works in the card editor and **Settings → Calendars**.
