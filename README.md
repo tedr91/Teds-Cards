@@ -939,6 +939,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.221
+
+- **Notification pill glow** — when the navbar is auto-hidden and you have unread notifications, the reveal pill now glows in the accent color and slowly pulses (respects reduced-motion).
+
 ### v1.0.220
 
 - **Home-Welcome landing view** — the Home dashboard now defaults to `[root]/home-welcome` (matching the renamed landing view), and the reboot/reload home-redirect recognizes it as the landing page. Requires Ted's Cards Backend v1.0.46+.

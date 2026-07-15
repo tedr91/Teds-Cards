@@ -310,6 +310,19 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
     return !this._isVertical() && float ? "float" : "snap";
   }
 
+  /** Unread notifications for this device (house-wide + this device's area), from the
+   *  backend notifications sensor. Drives the auto-hide pill glow. 0 when not integrated. */
+  private _unreadNotifications(): number {
+    if (!this._backendIntegration() || !this.hass) return 0;
+    const all = this.hass.states["sensor.teds_notifications"]?.attributes?.notifications;
+    if (!Array.isArray(all)) return 0;
+    const area = resolveDeviceArea(this.hass, undefined).area;
+    const list = area
+      ? (all as { read?: boolean; area?: string | null }[]).filter((n) => !n.area || n.area === area)
+      : (all as { read?: boolean }[]);
+    return list.filter((n) => !n.read).length;
+  }
+
   /** A per-device setting override for a navbar key (device scope, else global scope),
    *  or undefined when neither scope has set it. Only consulted as a FALLBACK when the
    *  card's own YAML doesn't set the corresponding option (so a view can force a value).
@@ -1035,7 +1048,7 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
       >
         ${autoHide
           ? html`<button
-              class="nav-pill"
+              class="nav-pill ${this._unreadNotifications() > 0 ? "has-unread" : ""}"
               aria-label="Show navigation"
               @click=${this._reveal}
               @pointerenter=${this._reveal}
@@ -1475,6 +1488,29 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
       }
       .navbar.collapsed .nav-pill:hover::before {
         opacity: 1;
+      }
+      /* Unread notifications: the collapsed pill glows accent and slowly pulses. */
+      .navbar.collapsed .nav-pill.has-unread::before {
+        background: var(--ted-style-accent);
+        animation: nav-pill-glow 2.4s ease-in-out infinite;
+      }
+      @keyframes nav-pill-glow {
+        0%,
+        100% {
+          opacity: 0.7;
+          box-shadow: 0 0 3px 0 color-mix(in srgb, var(--ted-style-accent) 55%, transparent);
+        }
+        50% {
+          opacity: 1;
+          box-shadow: 0 0 10px 2px color-mix(in srgb, var(--ted-style-accent) 80%, transparent);
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .navbar.collapsed .nav-pill.has-unread::before {
+          animation: none;
+          opacity: 1;
+          box-shadow: 0 0 7px 1px color-mix(in srgb, var(--ted-style-accent) 65%, transparent);
+        }
       }
       /* Horizontal bars: a wide, short pill centered on the top/bottom edge; its hit
          surface is 3× wider and 2× taller than the visible pill. */
