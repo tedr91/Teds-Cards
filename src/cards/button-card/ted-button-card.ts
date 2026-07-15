@@ -346,6 +346,13 @@ export class TedButtonCard extends LitElement implements LovelaceCard {
     const highlight = evalHighlight(this.hass, this._config.highlight, this._scopedCount(this._config.highlight));
     if (highlight.background) cardStyle.background = highlight.background;
 
+    // Optional colored ring (outline + soft glow) — used to mark an active/selected button.
+    const ringC = cssColor(this._config.ring);
+    if (ringC) {
+      cardStyle["box-shadow"] =
+        `0 0 0 2px ${ringC}, 0 0 6px color-mix(in srgb, ${ringC} 35%, transparent)`;
+    }
+
     // In a grid (Sections) view, honor the grid cell sizing. Everywhere else
     // (stacks, masonry, panel), render at the configured fixed size.
     const isGrid = this.layout === "grid";

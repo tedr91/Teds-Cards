@@ -67,6 +67,9 @@ export interface ButtonCardConfig extends LovelaceCardConfig {
   background?: string;
   /** Card background color when the entity is on/active (overrides the base). */
   background_on?: string;
+  /** A colored ring (outline glow) drawn around the card — e.g. to mark an active/selected
+   *  button. A `ui_color` value; unset = no ring. */
+  ring?: string;
   transparency?: number;
   blur?: number;
   brushed?: boolean;

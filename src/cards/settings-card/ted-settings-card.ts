@@ -125,7 +125,7 @@ const LAUNCHER_LABELS: Record<string, string> = {
   launcher_section: "Section",
   launcher_combine_groups: "Combine view groups",
   launcher_highlight_active: "Highlight current view",
-  launcher_active_color: "Active color",
+  launcher_active_color: "Button color",
   nav_button_size: "Button size",
 };
 

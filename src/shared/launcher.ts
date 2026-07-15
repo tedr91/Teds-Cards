@@ -13,7 +13,6 @@ import { BUTTON_CARD_TYPE, DEFAULT_BUTTON_ICON } from "../cards/button-card/cons
 import type { ButtonCardConfig } from "../cards/button-card/types";
 import { EXPANDABLE_BUTTON_CARD_TYPE } from "../cards/expandable-button-card/const";
 import type { NavButtonConfig, NavButtonSize } from "../cards/navbar-card/types";
-import { cssColor } from "./appearance";
 
 /** A dashboard view discovered from the Lovelace config. */
 export interface LauncherViewInfo {
@@ -219,25 +218,17 @@ export function effectiveLauncherPaths(list: string[], discovered: LauncherViewI
   return discovered.filter((v) => !v.subview).map((v) => v.path);
 }
 
-/** Base styling for a launcher button so it matches a hand-added navbar button. */
-function launcherButtonBase(): Partial<NavButtonConfig> {
+/** Base styling for every launcher button: an accent-tinted surface with an accent icon
+ *  (the look the active view used to have — now the default for all launcher buttons). */
+function launcherButtonBase(color: string): Partial<NavButtonConfig> {
   return {
     icon_scale: 140,
-    icon_color: "none",
+    icon_color: color,
     theme: "ha",
-    transparency: 99,
+    background: color,
+    transparency: 78,
     show_name: false,
     show_state: false,
-  };
-}
-
-/** Active-view highlight styling baked into the generated button config. */
-function activeStyle(activeColor?: string): Partial<NavButtonConfig> {
-  const c = cssColor(activeColor) || "var(--primary-color)";
-  return {
-    icon_color: c,
-    background: `color-mix(in srgb, ${c} 22%, transparent)`,
-    transparency: 0,
   };
 }
 
@@ -261,13 +252,14 @@ interface BuildLauncherParams {
 function plainButton(view: LauncherViewInfo, p: BuildLauncherParams, showName: boolean): NavButtonConfig {
   const opt = p.options[view.path] ?? {};
   const active = p.highlightActive && view.path === p.currentViewPath;
+  const color = p.activeColor || "primary";
   const iconOpt = typeof opt.icon === "string" ? opt.icon : undefined;
   const dashKey = p.dashboardKeyByPath[view.path];
   const tap_action = (dashKey
     ? { action: "navigate-dashboard", dashboard: dashKey }
     : { action: "navigate", navigation_path: launcherViewNavPath(p.dashboardUrlPath, view) }) as unknown as NavButtonConfig["tap_action"];
   const btn: NavButtonConfig = {
-    ...launcherButtonBase(),
+    ...launcherButtonBase(color),
     ...opt,
     type: `custom:${BUTTON_CARD_TYPE}`,
     icon: iconOpt || view.icon || DEFAULT_BUTTON_ICON,
@@ -275,7 +267,7 @@ function plainButton(view: LauncherViewInfo, p: BuildLauncherParams, showName: b
     tap_action,
   };
   if (showName) btn.show_name = opt.show_name ?? true;
-  if (active) Object.assign(btn, activeStyle(p.activeColor));
+  if (active) btn.ring = color;
   return btn;
 }
 
@@ -287,6 +279,7 @@ function plainButton(view: LauncherViewInfo, p: BuildLauncherParams, showName: b
 export function buildLauncherButtons(p: BuildLauncherParams): NavButtonConfig[] {
   const primaryPaths = new Set(Object.keys(p.dashboardKeyByPath));
   const groups = groupLauncherViews(p.views, p.combine, primaryPaths);
+  const color = p.activeColor || "primary";
   return groups.map((group) => {
     if (!group.isGroup) return plainButton(group.primary, p, false);
     const primaryOpt = p.options[group.primary.path] ?? {};
@@ -294,7 +287,7 @@ export function buildLauncherButtons(p: BuildLauncherParams): NavButtonConfig[] 
     const groupActive =
       p.highlightActive && group.members.some((m) => m.path === p.currentViewPath);
     const trigger: NavButtonConfig = {
-      ...launcherButtonBase(),
+      ...launcherButtonBase(color),
       ...primaryOpt,
       type: `custom:${EXPANDABLE_BUTTON_CARD_TYPE}`,
       icon: primaryIcon || group.primary.icon || DEFAULT_BUTTON_ICON,
@@ -304,7 +297,7 @@ export function buildLauncherButtons(p: BuildLauncherParams): NavButtonConfig[] 
       items: group.members.map((m) => plainButton(m, p, true)),
       tap_action: undefined,
     } as NavButtonConfig;
-    if (groupActive) Object.assign(trigger, activeStyle(p.activeColor));
+    if (groupActive) trigger.ring = color;
     return trigger;
   });
 }

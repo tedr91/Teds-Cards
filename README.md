@@ -939,6 +939,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.208
+
+- **View Launcher styling** — every launcher button now uses the accent-tinted look by default (set the colour via **Settings → Navbar → Launcher Buttons → Button color**), and the current view is marked with a colored ring around its button instead of a different fill. Also adds a `ring` option to Ted's Button Card.
+
 ### v1.0.207
 
 - **View Launcher navigation** — launcher buttons for views that are exposed as a Ted's Cards dashboard-path setting (e.g. Cameras, Climate, Weather, Calendar) now navigate via the root-portable `navigate-dashboard` action, and that view becomes the “primary” of its combined group (its icon seeds the group button). Other views in a group navigate directly. This matches how hand-built navbar buttons behave.
