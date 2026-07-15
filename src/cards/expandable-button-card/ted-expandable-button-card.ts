@@ -10,7 +10,6 @@ import type {
 } from "custom-card-helpers";
 
 import { registerCustomCard } from "../../shared/register-card";
-import { resolveIcon } from "../../shared/icons";
 import { tedCardThemeClass, tedStyleTheme } from "../../shared/theme";
 import { BUTTON_CARD_TYPE } from "../button-card/const";
 import {
@@ -45,9 +44,6 @@ interface GridOptions {
 
 const POPOVER_ID = "ebc-popover";
 const TRIGGER_ID = "ebc-trigger-btn";
-
-/** Small "this is a group" glyph (Fluent when installed, else Material Design). */
-const GROUP_BADGE_ICON = resolveIcon({ fluent: "group-20-regular", mdi: "group" }) ?? "mdi:group";
 
 registerCustomCard({
   type: EXPANDABLE_BUTTON_CARD_TYPE,
@@ -170,6 +166,16 @@ export class TedExpandableButtonCard extends LitElement implements LovelaceCard 
     return child.type === `custom:${EXPANDABLE_BUTTON_CARD_TYPE}`;
   }
 
+  /** Bottom dot indicators: one per view in the group, capped at 4. */
+  private _renderGroupDots(): TemplateResult | typeof nothing {
+    const count = Math.min(4, (this._config?.items ?? []).length);
+    if (count < 2) return nothing;
+    const active = !!this._config?.ring;
+    return html`<span class="ebc-dots ${active ? "active lift" : ""}">
+      ${Array.from({ length: count }, () => html`<i></i>`)}
+    </span>`;
+  }
+
   protected render(): TemplateResult | typeof nothing {
     if (!this._config) return nothing;
     const theme = this._config.theme === "ted-style" ? "ted-style" : "ha";
@@ -185,14 +191,12 @@ export class TedExpandableButtonCard extends LitElement implements LovelaceCard 
     return html`
       <button
         id=${TRIGGER_ID}
-        class=${classMap({ "ebc-trigger": true, "flip-icon": flip })}
+        class=${classMap({ "ebc-trigger": true, "flip-icon": flip, grouped: this._config.group_indicator === true })}
         popovertarget=${POPOVER_ID}
         aria-haspopup="true"
       >
         ${this._triggerEl ? this._triggerEl.el : nothing}
-        ${this._config.group_indicator
-          ? html`<span class="ebc-group-badge"><ha-icon .icon=${GROUP_BADGE_ICON}></ha-icon></span>`
-          : nothing}
+        ${this._config.group_indicator ? this._renderGroupDots() : nothing}
       </button>
       <div
         id=${POPOVER_ID}
@@ -296,32 +300,41 @@ export class TedExpandableButtonCard extends LitElement implements LovelaceCard 
         cursor: pointer;
         -webkit-tap-highlight-color: transparent;
       }
-      /* Small corner glyph marking the trigger as a group of buttons: an accent chip
-         in the top-left corner. */
-      .ebc-group-badge {
+      /* Combined-group trigger: a subtle "deck" of stacked cards behind it. */
+      .ebc-trigger.grouped {
+        border-radius: var(--ted-style-radius, 12px);
+        box-shadow:
+          3px -3px 0 -1px rgba(255, 255, 255, 0.16),
+          6px -6px 0 -2px rgba(255, 255, 255, 0.1);
+      }
+      /* Dot indicators (one per view, max 4) along the bottom of a group button. */
+      .ebc-dots {
         position: absolute;
-        left: 1px;
-        top: 1px;
+        left: 0;
+        right: 0;
+        bottom: 2.5px;
         z-index: 2;
-        box-sizing: border-box;
-        display: inline-flex;
-        align-items: center;
+        display: flex;
+        gap: 3px;
         justify-content: center;
-        width: 14px;
-        height: 14px;
-        border-radius: 50%;
-        background: var(--ted-style-accent);
-        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
         pointer-events: none;
+        transition: transform 0.2s ease;
       }
-      .ebc-group-badge ha-icon {
-        --mdc-icon-size: 10px;
-        width: 10px;
-        height: 10px;
-        color: var(--ted-style-on-accent, #06121b);
+      .ebc-dots i {
+        width: 4px;
+        height: 4px;
+        border-radius: 50%;
+        background: color-mix(in srgb, var(--ted-style-text, #fff) 55%, transparent);
       }
-      /* The trigger card fills the button, but the group badge keeps its own small size. */
-      .ebc-trigger > *:not(.ebc-group-badge) {
+      .ebc-dots.active i {
+        background: var(--ted-style-accent);
+      }
+      /* When the group is the current view its button lifts (ring) — the dots lift with it. */
+      .ebc-dots.lift {
+        transform: var(--ted-ring-lift, translateY(-3px)) scale(1.06);
+      }
+      /* The trigger card fills the button, but the group dots keep their own size. */
+      .ebc-trigger > *:not(.ebc-dots) {
         display: block;
         width: 100%;
         height: 100%;

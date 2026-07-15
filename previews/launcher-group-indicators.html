@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Launcher · group-indicator ideas</title>
+    <style>
+      :root { --accent: #4cc2ff; --bar: rgba(38, 42, 52, 0.92); --tile: rgba(255, 255, 255, 0.16); }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: #eef1f6;
+        min-height: 100vh; padding: 26px clamp(16px, 4vw, 48px) 72px;
+        background: radial-gradient(120% 120% at 20% 0%, #6b5f8a 0%, #40405f 45%, #2a2f3f 100%), #2a2f3f;
+      }
+      h1 { font-size: 20px; margin: 0 0 4px; }
+      h2 { font-size: 16px; margin: 34px 0 10px; }
+      p.sub { margin: 0 0 18px; color: #c7cdda; font-size: 13px; }
+      .controls { display: flex; flex-wrap: wrap; gap: 20px; align-items: center; background: rgba(0,0,0,.25);
+        border: 1px solid rgba(255,255,255,.12); border-radius: 12px; padding: 12px 16px; margin-bottom: 22px; }
+      .controls label { font-size: 13px; display: inline-flex; align-items: center; gap: 8px; }
+      .controls input[type=color] { width: 34px; height: 26px; border: none; background: none; cursor: pointer; }
+      .swatches { display: inline-flex; gap: 6px; }
+      .swatches button { width: 22px; height: 22px; border-radius: 50%; border: 2px solid rgba(255,255,255,.5); cursor: pointer; padding: 0; }
+
+      .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 14px; }
+      .variant { background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1); border-radius: 14px; padding: 14px 14px 16px; }
+      .variant h3 { margin: 0 0 12px; font-size: 12.5px; font-weight: 600; min-height: 30px; }
+      .strip { display: flex; gap: 10px; align-items: center; justify-content: center; background: var(--bar);
+        border-radius: 14px; padding: 14px 12px; }
+      .tile { position: relative; width: 40px; height: 40px; border-radius: 11px; display: grid; place-items: center;
+        background: var(--tile); flex: none; }
+      .tile > .home { width: 22px; height: 22px; fill: #7fc6ef; z-index: 1; }
+
+      /* ===== A. Badge (accent chip, top-left) with different glyphs ===== */
+      .badge { position: absolute; left: 1px; top: 1px; z-index: 3; display: inline-flex; align-items: center;
+        justify-content: center; width: 15px; height: 15px; border-radius: 50%; background: var(--accent);
+        box-shadow: 0 1px 2px rgba(0,0,0,.45); }
+      .badge svg { width: 68%; height: 68%; fill: #06121b; }
+
+      /* ===== B. Alternative styles ===== */
+      /* Stacked / fanned cards via a wrapper: peek cards sit BEHIND the tile by source order. */
+      .stack { position: relative; width: 40px; height: 40px; flex: none; }
+      .stack .tile { position: relative; }
+      .pk { position: absolute; inset: 0; border-radius: 11px; background: rgba(158,168,190,0.6);
+        box-shadow: 0 1px 2px rgba(0,0,0,.3); }
+      .pk.pk1 { transform: translate(4px, -4px); }
+      .pk.pk2 { transform: translate(8px, -8px); background: rgba(158,168,190,0.34); }
+      .fan .pk1 { transform: rotate(-12deg) translateX(-1px); }
+      .fan .pk2 { transform: rotate(12deg) translateX(1px); background: rgba(158,168,190,0.42); }
+
+      /* B2 numeric count pill (top-right, like the button-card badge) */
+      .count { position: absolute; top: -4px; right: -4px; z-index: 3; min-width: 15px; height: 15px; padding: 0 3px;
+        border-radius: 999px; background: var(--accent); color: #06121b; font-size: 10px; font-weight: 700;
+        display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 1px 2px rgba(0,0,0,.45); }
+
+      /* B3 dot page-indicators along the bottom */
+      .dots { position: absolute; left: 0; right: 0; bottom: 3px; display: flex; gap: 3px; justify-content: center; z-index: 3; }
+      .dots i { width: 4px; height: 4px; border-radius: 50%; background: rgba(255,255,255,.55); }
+      .dots i.on { background: var(--accent); }
+
+      /* B4 folded dog-ear corner (top-right) */
+      .dogear { position: absolute; top: 0; right: 0; width: 0; height: 0; z-index: 3;
+        border-top: 13px solid var(--accent); border-left: 13px solid transparent; border-top-right-radius: 11px; }
+      /* B4b folded dog-ear corner (top-left) */
+      .dogear-tl { position: absolute; top: 0; left: 0; width: 0; height: 0; z-index: 3;
+        border-top: 13px solid var(--accent); border-right: 13px solid transparent; border-top-left-radius: 11px; }
+
+      /* B5 layered offset outline behind */
+      .layer::before { content: ""; position: absolute; inset: 0; border-radius: 11px; z-index: -1;
+        border: 2px solid color-mix(in srgb, var(--accent) 70%, transparent); transform: translate(4px, -4px); }
+
+      /* B6 diagonal corner ribbon (top-left) */
+      .ribbon { position: absolute; top: 7px; left: -13px; z-index: 3; width: 42px; text-align: center;
+        transform: rotate(-45deg); background: var(--accent); color: #06121b; font-size: 8px; font-weight: 800;
+        letter-spacing: .5px; box-shadow: 0 1px 2px rgba(0,0,0,.4); }
+
+      /* B7 "deck" shadow (stacked offset shadows suggest depth) */
+      .deck { box-shadow: 3px -3px 0 -1px color-mix(in srgb, var(--tile) 100%, #000 15%),
+        6px -6px 0 -2px color-mix(in srgb, var(--tile) 100%, #000 30%); }
+
+      /* B9 bottom accent bar with a chevron notch (expandable hint) */
+      .expbar::after { content: ""; position: absolute; left: 20%; right: 20%; bottom: -1px; height: 3px;
+        border-radius: 3px; background: var(--accent); z-index: 3; }
+
+      /* B10 corner glyph WITHOUT chip (outline ring only) */
+      .ring-badge { position: absolute; left: 1px; top: 1px; z-index: 3; display: inline-flex; align-items: center;
+        justify-content: center; width: 15px; height: 15px; border-radius: 50%; background: rgba(18,20,26,.9);
+        box-shadow: 0 0 0 1.5px var(--accent); }
+      .ring-badge svg { width: 66%; height: 66%; fill: #fff; }
+
+      code { font-size: 10px; color: #a9d0ff; display: block; margin-top: 10px; }
+    </style>
+  </head>
+  <body>
+    <h1>Launcher — indicating a button is a group</h1>
+    <p class="sub">The middle tile is a combined group (like <b>Home</b>). Adjust the accent to taste.</p>
+    <div class="controls">
+      <label>Accent <input id="accent" type="color" value="#4cc2ff" /></label>
+      <span class="swatches" id="sw"></span>
+    </div>
+
+    <h2>A · Badge icon options <span style="font-weight:400;color:#c7cdda;font-size:13px">(the current accent chip, different glyphs)</span></h2>
+    <div class="grid" id="gridIcons"></div>
+
+    <h2>B · Completely different styles</h2>
+    <div class="grid" id="gridStyles"></div>
+
+    <script>
+      const HOME = '<svg class="home" viewBox="0 0 24 24"><path d="M10,20V14H14V20H19V12H22L12,3L2,12H5V20H10Z"/></svg>';
+      const P = (d) => '<svg viewBox="0 0 24 24"><path d="' + d + '"/></svg>';
+      const ICONS = [
+        ["People (fluent:group / mdi:account-multiple)", "M16,13C15.71,13 15.38,13 15.03,13.05C16.19,13.89 17,15 17,16.5V19H23V16.5C23,14.17 18.33,13 16,13M8,13C5.67,13 1,14.17 1,16.5V19H15V16.5C15,14.17 10.33,13 8,13M8,11A3,3 0 0,0 11,8A3,3 0 0,0 8,5A3,3 0 0,0 5,8A3,3 0 0,0 8,11M16,11A3,3 0 0,0 19,8A3,3 0 0,0 16,5C15.71,5 15.42,5.04 15.14,5.09C15.68,5.85 16,6.79 16,8C16,9.21 15.68,10.15 15.14,10.91C15.42,10.96 15.71,11 16,11Z"],
+        ["Grid 2x2 (mdi:view-grid)", "M3,11H11V3H3M3,21H11V13H3M13,21H21V13H13M13,3V11H21V3"],
+        ["Layers (mdi:layers)", "M12,16L19.36,10.27L21,9L12,2L3,9L4.63,10.27M12,18.54L4.63,12.81L3,14.07L12,21.07L21,14.07L19.37,12.81L12,18.54Z"],
+        ["Apps · 9 dots (mdi:apps)", "M16,20H20V16H16M16,14H20V10H16M16,8H20V4H16M10,8H14V4H10M10,14H14V10H10M10,20H14V16H10M4,20H8V16H4M4,14H8V10H4M4,8H8V4H4V8Z"],
+        ["Stacked squares (mdi:card-multiple)", "M3,3H16V5H3V3M3,7H16V9H3V7M3,11H12V13H3V11M18,3H21V17A2,2 0 0,1 19,19H7V17H19V3H18Z"],
+        ["Chevron down (expand)", "M7.41,8.58L12,13.17L16.59,8.58L18,10L12,16L6,10L7.41,8.58Z"],
+        ["Unfold more", "M12,18.17L8.83,15L7.42,16.41L12,21L16.59,16.41L15.17,15M12,5.83L15.17,9L16.58,7.59L12,3L7.41,7.59L8.83,9L12,5.83Z"],
+        ["Folder multiple", "M22,4A2,2 0 0,1 24,6V16A2,2 0 0,1 22,18H8A2,2 0 0,1 6,16V6A2,2 0 0,1 8,4H14L16,6H22M2,6V20H20V22H2A2,2 0 0,1 0,20V6H2Z"],
+      ];
+      const gi = document.getElementById("gridIcons");
+      for (const [name, d] of ICONS) {
+        const el = document.createElement("div");
+        el.className = "variant";
+        el.innerHTML = '<h3>' + name + '</h3><div class="strip">' +
+          '<div class="tile">' + HOME + '</div>' +
+          '<div class="tile">' + HOME + '<span class="badge">' + P(d) + '</span></div>' +
+          '<div class="tile">' + HOME + '</div></div>';
+        gi.appendChild(el);
+      }
+
+      const GRP = P(ICONS[0][1]);
+      const styles = [
+        ["Deck stacked shadow + dots (max 4)", '<div class="tile deck">' + HOME + '<span class="dots"><i class="on"></i><i></i><i></i><i></i></span></div>'],
+        ["Dog-ear (top-left) + dots (max 4)", '<div class="tile">' + HOME + '<span class="dogear-tl"></span><span class="dots"><i class="on"></i><i></i><i></i><i></i></span></div>'],
+        ["Stacked cards behind", '<div class="stack"><span class="pk pk2"></span><span class="pk pk1"></span><div class="tile">' + HOME + '</div></div>'],
+        ["Numeric count pill (member count)", '<div class="tile">' + HOME + '<span class="count">4</span></div>'],
+        ["Dot indicators (one per view)", '<div class="tile">' + HOME + '<span class="dots"><i class="on"></i><i></i><i></i><i></i></span></div>'],
+        ["Folded dog-ear corner", '<div class="tile">' + HOME + '<span class="dogear"></span></div>'],
+        ["Layered offset outline", '<div class="tile layer">' + HOME + '</div>'],
+        ["Corner ribbon", '<div class="tile">' + HOME + '<span class="ribbon">GRP</span></div>'],
+        ["\u201CDeck\u201D stacked shadow", '<div class="tile deck">' + HOME + '</div>'],
+        ["Fanned mini-cards behind", '<div class="stack fan"><span class="pk pk2"></span><span class="pk pk1"></span><div class="tile">' + HOME + '</div></div>'],
+        ["Bottom accent bar (expandable hint)", '<div class="tile expbar">' + HOME + '</div>'],
+        ["Ring badge (glyph, no fill)", '<div class="tile">' + HOME + '<span class="ring-badge">' + GRP + '</span></div>'],
+        ["Count pill + stacked cards", '<div class="stack"><span class="pk pk2"></span><span class="pk pk1"></span><div class="tile">' + HOME + '<span class="count">4</span></div></div>'],
+        ["Badge + dots", '<div class="tile">' + HOME + '<span class="badge">' + GRP + '</span><span class="dots"><i class="on"></i><i></i><i></i></span></div>'],
+      ];
+      const gs = document.getElementById("gridStyles");
+      for (const [name, tile] of styles) {
+        const el = document.createElement("div");
+        el.className = "variant";
+        el.innerHTML = '<h3>' + name + '</h3><div class="strip">' +
+          '<div class="tile">' + HOME + '</div>' + tile + '<div class="tile">' + HOME + '</div></div>';
+        gs.appendChild(el);
+      }
+
+      const root = document.documentElement.style;
+      document.getElementById("accent").addEventListener("input", (e) => root.setProperty("--accent", e.target.value));
+      const sw = document.getElementById("sw");
+      for (const c of ["#4cc2ff", "#3f7cf0", "#12b886", "#f59f00", "#e64980", "#ffffff"]) {
+        const b = document.createElement("button"); b.style.background = c; b.title = c;
+        b.addEventListener("click", () => { root.setProperty("--accent", c); document.getElementById("accent").value = c; });
+        sw.appendChild(b);
+      }
+    </script>
+  </body>
+</html>

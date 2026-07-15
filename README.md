@@ -939,6 +939,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.216
+
+- **Launcher group indicator** — combined launcher buttons now show a stacked-card “deck” shadow plus a row of dots (one per view, up to 4) instead of the corner badge.
+
 ### v1.0.215
 
 - **Fixed** the combined-launcher group badge filling the whole button — the expandable card's trigger-fill rule was oversizing the badge; it's now a small top-left accent chip as intended.
