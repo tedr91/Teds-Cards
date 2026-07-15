@@ -939,6 +939,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.207
+
+- **View Launcher navigation** — launcher buttons for views that are exposed as a Ted's Cards dashboard-path setting (e.g. Cameras, Climate, Weather, Calendar) now navigate via the root-portable `navigate-dashboard` action, and that view becomes the “primary” of its combined group (its icon seeds the group button). Other views in a group navigate directly. This matches how hand-built navbar buttons behave.
+
 ### v1.0.206
 
 - **View Launcher navbar buttons** — navbars with `backend_integration` can now show auto-discovered buttons that navigate to your dashboard's views, configured in **Settings → Navbar → Launcher Buttons**. Choose which views appear (a global available list with an optional per-device subset), set each button's size / name / icon / badge / dynamic highlighting, pick which navbar section they sit in, optionally combine views that share a prefix (e.g. `Home-*`) into a single expandable button seeded with the primary view's icon, and highlight the button for the view you're currently on. Requires Ted's Cards Backend v1.0.44+.

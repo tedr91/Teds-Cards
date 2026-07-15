@@ -43,6 +43,7 @@ import {
 import { detectEditOrPreview, forceNavbarPadding, navbarContentRect, navbarHeaderHeight, removeNavbarPadding, setNavbarBottomReserve, setNavbarHeaderReserve } from "./navbar-dom";
 import {
   buildLauncherButtons,
+  dashboardKeyByViewPath,
   effectiveLauncherPaths,
   launcherOptionsMap,
   launcherSectionIndex,
@@ -822,11 +823,14 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
     const paths = effectiveLauncherPaths(this._launcherList(), discovered);
     const views = resolveLauncherViews(paths, discovered);
     const activeColorRaw = this._settingOverride("launcher_active_color");
+    const eff = settingsStore.effective();
+    const root = String(eff.dashboard_root || readDashboardUrlPath() || "ted-dashboard");
     this._launcherCache = buildLauncherButtons({
       views,
       options: launcherOptionsMap(this._settingOverride("launcher_options")),
       combine: this._settingOverride("launcher_combine_groups") !== false,
-      dashboardUrlPath: readDashboardUrlPath(),
+      dashboardUrlPath: root,
+      dashboardKeyByPath: dashboardKeyByViewPath(eff),
       currentViewPath: readCurrentViewPath(),
       highlightActive: this._settingOverride("launcher_highlight_active") !== false,
       activeColor: typeof activeColorRaw === "string" && activeColorRaw ? activeColorRaw : undefined,

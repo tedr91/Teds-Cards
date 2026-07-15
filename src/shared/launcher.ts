@@ -141,10 +141,22 @@ export interface LauncherGroup {
 
 /**
  * Group the ordered views by prefix. When `combine` is false, every view is its own
- * singleton group. The primary is the view whose identifier equals the prefix (no
- * suffix — e.g. `home` in {home, home-nightstand}), else the first view in the group.
+ * singleton group. The primary is (in order): a member exposed as a dashboard-path
+ * setting (`primaryPaths`), else the view whose identifier equals the prefix (no suffix
+ * — e.g. `home` in {home, home-nightstand}), else the first view in the group.
  */
-export function groupLauncherViews(views: LauncherViewInfo[], combine: boolean): LauncherGroup[] {
+export function groupLauncherViews(
+  views: LauncherViewInfo[],
+  combine: boolean,
+  primaryPaths?: Set<string>,
+): LauncherGroup[] {
+  const pickPrimary = (members: LauncherViewInfo[], prefix: string): LauncherViewInfo => {
+    if (primaryPaths) {
+      const dash = members.find((m) => primaryPaths.has(m.path));
+      if (dash) return dash;
+    }
+    return members.find((m) => viewIdentifier(m) === prefix) ?? members[0];
+  };
   if (!combine) {
     return views.map((v) => ({ prefix: launcherPrefix(v), primary: v, members: [v], isGroup: false }));
   }
@@ -160,8 +172,7 @@ export function groupLauncherViews(views: LauncherViewInfo[], combine: boolean):
         members.push(w);
       }
     });
-    const primary = members.find((m) => viewIdentifier(m) === prefix) ?? members[0];
-    groups.push({ prefix, primary, members, isGroup: members.length > 1 });
+    groups.push({ prefix, primary: pickPrimary(members, prefix), members, isGroup: members.length > 1 });
   });
   return groups;
 }
@@ -173,6 +184,28 @@ export function resolveLauncherViews(paths: string[], discovered: LauncherViewIn
   for (const p of paths) {
     const v = byPath.get(p);
     if (v) out.push(v);
+  }
+  return out;
+}
+
+/**
+ * Map each view path to the dashboard-path setting key (e.g. `cameras_dashboard`) that
+ * targets it, from the effective settings. Lets the launcher navigate the exposed views
+ * via the root-portable `navigate-dashboard` action (and use them as the group primary).
+ * Keys are settings ending in `_dashboard` (except `dashboard_root`); their `[root]/<view>`
+ * value resolves to the first path segment after the dashboard slug (query stripped).
+ */
+export function dashboardKeyByViewPath(effective: Record<string, unknown>): Record<string, string> {
+  const root = String(effective.dashboard_root ?? "ted-dashboard");
+  const out: Record<string, string> = {};
+  for (const [key, val] of Object.entries(effective)) {
+    if (key === "dashboard_root" || !key.endsWith("_dashboard")) continue;
+    if (typeof val !== "string" || !val) continue;
+    const path = val.replace("[root]", root).replace(/^\//, "");
+    const segs = path.split("/");
+    if (segs[0] !== root || segs.length < 2) continue;
+    const view = decodeURIComponent(segs[1].split(/[?#]/)[0]);
+    if (view && !(view in out)) out[view] = key;
   }
   return out;
 }
@@ -213,24 +246,33 @@ interface BuildLauncherParams {
   views: LauncherViewInfo[];
   options: LauncherOptionsMap;
   combine: boolean;
+  /** The dashboard slug used to build plain `navigate` paths (the configured root). */
   dashboardUrlPath: string;
+  /** View path → dashboard-path setting key, for root-portable `navigate-dashboard`. */
+  dashboardKeyByPath: Record<string, string>;
   currentViewPath?: string;
   highlightActive: boolean;
   activeColor?: string;
 }
 
-/** Build a plain launcher button (a Button Card) that navigates directly to a view. */
+/** Build a plain launcher button (a Button Card) that navigates to a view: via the
+ *  root-portable `navigate-dashboard` action when the view is exposed as a dashboard-path
+ *  setting, else a plain `navigate` to its path. */
 function plainButton(view: LauncherViewInfo, p: BuildLauncherParams, showName: boolean): NavButtonConfig {
   const opt = p.options[view.path] ?? {};
   const active = p.highlightActive && view.path === p.currentViewPath;
   const iconOpt = typeof opt.icon === "string" ? opt.icon : undefined;
+  const dashKey = p.dashboardKeyByPath[view.path];
+  const tap_action = (dashKey
+    ? { action: "navigate-dashboard", dashboard: dashKey }
+    : { action: "navigate", navigation_path: launcherViewNavPath(p.dashboardUrlPath, view) }) as unknown as NavButtonConfig["tap_action"];
   const btn: NavButtonConfig = {
     ...launcherButtonBase(),
     ...opt,
     type: `custom:${BUTTON_CARD_TYPE}`,
     icon: iconOpt || view.icon || DEFAULT_BUTTON_ICON,
     name: opt.name || view.title,
-    tap_action: { action: "navigate", navigation_path: launcherViewNavPath(p.dashboardUrlPath, view) },
+    tap_action,
   };
   if (showName) btn.show_name = opt.show_name ?? true;
   if (active) Object.assign(btn, activeStyle(p.activeColor));
@@ -243,7 +285,8 @@ function plainButton(view: LauncherViewInfo, p: BuildLauncherParams, showName: b
  * seeded from the primary view's icon/name, its popup listing every member view).
  */
 export function buildLauncherButtons(p: BuildLauncherParams): NavButtonConfig[] {
-  const groups = groupLauncherViews(p.views, p.combine);
+  const primaryPaths = new Set(Object.keys(p.dashboardKeyByPath));
+  const groups = groupLauncherViews(p.views, p.combine, primaryPaths);
   return groups.map((group) => {
     if (!group.isGroup) return plainButton(group.primary, p, false);
     const primaryOpt = p.options[group.primary.path] ?? {};

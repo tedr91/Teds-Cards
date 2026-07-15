@@ -52,6 +52,7 @@ import type { CalendarItemConfig } from "../calendar-card/types";
 import { BUTTON_CARD_TYPE } from "../button-card/const";
 import type { NavButtonSize } from "../navbar-card/types";
 import {
+  dashboardKeyByViewPath,
   effectiveLauncherPaths,
   groupLauncherViews,
   LAUNCHER_SECTIONS,
@@ -1605,7 +1606,8 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
   ): { views: LauncherViewInfo[]; groupOf: Map<string, { primary: boolean; group: string }> } {
     const combine = this._globalValue("launcher_combine_groups") !== false;
     const paths = effectiveLauncherPaths(this._camerasArray(this._globalValue("launcher_list")), discovered);
-    const groups = groupLauncherViews(resolveLauncherViews(paths, discovered), combine);
+    const primaryPaths = new Set(Object.keys(dashboardKeyByViewPath(settingsStore.effective())));
+    const groups = groupLauncherViews(resolveLauncherViews(paths, discovered), combine, primaryPaths);
     const views: LauncherViewInfo[] = [];
     const groupOf = new Map<string, { primary: boolean; group: string }>();
     for (const g of groups) {
