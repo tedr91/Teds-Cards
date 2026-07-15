@@ -23,10 +23,10 @@ function pathOnly(url: string): string {
   return url.split(/[?#]/, 1)[0].replace(/\/+$/, "");
 }
 
-/** True when `pathname` is the dashboard's default landing (page 0 / welcome). */
+/** True when `pathname` is the dashboard's default landing (page 0 / home-welcome). */
 function isLandingPath(pathname: string, root: string): boolean {
   const p = pathOnly(pathname);
-  return p === `/${root}` || p === `/${root}/welcome` || p === `/${root}/0`;
+  return p === `/${root}` || p === `/${root}/home-welcome` || p === `/${root}/0`;
 }
 
 export class HomeRedirectController implements ReactiveController {

@@ -143,7 +143,7 @@ export const SETTINGS_DEFAULTS: SettingsMap = {
   background_enhance_readability: true,
   background_readability_strength: 45,
   dashboard_root: "ted-dashboard",
-  home_dashboard: "[root]/welcome",
+  home_dashboard: "[root]/home-welcome",
   alarms_dashboard: "[root]/alarms-timers?tab=alarms",
   timers_dashboard: "[root]/alarms-timers?tab=timers",
   weather_dashboard: "[root]/weather",
