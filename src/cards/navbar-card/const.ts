@@ -23,7 +23,7 @@ export const DEFAULT_NAVBAR_AUTOHIDE_DELAY = 5;
 /** Space (px) reserved at the edge for the collapsed auto-hide reveal pill, so content
  *  stops just short of it. Sized to clear the visible pill (which sits at bottom:10 +
  *  height:20 = ~30px). Published as `--ted-navbar-bottom-reserve` for self-sizing views. */
-export const NAVBAR_PILL_RESERVE = 30;
+export const NAVBAR_PILL_RESERVE = 20;
 
 /** Maximum number of NavSections a navbar can hold. */
 export const MAX_NAV_SECTIONS = 5;

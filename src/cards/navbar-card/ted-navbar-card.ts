@@ -1489,36 +1489,70 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
       .navbar.collapsed .nav-pill:hover::before {
         opacity: 1;
       }
-      /* Soft scrim behind the reveal pill so it stays legible over busy wallpapers. */
+      /* Soft edge vignette behind the reveal pill so it stays legible over busy
+         wallpapers. A wide linear fade rising from the screen edge (variant B2). */
       .nav-pill::after {
         content: "";
         position: absolute;
-        left: 50%;
-        top: 50%;
-        transform: translate(-50%, -50%);
         z-index: -1;
-        border-radius: 999px;
         opacity: 0;
+        pointer-events: none;
         transition: opacity 0.25s ease;
-        background: radial-gradient(
-          closest-side,
-          rgba(0, 0, 0, 0.35),
-          rgba(0, 0, 0, 0.16) 55%,
-          transparent
-        );
       }
       .navbar.collapsed .nav-pill::after {
         opacity: 1;
       }
-      .navbar.bottom .nav-pill::after,
-      .navbar.top .nav-pill::after {
-        width: 150px;
-        height: 26px;
+      .navbar.bottom .nav-pill::after {
+        left: 50%;
+        bottom: 0;
+        transform: translateX(-50%);
+        width: 220px;
+        height: 44px;
+        background: linear-gradient(
+          to top,
+          rgba(0, 0, 0, 0.58),
+          rgba(0, 0, 0, 0.24) 45%,
+          transparent
+        );
       }
-      .navbar.left .nav-pill::after,
+      .navbar.top .nav-pill::after {
+        left: 50%;
+        top: 0;
+        transform: translateX(-50%);
+        width: 220px;
+        height: 44px;
+        background: linear-gradient(
+          to bottom,
+          rgba(0, 0, 0, 0.58),
+          rgba(0, 0, 0, 0.24) 45%,
+          transparent
+        );
+      }
+      .navbar.left .nav-pill::after {
+        top: 50%;
+        left: 0;
+        transform: translateY(-50%);
+        width: 44px;
+        height: 220px;
+        background: linear-gradient(
+          to right,
+          rgba(0, 0, 0, 0.58),
+          rgba(0, 0, 0, 0.24) 45%,
+          transparent
+        );
+      }
       .navbar.right .nav-pill::after {
-        width: 26px;
-        height: 150px;
+        top: 50%;
+        right: 0;
+        transform: translateY(-50%);
+        width: 44px;
+        height: 220px;
+        background: linear-gradient(
+          to left,
+          rgba(0, 0, 0, 0.58),
+          rgba(0, 0, 0, 0.24) 45%,
+          transparent
+        );
       }
       /* Unread notifications: the collapsed pill glows accent and slowly pulses. */
       .navbar.collapsed .nav-pill.has-unread::before {

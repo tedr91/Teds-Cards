@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Navbar pill scrim options</title>
+    <style>
+      * { box-sizing: border-box; }
+      body {
+        margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: #222;
+        background: #1c2130; padding: 24px clamp(16px,4vw,48px) 64px;
+      }
+      h1 { color: #eef1f6; font-size: 20px; margin: 0 0 4px; }
+      p.sub { color: #c7cdda; font-size: 13px; margin: 0 0 20px; }
+      .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 18px; }
+      .card { background: #232838; border: 1px solid rgba(255,255,255,.1); border-radius: 14px; padding: 12px; }
+      .card h3 { color: #eef1f6; font-size: 13px; margin: 0 0 8px; font-weight: 600; }
+      .card p { color: #aeb6c6; font-size: 11px; margin: 0 0 10px; min-height: 28px; }
+      /* A slice of "screen": wallpaper with the pill anchored to the bottom edge. */
+      .screen {
+        position: relative; height: 120px; border-radius: 10px; overflow: hidden;
+        background:
+          linear-gradient(115deg, #b8a883 0%, #a99a76 40%, #c7b48c 70%, #9c8e6d 100%);
+      }
+      .screen::before { /* faint wall texture */
+        content: ""; position: absolute; inset: 0; opacity: .25;
+        background: repeating-linear-gradient(90deg, rgba(0,0,0,.06) 0 2px, transparent 2px 5px);
+      }
+      /* the visible pill */
+      .pill {
+        position: absolute; left: 50%; bottom: 6px; transform: translateX(-50%);
+        width: 60px; height: 5px; border-radius: 999px; z-index: 2;
+        background: color-mix(in srgb, #fff 55%, transparent);
+      }
+      /* scrim variants (each an ::after on .screen positioned at bottom center) */
+      .scrim { position: absolute; left: 50%; bottom: 0; transform: translateX(-50%); z-index: 1; pointer-events: none; }
+
+      /* A — current: radial oval 150x26 */
+      .v-current .scrim {
+        width: 150px; height: 26px; bottom: -1px; border-radius: 999px;
+        background: radial-gradient(closest-side, rgba(0,0,0,.35), rgba(0,0,0,.16) 55%, transparent);
+      }
+      /* B — edge vignette: wide linear fade up from the edge */
+      .v-vignette .scrim {
+        width: 300px; height: 44px;
+        background: linear-gradient(to top, rgba(0,0,0,.42), rgba(0,0,0,.16) 45%, transparent);
+      }
+      /* B2 — edge vignette with a little stronger shadow */
+      .v-vignette2 .scrim {
+        width: 300px; height: 50px;
+        background: linear-gradient(to top, rgba(0,0,0,.58), rgba(0,0,0,.24) 45%, transparent);
+      }
+      /* C — soft edge glow: radial ellipse hugging the edge, feathered + wide */
+      .v-softedge .scrim {
+        width: 260px; height: 60px;
+        background: radial-gradient(120% 100% at 50% 100%, rgba(0,0,0,.4) 0%, rgba(0,0,0,.14) 45%, transparent 72%);
+      }
+      /* D — frosted shelf: blurred wallpaper behind a rounded-top strip */
+      .v-frost .scrim {
+        width: 210px; height: 30px; bottom: 0; border-radius: 16px 16px 0 0;
+        background: rgba(20,22,30,.28);
+        -webkit-backdrop-filter: blur(7px); backdrop-filter: blur(7px);
+      }
+      /* E — feathered blob: dark rounded bar blurred so it has no hard edge */
+      .v-feather .scrim {
+        width: 120px; height: 16px; bottom: 2px; border-radius: 999px;
+        background: rgba(0,0,0,.5); filter: blur(7px);
+      }
+      /* E2 — feathered blob, 2× tall, shifted ~1/3 of its height toward the edge (clipped) */
+      .v-feather2 .scrim {
+        width: 120px; height: 32px; bottom: -11px; border-radius: 999px;
+        background: rgba(0,0,0,.5); filter: blur(7px);
+      }
+      /* E3 — like E2 but a little taller and pushed a little further below the edge */
+      .v-feather3 .scrim {
+        width: 120px; height: 40px; bottom: -19px; border-radius: 999px;
+        background: rgba(0,0,0,.5); filter: blur(7px);
+      }
+      /* E4 — E3 with edges softened even more: bigger blur + gradient falloff + feathered mask */
+      .v-feather4 .scrim {
+        width: 140px; height: 46px; bottom: -22px; border-radius: 999px;
+        background: radial-gradient(closest-side, rgba(0,0,0,.55), rgba(0,0,0,0));
+        filter: blur(12px);
+        -webkit-mask-image: radial-gradient(closest-side, #000 55%, transparent 100%);
+                mask-image: radial-gradient(closest-side, #000 55%, transparent 100%);
+      }
+      /* F — vignette + frost combo */
+      .v-combo .scrim, .v-combo .scrim2 { position: absolute; left: 50%; bottom: 0; transform: translateX(-50%); z-index: 1; }
+      .v-combo .scrim {
+        width: 300px; height: 44px;
+        background: linear-gradient(to top, rgba(0,0,0,.36), transparent 70%);
+      }
+      .v-combo .scrim2 {
+        width: 200px; height: 26px; border-radius: 14px 14px 0 0;
+        -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); z-index: 1;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Auto-hide pill — scrim options</h1>
+    <p class="sub">The pill sits at the bottom edge. Each option shows how the scrim reads on a light wallpaper.</p>
+    <div class="grid" id="grid"></div>
+    <script>
+      const variants = [
+        ["v-current", "A · Current (radial oval)", "A closest-side radial in a small box — reads as a floating dark blob. This is what looks off."],
+        ["v-vignette", "B · Edge vignette (recommended)", "Wide linear fade rising from the screen edge — feels like a natural edge shadow, not a shape."],
+        ["v-vignette2", "B2 · Edge vignette (stronger shadow)", "Same edge vignette as B with a little more depth — darker at the edge and reaching a touch higher."],
+        ["v-softedge", "C · Soft edge glow", "A feathered ellipse hugging the bottom edge; softer and wider than A, still centered on the pill."],
+        ["v-frost", "D · Frosted shelf", "A blurred rounded-top strip (glass) — matches the translucent theme instead of darkening."],
+        ["v-feather", "E · Feathered blob", "The blob, but blur()-ed so it has no hard edge. Subtle, still localized."],
+        ["v-feather2", "E2 · Feathered blob (2× tall, shifted to edge)", "Double height, shifted ~1/3 of its height toward the edge so it's clipped — a soft feathered shelf."],
+        ["v-feather3", "E3 · Feathered blob (taller, pushed further below)", "Like E2 but a little taller and pushed a bit further below the edge — an even softer, flatter shelf."],
+        ["v-feather4", "E4 · Feathered blob (extra-soft edges)", "Like E3 with edges softened even more — bigger blur, a gradient falloff, and a feathered mask so it fades to nothing at the rim."],
+        ["v-combo", "F · Vignette + frost", "Edge fade for contrast plus a small frosted strip under the pill."],
+      ];
+      const grid = document.getElementById("grid");
+      for (const [cls, title, desc] of variants) {
+        const el = document.createElement("div");
+        el.className = "card " + cls;
+        const extra = cls === "v-combo" ? '<span class="scrim2"></span>' : "";
+        el.innerHTML = '<h3>' + title + '</h3><p>' + desc + '</p>' +
+          '<div class="screen ' + cls + '"><span class="scrim"></span>' + extra + '<span class="pill"></span></div>';
+        grid.appendChild(el);
+      }
+    </script>
+  </body>
+</html>
