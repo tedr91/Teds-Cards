@@ -939,6 +939,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.199
+
+- **Schedule view auto-fit** — the Calendar card now measures the Schedule grid and automatically compresses its hour rows (daylight `height_scale`) so it fits with no internal scrollbar, without changing the card's overall size. Re-fits on resize; respects an explicit `calendar_config.height_scale`.
+
 ### v1.0.198
 
 - **Per-calendar “Show birthday badge”** — each calendar now has a toggle (default on) controlling its cake day-badges: calendars named “birthday” badge every event, others badge only birthday-titled events. Each badge is tinted with the calendar's color at 50% opacity.

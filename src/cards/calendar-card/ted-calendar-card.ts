@@ -74,6 +74,16 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
   private _childKind?: "calendar" | "message";
   private _lastPropagatedHass?: HomeAssistant;
 
+  // --- Dynamic Schedule height-fit (removes the internal scrollbar without resizing) ---
+  /** The auto-computed daylight `height_scale` (1 = untouched). */
+  @state() private _heightScale = 1;
+  private _resizeObs?: ResizeObserver;
+  private _fitKey?: string;
+  private _fitting = false;
+  private _fitAttempts = 0;
+  private _prevFitHeight?: number;
+  private _fitRaf?: number;
+
   public constructor() {
     super();
     // Keep this device's settings live so `calendar_source: settings` stays in sync.
@@ -88,6 +98,19 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
     if (typeof customElements !== "undefined" && !customElements.get(DAYLIGHT_CARD_TAG)) {
       void customElements.whenDefined(DAYLIGHT_CARD_TAG).then(() => this.requestUpdate());
     }
+    // Re-fit the Schedule height when the card is resized.
+    if (typeof ResizeObserver !== "undefined" && !this._resizeObs) {
+      this._resizeObs = new ResizeObserver(() => this.requestUpdate());
+      this._resizeObs.observe(this);
+    }
+  }
+
+  public disconnectedCallback(): void {
+    super.disconnectedCallback();
+    this._resizeObs?.disconnect();
+    this._resizeObs = undefined;
+    if (this._fitRaf != null) cancelAnimationFrame(this._fitRaf);
+    this._fitRaf = undefined;
   }
 
   public setConfig(config: CalendarCardConfig): void {
@@ -125,6 +148,7 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
 
   protected updated(changed: Map<string, unknown>): void {
     if (changed.has("hass")) this._propagateHass();
+    this._scheduleFitMeasure();
   }
 
   // --- Entity resolution -----------------------------------------------------
@@ -400,6 +424,10 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
       appearance.day_badges = [...baseBadges, ...this._birthdayBadges(colors)];
     }
 
+    // Auto-fit the Schedule grid: apply the measured height_scale (only when it shrank
+    // below 1). An explicit `calendar_config.height_scale` wins (spreads in last).
+    if (this._heightScale < 0.999) appearance.height_scale = this._heightScale;
+
     return {
       type: DAYLIGHT_CARD_TYPE,
       ...base,
@@ -453,6 +481,20 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
       this._childKind = desired.kind;
       return;
     }
+    // Update the existing child in place when only its config changed (same kind) — this
+    // avoids a full re-create (and the flicker) as the height-fit loop tweaks height_scale.
+    const existing = this._child?.el as (LovelaceCard & { setConfig?: (c: LovelaceCardConfig) => void }) | undefined;
+    if (existing && this._childKind === desired.kind && typeof existing.setConfig === "function") {
+      try {
+        existing.setConfig(desired.cfg);
+        if (this.hass) existing.hass = this.hass;
+        this._child = { el: existing, json };
+        this._childKind = desired.kind;
+        return;
+      } catch {
+        /* fall through to a fresh create */
+      }
+    }
     const el = this._helpers.createCardElement(desired.cfg);
     if (this.hass) el.hass = this.hass;
     this._child = { el, json };
@@ -463,6 +505,101 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
     if (!this.hass || this.hass === this._lastPropagatedHass) return;
     this._lastPropagatedHass = this.hass;
     if (this._child) this._child.el.hass = this.hass;
+  }
+
+  // --- Dynamic Schedule height-fit ------------------------------------------
+  // The daylight Schedule (week-standard) grid scrolls internally when its hour range
+  // is taller than the card. We measure the rendered grid's overflow and iteratively
+  // lower daylight's `height_scale` (which only compresses Schedule hour rows) until it
+  // fits — WITHOUT changing the card's overall size. It's generic (no daylight class
+  // names), self-limiting (stops when there's no overflow), and bails when height_scale
+  // has no effect (e.g. the user is on a non-Schedule view) or can't be measured.
+
+  /** Whether the card has a bounded height (so an internal scrollbar can appear). */
+  private _boundedHeight(): boolean {
+    return !!this._config?.fill || typeof this._config?.height === "number";
+  }
+
+  /** True when the user/YAML pinned height_scale explicitly (we then don't auto-fit). */
+  private _heightScalePinned(): boolean {
+    return (this._config?.calendar_config as { height_scale?: unknown } | undefined)?.height_scale !== undefined;
+  }
+
+  private _scheduleFitMeasure(): void {
+    if (this._fitRaf != null || typeof requestAnimationFrame === "undefined") return;
+    this._fitRaf = requestAnimationFrame(() => {
+      this._fitRaf = undefined;
+      this._runFit();
+    });
+  }
+
+  /** Find the tallest internally-scrolling descendant of the daylight card (searching
+   *  both its light children and its shadow root), or undefined when nothing overflows. */
+  private _findScroller(): HTMLElement | undefined {
+    const el = this._child?.el as HTMLElement | undefined;
+    if (!el) return undefined;
+    const roots: ParentNode[] = [el];
+    if (el.shadowRoot) roots.push(el.shadowRoot);
+    let best: HTMLElement | undefined;
+    for (const root of roots) {
+      for (const node of Array.from(root.querySelectorAll<HTMLElement>("*"))) {
+        if (node.scrollHeight - node.clientHeight <= 2) continue;
+        const oy = getComputedStyle(node).overflowY;
+        if (oy !== "auto" && oy !== "scroll") continue;
+        if (!best || node.clientHeight > best.clientHeight) best = node;
+      }
+    }
+    return best;
+  }
+
+  private _runFit(): void {
+    if (this._childKind !== "calendar" || !this._child || !this._daylightInstalled()) return;
+    if (!this._boundedHeight() || this._heightScalePinned()) return;
+
+    // A signature of everything that affects the fit; changing it restarts the fit.
+    const key = `${Math.round(this.clientHeight / 6)}|${this._resolvedView()}|${this._entities().join(",")}`;
+    if (key !== this._fitKey) {
+      this._fitKey = key;
+      this._fitting = true;
+      this._fitAttempts = 0;
+      this._prevFitHeight = undefined;
+      if (this._heightScale !== 1) {
+        this._heightScale = 1; // restart from the natural size
+        return;
+      }
+    }
+    if (!this._fitting) return;
+
+    const scroller = this._findScroller();
+    if (!scroller) {
+      this._fitting = false; // no overflow — it already fits
+      return;
+    }
+    const contentH = scroller.scrollHeight;
+    const viewportH = scroller.clientHeight;
+
+    // Bail if a scale change didn't move the content (height_scale not in effect here,
+    // e.g. a non-Schedule view), or we've iterated enough / can't shrink further.
+    if (
+      this._fitAttempts > 0 &&
+      this._prevFitHeight != null &&
+      Math.abs(contentH - this._prevFitHeight) < 2
+    ) {
+      this._fitting = false;
+      return;
+    }
+    if (this._fitAttempts >= 6 || viewportH <= 0) {
+      this._fitting = false;
+      return;
+    }
+    const next = Math.min(1, Math.max(0.35, this._heightScale * (viewportH / contentH) * 0.98));
+    if (next >= this._heightScale - 0.005) {
+      this._fitting = false; // converged or hit the floor
+      return;
+    }
+    this._prevFitHeight = contentH;
+    this._fitAttempts += 1;
+    this._heightScale = next; // triggers a re-render + another measure pass
   }
 
   // --- Navigation ------------------------------------------------------------
