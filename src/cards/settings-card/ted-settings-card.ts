@@ -1634,25 +1634,9 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     const displayPaths = views.map((v) => v.path);
     const setList = (next: string[]): void => this._setGlobal("launcher_list", next);
     const remaining = discovered.filter((v) => !displayPaths.includes(v.path));
-    const buttonColor = this._globalValue("launcher_button_color");
-    const highlightColor = this._globalValue("launcher_highlight_color");
 
     return html`
-      <ha-form
-        .hass=${this.hass}
-        .data=${{
-          launcher_enabled: this._globalValue("launcher_enabled") !== false,
-          launcher_section: String(this._globalValue("launcher_section") ?? "center"),
-          launcher_combine_groups: this._globalValue("launcher_combine_groups") !== false,
-          launcher_button_color: typeof buttonColor === "string" && buttonColor ? buttonColor : undefined,
-          launcher_highlight_active: this._globalValue("launcher_highlight_active") !== false,
-          launcher_highlight_color: typeof highlightColor === "string" && highlightColor ? highlightColor : undefined,
-        }}
-        .schema=${LAUNCHER_SETTINGS_SCHEMA}
-        .disabled=${!admin}
-        .computeLabel=${this._launcherLabel}
-        @value-changed=${this._onLauncherSettingsChanged}
-      ></ha-form>
+      ${this._renderLauncherSettingsForm("global")}
       <div class="cam-row">
         <div class="cam-head">
           <div class="row-label"><span>Buttons — available views &amp; settings</span></div>
@@ -1738,18 +1722,48 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     this._setGlobal("launcher_list", discovered.filter((v) => !v.subview).map((v) => v.path));
   }
 
-  private _onLauncherSettingsChanged = (ev: CustomEvent): void => {
+  /** The group-level launcher settings ha-form, bound to global or device values. In
+   *  device scope, editing a setting stores a per-device override for that key. */
+  private _renderLauncherSettingsForm(scope: "global" | "device"): TemplateResult {
+    const disabled = scope === "global" && !this._isAdmin();
+    const val = (k: string): SettingsValue => (scope === "global" ? this._globalValue(k) : this._deviceValue(k));
+    const buttonColor = val("launcher_button_color");
+    const highlightColor = val("launcher_highlight_color");
+    return html`
+      <ha-form
+        .hass=${this.hass}
+        .data=${{
+          launcher_enabled: val("launcher_enabled") !== false,
+          launcher_section: String(val("launcher_section") ?? "center"),
+          launcher_combine_groups: val("launcher_combine_groups") !== false,
+          launcher_button_color: typeof buttonColor === "string" && buttonColor ? buttonColor : undefined,
+          launcher_highlight_active: val("launcher_highlight_active") !== false,
+          launcher_highlight_color: typeof highlightColor === "string" && highlightColor ? highlightColor : undefined,
+        }}
+        .schema=${LAUNCHER_SETTINGS_SCHEMA}
+        .disabled=${disabled}
+        .computeLabel=${this._launcherLabel}
+        @value-changed=${(ev: CustomEvent) => this._onLauncherSettingsChanged(ev, scope)}
+      ></ha-form>
+    `;
+  }
+
+  private _onLauncherSettingsChanged(ev: CustomEvent, scope: "global" | "device"): void {
     ev.stopPropagation();
-    if (!this._isAdmin()) return;
+    if (scope === "global" && !this._isAdmin()) return;
     const v = ev.detail.value as Record<string, unknown>;
+    const cur = (k: string): SettingsValue => (scope === "global" ? this._globalValue(k) : this._deviceValue(k));
     for (const key of LAUNCHER_SETTING_KEYS) {
       if (!(key in v)) continue;
       let val = v[key] as SettingsValue;
       if ((key === "launcher_button_color" || key === "launcher_highlight_color") && (val === "" || val == null))
         val = null;
-      if (val !== this._globalValue(key)) this._setGlobal(key, val);
+      if (val !== cur(key)) {
+        if (scope === "global") this._setGlobal(key, val);
+        else this._setDevice(key, val);
+      }
     }
-  };
+  }
 
   private _onLauncherSizeChanged(path: string, ev: CustomEvent): void {
     ev.stopPropagation();
@@ -1860,6 +1874,28 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     const key = "launcher_list";
     const globalList = effectiveLauncherPaths(this._camerasArray(this._globalValue(key)), discovered);
     const overriding = this._deviceOverriding(key);
+    const groupOverridden = LAUNCHER_SETTING_KEYS.some((k) => k in settingsStore.deviceSettings());
+    const resetGroup = (): void => {
+      for (const k of LAUNCHER_SETTING_KEYS) settingsStore.clearValue("device", k);
+      this.requestUpdate();
+    };
+    const settingsBlock = html`
+      <div class="cam-head">
+        <div class="row-label">
+          <span>Launcher settings — this device</span>
+          ${groupOverridden ? nothing : html`<span class="inherit-tag">Inherited</span>`}
+          <span class="help">${groupOverridden
+            ? "This device overrides the launcher settings below."
+            : "Change a setting to override it on this device."}</span>
+        </div>
+        ${groupOverridden
+          ? html`<button class="cam-btn" title="Reset to the Global launcher settings" @click=${resetGroup}>
+              <ha-icon icon="mdi:backup-restore"></ha-icon><span>Reset</span>
+            </button>`
+          : nothing}
+      </div>
+      ${this._renderLauncherSettingsForm("device")}
+    `;
     const chipOptions = {
       isOpen: () => false,
       toggle: () => {},
@@ -1891,6 +1927,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     if (!overriding) {
       return html`
         <div class="cam-row">
+          ${settingsBlock}
           ${head(
             html`<span class="inherit-tag">Inherited</span>`,
             globalList.length
@@ -1910,6 +1947,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     const setList = (next: string[]): void => this._setDevice(key, next);
     return html`
       <div class="cam-row">
+        ${settingsBlock}
         ${head(
           nothing,
           "The launcher buttons this device shows.",
