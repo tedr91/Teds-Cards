@@ -43,6 +43,7 @@ import {
   calendarVirtualToggleSchema,
   renderVirtualLinkModal,
   renderVirtualMembers,
+  reorderVirtualGroupIds,
   virtualGroupNameFor,
   virtualJoinCandidates,
 } from "../calendar-card/calendar-options";
@@ -828,8 +829,8 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
       const isLinked = !!rowTag;
       const row = html`
         <div
-          class="cam-item ${readonly ? "readonly" : ""} ${rowColor ? "tinted" : ""} ${isLinked ? "linked" : ""}"
-          style=${rowColor ? styleMap({ "--cam-tint": rowColor }) : nothing}
+          class="cam-item ${readonly ? "readonly" : ""} ${rowColor && !isLinked ? "tinted" : ""} ${isLinked ? "linked" : ""}"
+          style=${rowColor && !isLinked ? styleMap({ "--cam-tint": rowColor }) : nothing}
         >
           ${readonly || isLinked
             ? nothing
@@ -1039,6 +1040,11 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     if (Object.keys(opt).length) map[id] = opt;
     else delete map[id];
     this._setGlobal("calendar_options", map);
+    // Re-order the global list so linked children sit directly under their parent.
+    const ids = this._camerasArray(this._globalValue("calendars_list"));
+    const items = ids.map((e) => ({ entity: e, ...(map[e] ?? {}) }) as CalendarItemConfig);
+    const reordered = reorderVirtualGroupIds(ids, items);
+    if (reordered.some((v, i) => v !== ids[i])) this._setGlobal("calendars_list", reordered);
   }
 
   private _calendarOptionChanged(id: string, ev: CustomEvent): void {
@@ -1092,7 +1098,14 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
                 if (!admin) return;
                 const n = [...ids];
                 n.splice(to, 0, n.splice(from, 1)[0]);
-                setList(n);
+                // Keep virtual children directly under their parent when a parent moves.
+                if (domain === "calendar") {
+                  const map = this._calendarOptionsMap();
+                  const items = n.map((e) => ({ entity: e, ...(map[e] ?? {}) }) as CalendarItemConfig);
+                  setList(reorderVirtualGroupIds(n, items));
+                } else {
+                  setList(n);
+                }
               },
               false,
               admin && domain === "calendar"

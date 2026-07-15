@@ -11,6 +11,7 @@ import {
   calendarVirtualToggleSchema,
   renderVirtualLinkModal,
   renderVirtualMembers,
+  reorderVirtualGroups,
   virtualGroupNameFor,
   virtualJoinCandidates,
 } from "./calendar-options";
@@ -486,7 +487,8 @@ export class TedCalendarCardEditor extends LitElement implements LovelaceCardEdi
     const items = this._items();
     const cur = items[idx] ?? { entity: "" };
     items[idx] = { ...cur, virtual_members: members.length ? members : undefined };
-    this._commitItems(items);
+    this._openRows = new Set();
+    this._commitItems(reorderVirtualGroups(items));
   }
 
   private _openLink(idx: number): void {
@@ -566,7 +568,7 @@ export class TedCalendarCardEditor extends LitElement implements LovelaceCardEdi
     const items = this._items();
     items.splice(newIndex, 0, items.splice(oldIndex, 1)[0]);
     this._openRows = new Set();
-    this._commitItems(items);
+    this._commitItems(reorderVirtualGroups(items));
   };
 
   private _commit(raw: CalendarCardConfig): void {

@@ -230,6 +230,73 @@ export function virtualGroupNameFor(
   return "";
 }
 
+/** Reorder a calendar list so each virtual anchor's linked members immediately
+ *  follow it (in the anchor's `virtual_members` order). Keeps every other row in
+ *  its existing relative position. Used so linked children sit under their parent
+ *  and travel with it when the parent is dragged. */
+export function reorderVirtualGroups(items: CalendarItemConfig[]): CalendarItemConfig[] {
+  const memberOf = new Map<string, CalendarItemConfig>();
+  for (const it of items) {
+    if (it.virtual && it.entity) {
+      for (const m of it.virtual_members ?? []) if (!memberOf.has(m)) memberOf.set(m, it);
+    }
+  }
+  if (memberOf.size === 0) return items;
+  const byEntity = new Map<string, CalendarItemConfig>();
+  for (const it of items) if (it.entity && !byEntity.has(it.entity)) byEntity.set(it.entity, it);
+  const result: CalendarItemConfig[] = [];
+  const done = new Set<CalendarItemConfig>();
+  for (const it of items) {
+    if (done.has(it)) continue;
+    if (it.entity && memberOf.has(it.entity)) continue; // emitted right after its anchor
+    result.push(it);
+    done.add(it);
+    if (it.virtual && it.entity) {
+      for (const m of it.virtual_members ?? []) {
+        const mi = byEntity.get(m);
+        if (mi && !done.has(mi)) {
+          result.push(mi);
+          done.add(mi);
+        }
+      }
+    }
+  }
+  for (const it of items) if (!done.has(it)) result.push(it), done.add(it);
+  return result;
+}
+
+/** Same as {@link reorderVirtualGroups} but for a plain ordered id list paired with
+ *  a lookup of calendar items (for the Settings global list). */
+export function reorderVirtualGroupIds(ids: string[], items: CalendarItemConfig[]): string[] {
+  const byEntity = new Map<string, CalendarItemConfig>();
+  for (const it of items) if (it.entity) byEntity.set(it.entity, it);
+  const memberOf = new Map<string, string>();
+  for (const it of items) {
+    if (it.virtual && it.entity) {
+      for (const m of it.virtual_members ?? []) if (!memberOf.has(m)) memberOf.set(m, it.entity);
+    }
+  }
+  if (memberOf.size === 0) return ids;
+  const result: string[] = [];
+  const done = new Set<string>();
+  for (const id of ids) {
+    if (done.has(id) || memberOf.has(id)) continue;
+    result.push(id);
+    done.add(id);
+    const it = byEntity.get(id);
+    if (it?.virtual) {
+      for (const m of it.virtual_members ?? []) {
+        if (ids.includes(m) && !done.has(m)) {
+          result.push(m);
+          done.add(m);
+        }
+      }
+    }
+  }
+  for (const id of ids) if (!done.has(id)) result.push(id), done.add(id);
+  return result;
+}
+
 /** A self-contained "Linked Calendars" block: a heading, a reorderable list of member
  *  chips, and a "+ Link a calendar" button (which opens the host's link chooser). Uses
  *  inline styles so it works inside any host (card editor or Settings). */
