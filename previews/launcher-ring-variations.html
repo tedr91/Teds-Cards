@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Launcher · active-view highlight ring variations</title>
+    <style>
+      :root {
+        --accent: #3f7cf0;
+        --btn: #ffffff; /* "Button color" (default White) */
+        --bar: rgba(30, 34, 44, 0.55);
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        color: #eef1f6;
+        min-height: 100vh;
+        background:
+          radial-gradient(120% 120% at 20% 0%, #6b5f8a 0%, #40405f 45%, #2a2f3f 100%),
+          #2a2f3f;
+        padding: 28px clamp(16px, 4vw, 48px) 64px;
+      }
+      h1 { font-size: 20px; font-weight: 650; margin: 0 0 4px; }
+      p.sub { margin: 0 0 20px; color: #c7cdda; font-size: 13px; }
+
+      .controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 18px;
+        align-items: center;
+        background: rgba(0, 0, 0, 0.25);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 12px;
+        padding: 12px 16px;
+        margin-bottom: 26px;
+        backdrop-filter: blur(6px);
+      }
+      .controls label { font-size: 13px; display: inline-flex; align-items: center; gap: 8px; }
+      .controls input[type="color"] { width: 34px; height: 26px; border: none; background: none; cursor: pointer; }
+      .swatches { display: inline-flex; gap: 6px; }
+      .swatches button {
+        width: 22px; height: 22px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.5);
+        cursor: pointer; padding: 0;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+        gap: 18px;
+      }
+      .variant {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 14px;
+        padding: 16px;
+      }
+      .variant h3 { margin: 0 0 2px; font-size: 14px; font-weight: 600; }
+      .variant .desc { margin: 0 0 14px; font-size: 11.5px; color: #b9c0cf; line-height: 1.35; min-height: 30px; }
+
+      /* A mini navbar strip so the active button reads against its neighbours. */
+      .strip {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        justify-content: center;
+        background: var(--bar);
+        border-radius: 16px;
+        padding: 10px 14px;
+        backdrop-filter: blur(10px);
+      }
+      .btn {
+        position: relative;
+        width: 40px;
+        height: 40px;
+        border-radius: 12px;
+        display: grid;
+        place-items: center;
+        /* Button color tint: the card fades the fill to ~22% internally. */
+        background: color-mix(in srgb, var(--btn) 22%, transparent);
+        color: color-mix(in srgb, var(--btn) 92%, transparent);
+        flex: none;
+        transition: box-shadow 0.2s ease, transform 0.15s ease, background 0.2s ease;
+      }
+      .btn svg { width: 22px; height: 22px; fill: currentColor; }
+
+      /* ---- Ring variations (applied to .btn.active) ---- */
+      .v-hairline .active { box-shadow: 0 0 0 1px var(--accent); }
+      .v-current .active { box-shadow: 0 0 0 1px var(--accent), 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent); }
+      .v-medium .active { box-shadow: 0 0 0 2px var(--accent); }
+      .v-glow .active { box-shadow: 0 0 0 2px var(--accent), 0 0 8px color-mix(in srgb, var(--accent) 45%, transparent); }
+      .v-halo .active { box-shadow: 0 0 12px 2px color-mix(in srgb, var(--accent) 55%, transparent); }
+      .v-gap .active { box-shadow: 0 0 0 2px var(--bar), 0 0 0 4px var(--accent); }
+      .v-inset .active { box-shadow: inset 0 0 0 2px var(--accent); }
+      .v-fill .active {
+        background: color-mix(in srgb, var(--accent) 90%, transparent);
+        color: #fff;
+        box-shadow: 0 0 6px color-mix(in srgb, var(--accent) 40%, transparent);
+      }
+      .v-tintfill .active {
+        background: color-mix(in srgb, var(--accent) 38%, transparent);
+        box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 70%, transparent);
+      }
+      .v-underline .active::after {
+        content: "";
+        position: absolute;
+        left: 22%;
+        right: 22%;
+        bottom: -7px;
+        height: 3px;
+        border-radius: 3px;
+        background: var(--accent);
+        box-shadow: 0 0 6px color-mix(in srgb, var(--accent) 60%, transparent);
+      }
+      .v-dot .active::before {
+        content: "";
+        position: absolute;
+        top: -3px;
+        right: -3px;
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        background: var(--accent);
+        box-shadow: 0 0 0 2px var(--bar), 0 0 5px color-mix(in srgb, var(--accent) 60%, transparent);
+      }
+      .v-lift .active {
+        transform: translateY(-3px) scale(1.06);
+        box-shadow: 0 0 0 2px var(--accent), 0 5px 12px rgba(0, 0, 0, 0.35);
+      }
+      .v-pulse .active {
+        box-shadow: 0 0 0 2px var(--accent);
+        animation: ringpulse 1.8s ease-in-out infinite;
+      }
+      @keyframes ringpulse {
+        0%, 100% { box-shadow: 0 0 0 2px var(--accent), 0 0 0 0 color-mix(in srgb, var(--accent) 45%, transparent); }
+        50% { box-shadow: 0 0 0 2px var(--accent), 0 0 10px 2px color-mix(in srgb, var(--accent) 45%, transparent); }
+      }
+      /* 11 + 2 — lift with a hairline (1px) ring + drop shadow. */
+      .v-liftline .active {
+        transform: translateY(-3px) scale(1.06);
+        box-shadow: 0 0 0 1px var(--accent), 0 5px 12px rgba(0, 0, 0, 0.35);
+      }
+
+      code { font-size: 10.5px; color: #a9d0ff; }
+    </style>
+  </head>
+  <body>
+    <h1>Launcher — active-view highlight ring</h1>
+    <p class="sub">
+      Each strip mimics the navbar launcher: three buttons at the default <b>Button color</b> (White),
+      with the middle one marked as the current view. Tweak the <b>Highlight color</b> and bar to compare.
+    </p>
+
+    <div class="controls">
+      <label>Highlight color
+        <input id="accent" type="color" value="#3f7cf0" />
+      </label>
+      <span class="swatches" id="swatches"></span>
+      <label>Button color
+        <input id="btn" type="color" value="#ffffff" />
+      </label>
+      <label>Bar
+        <select id="bar">
+          <option value="rgba(30,34,44,0.55)" selected>Dark glass</option>
+          <option value="rgba(245,247,250,0.55)">Light glass</option>
+          <option value="rgba(30,34,44,0.9)">Dark solid</option>
+          <option value="rgba(245,247,250,0.9)">Light solid</option>
+        </select>
+      </label>
+    </div>
+
+    <div class="grid" id="grid"></div>
+
+    <script>
+      const ICON =
+        '<svg viewBox="0 0 24 24"><path d="M10,20V14H14V20H19V12H22L12,3L2,12H5V20H10Z"/></svg>';
+      const ICON2 =
+        '<svg viewBox="0 0 24 24"><path d="M12,20A6,6 0 0,1 6,14C6,10 12,3.25 12,3.25C12,3.25 18,10 18,14A6,6 0 0,1 12,20Z"/></svg>';
+      const ICON3 =
+        '<svg viewBox="0 0 24 24"><path d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M11,7H13V13H11V7M11,15H13V17H11V15Z"/></svg>';
+
+      const variants = [
+        ["v-liftline", "11 + 2 — Lift + hairline", "Button rises (translateY + scale) with a crisp 1px ring and a drop shadow.", "translateY + 0 0 0 1px + shadow"],
+        ["v-current", "Current (shipped)", "1px hairline + a faint 2px glow. Subtle, easy to miss on busy wallpapers.", "0 0 0 1px, 0 0 2px 35%"],
+        ["v-hairline", "Hairline", "A single crisp 1px outline, no glow. Minimal.", "0 0 0 1px"],
+        ["v-medium", "Medium ring", "Solid 2px ring — clearer, still flat.", "0 0 0 2px"],
+        ["v-glow", "Ring + glow", "2px ring plus an 8px outer glow (remote power-button style).", "0 0 0 2px, 0 0 8px 45%"],
+        ["v-halo", "Halo (glow only)", "Soft halo, no hard edge. Gentle but fuzzy.", "0 0 12px 2px 55%"],
+        ["v-gap", "Gapped ring", "A bar-colored gap then the accent ring — reads as a 'selected' pill.", "gap + 0 0 0 4px"],
+        ["v-tintfill", "Stronger tint", "Deeper accent fill (38%) + faint outline instead of a ring.", "fill 38% + 1px"],
+        ["v-fill", "Solid fill", "Fully filled accent button (the old look). Boldest, least subtle.", "bg 90%"],
+        ["v-underline", "Underline bar", "An accent bar beneath the button, like a tab indicator.", "::after bar"],
+        ["v-dot", "Corner dot", "A small accent dot in the top corner.", "::before dot"],
+        ["v-lift", "Lift + ring", "Button rises with a ring + drop shadow.", "translateY + 0 0 0 2px"],
+        ["v-pulse", "Pulsing ring", "2px ring with a gently pulsing glow (animated).", "@keyframes"],
+      ];
+
+      const grid = document.getElementById("grid");
+      const icons = [ICON, ICON2, ICON3];
+      for (const [cls, title, desc, snippet] of variants) {
+        const el = document.createElement("div");
+        el.className = "variant " + cls;
+        el.innerHTML =
+          '<h3>' + title + '</h3>' +
+          '<p class="desc">' + desc + '</p>' +
+          '<div class="strip">' +
+            '<div class="btn">' + icons[0] + '</div>' +
+            '<div class="btn active">' + icons[1] + '</div>' +
+            '<div class="btn">' + icons[2] + '</div>' +
+          '</div>' +
+          '<div style="margin-top:10px"><code>' + snippet + '</code></div>';
+        grid.appendChild(el);
+      }
+
+      const root = document.documentElement.style;
+      document.getElementById("accent").addEventListener("input", (e) => root.setProperty("--accent", e.target.value));
+      document.getElementById("btn").addEventListener("input", (e) => root.setProperty("--btn", e.target.value));
+      document.getElementById("bar").addEventListener("change", (e) => root.setProperty("--bar", e.target.value));
+
+      const swatchColors = ["#3f7cf0", "#12b886", "#f59f00", "#e8590c", "#e64980", "#7048e8", "#ffffff"];
+      const sw = document.getElementById("swatches");
+      for (const c of swatchColors) {
+        const b = document.createElement("button");
+        b.style.background = c;
+        b.title = c;
+        b.addEventListener("click", () => {
+          root.setProperty("--accent", c);
+          document.getElementById("accent").value = c === "#ffffff" ? "#ffffff" : c;
+        });
+        sw.appendChild(b);
+      }
+    </script>
+  </body>
+</html>

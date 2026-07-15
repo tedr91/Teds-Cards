@@ -346,11 +346,14 @@ export class TedButtonCard extends LitElement implements LovelaceCard {
     const highlight = evalHighlight(this.hass, this._config.highlight, this._scopedCount(this._config.highlight));
     if (highlight.background) cardStyle.background = highlight.background;
 
-    // Optional colored ring (outline + soft glow) — used to mark an active/selected button.
+    // Optional colored ring — used to mark an active/selected button. The tile lifts
+    // slightly with a hairline ring + drop shadow (matches the launcher's current-view look).
+    // The lift direction follows `--ted-ring-lift` (set by the navbar per its edge); a
+    // bottom bar lifts up by default.
     const ringC = cssColor(this._config.ring);
     if (ringC) {
-      cardStyle["box-shadow"] =
-        `0 0 0 1px ${ringC}, 0 0 2px color-mix(in srgb, ${ringC} 35%, transparent)`;
+      cardStyle["box-shadow"] = `0 0 0 1px ${ringC}, 0 5px 12px rgba(0, 0, 0, 0.35)`;
+      cardStyle.transform = "var(--ted-ring-lift, translateY(-3px)) scale(1.06)";
     }
 
     // In a grid (Sections) view, honor the grid cell sizing. Everywhere else

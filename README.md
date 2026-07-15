@@ -939,6 +939,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.210
+
+- **Launcher active-view highlight** — the current view's launcher button now lifts with a hairline ring in the Highlight color, and the lift direction follows the navbar's edge (it rises toward the content on bottom, top, left and right bars). Ted's Button Card's `ring` option renders this look.
+
 ### v1.0.209
 
 - **View Launcher colors** — the launcher button tint/icon color (default White) and the active-view ring color (default Accent) are now separate settings under **Settings → Navbar → Launcher Buttons**: **Button color** and **Highlight color**. Requires Ted's Cards Backend v1.0.45+.

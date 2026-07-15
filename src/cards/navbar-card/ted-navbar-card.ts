@@ -975,6 +975,17 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
       cardStyle["min-width"] = `${this._minWidth()}px`;
       cardStyle["max-width"] = `${this._maxWidth()}px`;
     }
+    // Direction a ringed (active-view launcher) button lifts: toward the content, away
+    // from the bar's edge. Inherited by the embedded button cards' `--ted-ring-lift`.
+    const align = this._alignment();
+    cardStyle["--ted-ring-lift"] =
+      align === "top"
+        ? "translateY(3px)"
+        : align === "left"
+          ? "translateX(3px)"
+          : align === "right"
+            ? "translateX(-3px)"
+            : "translateY(-3px)";
     const sections = this._effectiveSections();
     const byZone: Record<NavZone, Array<{ section: NavSection; idx: number }>> = {
       left: [],
