@@ -939,6 +939,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.211
+
+- **Launcher group popups** — a combined launcher button's popup now matches the navbar's frosted surface, and its heading uses the shared view prefix (e.g. “Home”) instead of one member view's full name. Launcher buttons also sit at 25% opacity with the current view at 40%.
+
 ### v1.0.210
 
 - **Launcher active-view highlight** — the current view's launcher button now lifts with a hairline ring in the Highlight color, and the lift direction follows the navbar's edge (it rises toward the content on bottom, top, left and right bars). Ted's Button Card's `ring` option renders this look.

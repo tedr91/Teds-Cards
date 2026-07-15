@@ -13,6 +13,7 @@ import { BUTTON_CARD_TYPE, DEFAULT_BUTTON_ICON } from "../cards/button-card/cons
 import type { ButtonCardConfig } from "../cards/button-card/types";
 import { EXPANDABLE_BUTTON_CARD_TYPE } from "../cards/expandable-button-card/const";
 import type { NavButtonConfig, NavButtonSize } from "../cards/navbar-card/types";
+import { cssColor, MAX_BLUR_PX } from "./appearance";
 
 /** A dashboard view discovered from the Lovelace config. */
 export interface LauncherViewInfo {
@@ -219,14 +220,14 @@ export function effectiveLauncherPaths(list: string[], discovered: LauncherViewI
 }
 
 /** Base styling for every launcher button: a tinted surface + matching icon in the
- *  configured button color (defaults to white). */
+ *  configured button color (defaults to white), at 25% opacity. */
 function launcherButtonBase(color: string): Partial<NavButtonConfig> {
   return {
     icon_scale: 140,
     icon_color: color,
     theme: "ha",
     background: color,
-    transparency: 78,
+    transparency: 75,
     show_name: false,
     show_state: false,
   };
@@ -247,6 +248,33 @@ interface BuildLauncherParams {
   buttonColor?: string;
   /** Ring color marking the current view's button (default accent). */
   highlightColor?: string;
+  /** The navbar's own surface appearance, mirrored onto a combined group's popup so it
+   *  visually matches the bar. */
+  navBackground?: string;
+  navTransparency?: number;
+  navBlur?: number;
+}
+
+/** Capitalize the first letter (e.g. a group prefix `home` → `Home`). */
+function capitalize(s: string): string {
+  return s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+}
+
+/** Inline surface style for a combined group's popup, matching the navbar bar's
+ *  background / transparency / blur so the popup reads as a piece of the navbar. */
+function launcherPopupStyle(background?: string, transparency?: number, blur?: number): Record<string, string> {
+  const style: Record<string, string> = {};
+  const bg = cssColor(background) || "var(--ha-card-background, var(--card-background-color, #ffffff))";
+  const t = typeof transparency === "number" ? Math.min(100, Math.max(0, transparency)) : undefined;
+  if (t != null && t > 0) style.background = `color-mix(in srgb, ${bg} ${100 - t}%, transparent)`;
+  else if (background) style.background = bg;
+  const b = typeof blur === "number" ? Math.min(100, Math.max(0, blur)) : undefined;
+  if (b != null && b > 0) {
+    const px = (b / 100) * MAX_BLUR_PX;
+    style["backdrop-filter"] = `blur(${px}px)`;
+    style["-webkit-backdrop-filter"] = `blur(${px}px)`;
+  }
+  return style;
 }
 
 /** Build a plain launcher button (a Button Card) that navigates to a view: via the
@@ -270,7 +298,11 @@ function plainButton(view: LauncherViewInfo, p: BuildLauncherParams, showName: b
     tap_action,
   };
   if (showName) btn.show_name = opt.show_name ?? true;
-  if (active) btn.ring = p.highlightColor || "accent";
+  if (active) {
+    // The current-view button: a highlight ring + a slightly more solid (40%) tint.
+    btn.ring = p.highlightColor || "accent";
+    btn.transparency = 60;
+  }
   return btn;
 }
 
@@ -283,10 +315,14 @@ export function buildLauncherButtons(p: BuildLauncherParams): NavButtonConfig[] 
   const primaryPaths = new Set(Object.keys(p.dashboardKeyByPath));
   const groups = groupLauncherViews(p.views, p.combine, primaryPaths);
   const color = p.buttonColor || "white";
+  const popupStyle = launcherPopupStyle(p.navBackground, p.navTransparency, p.navBlur);
   return groups.map((group) => {
     if (!group.isGroup) return plainButton(group.primary, p, false);
     const primaryOpt = p.options[group.primary.path] ?? {};
     const primaryIcon = typeof primaryOpt.icon === "string" ? primaryOpt.icon : undefined;
+    // The group's label is the shared prefix (e.g. "Home"), unless the primary button
+    // has an explicit name override.
+    const label = primaryOpt.name || capitalize(group.prefix);
     const groupActive =
       p.highlightActive && group.members.some((m) => m.path === p.currentViewPath);
     const trigger: NavButtonConfig = {
@@ -294,13 +330,17 @@ export function buildLauncherButtons(p: BuildLauncherParams): NavButtonConfig[] 
       ...primaryOpt,
       type: `custom:${EXPANDABLE_BUTTON_CARD_TYPE}`,
       icon: primaryIcon || group.primary.icon || DEFAULT_BUTTON_ICON,
-      name: primaryOpt.name || group.primary.title,
+      name: label,
       flip_icon: false,
-      popup_title: primaryOpt.name || group.primary.title,
+      popup_title: label,
+      ...(Object.keys(popupStyle).length ? { popup_style: popupStyle } : {}),
       items: group.members.map((m) => plainButton(m, p, true)),
       tap_action: undefined,
     } as NavButtonConfig;
-    if (groupActive) trigger.ring = p.highlightColor || "accent";
+    if (groupActive) {
+      trigger.ring = p.highlightColor || "accent";
+      trigger.transparency = 60;
+    }
     return trigger;
   });
 }

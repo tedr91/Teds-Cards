@@ -353,7 +353,7 @@ export class TedButtonCard extends LitElement implements LovelaceCard {
     const ringC = cssColor(this._config.ring);
     if (ringC) {
       cardStyle["box-shadow"] = `0 0 0 1px ${ringC}, 0 5px 12px rgba(0, 0, 0, 0.35)`;
-      cardStyle.transform = "var(--ted-ring-lift, translateY(-3px)) scale(1.06)";
+      cardStyle.transform = "var(--ted-ring-lift, translateY(-2px)) scale(1.06)";
     }
 
     // In a grid (Sections) view, honor the grid cell sizing. Everywhere else

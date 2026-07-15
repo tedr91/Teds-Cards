@@ -76,8 +76,8 @@
         border-radius: 12px;
         display: grid;
         place-items: center;
-        /* Button color tint: the card fades the fill to ~22% internally. */
-        background: color-mix(in srgb, var(--btn) 22%, transparent);
+        /* Button color tint: the card fades the fill to ~25% internally. */
+        background: color-mix(in srgb, var(--btn) 25%, transparent);
         color: color-mix(in srgb, var(--btn) 92%, transparent);
         flex: none;
         transition: box-shadow 0.2s ease, transform 0.15s ease, background 0.2s ease;
@@ -141,6 +141,15 @@
         box-shadow: 0 0 0 1px var(--accent), 0 5px 12px rgba(0, 0, 0, 0.35);
       }
 
+      /* Active-background-opacity comparison: the chosen lift + hairline ring with a
+         per-tile tint strength (--bgpct) so the active button reads a touch more solid. */
+      .v-bg .active {
+        transform: translateY(-3px) scale(1.06);
+        box-shadow: 0 0 0 1px var(--accent), 0 5px 12px rgba(0, 0, 0, 0.35);
+        background: color-mix(in srgb, var(--btn) var(--bgpct, 22%), transparent);
+      }
+      h2 { font-size: 16px; font-weight: 650; margin: 36px 0 4px; }
+
       code { font-size: 10.5px; color: #a9d0ff; }
     </style>
   </head>
@@ -170,6 +179,10 @@
     </div>
 
     <div class="grid" id="grid"></div>
+
+    <h2>Active background — slightly less transparent (with the chosen lift + hairline ring)</h2>
+    <p class="sub">Neighbours keep the normal <b>25%</b> tint; the current-view button uses the labelled opacity of the Button color.</p>
+    <div class="grid" id="grid2"></div>
 
     <script>
       const ICON =
@@ -210,6 +223,29 @@
           '</div>' +
           '<div style="margin-top:10px"><code>' + snippet + '</code></div>';
         grid.appendChild(el);
+      }
+
+      const bgGrid = document.getElementById("grid2");
+      const bgOpts = [
+        ["30%", "30%"],
+        ["35%", "35%"],
+        ["40%", "40%"],
+        ["45%", "45%"],
+        ["50%", "50%"],
+      ];
+      for (const [pct, title] of bgOpts) {
+        const el = document.createElement("div");
+        el.className = "variant v-bg";
+        el.innerHTML =
+          '<h3>' + title + '</h3>' +
+          '<p class="desc">Normal tiles 25%; active tile background at ' + pct + ' of the Button color.</p>' +
+          '<div class="strip">' +
+            '<div class="btn">' + icons[0] + '</div>' +
+            '<div class="btn active" style="--bgpct:' + pct + '">' + icons[1] + '</div>' +
+            '<div class="btn">' + icons[2] + '</div>' +
+          '</div>' +
+          '<div style="margin-top:10px"><code>color-mix(btn ' + pct + ', transparent)</code></div>';
+        bgGrid.appendChild(el);
       }
 
       const root = document.documentElement.style;

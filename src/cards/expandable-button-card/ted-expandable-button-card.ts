@@ -106,11 +106,12 @@ export class TedExpandableButtonCard extends LitElement implements LovelaceCard 
   /** The trigger looks like a Button Card; its own tap/hold/double actions are disabled
    *  so a tap only opens the popup (the native popover invoker handles that). */
   private _triggerConfig(): LovelaceCardConfig {
-    const { items, popup_layout, popup_max_columns, popup_title, ...rest } = this._config ?? {};
+    const { items, popup_layout, popup_max_columns, popup_title, popup_style, ...rest } = this._config ?? {};
     void items;
     void popup_layout;
     void popup_max_columns;
     void popup_title;
+    void popup_style;
     return {
       ...rest,
       type: `custom:${BUTTON_CARD_TYPE}`,
@@ -187,7 +188,7 @@ export class TedExpandableButtonCard extends LitElement implements LovelaceCard 
         id=${POPOVER_ID}
         class="ebc-popover ${tedCardThemeClass(theme)}"
         popover
-        style=${styleMap({ "--ebc-cols": String(cols) })}
+        style=${styleMap({ "--ebc-cols": String(cols), ...(this._config.popup_style ?? {}) })}
         @toggle=${this._onPopoverToggle}
         @click=${this._onPopoverBodyClick}
       >

@@ -836,6 +836,9 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
       highlightActive: this._settingOverride("launcher_highlight_active") !== false,
       buttonColor: typeof buttonColorRaw === "string" && buttonColorRaw ? buttonColorRaw : undefined,
       highlightColor: typeof highlightColorRaw === "string" && highlightColorRaw ? highlightColorRaw : undefined,
+      navBackground: typeof this._config?.background === "string" ? this._config.background : undefined,
+      navTransparency: typeof this._config?.transparency === "number" ? this._config.transparency : undefined,
+      navBlur: typeof this._config?.blur === "number" ? this._config.blur : undefined,
     });
     return this._launcherCache;
   }

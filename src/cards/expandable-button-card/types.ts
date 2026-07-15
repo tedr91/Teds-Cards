@@ -21,6 +21,9 @@ export interface ExpandableButtonCardConfig extends ButtonCardConfig {
   popup_max_columns?: number;
   /** Optional heading shown at the top of the popup. */
   popup_title?: string;
+  /** Inline style overrides for the popup surface (e.g. to mirror a navbar's background /
+   *  blur so a launcher group's popup matches the bar). */
+  popup_style?: Record<string, string>;
   /** Flip the trigger icon (e.g. a chevron) 180° while the popup is open. Defaults to true. */
   flip_icon?: boolean;
 }
