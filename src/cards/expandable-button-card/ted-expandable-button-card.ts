@@ -320,7 +320,8 @@ export class TedExpandableButtonCard extends LitElement implements LovelaceCard 
         height: 10px;
         color: var(--ted-style-on-accent, #06121b);
       }
-      .ebc-trigger > * {
+      /* The trigger card fills the button, but the group badge keeps its own small size. */
+      .ebc-trigger > *:not(.ebc-group-badge) {
         display: block;
         width: 100%;
         height: 100%;
