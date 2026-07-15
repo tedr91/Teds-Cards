@@ -28,17 +28,18 @@ export function calendarOptionsData(
   hass: HomeAssistant | undefined,
   item: CalendarItemConfig,
 ): Record<string, unknown> {
-  const autoPerson =
-    item.icon_source === "icon"
-      ? ""
-      : (matchPerson(hass?.states, item.name || calendarEntityName(hass, item.entity)) ?? "");
+  const match = matchPerson(hass?.states, item.name || calendarEntityName(hass, item.entity)) ?? "";
+  const personExists = item.person || match;
+  // Effective badge source: explicit wins, else Person when one is available, else Icon.
+  const effectiveSource = item.icon_source ?? (personExists ? "person" : "icon");
+  const autoPerson = effectiveSource === "person" ? item.person || match : "";
   return {
     name: item.name ?? "",
     readonly: item.readonly !== false,
     hide_times: item.hide_times === true,
     icon: item.icon ?? "",
     person: item.person ?? autoPerson,
-    icon_source: item.icon_source ?? "icon",
+    icon_source: effectiveSource,
     color: item.color ?? "",
   };
 }
@@ -86,13 +87,17 @@ export function applyCalendarOptionChange(
   next.name = (v.name as string) || undefined;
   next.readonly = v.readonly === false ? false : undefined;
   next.hide_times = v.hide_times === true ? true : undefined;
-  const src = (v.icon_source as CalendarIconSource) ?? cur.icon_source ?? "icon";
-  next.icon_source = src !== "icon" ? src : undefined;
+  const match = matchPerson(hass?.states, next.name || calendarEntityName(hass, cur.entity));
+  const explicitPerson = (v.person as string) || cur.person || "";
+  // Auto default: Person when one is available, else Icon. Store the chosen source
+  // ONLY when it overrides that default (so "Icon" IS persisted when a person matches).
+  const autoDefault: CalendarIconSource = explicitPerson || match ? "person" : "icon";
+  const chosen = (v.icon_source as CalendarIconSource) ?? cur.icon_source ?? autoDefault;
+  next.icon_source = chosen === autoDefault ? undefined : chosen;
   if ("person" in v) {
     const p = (v.person as string) || undefined;
     // Don't persist a person that just equals the auto-match (keeps it dynamic + clean).
-    const auto = matchPerson(hass?.states, next.name || calendarEntityName(hass, cur.entity));
-    next.person = p && p !== auto ? p : undefined;
+    next.person = p && p !== match ? p : undefined;
   }
   if ("icon" in v) next.icon = (v.icon as string) || undefined;
   next.color = (v.color as string) || undefined;

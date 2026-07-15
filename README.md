@@ -939,6 +939,11 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.193
+
+- **Datetime status item** — in **both-stacked** mode there's now a small gap between the time and date, and the date size is `0.9em` of the time.
+- **Calendar badge source fix** — the per-calendar **Badge source** now shows the effective value (Person when one auto-matches), and choosing **Icon** persists even when a person matches — so the Settings list correctly greys out the person avatar when it isn't the active badge.
+
 ### v1.0.192
 
 - **Calendar list person hint** — in **Settings → Calendars**, a calendar's linked person photo now shows greyscale when the badge source isn't Person (a hint that a person is available but unused), and full color when Person is the active badge.

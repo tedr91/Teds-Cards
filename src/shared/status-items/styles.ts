@@ -23,11 +23,11 @@ export const statusItemStyles = css`
   .status-item.datetime-stacked {
     flex-direction: column;
     align-items: center;
-    gap: 0;
+    gap: 2px;
     line-height: 1.05;
   }
   .status-item.datetime-stacked .status-text:last-child {
-    font-size: 0.72em;
+    font-size: 0.9em;
     font-weight: 600;
     color: var(--ted-style-muted);
   }
