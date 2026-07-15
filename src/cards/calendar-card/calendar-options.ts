@@ -35,6 +35,7 @@ export function calendarOptionsData(
   return {
     name: item.name ?? "",
     readonly: item.readonly !== false,
+    hide_times: item.hide_times === true,
     icon: item.icon ?? "",
     person: item.person ?? autoPerson,
     icon_source: item.icon_source ?? "icon",
@@ -50,6 +51,7 @@ export function calendarOptionsSchema(
 ): unknown[] {
   return [
     { name: "readonly", selector: { boolean: {} } },
+    { name: "hide_times", selector: { boolean: {} } },
     {
       type: "grid",
       name: "",
@@ -83,6 +85,7 @@ export function applyCalendarOptionChange(
   const next: CalendarItemConfig = { ...cur };
   next.name = (v.name as string) || undefined;
   next.readonly = v.readonly === false ? false : undefined;
+  next.hide_times = v.hide_times === true ? true : undefined;
   const src = (v.icon_source as CalendarIconSource) ?? cur.icon_source ?? "icon";
   next.icon_source = src !== "icon" ? src : undefined;
   if ("person" in v) {
@@ -103,6 +106,8 @@ export function calendarOptionLabel(name: string): string {
       return "Name";
     case "readonly":
       return "Read-only";
+    case "hide_times":
+      return "Hide times";
     case "icon_source":
       return "Badge source";
     case "person":
@@ -121,6 +126,8 @@ export function calendarOptionHelper(name: string): string | undefined {
   switch (name) {
     case "readonly":
       return "Prevent editing events on this calendar.";
+    case "hide_times":
+      return "Hide event start/end times on this calendar (show them as all-day).";
     case "icon_source":
       return "Badge shows the icon or the linked person's avatar.";
     default:

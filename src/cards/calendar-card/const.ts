@@ -85,11 +85,6 @@ export const CALENDAR_DEFAULT_CONFIG: Record<string, unknown> = {
   show_dashboard_nav_button: false,
   header_dashboard_path: null,
   header_weather_sensor: "weather.forecast_home",
-  calendar_person_entities: {
-    "calendar.chanisha_s_gmail_com": "person.chanisha_somatilaka",
-    "calendar.ted_outlook_calendar": "person.ted_roberts",
-    "calendar.family": "person.wallpanel",
-  },
   default_hidden_calendars: [],
   color_scheme: "auto",
   enable_event_management: true,
@@ -100,45 +95,6 @@ export const CALENDAR_DEFAULT_CONFIG: Record<string, unknown> = {
   compact_height: true,
   compact_header: true,
   hide_calendar_names: true,
-  colors: {
-    "calendar.birthdays_2": "#00c700",
-    "calendar.chanisha_s_gmail_com": "#9c5fff",
-    "calendar.family": "#738eb0",
-    "calendar.hockey_canadian_bacon": "#0050ff",
-    "calendar.hockey_maple_bars": "#0050ff",
-    "calendar.holidays_in_united_states": "#F7DC6F",
-    "calendar.ted_outlook_calendar": "#43a1ce",
-  },
-  calendar_names: {
-    "calendar.chanisha_s_gmail_com": "Chanisha Calendar",
-    "calendar.ted_outlook_calendar": "Ted Calendar",
-  },
   combine_calendars: true,
   combine_calendars_width: 6,
-  readonly_calendars: [
-    "calendar.birthdays_2",
-    "calendar.chanisha_s_gmail_com",
-    "calendar.hockey_canadian_bacon",
-    "calendar.hockey_maple_bars",
-    "calendar.holidays_in_united_states",
-    "calendar.ted_outlook_calendar",
-  ],
-  virtual_calendars: [
-    {
-      id: "virtual_1",
-      name: "Ted",
-      icon: null,
-      color: "#578eb5",
-      entities: [
-        "calendar.hockey_canadian_bacon",
-        "calendar.hockey_maple_bars",
-        "calendar.ted_outlook_calendar",
-      ],
-    },
-  ],
-  hide_times_for_calendars: ["calendar.holidays_in_united_states", "calendar.birthdays_2"],
-  calendar_badge_icons: {
-    "calendar.holidays_in_united_states": "mdi:beach",
-    "calendar.birthdays_2": "mdi:balloon",
-  },
 };

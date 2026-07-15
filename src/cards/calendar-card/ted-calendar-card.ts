@@ -248,6 +248,9 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
     const readonly = Array.isArray(base.readonly_calendars)
       ? [...(base.readonly_calendars as string[])]
       : [];
+    const hideTimes = Array.isArray(base.hide_times_for_calendars)
+      ? [...(base.hide_times_for_calendars as string[])]
+      : [];
     for (const it of this._items()) {
       if (it.color) colors[it.entity] = cssColor(it.color) ?? it.color;
       if (it.name) names[it.entity] = it.name;
@@ -272,6 +275,13 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
         if (ri >= 0) readonly.splice(ri, 1);
       } else if (ri < 0) {
         readonly.push(it.entity);
+      }
+      // Hide times: explicit true adds, explicit false removes; undefined keeps the baked default.
+      const ti = hideTimes.indexOf(it.entity);
+      if (it.hide_times === true) {
+        if (ti < 0) hideTimes.push(it.entity);
+      } else if (it.hide_times === false) {
+        if (ti >= 0) hideTimes.splice(ti, 1);
       }
     }
 
@@ -307,6 +317,7 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
       calendar_person_entities: persons,
       calendar_badge_icons: badgeIcons,
       readonly_calendars: readonly,
+      hide_times_for_calendars: hideTimes,
       entities,
       default_view: this._resolvedView(),
       ...(cfg.calendar_config ?? {}),

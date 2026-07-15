@@ -318,6 +318,9 @@ export class TedCalendarCardEditor extends LitElement implements LovelaceCardEdi
     if (schema.name === "readonly") {
       return "Prevent editing events on this calendar.";
     }
+    if (schema.name === "hide_times") {
+      return "Hide event start/end times on this calendar (show them as all-day).";
+    }
     if (schema.name === "transparency") {
       return "How see-through the card background is (0 = solid).";
     }
@@ -369,6 +372,8 @@ export class TedCalendarCardEditor extends LitElement implements LovelaceCardEdi
         return "Height";
       case "readonly":
         return "Read-only";
+      case "hide_times":
+        return "Hide times";
       case "icon_source":
         return "Badge source";
       case "person":

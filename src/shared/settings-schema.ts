@@ -101,7 +101,7 @@ export const SETTINGS_DEFAULTS: SettingsMap = {
   cameras_list: [],
   calendars_list: [],
   calendar_options: {},
-  calendar_name: null,
+  calendar_name: "Family Calendar",
   calendar_theme: "ha",
   calendar_view: "month",
   cameras_layout: "auto",

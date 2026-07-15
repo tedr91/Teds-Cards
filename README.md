@@ -939,6 +939,11 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.191
+
+- **Per-calendar “Hide times” toggle** — each calendar's Options (editor and Settings → Calendars) now has a **Hide times** toggle below **Read-only** to show its events as all-day.
+- **Nicer list adding in Settings** — the Cameras / Thermostats / Calendars “available list” now adds entities via a **“+ Add”** button that opens a searchable popup chooser, instead of the inline entity picker.
+
 ### v1.0.190
 
 - **Calendar appearance in Settings** — **Settings → Calendars** now exposes card-level **Name**, **Theme** (Home Assistant vs. Ted's Theme), and **Default view** (Month/Week/Schedule/Agenda) above the calendars list. Ted's Calendar card applies them in settings mode; a card's own YAML still wins where set.

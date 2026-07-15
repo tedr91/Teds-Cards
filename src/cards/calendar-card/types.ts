@@ -21,6 +21,8 @@ export interface CalendarItemConfig {
   name?: string;
   /** Whether events on this calendar are read-only (no editing). Default true. */
   readonly?: boolean;
+  /** Whether to hide event times on this calendar (all-day style). Default false. */
+  hide_times?: boolean;
   /** A `person.*` entity whose avatar represents this calendar. */
   person?: string;
   /** A badge icon (defaults to the calendar's own icon). */

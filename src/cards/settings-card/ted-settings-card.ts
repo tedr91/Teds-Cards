@@ -6,6 +6,7 @@ import { type HomeAssistant, type LovelaceCard, type LovelaceCardEditor } from "
 
 import { appearanceStyle, cssColor } from "../../shared/appearance";
 import { brushedOverlay, tedCardThemeClass, tedStyleTheme } from "../../shared/theme";
+import { modalStyles } from "../../shared/dialogs";
 import { registerCustomCard } from "../../shared/register-card";
 import {
   SettingsController,
@@ -99,6 +100,10 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
   private _editing = new Set<string>();
   /** Which calendars have their per-calendar Options disclosure open (by entity id). */
   @state() private _calOptOpen = new Set<string>();
+  /** The entity-list field whose "Add" chooser popup is open (Global scope), or none. */
+  @state() private _addListField?: SettingField;
+  /** Search query in the "Add" chooser popup. */
+  @state() private _addListQuery = "";
   /** Resolved display URLs for media-source:// wallpaper thumbnails (uri → url). */
   private _bgThumbs = new Map<string, string>();
   /** media-source URI of the backend's "Ted Dash System" wallpaper folder (or null). */
@@ -993,18 +998,75 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
             )
           : html`<div class="help">No ${meta.nounPlural} yet — add one below or tap “Auto-populate”.</div>`}
         ${admin && remaining.length
-          ? html`<ha-entity-picker
-              .hass=${this.hass}
-              .value=${""}
-              .includeEntities=${remaining}
-              allow-custom-entity
-              label=${`Add a ${meta.noun}`}
-              @value-changed=${(e: CustomEvent) => {
-                const id = e.detail.value;
-                if (id && !ids.includes(id)) setList([...ids, id]);
-              }}
-            ></ha-entity-picker>`
+          ? html`<button class="cam-btn add-list-btn" @click=${() => this._openAddList(field)}>
+              <ha-icon icon="mdi:plus"></ha-icon><span>Add a ${meta.noun}</span>
+            </button>`
           : nothing}
+      </div>
+    `;
+  }
+
+  /** Open the "Add" chooser popup for an entity-list field (Global scope). */
+  private _openAddList(field: SettingField): void {
+    this._addListQuery = "";
+    this._addListField = field;
+  }
+
+  private _closeAddList(): void {
+    this._addListField = undefined;
+  }
+
+  /** The searchable chooser popup for adding entities to an entity-list's Global list. */
+  private _renderAddListModal(): TemplateResult | typeof nothing {
+    const field = this._addListField;
+    if (!field) return nothing;
+    const meta = this._listMeta(field);
+    const domain = field.entityDomain ?? "camera";
+    const ids = this._camerasArray(this._globalValue(field.key));
+    const q = this._addListQuery.trim().toLowerCase();
+    const remaining = this._allCameras(domain)
+      .filter((id) => !ids.includes(id))
+      .filter(
+        (id) => !q || this._cameraName(id).toLowerCase().includes(q) || id.toLowerCase().includes(q),
+      );
+    const themeClass = tedCardThemeClass(this._config?.theme === "ted-style" ? "ted-style" : "ha");
+    const add = (id: string): void => {
+      this._setGlobal(field.key, [...ids, id]);
+    };
+    return html`
+      <div class="ted-modal ${themeClass}" @click=${() => this._closeAddList()}>
+        <div class="ted-sheet add-sheet" @click=${(e: Event) => e.stopPropagation()}>
+          <div class="ted-sheet-head">Add a ${meta.noun}</div>
+          <div class="add-search">
+            <ha-icon icon="mdi:magnify"></ha-icon>
+            <input
+              class="ted-input"
+              type="text"
+              placeholder=${`Search ${meta.nounPlural}…`}
+              .value=${this._addListQuery}
+              @input=${(e: Event) => (this._addListQuery = (e.target as HTMLInputElement).value)}
+            />
+          </div>
+          <div class="add-list">
+            ${remaining.length
+              ? remaining.map(
+                  (id) => html`<button class="add-item" @click=${() => add(id)}>
+                    <ha-icon
+                      class="cam-ico"
+                      .icon=${this.hass?.states[id]?.attributes?.icon || meta.icon}
+                    ></ha-icon>
+                    <span class="add-item-name">${this._cameraName(id)}</span>
+                    <span class="add-item-id">${id}</span>
+                  </button>`,
+                )
+              : html`<div class="add-empty">
+                  ${q ? `No ${meta.nounPlural} match “${this._addListQuery}”.` : `No more ${meta.nounPlural} to add.`}
+                </div>`}
+          </div>
+          <div class="add-actions">
+            <button class="cam-btn" @click=${() => this._closeAddList()}>Done</button>
+          </div>
+        </div>
       </div>
     `;
   }
@@ -1430,6 +1492,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
                 </div>
               `}
         </ha-card>
+        ${this._renderAddListModal()}
       `;
     }
 
@@ -1481,6 +1544,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
               </div>
             `}
       </ha-card>
+      ${this._renderAddListModal()}
     `;
   }
 
@@ -1490,6 +1554,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
 
   static styles = [
     tedStyleTheme,
+    modalStyles,
     css`
       :host {
         display: block;
@@ -1951,6 +2016,84 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
       }
       .cam-add {
         max-width: 260px;
+      }
+      .add-list-btn {
+        align-self: flex-start;
+      }
+      /* "Add a …" chooser popup. */
+      .add-sheet {
+        width: min(420px, 100%);
+        display: flex;
+        flex-direction: column;
+        max-height: min(70vh, 560px);
+      }
+      .add-search {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 16px 8px;
+      }
+      .add-search ha-icon {
+        color: var(--ted-style-muted);
+        --mdc-icon-size: 20px;
+        flex: none;
+      }
+      .add-list {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        overflow: auto;
+        padding: 4px 12px;
+      }
+      .add-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        width: 100%;
+        box-sizing: border-box;
+        text-align: left;
+        font: inherit;
+        padding: 8px 10px;
+        border-radius: 8px;
+        border: 1px solid transparent;
+        background: none;
+        color: inherit;
+        cursor: pointer;
+      }
+      .add-item:hover {
+        background: var(--ted-style-surface-2);
+        border-color: var(--ted-style-divider);
+      }
+      .add-item .cam-ico {
+        flex: none;
+      }
+      .add-item-name {
+        flex: 0 1 auto;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .add-item-id {
+        margin-left: auto;
+        flex: none;
+        font-size: 0.72rem;
+        color: var(--ted-style-muted);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        max-width: 45%;
+      }
+      .add-empty {
+        padding: 18px 12px;
+        text-align: center;
+        color: var(--ted-style-muted);
+        font-size: 0.85rem;
+      }
+      .add-actions {
+        display: flex;
+        justify-content: flex-end;
+        padding: 10px 16px 14px;
       }
       .bg-row {
         display: flex;
