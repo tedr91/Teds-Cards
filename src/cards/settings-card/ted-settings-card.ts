@@ -40,6 +40,9 @@ import {
   calendarOptionLabel,
   calendarOptionsData,
   calendarOptionsSchema,
+  renderVirtualMembers,
+  virtualGroupNameFor,
+  virtualJoinCandidates,
 } from "../calendar-card/calendar-options";
 import { matchPerson } from "../calendar-card/const";
 import type { CalendarItemConfig } from "../calendar-card/types";
@@ -799,6 +802,12 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
       person?: (id: string) => string;
       /** Whether the person avatar is available but NOT the active badge (greyed). */
       personMuted?: (id: string) => boolean;
+      /** Whether to show the virtual-group indicator icon on the row. */
+      badge?: (id: string) => boolean;
+      /** A "In <group>" tag for calendars grouped into a virtual calendar. */
+      tag?: (id: string) => string;
+      /** Whether to hide the Options disclosure (for grouped member rows). */
+      optionsHidden?: (id: string) => boolean;
     },
   ): TemplateResult {
     const rows = ids.map((id, idx) => {
@@ -807,6 +816,9 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
       const rowColor = options?.color?.(id) || "";
       const rowPerson = options?.person?.(id) || "";
       const rowPersonMuted = options?.personMuted?.(id) || false;
+      const rowBadge = options?.badge?.(id) || false;
+      const rowTag = options?.tag?.(id) || "";
+      const optHidden = options?.optionsHidden?.(id) || false;
       const row = html`
         <div
           class="cam-item ${readonly ? "readonly" : ""} ${rowColor ? "tinted" : ""}"
@@ -819,6 +831,10 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
               </div>`}
           <ha-icon class="cam-ico" .icon=${rowIcon}></ha-icon>
           <span class="cam-name">${rowName}</span>
+          ${rowBadge
+            ? html`<ha-icon class="cam-groupico" icon="mdi:calendar-multiple" title="Virtual group"></ha-icon>`
+            : nothing}
+          ${rowTag ? html`<span class="cam-tag" title="Joined into ${rowTag}">In ${rowTag}</span>` : nothing}
           ${!readonly && rowPerson
             ? html`<img
                 class="cam-avatar ${rowPersonMuted ? "muted" : ""}"
@@ -827,7 +843,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
                 title=${rowPersonMuted ? "Person available (badge source is Icon)" : "Person badge"}
               />`
             : nothing}
-          ${!readonly && options
+          ${!readonly && options && !optHidden
             ? html`<button
                 class="cam-opt ${options.isOpen(id) ? "on" : ""}"
                 title="Options"
@@ -846,7 +862,9 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
       if (!options) return row;
       return html`<div class="cam-entry">
         ${row}
-        ${options.isOpen(id) ? html`<div class="cam-opt-body">${options.body(id)}</div>` : nothing}
+        ${options.isOpen(id) && !optHidden
+          ? html`<div class="cam-opt-body">${options.body(id)}</div>`
+          : nothing}
       </div>`;
     });
     if (readonly) return html`<div class="cam-list">${rows}</div>`;
@@ -895,10 +913,16 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     return configured || (typeof entityIcon === "string" ? entityIcon : "") || "mdi:calendar";
   }
 
-  /** A calendar's collapsed-row name: its configured name, else the friendly name. */
+  /** A calendar's collapsed-row name: its configured name (or virtual name), else friendly. */
   private _calendarRowName(id: string): string {
     const opt = this._calendarOptionsMap()[id] ?? {};
-    const configured = typeof opt.name === "string" ? opt.name : "";
+    const configured = opt.virtual
+      ? typeof opt.virtual_name === "string"
+        ? opt.virtual_name
+        : ""
+      : typeof opt.name === "string"
+        ? opt.name
+        : "";
     return configured || this._cameraName(id);
   }
 
@@ -932,6 +956,11 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
   private _renderCalendarOptions(id: string): TemplateResult {
     const opt = this._calendarOptionsMap()[id] ?? {};
     const item = { entity: id, ...(opt as Partial<CalendarItemConfig>) } as CalendarItemConfig;
+    const candidates = virtualJoinCandidates(
+      this._camerasArray(this._globalValue("calendars_list")),
+      id,
+      this._calendarItems(),
+    );
     return html`
       <ha-form
         .hass=${this.hass}
@@ -941,7 +970,36 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
         .computeHelper=${(s: { name: string }) => calendarOptionHelper(s.name)}
         @value-changed=${(ev: CustomEvent) => this._calendarOptionChanged(id, ev)}
       ></ha-form>
+      ${item.virtual
+        ? html`<div class="cam-vc">
+            <div class="cam-vc-label">Join calendars</div>
+            ${renderVirtualMembers(
+              this.hass,
+              Array.isArray(item.virtual_members) ? item.virtual_members : [],
+              candidates,
+              (next) => this._calendarMembersChanged(id, next),
+            )}
+          </div>`
+        : nothing}
     `;
+  }
+
+  /** Calendar items (global list ids merged with their options), for virtual grouping. */
+  private _calendarItems(): CalendarItemConfig[] {
+    const ids = this._camerasArray(this._globalValue("calendars_list"));
+    const map = this._calendarOptionsMap();
+    return ids.map((id) => ({ entity: id, ...(map[id] ?? {}) }) as CalendarItemConfig);
+  }
+
+  /** A virtual group's member list changed — persist it into `calendar_options`. */
+  private _calendarMembersChanged(id: string, members: string[]): void {
+    const map = this._calendarOptionsMap();
+    const opt = { ...(map[id] ?? {}) };
+    if (members.length) opt.virtual_members = members;
+    else delete opt.virtual_members;
+    if (Object.keys(opt).length) map[id] = opt;
+    else delete map[id];
+    this._setGlobal("calendar_options", map);
   }
 
   private _calendarOptionChanged(id: string, ev: CustomEvent): void {
@@ -954,6 +1012,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     const opt: Record<string, unknown> = {};
     for (const [k, val] of Object.entries(next)) {
       if (k === "entity" || val === undefined || val === "") continue;
+      if (Array.isArray(val) && val.length === 0) continue;
       opt[k] = val;
     }
     if (Object.keys(opt).length) map[id] = opt;
@@ -1007,6 +1066,10 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
                     color: (id) => this._calendarRowColor(id),
                     person: (id) => this._calendarRowPersonPicture(id),
                     personMuted: (id) => this._calendarRowPersonMuted(id),
+                    badge: (id) => this._calendarOptionsMap()[id]?.virtual === true,
+                    tag: (id) => virtualGroupNameFor(this.hass, id, this._calendarItems()),
+                    optionsHidden: (id) =>
+                      !!virtualGroupNameFor(this.hass, id, this._calendarItems()),
                   }
                 : undefined,
             )
@@ -1986,6 +2049,33 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
       .cam-avatar.muted {
         filter: grayscale(1);
         opacity: 0.5;
+      }
+      .cam-groupico {
+        flex: none;
+        color: var(--primary-color, #3f7cf0);
+        --mdc-icon-size: 20px;
+      }
+      .cam-tag {
+        flex: none;
+        font-size: 0.72rem;
+        font-weight: 600;
+        padding: 2px 8px;
+        border-radius: 999px;
+        color: var(--primary-color, #3f7cf0);
+        background: color-mix(in srgb, var(--primary-color, #3f7cf0) 15%, transparent);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 45%;
+      }
+      .cam-vc {
+        margin-top: 8px;
+      }
+      .cam-vc-label {
+        font-size: 0.78rem;
+        font-weight: 600;
+        color: var(--ted-style-muted);
+        margin-bottom: 2px;
       }
       .cam-del {
         display: inline-flex;

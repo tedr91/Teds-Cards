@@ -4,6 +4,7 @@
  * person / color). Used by BOTH the Ted's Calendar card editor and the Ted's
  * Cards Settings card (Calendars tab), so the two stay in sync.
  */
+import { html, nothing, type TemplateResult } from "lit";
 import type { HomeAssistant } from "custom-card-helpers";
 
 import { matchPerson } from "./const";
@@ -35,6 +36,8 @@ export function calendarOptionsData(
   const autoPerson = effectiveSource === "person" ? item.person || match : "";
   return {
     name: item.name ?? "",
+    virtual: item.virtual === true,
+    virtual_name: item.virtual_name ?? "",
     readonly: item.readonly !== false,
     show_badge: item.show_badge !== false,
     show_birthday_badge: item.show_birthday_badge !== false,
@@ -52,7 +55,12 @@ export function calendarOptionsSchema(
   hass: HomeAssistant | undefined,
   item: CalendarItemConfig,
 ): unknown[] {
+  // When this calendar is a virtual group, the "Name" field becomes "Virtual name".
+  const nameField = item.virtual
+    ? { name: "virtual_name", selector: { text: { placeholder: "Group" } } }
+    : { name: "name", selector: { text: { placeholder: calendarEntityName(hass, item.entity) } } };
   return [
+    { name: "virtual", selector: { boolean: {} } },
     {
       type: "grid",
       name: "",
@@ -76,7 +84,7 @@ export function calendarOptionsSchema(
       name: "",
       column_min_width: "140px",
       schema: [
-        { name: "name", selector: { text: { placeholder: calendarEntityName(hass, item.entity) } } },
+        nameField,
         {
           name: "icon_source",
           selector: { select: { mode: "dropdown", options: CALENDAR_ICON_SOURCE_OPTIONS } },
@@ -102,7 +110,9 @@ export function applyCalendarOptionChange(
   v: Record<string, unknown>,
 ): CalendarItemConfig {
   const next: CalendarItemConfig = { ...cur };
-  next.name = (v.name as string) || undefined;
+  if ("name" in v) next.name = (v.name as string) || undefined;
+  next.virtual = v.virtual === true ? true : undefined;
+  if ("virtual_name" in v) next.virtual_name = (v.virtual_name as string) || undefined;
   next.readonly = v.readonly === false ? false : undefined;
   next.show_badge = v.show_badge === false ? false : undefined;
   next.show_birthday_badge = v.show_birthday_badge === false ? false : undefined;
@@ -129,6 +139,10 @@ export function calendarOptionLabel(name: string): string {
   switch (name) {
     case "name":
       return "Name";
+    case "virtual":
+      return "Virtual (group calendars)";
+    case "virtual_name":
+      return "Virtual name";
     case "readonly":
       return "Read-only";
     case "show_badge":
@@ -155,6 +169,8 @@ export function calendarOptionHelper(name: string): string | undefined {
   switch (name) {
     case "readonly":
       return "Prevent editing events on this calendar.";
+    case "virtual":
+      return "Group this calendar's events with other calendars under one name, colour, and icon in the header.";
     case "show_badge":
       return "Show this calendar's badge in the header (tap to toggle its events).";
     case "show_birthday_badge":
@@ -166,4 +182,112 @@ export function calendarOptionHelper(name: string): string | undefined {
     default:
       return undefined;
   }
+}
+
+// --- Virtual group members -------------------------------------------------
+
+/** Calendars that may be joined into `anchor`'s virtual group: from `available`,
+ *  excluding the anchor itself, any OTHER virtual anchor, and calendars already grouped
+ *  into a different group (prevents nesting / double-membership). */
+export function virtualJoinCandidates(
+  available: string[],
+  anchor: string,
+  items: CalendarItemConfig[],
+): string[] {
+  const anchors = new Set(items.filter((i) => i.virtual).map((i) => i.entity));
+  const groupedElsewhere = new Set<string>();
+  for (const it of items) {
+    if (!it.virtual || it.entity === anchor) continue;
+    for (const m of it.virtual_members ?? []) groupedElsewhere.add(m);
+  }
+  return available.filter(
+    (id) => id !== anchor && !anchors.has(id) && !groupedElsewhere.has(id),
+  );
+}
+
+/** The `virtual_name` (or a fallback) of the group that `entity` is a member of, or "".
+ *  Used to tag grouped rows "In <group>". */
+export function virtualGroupNameFor(
+  hass: HomeAssistant | undefined,
+  entity: string,
+  items: CalendarItemConfig[],
+): string {
+  for (const it of items) {
+    if (it.virtual && (it.virtual_members ?? []).includes(entity)) {
+      return it.virtual_name || it.name || calendarEntityName(hass, it.entity);
+    }
+  }
+  return "";
+}
+
+/** A self-contained, reorderable picker for a virtual group's member calendars. Uses
+ *  inline styles so it works inside any host (card editor or Settings). */
+export function renderVirtualMembers(
+  hass: HomeAssistant | undefined,
+  members: string[],
+  candidateIds: string[],
+  onChange: (next: string[]) => void,
+): TemplateResult {
+  const remaining = candidateIds.filter((id) => !members.includes(id));
+  const chip =
+    "display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px;" +
+    "border:1px solid var(--divider-color,rgba(120,120,120,0.22));" +
+    "background:var(--secondary-background-color,rgba(0,0,0,0.04));";
+  const move = (from: number, to: number): void => {
+    const n = [...members];
+    n.splice(to, 0, n.splice(from, 1)[0]);
+    onChange(n);
+  };
+  return html`
+    <div style="display:flex;flex-direction:column;gap:6px;margin-top:6px;">
+      <ha-sortable
+        handle-selector=".vc-grip"
+        @item-moved=${(e: CustomEvent) => {
+          const { oldIndex, newIndex } = e.detail as { oldIndex: number; newIndex: number };
+          move(oldIndex, newIndex);
+        }}
+      >
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          ${members.map(
+            (id, idx) => html`<div style=${chip}>
+              <div class="vc-grip" style="display:flex;cursor:grab;color:var(--secondary-text-color);touch-action:none;" title="Drag to reorder">
+                <ha-icon icon="mdi:drag"></ha-icon>
+              </div>
+              <ha-icon icon="mdi:calendar" style="flex:none;color:var(--secondary-text-color);--mdc-icon-size:20px;"></ha-icon>
+              <span style="flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                ${calendarEntityName(hass, id)}
+              </span>
+              <ha-icon-button
+                label="Remove"
+                .path=${"M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z"}
+                @click=${() => {
+                  const n = [...members];
+                  n.splice(idx, 1);
+                  onChange(n);
+                }}
+              ></ha-icon-button>
+            </div>`,
+          )}
+        </div>
+      </ha-sortable>
+      ${members.length === 0
+        ? html`<div style="color:var(--secondary-text-color);font-size:0.85rem;">
+            No calendars joined yet — add one below.
+          </div>`
+        : nothing}
+      ${remaining.length
+        ? html`<ha-entity-picker
+            .hass=${hass}
+            .value=${""}
+            .includeEntities=${remaining}
+            allow-custom-entity
+            label="Join a calendar"
+            @value-changed=${(e: CustomEvent) => {
+              const id = e.detail.value as string;
+              if (id && !members.includes(id)) onChange([...members, id]);
+            }}
+          ></ha-entity-picker>`
+        : nothing}
+    </div>
+  `;
 }

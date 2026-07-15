@@ -19,6 +19,14 @@ export interface CalendarItemConfig {
   entity: string;
   /** Display name (defaults to the calendar's own name). */
   name?: string;
+  /** When true, this calendar is a VIRTUAL group anchor: it groups its own events with
+   *  the `virtual_members` calendars under one name/colour/icon in the header. */
+  virtual?: boolean;
+  /** The group's display name (used instead of `name` when `virtual` is true). */
+  virtual_name?: string;
+  /** The OTHER `calendar.*` entities joined into this group (the anchor's own entity is
+   *  implicitly included). Order matters (combine primary). */
+  virtual_members?: string[];
   /** Whether events on this calendar are read-only (no editing). Default true. */
   readonly?: boolean;
   /** Whether this calendar's badge is shown in the header. Default true. */

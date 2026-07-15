@@ -350,7 +350,87 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
     const hideBadges = Array.isArray(base.hide_badge_calendars)
       ? [...(base.hide_badge_calendars as string[])]
       : [];
-    for (const it of this._items()) {
+
+    // Virtual groups: which entities are members subsumed by an anchor's group.
+    const items = this._items();
+    const memberSet = new Set<string>();
+    for (const it of items) {
+      if (it.virtual && Array.isArray(it.virtual_members)) {
+        for (const m of it.virtual_members) if (m && m !== it.entity) memberSet.add(m);
+      }
+    }
+    const virtualCalendars: Record<string, unknown>[] = [];
+    const groupMembers: string[] = [];
+
+    const applyReadonly = (id: string, ro: boolean | undefined): void => {
+      const ri = readonly.indexOf(id);
+      if (ro === false) {
+        if (ri >= 0) readonly.splice(ri, 1);
+      } else if (ri < 0) {
+        readonly.push(id);
+      }
+    };
+    const applyHideTimes = (id: string, ht: boolean | undefined): void => {
+      const ti = hideTimes.indexOf(id);
+      if (ht === true) {
+        if (ti < 0) hideTimes.push(id);
+      } else if (ht === false) {
+        if (ti >= 0) hideTimes.splice(ti, 1);
+      }
+    };
+    const applyHideBadge = (id: string, show: boolean | undefined): void => {
+      const bi = hideBadges.indexOf(id);
+      if (show === false) {
+        if (bi < 0) hideBadges.push(id);
+      } else if (bi >= 0) {
+        hideBadges.splice(bi, 1);
+      }
+    };
+
+    for (const it of items) {
+      // A calendar subsumed into another calendar's virtual group: skip its individual
+      // options (daylight replaces it with the group); it stays in `entities` to be fetched.
+      if (memberSet.has(it.entity) && !it.virtual) continue;
+
+      if (it.virtual) {
+        // --- Virtual group anchor: one daylight virtual_calendars entry ---
+        const members = (it.virtual_members ?? []).filter((m) => m && m !== it.entity);
+        const groupEntities = [it.entity, ...members];
+        const id = `virtual_${it.entity.replace(/[^a-z0-9]+/gi, "_")}`;
+        const nm =
+          it.virtual_name ||
+          it.name ||
+          this.hass?.states[it.entity]?.attributes?.friendly_name ||
+          it.entity;
+        const entry: Record<string, unknown> = { id, name: nm, entities: groupEntities };
+        const color = it.color ? (cssColor(it.color) ?? it.color) : undefined;
+        if (color) {
+          entry.color = color;
+          colors[id] = color;
+        }
+        entry.icon = it.icon || null;
+        // Person/badge for the group id (daylight ignores person on virtuals today, but
+        // it's harmless and future-proof). The group's options come from this anchor row.
+        const person = it.person ?? matchPerson(this.hass?.states, String(nm));
+        const source = it.icon_source ?? (person ? "person" : "icon");
+        if (source === "person" && person) {
+          persons[id] = person;
+          delete badgeIcons[id];
+        } else if (it.icon) {
+          badgeIcons[id] = it.icon;
+        }
+        // Read-only / hide-times apply to every member of the group.
+        for (const m of groupEntities) {
+          applyReadonly(m, it.readonly);
+          applyHideTimes(m, it.hide_times);
+        }
+        applyHideBadge(id, it.show_badge);
+        virtualCalendars.push(entry);
+        for (const m of members) if (!groupMembers.includes(m)) groupMembers.push(m);
+        continue;
+      }
+
+      // --- Normal calendar ---
       if (it.color) colors[it.entity] = cssColor(it.color) ?? it.color;
       if (it.name) names[it.entity] = it.name;
       // Resolve the person: explicit wins, else auto-match by name.
@@ -369,26 +449,9 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
         delete persons[it.entity];
         if (it.icon) badgeIcons[it.entity] = it.icon;
       }
-      const ri = readonly.indexOf(it.entity);
-      if (it.readonly === false) {
-        if (ri >= 0) readonly.splice(ri, 1);
-      } else if (ri < 0) {
-        readonly.push(it.entity);
-      }
-      // Hide times: explicit true adds, explicit false removes; undefined keeps the baked default.
-      const ti = hideTimes.indexOf(it.entity);
-      if (it.hide_times === true) {
-        if (ti < 0) hideTimes.push(it.entity);
-      } else if (it.hide_times === false) {
-        if (ti >= 0) hideTimes.splice(ti, 1);
-      }
-      // Header badge: hidden when the calendar's "Show badge in header" is off (default on).
-      const bi = hideBadges.indexOf(it.entity);
-      if (it.show_badge === false) {
-        if (bi < 0) hideBadges.push(it.entity);
-      } else if (bi >= 0) {
-        hideBadges.splice(bi, 1);
-      }
+      applyReadonly(it.entity, it.readonly);
+      applyHideTimes(it.entity, it.hide_times);
+      applyHideBadge(it.entity, it.show_badge);
     }
 
     // --- Appearance ---
@@ -440,6 +503,10 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
     // below 1). An explicit `calendar_config.height_scale` wins (spreads in last).
     if (this._heightScale < 0.999) appearance.height_scale = this._heightScale;
 
+    // Ensure every virtual group's member entities are fetched by daylight.
+    const allEntities = [...entities];
+    for (const m of groupMembers) if (!allEntities.includes(m)) allEntities.push(m);
+
     return {
       type: DAYLIGHT_CARD_TYPE,
       ...base,
@@ -451,7 +518,8 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
       readonly_calendars: readonly,
       hide_times_for_calendars: hideTimes,
       hide_badge_calendars: hideBadges,
-      entities,
+      virtual_calendars: virtualCalendars,
+      entities: allEntities,
       // Mirror daylight's CURRENT view so our setConfig (which daylight resets to
       // default_view) preserves the user's selector choice; falls back to the resolved
       // default on first render.
@@ -590,37 +658,23 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
     });
   }
 
-  /** Fit metrics: the AVAILABLE height is our `.calendar` element's clientHeight — it
-   *  fills the dashboard's grid cell, which is sized by the layout's magic calc (already
-   *  subtracting the HA header + navbar reserves). CONTENT is how tall the daylight grid
-   *  actually wants to be, measured as the lowest content extent below the cell's top
-   *  (its own overflow, plus any internal grid scroller — daylight v4 sizes its Schedule
-   *  grid to the viewport in its own shadow DOM, so we measure absolute extent, not the
-   *  scroller's own too-tall viewport). Returns undefined when not measurable. */
-  private _fitMetrics(): { avail: number; content: number } | undefined {
-    const calEl = this.renderRoot?.querySelector?.(".calendar") as HTMLElement | null;
-    if (!calEl) return undefined;
-    const avail = calEl.clientHeight;
-    if (avail <= 0) return undefined;
-    const calTop = calEl.getBoundingClientRect().top;
-    let content = calEl.scrollHeight;
-    const dl = this._child?.el as HTMLElement | undefined;
-    if (dl) {
-      content = Math.max(content, dl.scrollHeight);
-      const roots: ParentNode[] = [dl];
-      if (dl.shadowRoot) roots.push(dl.shadowRoot);
-      for (const root of roots) {
-        for (const node of Array.from(root.querySelectorAll<HTMLElement>("*"))) {
-          if (node.scrollHeight - node.clientHeight <= 2) continue;
-          const oy = getComputedStyle(node).overflowY;
-          if (oy !== "auto" && oy !== "scroll") continue;
-          // Absolute bottom of this scroller's content, relative to the cell's top.
-          const top = node.getBoundingClientRect().top - calTop;
-          content = Math.max(content, top + node.scrollHeight);
-        }
+  /** Find the tallest internally-scrolling descendant of the daylight card (searching
+   *  both its light children and its shadow root), or undefined when nothing overflows. */
+  private _findScroller(): HTMLElement | undefined {
+    const el = this._child?.el as HTMLElement | undefined;
+    if (!el) return undefined;
+    const roots: ParentNode[] = [el];
+    if (el.shadowRoot) roots.push(el.shadowRoot);
+    let best: HTMLElement | undefined;
+    for (const root of roots) {
+      for (const node of Array.from(root.querySelectorAll<HTMLElement>("*"))) {
+        if (node.scrollHeight - node.clientHeight <= 2) continue;
+        const oy = getComputedStyle(node).overflowY;
+        if (oy !== "auto" && oy !== "scroll") continue;
+        if (!best || node.clientHeight > best.clientHeight) best = node;
       }
     }
-    return { avail, content };
+    return best;
   }
 
   private _runFit(): void {
@@ -650,36 +704,34 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
     }
     if (!this._fitting) return;
 
-    const m = this._fitMetrics();
-    if (!m) {
-      this._fitting = false;
+    const scroller = this._findScroller();
+    if (!scroller) {
+      this._fitting = false; // no overflow — it already fits
       return;
     }
-    const { avail, content } = m;
-    if (content - avail <= 2) {
-      this._fitting = false; // it already fits the magic-calc'd height
-      return;
-    }
-    // Bail if a scale change didn't move the content (height_scale not in effect here),
-    // or we've iterated enough.
+    const contentH = scroller.scrollHeight;
+    const viewportH = scroller.clientHeight;
+
+    // Bail if a scale change didn't move the content (height_scale not in effect here,
+    // e.g. a non-Schedule view), or we've iterated enough / can't shrink further.
     if (
       this._fitAttempts > 0 &&
       this._prevFitHeight != null &&
-      Math.abs(content - this._prevFitHeight) < 2
+      Math.abs(contentH - this._prevFitHeight) < 2
     ) {
       this._fitting = false;
       return;
     }
-    if (this._fitAttempts >= 6) {
+    if (this._fitAttempts >= 6 || viewportH <= 0) {
       this._fitting = false;
       return;
     }
-    const next = Math.min(1, Math.max(0.35, this._heightScale * (avail / content) * 0.98));
+    const next = Math.min(1, Math.max(0.35, this._heightScale * (viewportH / contentH) * 0.98));
     if (next >= this._heightScale - 0.005) {
       this._fitting = false; // converged or hit the floor
       return;
     }
-    this._prevFitHeight = content;
+    this._prevFitHeight = contentH;
     this._fitAttempts += 1;
     this._heightScale = next; // triggers a re-render + another measure pass
   }

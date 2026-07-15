@@ -8,6 +8,9 @@ import {
   applyCalendarOptionChange,
   calendarOptionsData,
   calendarOptionsSchema,
+  renderVirtualMembers,
+  virtualGroupNameFor,
+  virtualJoinCandidates,
 } from "./calendar-options";
 import type {
   CalendarCardConfig,
@@ -31,6 +34,9 @@ const PLUS_ICON_PATH = "M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z";
 // mdi:chevron-down / mdi:chevron-up — the in-row Options disclosure
 const CHEVRON_DOWN_PATH = "M7.41,8.58L12,13.17L16.59,8.58L18,10L12,16L6,10L7.41,8.58Z";
 const CHEVRON_UP_PATH = "M7.41,15.41L12,10.83L16.59,15.41L18,14L12,8L6,14L7.41,15.41Z";
+// mdi:calendar-multiple — virtual group indicator
+const GROUP_ICON_PATH =
+  "M21,17H7V3H21M21,1H7A2,2 0 0,0 5,3V17A2,2 0 0,0 7,19H21A2,2 0 0,0 23,17V3A2,2 0 0,0 21,1M3,5H1V21A2,2 0 0,0 3,23H19V21H3M15,9H9V11H15M19,7H9V9H19M17,11H9V13H17V11Z";
 
 const SOURCE_OPTIONS = [
   { value: "config", label: "This card (choose below)" },
@@ -255,8 +261,13 @@ export class TedCalendarCardEditor extends LitElement implements LovelaceCardEdi
   }
 
   private _renderRow(item: CalendarItemConfig, idx: number): TemplateResult {
+    const items = this._items();
     const optData = calendarOptionsData(this.hass, item);
     const optSchema = calendarOptionsSchema(this.hass, item);
+    const inGroup = virtualGroupNameFor(this.hass, item.entity, items);
+    const available = items.map((i) => i.entity).filter((e): e is string => !!e);
+    const candidates = virtualJoinCandidates(available, item.entity, items);
+    const open = !!item.entity && this._openRows.has(idx) && !inGroup;
     return html`
       <div class="cal">
         <div class="row">
@@ -271,7 +282,11 @@ export class TedCalendarCardEditor extends LitElement implements LovelaceCardEdi
             allow-custom-entity
             @value-changed=${(ev: CustomEvent) => this._entityChanged(idx, ev)}
           ></ha-entity-picker>
-          ${item.entity
+          ${item.virtual
+            ? html`<ha-svg-icon class="vc-badge" .path=${GROUP_ICON_PATH} title="Virtual group"></ha-svg-icon>`
+            : nothing}
+          ${inGroup ? html`<span class="vc-tag" title="Joined into ${inGroup}">In ${inGroup}</span>` : nothing}
+          ${item.entity && !inGroup
             ? html`<ha-icon-button
                 class="opt-toggle"
                 label="Options"
@@ -287,7 +302,7 @@ export class TedCalendarCardEditor extends LitElement implements LovelaceCardEdi
             @click=${(ev: Event) => this._remove(idx, ev)}
           ></ha-icon-button>
         </div>
-        ${item.entity && this._openRows.has(idx)
+        ${open
           ? html`<div class="opt-body">
               <ha-form
                 .hass=${this.hass}
@@ -297,6 +312,17 @@ export class TedCalendarCardEditor extends LitElement implements LovelaceCardEdi
                 .computeHelper=${this._computeHelper}
                 @value-changed=${(ev: CustomEvent) => this._itemChanged(idx, ev)}
               ></ha-form>
+              ${item.virtual
+                ? html`<div class="vc-section">
+                    <div class="vc-label">Join calendars</div>
+                    ${renderVirtualMembers(
+                      this.hass,
+                      item.virtual_members ?? [],
+                      candidates,
+                      (next) => this._membersChanged(idx, next),
+                    )}
+                  </div>`
+                : nothing}
             </div>`
           : nothing}
       </div>
@@ -318,6 +344,9 @@ export class TedCalendarCardEditor extends LitElement implements LovelaceCardEdi
     }
     if (schema.name === "readonly") {
       return "Prevent editing events on this calendar.";
+    }
+    if (schema.name === "virtual") {
+      return "Group this calendar's events with other calendars under one name, colour, and icon in the header.";
     }
     if (schema.name === "show_badge") {
       return "Show this calendar's badge in the header (tap to toggle its events).";
@@ -356,6 +385,10 @@ export class TedCalendarCardEditor extends LitElement implements LovelaceCardEdi
         return "Fill available space";
       case "name":
         return "Name";
+      case "virtual":
+        return "Virtual (group calendars)";
+      case "virtual_name":
+        return "Virtual name";
       case "show_name":
         return "Show name";
       case "show_header":
@@ -433,6 +466,14 @@ export class TedCalendarCardEditor extends LitElement implements LovelaceCardEdi
     const items = this._items();
     const cur = items[idx] ?? { entity: "" };
     items[idx] = applyCalendarOptionChange(this.hass, cur, v);
+    this._commitItems(items);
+  }
+
+  /** A virtual group's member list changed (reordered / added / removed). */
+  private _membersChanged(idx: number, members: string[]): void {
+    const items = this._items();
+    const cur = items[idx] ?? { entity: "" };
+    items[idx] = { ...cur, virtual_members: members.length ? members : undefined };
     this._commitItems(items);
   }
 
@@ -577,6 +618,33 @@ export class TedCalendarCardEditor extends LitElement implements LovelaceCardEdi
     }
     .opt-body {
       padding: 8px 12px 12px;
+    }
+    .vc-badge {
+      flex: none;
+      color: var(--primary-color);
+      --mdc-icon-size: 20px;
+    }
+    .vc-tag {
+      flex: none;
+      font-size: 0.72rem;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 999px;
+      color: var(--primary-color);
+      background: color-mix(in srgb, var(--primary-color) 15%, transparent);
+      white-space: nowrap;
+      max-width: 45%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .vc-section {
+      margin-top: 8px;
+    }
+    .vc-label {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--secondary-text-color);
+      margin-bottom: 2px;
     }
     .opt-toggle {
       color: var(--secondary-text-color);
