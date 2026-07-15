@@ -797,6 +797,8 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
       color?: (id: string) => string;
       /** Per-row person avatar URL (empty = none). */
       person?: (id: string) => string;
+      /** Whether the person avatar is available but NOT the active badge (greyed). */
+      personMuted?: (id: string) => boolean;
     },
   ): TemplateResult {
     const rows = ids.map((id, idx) => {
@@ -804,6 +806,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
       const rowName = options?.name?.(id) || this._cameraName(id);
       const rowColor = options?.color?.(id) || "";
       const rowPerson = options?.person?.(id) || "";
+      const rowPersonMuted = options?.personMuted?.(id) || false;
       const row = html`
         <div
           class="cam-item ${readonly ? "readonly" : ""} ${rowColor ? "tinted" : ""}"
@@ -817,7 +820,12 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
           <ha-icon class="cam-ico" .icon=${rowIcon}></ha-icon>
           <span class="cam-name">${rowName}</span>
           ${!readonly && rowPerson
-            ? html`<img class="cam-avatar" src=${rowPerson} alt="" />`
+            ? html`<img
+                class="cam-avatar ${rowPersonMuted ? "muted" : ""}"
+                src=${rowPerson}
+                alt=""
+                title=${rowPersonMuted ? "Person available (badge source is Icon)" : "Person badge"}
+              />`
             : nothing}
           ${!readonly && options
             ? html`<button
@@ -902,16 +910,22 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
   }
 
   /** The avatar URL for a calendar's linked person (explicit, else auto-matched by
-   *  name), or "" when the badge source is an icon / no person / no picture. */
+   *  name), or "" when there's no matching person / picture. Shown even when the badge
+   *  source is Icon (greyed via `_calendarRowPersonMuted`) to indicate it's available. */
   private _calendarRowPersonPicture(id: string): string {
     const opt = this._calendarOptionsMap()[id] ?? {};
-    if (opt.icon_source === "icon") return "";
     const explicit = typeof opt.person === "string" ? opt.person : "";
     const name = typeof opt.name === "string" && opt.name ? opt.name : this._cameraName(id);
     const person = explicit || matchPerson(this.hass?.states, name) || "";
     if (!person) return "";
     const pic = this.hass?.states[person]?.attributes?.entity_picture;
     return typeof pic === "string" ? pic : "";
+  }
+
+  /** Whether a calendar's person avatar is present but NOT the active badge (badge
+   *  source explicitly set to Icon) — rendered greyscale as an "available" hint. */
+  private _calendarRowPersonMuted(id: string): boolean {
+    return this._calendarOptionsMap()[id]?.icon_source === "icon";
   }
 
   /** The per-calendar Options form for one calendar in the Global list. */
@@ -958,8 +972,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
       <div class="cam-row">
         <div class="cam-head">
           <div class="row-label">
-            <span>${field.label} — available list</span>
-            <span class="help">The ${meta.nounPlural} any device is allowed to show.</span>
+            <span>${field.label} — available list and settings</span>
           </div>
           ${admin
             ? html`<button class="cam-btn" @click=${() => this._autoPopulateGlobal(field)}>
@@ -993,6 +1006,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
                     name: (id) => this._calendarRowName(id),
                     color: (id) => this._calendarRowColor(id),
                     person: (id) => this._calendarRowPersonPicture(id),
+                    personMuted: (id) => this._calendarRowPersonMuted(id),
                   }
                 : undefined,
             )
@@ -1968,6 +1982,10 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
         border-radius: 50%;
         object-fit: cover;
         border: 1px solid color-mix(in srgb, var(--ted-style-divider) 80%, transparent);
+      }
+      .cam-avatar.muted {
+        filter: grayscale(1);
+        opacity: 0.5;
       }
       .cam-del {
         display: inline-flex;
