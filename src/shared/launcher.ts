@@ -220,12 +220,12 @@ export function effectiveLauncherPaths(list: string[], discovered: LauncherViewI
 }
 
 /** Base styling for every launcher button: a tinted surface + matching icon in the
- *  configured button color (defaults to white), at 25% opacity. */
-function launcherButtonBase(color: string): Partial<NavButtonConfig> {
+ *  configured button color (defaults to white), at 25% opacity, following the navbar theme. */
+function launcherButtonBase(color: string, theme: string): Partial<NavButtonConfig> {
   return {
     icon_scale: 140,
     icon_color: color,
-    theme: "ha",
+    theme: theme === "ted-style" ? "ted-style" : "ha",
     background: color,
     transparency: 75,
     show_name: false,
@@ -253,6 +253,10 @@ interface BuildLauncherParams {
   navBackground?: string;
   navTransparency?: number;
   navBlur?: number;
+  /** The navbar's theme (`ha` | `ted-style`), so launcher buttons + the group popup match. */
+  navTheme?: string;
+  /** The navbar's button size (px), so a group popup's buttons match the bar. */
+  navButtonSize?: number;
 }
 
 /** Capitalize the first letter (e.g. a group prefix `home` → `Home`). */
@@ -264,7 +268,9 @@ function capitalize(s: string): string {
  *  background / transparency / blur so the popup reads as a piece of the navbar. */
 function launcherPopupStyle(background?: string, transparency?: number, blur?: number): Record<string, string> {
   const style: Record<string, string> = {};
-  const bg = cssColor(background) || "var(--ha-card-background, var(--card-background-color, #ffffff))";
+  const bg =
+    cssColor(background) ||
+    "var(--ted-style-surface, var(--ha-card-background, var(--card-background-color, #ffffff)))";
   const t = typeof transparency === "number" ? Math.min(100, Math.max(0, transparency)) : undefined;
   if (t != null && t > 0) style.background = `color-mix(in srgb, ${bg} ${100 - t}%, transparent)`;
   else if (background) style.background = bg;
@@ -290,7 +296,7 @@ function plainButton(view: LauncherViewInfo, p: BuildLauncherParams, showName: b
     ? { action: "navigate-dashboard", dashboard: dashKey }
     : { action: "navigate", navigation_path: launcherViewNavPath(p.dashboardUrlPath, view) }) as unknown as NavButtonConfig["tap_action"];
   const btn: NavButtonConfig = {
-    ...launcherButtonBase(color),
+    ...launcherButtonBase(color, p.navTheme || "ha"),
     ...opt,
     type: `custom:${BUTTON_CARD_TYPE}`,
     icon: iconOpt || view.icon || DEFAULT_BUTTON_ICON,
@@ -326,15 +332,17 @@ export function buildLauncherButtons(p: BuildLauncherParams): NavButtonConfig[] 
     const groupActive =
       p.highlightActive && group.members.some((m) => m.path === p.currentViewPath);
     const trigger: NavButtonConfig = {
-      ...launcherButtonBase(color),
+      ...launcherButtonBase(color, p.navTheme || "ha"),
       ...primaryOpt,
       type: `custom:${EXPANDABLE_BUTTON_CARD_TYPE}`,
       icon: primaryIcon || group.primary.icon || DEFAULT_BUTTON_ICON,
       name: label,
       flip_icon: false,
       popup_title: label,
+      group_indicator: true,
       ...(Object.keys(popupStyle).length ? { popup_style: popupStyle } : {}),
-      items: group.members.map((m) => plainButton(m, p, true)),
+      ...(p.navButtonSize ? { popup_item_size: p.navButtonSize } : {}),
+      items: group.members.map((m) => plainButton(m, p, false)),
       tap_action: undefined,
     } as NavButtonConfig;
     if (groupActive) {

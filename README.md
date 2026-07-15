@@ -939,6 +939,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.212
+
+- **Launcher group polish** — combined launcher buttons now show a small group glyph, their popup matches the navbar's theme/surface and button size, popup buttons are icon-only with per-button tooltips, and each popup opens with the group's shared prefix (e.g. “Home”) as its heading.
+
 ### v1.0.211
 
 - **Launcher group popups** — a combined launcher button's popup now matches the navbar's frosted surface, and its heading uses the shared view prefix (e.g. “Home”) instead of one member view's full name. Launcher buttons also sit at 25% opacity with the current view at 40%.

@@ -24,6 +24,10 @@ export interface ExpandableButtonCardConfig extends ButtonCardConfig {
   /** Inline style overrides for the popup surface (e.g. to mirror a navbar's background /
    *  blur so a launcher group's popup matches the bar). */
   popup_style?: Record<string, string>;
+  /** Size (px) of each grid popup button, e.g. to match a navbar's button size. */
+  popup_item_size?: number;
+  /** Show a small "group" glyph in the trigger's corner (e.g. for combined launcher groups). */
+  group_indicator?: boolean;
   /** Flip the trigger icon (e.g. a chevron) 180° while the popup is open. Defaults to true. */
   flip_icon?: boolean;
 }

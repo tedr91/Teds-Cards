@@ -839,6 +839,8 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
       navBackground: typeof this._config?.background === "string" ? this._config.background : undefined,
       navTransparency: typeof this._config?.transparency === "number" ? this._config.transparency : undefined,
       navBlur: typeof this._config?.blur === "number" ? this._config.blur : undefined,
+      navTheme: this._config?.theme === "ted-style" ? "ted-style" : "ha",
+      navButtonSize: Math.max(24, this._thickness() - 12),
     });
     return this._launcherCache;
   }

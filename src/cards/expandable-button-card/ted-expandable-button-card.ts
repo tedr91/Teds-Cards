@@ -10,6 +10,7 @@ import type {
 } from "custom-card-helpers";
 
 import { registerCustomCard } from "../../shared/register-card";
+import { resolveIcon } from "../../shared/icons";
 import { tedCardThemeClass, tedStyleTheme } from "../../shared/theme";
 import { BUTTON_CARD_TYPE } from "../button-card/const";
 import {
@@ -44,6 +45,9 @@ interface GridOptions {
 
 const POPOVER_ID = "ebc-popover";
 const TRIGGER_ID = "ebc-trigger-btn";
+
+/** Small "this is a group" glyph (Fluent when installed, else Material Design). */
+const GROUP_BADGE_ICON = resolveIcon({ fluent: "group-20-regular", mdi: "group" }) ?? "mdi:group";
 
 registerCustomCard({
   type: EXPANDABLE_BUTTON_CARD_TYPE,
@@ -106,12 +110,15 @@ export class TedExpandableButtonCard extends LitElement implements LovelaceCard 
   /** The trigger looks like a Button Card; its own tap/hold/double actions are disabled
    *  so a tap only opens the popup (the native popover invoker handles that). */
   private _triggerConfig(): LovelaceCardConfig {
-    const { items, popup_layout, popup_max_columns, popup_title, popup_style, ...rest } = this._config ?? {};
+    const { items, popup_layout, popup_max_columns, popup_title, popup_style, popup_item_size, ...rest } =
+      this._config ?? {};
     void items;
     void popup_layout;
     void popup_max_columns;
     void popup_title;
     void popup_style;
+    void popup_item_size;
+    void (rest as { group_indicator?: boolean }).group_indicator;
     return {
       ...rest,
       type: `custom:${BUTTON_CARD_TYPE}`,
@@ -183,12 +190,19 @@ export class TedExpandableButtonCard extends LitElement implements LovelaceCard 
         aria-haspopup="true"
       >
         ${this._triggerEl ? this._triggerEl.el : nothing}
+        ${this._config.group_indicator
+          ? html`<ha-icon class="ebc-group-badge" .icon=${GROUP_BADGE_ICON}></ha-icon>`
+          : nothing}
       </button>
       <div
         id=${POPOVER_ID}
         class="ebc-popover ${tedCardThemeClass(theme)}"
         popover
-        style=${styleMap({ "--ebc-cols": String(cols), ...(this._config.popup_style ?? {}) })}
+        style=${styleMap({
+          "--ebc-cols": String(cols),
+          ...(this._config.popup_item_size ? { "--ebc-cell": `${this._config.popup_item_size}px` } : {}),
+          ...(this._config.popup_style ?? {}),
+        })}
         @toggle=${this._onPopoverToggle}
         @click=${this._onPopoverBodyClick}
       >
@@ -202,6 +216,7 @@ export class TedExpandableButtonCard extends LitElement implements LovelaceCard 
             return html`<div
               class=${classMap({ "ebc-cell": true, expandable })}
               ?data-expandable=${expandable}
+              title=${(child as { name?: string }).name || nothing}
             >
               ${entry ? entry.el : nothing}
             </div>`;
@@ -271,6 +286,7 @@ export class TedExpandableButtonCard extends LitElement implements LovelaceCard 
       /* The trigger fills the card; clicking it opens the native popover. */
       .ebc-trigger {
         display: block;
+        position: relative;
         width: 100%;
         height: 100%;
         margin: 0;
@@ -279,6 +295,17 @@ export class TedExpandableButtonCard extends LitElement implements LovelaceCard 
         background: none;
         cursor: pointer;
         -webkit-tap-highlight-color: transparent;
+      }
+      /* Small corner glyph marking the trigger as a group of buttons. */
+      .ebc-group-badge {
+        position: absolute;
+        right: 1px;
+        bottom: 1px;
+        z-index: 2;
+        --mdc-icon-size: 13px;
+        color: var(--ted-style-accent);
+        pointer-events: none;
+        filter: drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.55));
       }
       .ebc-trigger > * {
         display: block;
@@ -320,7 +347,7 @@ export class TedExpandableButtonCard extends LitElement implements LovelaceCard 
       }
       .ebc-popover-body.grid {
         display: grid;
-        grid-template-columns: repeat(var(--ebc-cols, 1), 76px);
+        grid-template-columns: repeat(var(--ebc-cols, 1), var(--ebc-cell, 76px));
         gap: 8px;
       }
       .ebc-popover-body.list {
@@ -329,8 +356,8 @@ export class TedExpandableButtonCard extends LitElement implements LovelaceCard 
         gap: 8px;
       }
       .ebc-cell {
-        width: 76px;
-        height: 76px;
+        width: var(--ebc-cell, 76px);
+        height: var(--ebc-cell, 76px);
       }
       .ebc-popover-body.list .ebc-cell {
         width: 220px;
