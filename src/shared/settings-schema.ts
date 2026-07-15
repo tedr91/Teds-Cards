@@ -104,7 +104,7 @@ export const SETTINGS_DEFAULTS: SettingsMap = {
   calendar_name: "Family Calendar",
   calendar_theme: "ha",
   calendar_view: "month",
-  calendar_emphasize_weekdays: false,
+  calendar_emphasize_weekdays: true,
   cameras_layout: "auto",
   climate_list: [],
   climate_layout: "auto",

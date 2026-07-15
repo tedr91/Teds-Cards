@@ -939,6 +939,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.196
+
+- **Emphasize weekdays** — now on by default, and the weekend cells also get a subtle theme-adaptive background tint (slightly darker in light mode, lighter in dark mode) in addition to the dim.
+
 ### v1.0.195
 
 - **Emphasize weekdays** — a new calendar-wide option (**Settings → Calendars**, also in the card editor) that slightly dims weekend cells so the work week stands out (via a daylight `day_styles` rule).

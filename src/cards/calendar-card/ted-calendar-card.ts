@@ -242,6 +242,11 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
     return false;
   }
 
+  /** Whether Home Assistant is currently in dark mode (for theme-adaptive styling). */
+  private _isDarkMode(): boolean {
+    return !!(this.hass as unknown as { themes?: { darkMode?: boolean } })?.themes?.darkMode;
+  }
+
   // --- Embedded daylight-calendar-card ---------------------------------------
 
   private _childConfig(entities: string[]): LovelaceCardConfig {
@@ -330,9 +335,15 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
 
     // Emphasize weekdays: dim the weekend cells so the work week stands out. Appended
     // to any baked/config day_styles; an explicit `calendar_config.day_styles` overrides.
+    // A subtle translucent overlay (darker in light mode, lighter in dark mode) makes
+    // the weekend cells recede on any theme surface.
     if (this._resolvedEmphasizeWeekdays()) {
       const baseDayStyles = Array.isArray(base.day_styles) ? (base.day_styles as unknown[]) : [];
-      appearance.day_styles = [...baseDayStyles, { condition: "weekend", style: { opacity: 0.72 } }];
+      const background_color = this._isDarkMode() ? "#FFFFFF14" : "#00000014";
+      appearance.day_styles = [
+        ...baseDayStyles,
+        { condition: "weekend", style: { opacity: 0.72, background_color } },
+      ];
     }
 
     return {
