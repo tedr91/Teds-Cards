@@ -939,6 +939,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.225
+
+- **Launcher scrim length** — the auto-hide bottom scrim now extends only up to 1px shy of the content's lower edge (tracking the reserved pill strip) instead of a fixed 56px.
+
 ### v1.0.224
 
 - **Launcher scrim spans the edge** — the auto-hide reveal pill's scrim now spans the full bar width and hugs the very screen edge (per orientation) instead of floating behind the pill.

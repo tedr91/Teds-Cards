@@ -1510,7 +1510,8 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
         left: 0;
         right: 0;
         bottom: 0;
-        height: 56px;
+        /* Extend up to 1px shy of the content's lower edge (the reserved pill strip). */
+        height: calc(var(--ted-navbar-bottom-reserve, 30px) - 1px);
         background: linear-gradient(
           to top,
           rgba(0, 0, 0, 0.58),
