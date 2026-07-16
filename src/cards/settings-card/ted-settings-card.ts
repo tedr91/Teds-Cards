@@ -108,23 +108,26 @@ const LAUNCHER_SIZE_SCHEMA = [
   },
 ];
 
-/** ha-form schema for the group-level launcher settings. Combine + quick-launch are
- *  rendered separately (just above the Buttons list) so they can carry rich helper text. */
-const LAUNCHER_SETTINGS_SCHEMA = [
+/** ha-form schema for the group-level launcher settings. Colors, combine + quick-launch
+ *  are rendered separately (colors so their default shows muted; the toggles for their
+ *  richer helper text). */
+const LAUNCHER_TOP_SCHEMA = [
   { name: "launcher_enabled", selector: { boolean: {} } },
   {
     name: "launcher_section",
     selector: { select: { mode: "dropdown", options: LAUNCHER_SECTIONS.map((s) => ({ value: s.value, label: s.label })) } },
   },
-  {
-    name: "launcher_colors",
-    type: "grid",
-    schema: [
-      { name: "launcher_button_color", selector: { ui_color: {} } },
-      { name: "launcher_highlight_color", selector: { ui_color: {} } },
-    ],
-  },
-  { name: "launcher_highlight_active", selector: { boolean: {} } },
+];
+
+const LAUNCHER_HIGHLIGHT_SCHEMA = [{ name: "launcher_highlight_active", selector: { boolean: {} } }];
+
+/** Single-field color schemas, each seeded with its default so the picker shows the
+ *  default value (rendered muted while unset — see `.lc-field.is-default`). */
+const LAUNCHER_BUTTON_COLOR_SCHEMA = [
+  { name: "launcher_button_color", selector: { ui_color: { default_color: "white" } } },
+];
+const LAUNCHER_HIGHLIGHT_COLOR_SCHEMA = [
+  { name: "launcher_highlight_color", selector: { ui_color: { default_color: "accent" } } },
 ];
 
 const LAUNCHER_LABELS: Record<string, string> = {
@@ -1736,23 +1739,55 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
   private _renderLauncherSettingsForm(scope: "global" | "device"): TemplateResult {
     const disabled = scope === "global" && !this._isAdmin();
     const val = (k: string): SettingsValue => (scope === "global" ? this._globalValue(k) : this._deviceValue(k));
-    const buttonColor = val("launcher_button_color");
-    const highlightColor = val("launcher_highlight_color");
     return html`
       <ha-form
         .hass=${this.hass}
         .data=${{
           launcher_enabled: val("launcher_enabled") !== false,
           launcher_section: String(val("launcher_section") ?? "center"),
-          launcher_button_color: typeof buttonColor === "string" && buttonColor ? buttonColor : undefined,
-          launcher_highlight_active: val("launcher_highlight_active") !== false,
-          launcher_highlight_color: typeof highlightColor === "string" && highlightColor ? highlightColor : undefined,
         }}
-        .schema=${LAUNCHER_SETTINGS_SCHEMA}
+        .schema=${LAUNCHER_TOP_SCHEMA}
         .disabled=${disabled}
         .computeLabel=${this._launcherLabel}
         @value-changed=${(ev: CustomEvent) => this._onLauncherSettingsChanged(ev, scope)}
       ></ha-form>
+      <div class="launcher-colors">
+        ${this._renderLauncherColor(scope, "launcher_button_color", LAUNCHER_BUTTON_COLOR_SCHEMA, disabled)}
+        ${this._renderLauncherColor(scope, "launcher_highlight_color", LAUNCHER_HIGHLIGHT_COLOR_SCHEMA, disabled)}
+      </div>
+      <ha-form
+        .hass=${this.hass}
+        .data=${{ launcher_highlight_active: val("launcher_highlight_active") !== false }}
+        .schema=${LAUNCHER_HIGHLIGHT_SCHEMA}
+        .disabled=${disabled}
+        .computeLabel=${this._launcherLabel}
+        @value-changed=${(ev: CustomEvent) => this._onLauncherSettingsChanged(ev, scope)}
+      ></ha-form>
+    `;
+  }
+
+  /** One color picker (Button / Highlight color). When no explicit value is set the
+   *  picker shows its default (via the selector's `default_color`) rendered muted so it
+   *  reads as "unset — using the default". */
+  private _renderLauncherColor(
+    scope: "global" | "device",
+    key: string,
+    schema: unknown,
+    disabled: boolean,
+  ): TemplateResult {
+    const raw = scope === "global" ? this._globalValue(key) : this._deviceValue(key);
+    const value = typeof raw === "string" && raw ? raw : undefined;
+    return html`
+      <div class="lc-field ${value === undefined ? "is-default" : ""}">
+        <ha-form
+          .hass=${this.hass}
+          .data=${{ [key]: value }}
+          .schema=${schema}
+          .disabled=${disabled}
+          .computeLabel=${this._launcherLabel}
+          @value-changed=${(ev: CustomEvent) => this._onLauncherSettingsChanged(ev, scope)}
+        ></ha-form>
+      </div>
     `;
   }
 
@@ -2481,6 +2516,15 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
         color: var(--ted-style-accent, var(--primary-color));
         text-decoration: underline;
         cursor: pointer;
+      }
+      .launcher-colors {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+      /* An unset color shows its default value muted (it isn't an explicit choice). */
+      .lc-field.is-default {
+        --primary-text-color: var(--ted-style-muted, var(--secondary-text-color));
       }
       .inherit-tag {
         font-size: 0.72rem;

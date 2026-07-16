@@ -77,6 +77,8 @@ export class TedExpandableButtonCard extends LitElement implements LovelaceCard 
   private static readonly HOLD_MS = 500;
   private _holdTimer?: number;
   private _held = false;
+  /** Removes the outside-tap / Escape listeners for an open quick-launch (manual) popout. */
+  private _manualDismiss?: () => void;
 
   public setConfig(config: ExpandableButtonCardConfig): void {
     if (!config) throw new Error("Invalid configuration");
@@ -95,6 +97,15 @@ export class TedExpandableButtonCard extends LitElement implements LovelaceCard 
   public connectedCallback(): void {
     super.connectedCallback();
     void this._loadHelpers();
+  }
+
+  public disconnectedCallback(): void {
+    super.disconnectedCallback();
+    if (this._holdTimer) {
+      window.clearTimeout(this._holdTimer);
+      this._holdTimer = undefined;
+    }
+    this._teardownManualDismiss();
   }
 
   protected willUpdate(changed: PropertyValues): void {
@@ -179,12 +190,43 @@ export class TedExpandableButtonCard extends LitElement implements LovelaceCard 
     return this._config?.quick_launch === true && !!this._config?.tap_action;
   }
 
-  /** Programmatically open the popout (used by a quick-launch hold). */
+  /** Programmatically open the popout (used by a quick-launch hold). A quick-launch
+   *  popover is `manual` (not `auto`): an auto popover would be light-dismissed by the
+   *  release of the very long-press that opened it, so we open it and attach our own
+   *  outside-tap / Escape dismissal NOW — while the opening gesture's pointer is still
+   *  DOWN — so its release (a pointerup) can't trigger them. Mirrors the status-item
+   *  hold popovers (slider-controller.openManualPopover). */
   private _openPopover(): void {
     const el = this.shadowRoot?.getElementById(POPOVER_ID) as
-      | (HTMLElement & { showPopover?: () => void })
+      | (HTMLElement & { showPopover?: () => void; matches?: (s: string) => boolean })
       | null;
-    el?.showPopover?.();
+    if (!el || el.matches?.(":popover-open")) return;
+    el.showPopover?.();
+    this._teardownManualDismiss();
+    const onDown = (ev: Event): void => {
+      if (!ev.composedPath().includes(el)) this._closePopover();
+    };
+    const onKey = (ev: KeyboardEvent): void => {
+      if (ev.key === "Escape") this._closePopover();
+    };
+    document.addEventListener("pointerdown", onDown, true);
+    document.addEventListener("keydown", onKey, true);
+    this._manualDismiss = () => {
+      document.removeEventListener("pointerdown", onDown, true);
+      document.removeEventListener("keydown", onKey, true);
+    };
+  }
+
+  private _closePopover(): void {
+    const el = this.shadowRoot?.getElementById(POPOVER_ID) as
+      | (HTMLElement & { hidePopover?: () => void })
+      | null;
+    el?.hidePopover?.();
+  }
+
+  private _teardownManualDismiss(): void {
+    this._manualDismiss?.();
+    this._manualDismiss = undefined;
   }
 
   private _onTriggerPointerDown = (): void => {
@@ -266,7 +308,7 @@ export class TedExpandableButtonCard extends LitElement implements LovelaceCard 
       <div
         id=${POPOVER_ID}
         class="ebc-popover ${tedCardThemeClass(theme)}"
-        popover
+        popover=${this._quickLaunch ? "manual" : "auto"}
         style=${styleMap({
           "--ebc-cols": String(cols),
           ...(this._config.popup_item_size ? { "--ebc-cell": `${this._config.popup_item_size}px` } : {}),
@@ -305,6 +347,7 @@ export class TedExpandableButtonCard extends LitElement implements LovelaceCard 
       if (this._config?.flip_icon !== false) trigger?.style.setProperty("--ted-icon-rotate", "180deg");
     } else {
       trigger?.style.removeProperty("--ted-icon-rotate");
+      this._teardownManualDismiss();
     }
   };
 

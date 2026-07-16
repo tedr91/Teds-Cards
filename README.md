@@ -939,6 +939,11 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.226
+
+- **Launcher color defaults shown muted** — the launcher Button color / Highlight color pickers now surface their default (`white` / `accent`) in a muted font while unset, instead of appearing blank.
+- **Quick-launch popout stays open** — fixed the grouped launcher button's hold-to-open popout immediately dismissing on release (now a manual popover with our own outside-tap / Escape dismissal, matching the other navbar hold menus).
+
 ### v1.0.225
 
 - **Launcher scrim length** — the auto-hide bottom scrim now extends only up to 1px shy of the content's lower edge (tracking the reserved pill strip) instead of a fixed 56px.
