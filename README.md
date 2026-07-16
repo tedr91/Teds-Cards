@@ -939,6 +939,13 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.239
+
+- **Bing photo actions** — the Bing Photo of the Day info flyout now has **Favorite** (saves the image to a `favorites` folder for later), **Remove** (deletes it from the cache and jumps to a new photo), and **Next** (jumps to a new photo) buttons. Requires Ted's Cards Backend v1.0.55+.
+- **Slideshow shuffle** — slideshows now reshuffle on every loop, so the order stays genuinely random over time instead of repeating one fixed sequence.
+- **Attribution flyout dismissal** — the caption now closes when you tap the icon again, interact with anything else on screen, or after 15 seconds.
+- **Attribution icon & left navbar** — the info icon shifts right by the navbar's width when a left/right navbar is active, so it never sits underneath it.
+
 ### v1.0.238
 
 - **Background brightness** — the **Background brightness** slider now sits at the top of **Settings → General → Background Wallpaper**, and its default is now **75%**. Requires Ted's Cards Backend v1.0.54+.
