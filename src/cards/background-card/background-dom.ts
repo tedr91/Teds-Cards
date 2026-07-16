@@ -92,10 +92,10 @@ const NEXT_ICON_PATH = "M16,18H18V6H16M6,18L14.5,12L6,6V18Z";
 
 const ATTRIBUTION_CSS = `
 #${ATTRIBUTION_ID} {
-  position: fixed;
-  top: calc(env(safe-area-inset-top, 0px) + 8px);
-  left: calc(env(safe-area-inset-left, 0px) + 8px);
-  z-index: 6;
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: -1;
   display: flex;
   align-items: flex-start;
   gap: 8px;
@@ -173,25 +173,31 @@ const ATTRIBUTION_CSS = `
 #${ATTRIBUTION_ID} .tba-act.done { background: rgba(120, 200, 120, 0.4); }
 `;
 
-/** Anchor the overlay to the top-left of the dashboard CONTENT area (the
- *  `hui-view` rect) rather than the raw viewport corner, so it clears HA's
- *  header menu button on desktop and sits by the clock/content on kiosk.
- *  Falls back to a safe-area inset before the view has laid out. */
+/** The element the overlay is mounted into: `hui-view` itself, so the overlay is
+ *  a child of the element carrying the wallpaper background. That lets its
+ *  negative z-index sit ABOVE the wallpaper but BEHIND the view's content cards.
+ *  Falls back to the hui-root shadow root if the view isn't found yet. */
+function attributionParent(huiRoot: HTMLElement): HTMLElement | ShadowRoot | null {
+  const sr = huiRoot.shadowRoot;
+  if (!sr) return null;
+  return (sr.querySelector("hui-view") as HTMLElement | null) ?? sr;
+}
+
+/** Anchor the overlay to the top-left of the dashboard CONTENT box. As an absolute
+ *  child of `hui-view`, offsets are relative to it — so adding the view's padding
+ *  (which is how a left/right navbar reserves its gutter) keeps the icon clear of
+ *  the navbar, and it naturally starts below the header. */
 function positionAttribution(el: HTMLElement): void {
   const view = findHuiRoot()?.shadowRoot?.querySelector("hui-view") as HTMLElement | null;
-  const rect = view?.getBoundingClientRect();
-  if (view && rect && rect.width > 0 && rect.height > 0) {
-    // Anchor to the CONTENT box, not the border box: a vertical (left/right) navbar
-    // reserves its gutter via `padding-left/right` on hui-view, so add that padding
-    // to shift the icon clear of a left bar (and header pad, if any).
+  if (view) {
     const cs = getComputedStyle(view);
     const padLeft = parseFloat(cs.paddingLeft) || 0;
     const padTop = parseFloat(cs.paddingTop) || 0;
-    el.style.top = `${Math.round(Math.max(0, rect.top) + padTop) + 8}px`;
-    el.style.left = `${Math.round(Math.max(0, rect.left) + padLeft) + 8}px`;
+    el.style.top = `${Math.round(padTop) + 8}px`;
+    el.style.left = `${Math.round(padLeft) + 8}px`;
   } else {
-    el.style.top = "calc(env(safe-area-inset-top, 0px) + 8px)";
-    el.style.left = "calc(env(safe-area-inset-left, 0px) + 8px)";
+    el.style.top = "8px";
+    el.style.left = "8px";
   }
 }
 
@@ -334,8 +340,12 @@ export function applyAttribution(
         resetAttrTimer(captionEl);
       });
     });
-    huiRoot.shadowRoot.appendChild(el);
+    attributionParent(huiRoot)?.appendChild(el);
     bindAttrResize();
+  } else {
+    // Keep it parented to hui-view (HA may recreate the view on navigation).
+    const parent = attributionParent(huiRoot);
+    if (parent && el.parentNode !== parent) parent.appendChild(el);
   }
   const titleEl = el.querySelector<HTMLElement>(".tba-title");
   const copyEl = el.querySelector<HTMLElement>(".tba-copyright");

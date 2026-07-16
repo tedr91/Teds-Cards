@@ -939,6 +939,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.240
+
+- **Attribution icon layering** — the Bing Photo of the Day info icon now sits above the wallpaper but *behind* the view's content, so cards always render on top of it instead of the icon floating over them.
+
 ### v1.0.239
 
 - **Bing photo actions** — the Bing Photo of the Day info flyout now has **Favorite** (saves the image to a `favorites` folder for later), **Remove** (deletes it from the cache and jumps to a new photo), and **Next** (jumps to a new photo) buttons. Requires Ted's Cards Backend v1.0.55+.
