@@ -939,9 +939,13 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.229
+
+- **Bing attribution icon repositioned** — the Bing Photo of the Day info icon is now anchored to the top-left of the dashboard **content area** (just above the clock/content card) instead of the very screen corner, so it no longer hides behind Home Assistant's header menu button. Hover or tap it for the photo's title/copyright.
+
 ### v1.0.228
 
-- **Bing attribution icon now visible** — the Bing Photo of the Day info icon was being painted behind Home Assistant's header menu button (top-left), so it never showed. Raised its stacking order so the icon appears; hover or tap it to see the photo's title/copyright.
+- **Bing attribution icon visibility** — raised the Bing Photo of the Day info icon's stacking order (superseded by v1.0.229's repositioning).
 
 ### v1.0.227
 

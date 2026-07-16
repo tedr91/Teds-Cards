@@ -129,6 +129,33 @@ const ATTRIBUTION_CSS = `
 #${ATTRIBUTION_ID} .tba-copyright { opacity: 0.85; }
 `;
 
+/** Anchor the overlay to the top-left of the dashboard CONTENT area (the
+ *  `hui-view` rect) rather than the raw viewport corner, so it clears HA's
+ *  header menu button on desktop and sits by the clock/content on kiosk.
+ *  Falls back to a safe-area inset before the view has laid out. */
+function positionAttribution(el: HTMLElement): void {
+  const view = findHuiRoot()?.shadowRoot?.querySelector("hui-view") as HTMLElement | null;
+  const rect = view?.getBoundingClientRect();
+  if (rect && rect.width > 0 && rect.height > 0) {
+    el.style.top = `${Math.round(Math.max(0, rect.top)) + 8}px`;
+    el.style.left = `${Math.round(Math.max(0, rect.left)) + 8}px`;
+  } else {
+    el.style.top = "calc(env(safe-area-inset-top, 0px) + 8px)";
+    el.style.left = "calc(env(safe-area-inset-left, 0px) + 8px)";
+  }
+}
+
+let attrResizeBound = false;
+/** Reposition the overlay when the viewport/content resizes (registered once). */
+function bindAttrResize(): void {
+  if (attrResizeBound) return;
+  attrResizeBound = true;
+  window.addEventListener("resize", () => {
+    const el = findHuiRoot()?.shadowRoot?.querySelector<HTMLElement>(`#${ATTRIBUTION_ID}`);
+    if (el) positionAttribution(el);
+  });
+}
+
 /**
  * Show (or update) a small info-icon overlay in the top-left corner whose
  * hover/tap caption gives the photo's title + copyright. Pass `null` to remove
@@ -154,6 +181,7 @@ export function applyAttribution(meta: BackgroundAttribution | null): void {
     // Tap toggles the caption on touch devices (hover handles pointers).
     el.querySelector(".tba-icon")?.addEventListener("click", () => el?.classList.toggle("open"));
     huiRoot.shadowRoot.appendChild(el);
+    bindAttrResize();
   }
   const titleEl = el.querySelector<HTMLElement>(".tba-title");
   const copyEl = el.querySelector<HTMLElement>(".tba-copyright");
@@ -165,6 +193,7 @@ export function applyAttribution(meta: BackgroundAttribution | null): void {
     if (copyEl.textContent !== meta.copyright) copyEl.textContent = meta.copyright;
     copyEl.style.display = meta.copyright ? "" : "none";
   }
+  positionAttribution(el);
 }
 
 /** Remove the attribution overlay (used on disconnect / mode change). */
