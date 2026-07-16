@@ -162,6 +162,46 @@ function bindAttrResize(): void {
   });
 }
 
+// ── caption flyout open/close (tap toggles; outside tap or 15s auto-dismiss) ──
+const ATTRIBUTION_TIMEOUT_MS = 15000;
+let attrCloseTimer: number | undefined;
+let attrOutsideHandler: ((e: Event) => void) | undefined;
+
+/** Tear down the auto-close timer + the outside-interaction listener. */
+function teardownAttrDismiss(): void {
+  if (attrCloseTimer !== undefined) {
+    clearTimeout(attrCloseTimer);
+    attrCloseTimer = undefined;
+  }
+  if (attrOutsideHandler) {
+    document.removeEventListener("pointerdown", attrOutsideHandler, true);
+    attrOutsideHandler = undefined;
+  }
+}
+
+function closeAttr(el: HTMLElement): void {
+  el.classList.remove("open");
+  teardownAttrDismiss();
+}
+
+function openAttr(el: HTMLElement): void {
+  el.classList.add("open");
+  teardownAttrDismiss();
+  // Auto-dismiss after 15s.
+  attrCloseTimer = window.setTimeout(() => closeAttr(el), ATTRIBUTION_TIMEOUT_MS);
+  // Any interaction outside the overlay closes it. Registered on pointerdown
+  // AFTER the opening tap's pointerdown, so it never self-closes immediately.
+  attrOutsideHandler = (e: Event) => {
+    if (!e.composedPath().includes(el)) closeAttr(el);
+  };
+  document.addEventListener("pointerdown", attrOutsideHandler, true);
+}
+
+function toggleAttr(el: HTMLElement): void {
+  if (el.classList.contains("open")) closeAttr(el);
+  else openAttr(el);
+}
+
 /**
  * Show (or update) a small info-icon overlay in the top-left corner whose
  * hover/tap caption gives the photo's title + copyright. Pass `null` to remove
@@ -173,7 +213,10 @@ export function applyAttribution(meta: BackgroundAttribution | null): void {
   if (!huiRoot?.shadowRoot) return;
   let el = huiRoot.shadowRoot.querySelector<HTMLElement>(`#${ATTRIBUTION_ID}`);
   if (!meta || (!meta.title && !meta.copyright)) {
-    el?.remove();
+    if (el) {
+      teardownAttrDismiss();
+      el.remove();
+    }
     return;
   }
   if (!el) {
@@ -184,8 +227,12 @@ export function applyAttribution(meta: BackgroundAttribution | null): void {
       `<button class="tba-icon" type="button" aria-label="Photo information">` +
       `<svg viewBox="0 0 24 24"><path d="${INFO_ICON_PATH}"></path></svg></button>` +
       `<div class="tba-caption"><div class="tba-title"></div><div class="tba-copyright"></div></div>`;
-    // Tap toggles the caption on touch devices (hover handles pointers).
-    el.querySelector(".tba-icon")?.addEventListener("click", () => el?.classList.toggle("open"));
+    // Tap toggles the caption (outside tap / 15s auto-dismiss handled in openAttr).
+    const captionEl = el;
+    el.querySelector(".tba-icon")?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      toggleAttr(captionEl);
+    });
     huiRoot.shadowRoot.appendChild(el);
     bindAttrResize();
   }
@@ -204,6 +251,7 @@ export function applyAttribution(meta: BackgroundAttribution | null): void {
 
 /** Remove the attribution overlay (used on disconnect / mode change). */
 export function removeAttribution(): void {
+  teardownAttrDismiss();
   const huiRoot = findHuiRoot();
   huiRoot?.shadowRoot?.querySelector(`#${ATTRIBUTION_ID}`)?.remove();
 }
