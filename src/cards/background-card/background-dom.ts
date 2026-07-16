@@ -136,9 +136,15 @@ const ATTRIBUTION_CSS = `
 function positionAttribution(el: HTMLElement): void {
   const view = findHuiRoot()?.shadowRoot?.querySelector("hui-view") as HTMLElement | null;
   const rect = view?.getBoundingClientRect();
-  if (rect && rect.width > 0 && rect.height > 0) {
-    el.style.top = `${Math.round(Math.max(0, rect.top)) + 8}px`;
-    el.style.left = `${Math.round(Math.max(0, rect.left)) + 8}px`;
+  if (view && rect && rect.width > 0 && rect.height > 0) {
+    // Anchor to the CONTENT box, not the border box: a vertical (left/right) navbar
+    // reserves its gutter via `padding-left/right` on hui-view, so add that padding
+    // to shift the icon clear of a left bar (and header pad, if any).
+    const cs = getComputedStyle(view);
+    const padLeft = parseFloat(cs.paddingLeft) || 0;
+    const padTop = parseFloat(cs.paddingTop) || 0;
+    el.style.top = `${Math.round(Math.max(0, rect.top) + padTop) + 8}px`;
+    el.style.left = `${Math.round(Math.max(0, rect.left) + padLeft) + 8}px`;
   } else {
     el.style.top = "calc(env(safe-area-inset-top, 0px) + 8px)";
     el.style.left = "calc(env(safe-area-inset-left, 0px) + 8px)";
