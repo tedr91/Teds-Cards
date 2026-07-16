@@ -46,8 +46,8 @@ export const tedStyleTheme: CSSResult = css`
     /* Follow the active Home Assistant theme. */
     --ted-style-accent: var(--primary-color, #2196f3);
     --ted-style-on-accent: var(--text-primary-color, #ffffff);
-    --ted-style-text: var(--ted-night-text, var(--primary-text-color, #1c1c1c));
-    --ted-style-muted: var(--ted-night-text, var(--secondary-text-color, #6f6f6f));
+    --ted-style-text: var(--primary-text-color, #1c1c1c);
+    --ted-style-muted: var(--secondary-text-color, #6f6f6f);
     --ted-style-icon-dim: var(--state-icon-color, var(--ted-style-muted));
     --ted-style-divider: var(--divider-color, rgba(120, 120, 120, 0.22));
     --ted-style-surface: var(--ha-card-background, var(--card-background-color, #ffffff));

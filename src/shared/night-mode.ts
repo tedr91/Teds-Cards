@@ -16,7 +16,7 @@ export const NIGHTMODE_KEYS = [
   "night_dim_brightness",
   "night_dim_background",
   "night_font_color",
-  "night_transition_minutes",
+  "night_transition_seconds",
   "night_dark_mode",
   "night_brightness_entity",
 ] as const;

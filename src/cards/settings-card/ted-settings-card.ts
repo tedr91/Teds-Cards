@@ -162,7 +162,7 @@ const NIGHT_TIME_SCHEMA = [
 const NIGHT_NUM_SCHEMA = [
   { name: "night_dim_brightness", selector: { number: { min: 0, max: 100, mode: "box", unit_of_measurement: "%" } } },
   { name: "night_dim_background", selector: { number: { min: 0, max: 100, mode: "box", unit_of_measurement: "%" } } },
-  { name: "night_transition_minutes", selector: { number: { min: 0, max: 120, mode: "box", unit_of_measurement: "min" } } },
+  { name: "night_transition_seconds", selector: { number: { min: 0, max: 600, mode: "box", unit_of_measurement: "s" } } },
 ];
 const NIGHT_COLOR_SCHEMA = [{ name: "night_font_color", selector: { ui_color: { default_color: "red" } } }];
 const NIGHT_DARK_SCHEMA = [{ name: "night_dark_mode", selector: { boolean: {} } }];
@@ -177,7 +177,7 @@ const NIGHT_LABELS: Record<string, string> = {
   night_dim_brightness: "Dim brightness (screen)",
   night_dim_background: "Dim brightness (background)",
   night_font_color: "Night font color",
-  night_transition_minutes: "Transition duration",
+  night_transition_seconds: "Transition duration",
   night_dark_mode: "Switch to Dark mode",
   night_brightness_entity: "Screen brightness entity",
 };
@@ -1726,7 +1726,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
                   .data=${{
                     night_dim_brightness: Number(val("night_dim_brightness") ?? 75),
                     night_dim_background: Number(val("night_dim_background") ?? 25),
-                    night_transition_minutes: Number(val("night_transition_minutes") ?? 1),
+                    night_transition_seconds: Number(val("night_transition_seconds") ?? 30),
                   }}
                   .schema=${NIGHT_NUM_SCHEMA}
                   .disabled=${disabled}

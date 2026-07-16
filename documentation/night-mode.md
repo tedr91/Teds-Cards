@@ -52,7 +52,7 @@ that device's overrides and go back to inheriting Global.
 | **Dim brightness (screen)** | `75%` | Target brightness level for the entire screen. |
 | **Dim brightness (background)** | `25%` | Independent target brightness level for the background; stacks with the screen brightness. |
 | **Night font color** | `red` | The font color used dashboard-wide at night. Accepts a theme color name (`red`, `accent`, …) or any CSS color. |
-| **Transition duration** | `1 min` | How long the fade into (and out of) night mode takes. |
+| **Transition duration** | `30 s` | How long the fade into (and out of) night mode takes. |
 | **Switch to Dark mode** | `On` | Store this device's Auto/Light/Dark setting and switch to Dark at night (see [Dark mode](#dark-mode)). Needs browser_mod. |
 | **Screen brightness entity** | *(auto)* | *(This-device)* The entity that controls this screen's brightness. Leave empty to auto-use the device's browser_mod screen light. See below. |
 

@@ -51,6 +51,9 @@ interface DaySnapshot {
 }
 
 const NIGHT_FONT_STYLE_ID = "ted-night-mode-font";
+/** The `ted-style` theme's default text color — the day-start of the font fade for ted-style cards
+ *  (so they fade white → night color directly, without flashing through the HA theme color). */
+const TED_STYLE_DAY_TEXT = "#ffffff";
 /** Per-device settings key holding the day snapshot; its presence also = "night active". */
 const NIGHT_DAY_SNAPSHOT_KEY = "night_day_snapshot";
 /** Fixed restore duration (ms) when night mode is toggled OFF via the Enabled switch. */
@@ -154,7 +157,7 @@ class NightModeEngine {
     const endM = parseTimeToMinutes(s.night_end) ?? DEFAULT_END;
     const wantNight = enabled && isNight(nowMinutes(), startM, endM);
     const wasActive = this._getDay() !== null;
-    const durMs = Math.max(0, Number(s.night_transition_minutes ?? 1)) * 60_000;
+    const durMs = Math.max(0, Number(s.night_transition_seconds ?? 30)) * 1_000;
 
     if (wantNight && !this.active) {
       // Fresh entry transitions; resuming after a reload (wasActive) snaps instantly + keeps day value.
@@ -324,19 +327,18 @@ class NightModeEngine {
   /** Write the font-color override at mix `p` (0=day … 1=night). */
   private _writeFont(styleEl: HTMLStyleElement, p: number): void {
     const pct = Math.max(0, Math.min(100, Math.round(p * 100)));
-    const mix =
+    const mix = (day: string): string =>
       pct >= 100
         ? this._fontNight
         : pct <= 0
-          ? this._fontDay
-          : `color-mix(in srgb, ${this._fontNight} ${pct}%, ${this._fontDay} ${100 - pct}%)`;
+          ? day
+          : `color-mix(in srgb, ${this._fontNight} ${pct}%, ${day} ${100 - pct}%)`;
     const vars =
-      // Ted cards read --ted-night-text via their theme tokens (see tedStyleTheme), so publishing
-      // it here recolors them in BOTH ted-style and ha themes (inheritance crosses shadow roots).
-      `--ted-night-text: ${mix} !important;` +
-      // Native HA cards + the daylight calendar use the standard HA text vars.
-      `--primary-text-color: ${mix} !important;` +
-      `--secondary-text-color: ${mix} !important;` +
+      // ted-style cards fade from their fixed white; native + `ha`-themed cards fade from the HA
+      // theme text color — so each starts at its actual day color (no flash through a wrong color).
+      `--ted-night-text: ${mix(TED_STYLE_DAY_TEXT)} !important;` +
+      `--primary-text-color: ${mix(this._fontDay)} !important;` +
+      `--secondary-text-color: ${mix(this._fontDay)} !important;` +
       // Keep surfaces neutral: Ted's `ha` theme derives --ted-style-surface-2 from the text color,
       // which would otherwise tint card surfaces with the night color.
       `--ted-style-surface-2: var(--ted-style-surface) !important;`;

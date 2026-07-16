@@ -939,6 +939,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.237
+
+- **Night mode: transition in seconds + fixes** — the **Transition duration** is now set in **seconds** (default 30 s), and the default dim levels are screen **75%** / background **25%**. Also fixes a color flash at the start of the fade: `ted-style` cards now fade directly from their own color to the night color (previously they briefly flashed to the Home Assistant theme color first). Requires Ted's Cards Backend v1.0.53+.
+
 ### v1.0.236
 
 - **Night mode font color now works in the `ted-style` theme** — Ted's cards now recolor (and smoothly cross-fade) to the night font color in both the `ted-style` and `ha` themes, via a new overridable `--ted-night-text` theme token. Previously only `ha`-themed cards followed the night color.
