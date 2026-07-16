@@ -1541,8 +1541,8 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
   }
 
   private _renderBackground(field: SettingField, scope: "global" | "device"): TemplateResult {
-    const disabled = scope === "global" && !this._isAdmin();
     const overriding = scope === "device" && BACKGROUND_KEYS.some((k) => k in settingsStore.deviceSettings());
+    const disabled = (scope === "global" && !this._isAdmin()) || (scope === "device" && !overriding);
 
     const ctx: BackgroundFieldsCtx = {
       get: (k) => this._bgVal(k, scope),
@@ -1576,18 +1576,22 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
         </div>
         <div class="bg-row">
           <div class="cam-head">
-            <div class="row-label">
-              ${scope === "device" && !overriding
-                ? html`<span class="help">Not customized — this device follows the Global wallpaper.</span>`
-                : field.help
-                  ? html`<span class="help">${field.help}</span>`
-                  : nothing}
-            </div>
-            ${scope === "device" && overriding
-              ? html`<button class="cam-btn" @click=${() => this._resetBgDevice()}>
-                  <ha-icon icon="mdi:backup-restore"></ha-icon><span>Reset</span>
-                </button>`
-              : nothing}
+            ${scope === "device"
+              ? html`<div class="row-label">
+                    ${overriding
+                      ? html`<span class="help">Overriding for this device.</span>`
+                      : html`<span class="inherit-tag">Inherited</span>`}
+                  </div>
+                  <button
+                    class="ovr ${overriding ? "on" : ""}"
+                    title=${overriding ? "Overriding — click to inherit" : "Inheriting — click to override"}
+                    @click=${() => this._setCompositeOverride("background_mode", BACKGROUND_KEYS, !overriding)}
+                  >
+                    <ha-icon .icon=${overriding ? "mdi:link-off" : "mdi:link-variant"}></ha-icon>
+                  </button>`
+              : field.help
+                ? html`<div class="row-label"><span class="help">${field.help}</span></div>`
+                : nothing}
           </div>
           ${renderBackgroundFields(ctx)}
           ${this._renderBgDebug()}
@@ -1618,8 +1622,12 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     `;
   }
 
-  private _resetBgDevice(): void {
-    for (const k of BACKGROUND_KEYS) settingsStore.clearValue("device", k);
+  /** Toggle a composite (Background / Night mode) between inheriting Global and overriding for this
+   *  device. Turning override ON seeds the anchor key from Global so the fields enable with the
+   *  inherited values; turning it OFF clears all the composite's device keys (back to inherit). */
+  private _setCompositeOverride(anchorKey: string, allKeys: readonly string[], on: boolean): void {
+    if (on) this._setDevice(anchorKey, this._globalValue(anchorKey));
+    else for (const k of allKeys) settingsStore.clearValue("device", k);
     this.requestUpdate();
   }
 
@@ -1640,12 +1648,6 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     this.requestUpdate();
   }
 
-  /** Clear this device's night-mode overrides (revert to Global). */
-  private _resetNightDevice(): void {
-    for (const k of NIGHTMODE_KEYS) settingsStore.clearValue("device", k);
-    this.requestUpdate();
-  }
-
   private _onNightModeChanged(ev: CustomEvent, scope: "global" | "device"): void {
     ev.stopPropagation();
     if (scope === "global" && !this._isAdmin()) return;
@@ -1660,8 +1662,8 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
   }
 
   private _renderNightMode(field: SettingField, scope: "global" | "device"): TemplateResult {
-    const disabled = scope === "global" && !this._isAdmin();
     const overriding = scope === "device" && NIGHTMODE_KEYS.some((k) => k in settingsStore.deviceSettings());
+    const disabled = (scope === "global" && !this._isAdmin()) || (scope === "device" && !overriding);
     const val = (k: string): SettingsValue => this._nmVal(k, scope);
     const enabled = val("night_enabled") !== false;
     const explicitEntity =
@@ -1679,18 +1681,22 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
         </div>
         <div class="bg-row">
           <div class="cam-head">
-            <div class="row-label">
-              ${scope === "device" && !overriding
-                ? html`<span class="help">Not customized — this device follows the Global night mode.</span>`
-                : field.help
-                  ? html`<span class="help">${field.help}</span>`
-                  : nothing}
-            </div>
-            ${scope === "device" && overriding
-              ? html`<button class="cam-btn" @click=${() => this._resetNightDevice()}>
-                  <ha-icon icon="mdi:backup-restore"></ha-icon><span>Reset</span>
-                </button>`
-              : nothing}
+            ${scope === "device"
+              ? html`<div class="row-label">
+                    ${overriding
+                      ? html`<span class="help">Overriding for this device.</span>`
+                      : html`<span class="inherit-tag">Inherited</span>`}
+                  </div>
+                  <button
+                    class="ovr ${overriding ? "on" : ""}"
+                    title=${overriding ? "Overriding — click to inherit" : "Inheriting — click to override"}
+                    @click=${() => this._setCompositeOverride("night_enabled", NIGHTMODE_KEYS, !overriding)}
+                  >
+                    <ha-icon .icon=${overriding ? "mdi:link-off" : "mdi:link-variant"}></ha-icon>
+                  </button>`
+              : field.help
+                ? html`<div class="row-label"><span class="help">${field.help}</span></div>`
+                : nothing}
           </div>
 
           <ha-form
