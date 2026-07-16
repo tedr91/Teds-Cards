@@ -3,7 +3,7 @@
  *
  * Night mode is a composite setting (kind "nightmode") stored as the `night_*` keys below,
  * mirroring the `background_*` composite. The night-mode engine reads these to run a nightly
- * schedule that dims the background, lowers screen brightness, and switches the font colour to
+ * schedule that dims the background, lowers screen brightness, and switches the font color to
  * a night value, restoring the stored "day" values in the morning.
  */
 import { browserModId } from "./device-id";

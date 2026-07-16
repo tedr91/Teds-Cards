@@ -866,7 +866,7 @@ export class TedCoverCard extends LitElement implements LovelaceCard {
       pointer-events: none;
     }
     /* On the HA theme (which may be a light theme) the dark-groove engraved look
-       breaks, so use the active theme's own divider colour as a flat hairline.
+       breaks, so use the active theme's own divider color as a flat hairline.
        The extra .horizontal selector outranks the horizontal box-shadow rule
        regardless of source order. */
     ha-card.ted-card--theme-ha .divider {

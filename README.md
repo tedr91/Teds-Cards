@@ -941,11 +941,11 @@ the Home Assistant / HACS **update** dialog when you update. Newest first.
 
 ### v1.0.236
 
-- **Night mode font colour now works in the `ted-style` theme** — Ted's cards now recolour (and smoothly cross-fade) to the night font colour in both the `ted-style` and `ha` themes, via a new overridable `--ted-night-text` theme token. Previously only `ha`-themed cards followed the night colour.
+- **Night mode font color now works in the `ted-style` theme** — Ted's cards now recolor (and smoothly cross-fade) to the night font color in both the `ted-style` and `ha` themes, via a new overridable `--ted-night-text` theme token. Previously only `ha`-themed cards followed the night color.
 
 ### v1.0.235
 
-- **Night mode visual fixes** — the font colour now cross-fades smoothly across the whole transition instead of snapping in partway through; card surfaces no longer pick up a red tint from the night font colour; and the wallpaper is no longer double-darkened when Dark mode kicks in (the readability scrim is suppressed while night mode is dimming the background).
+- **Night mode visual fixes** — the font color now cross-fades smoothly across the whole transition instead of snapping in partway through; card surfaces no longer pick up a red tint from the night font color; and the wallpaper is no longer double-darkened when Dark mode kicks in (the readability scrim is suppressed while night mode is dimming the background).
 
 ### v1.0.234
 
@@ -957,7 +957,7 @@ the Home Assistant / HACS **update** dialog when you update. Newest first.
 
 ### v1.0.232
 
-- **Night mode fixes & restore hardening** — the night font colour now correctly recolours Ted's cards (clock, weather, etc.) that define their own text colour. The captured daytime values are now stored per-device in the backend (surviving cache clears) instead of the browser, and for light entities night mode now also snapshots and restores the colour temperature and on/off state. Toggling **Enabled** off during the night restores your daytime values over a quick 10 seconds. Requires Ted's Cards Backend v1.0.50+.
+- **Night mode fixes & restore hardening** — the night font color now correctly recolors Ted's cards (clock, weather, etc.) that define their own text color. The captured daytime values are now stored per-device in the backend (surviving cache clears) instead of the browser, and for light entities night mode now also snapshots and restores the color temperature and on/off state. Toggling **Enabled** off during the night restores your daytime values over a quick 10 seconds. Requires Ted's Cards Backend v1.0.50+.
 
 ### v1.0.231
 
@@ -965,7 +965,7 @@ the Home Assistant / HACS **update** dialog when you update. Newest first.
 
 ### v1.0.230
 
-- **Automatic night mode** — a new **Settings → General → Automatic night mode** panel (just below Icon set) dims the dashboard on a nightly schedule. Set a **night start/end time**, **dim brightness**, **night font colour**, and **transition duration**: at night it darkens the background, lowers the screen brightness (via the device's browser_mod screen light by default, or a light/number entity you pick per device), and switches the font colour to your night colour — then smoothly restores your daytime values in the morning. Settings are global with per-device overrides. Requires Ted's Cards Backend v1.0.49+.
+- **Automatic night mode** — a new **Settings → General → Automatic night mode** panel (just below Icon set) dims the dashboard on a nightly schedule. Set a **night start/end time**, **dim brightness**, **night font color**, and **transition duration**: at night it darkens the background, lowers the screen brightness (via the device's browser_mod screen light by default, or a light/number entity you pick per device), and switches the font color to your night color — then smoothly restores your daytime values in the morning. Settings are global with per-device overrides. Requires Ted's Cards Backend v1.0.49+.
 
 ### v1.0.229
 
@@ -1056,7 +1056,7 @@ the Home Assistant / HACS **update** dialog when you update. Newest first.
 
 ### v1.0.208
 
-- **View Launcher styling** — every launcher button now uses the accent-tinted look by default (set the colour via **Settings → Navbar → Launcher Buttons → Button color**), and the current view is marked with a colored ring around its button instead of a different fill. Also adds a `ring` option to Ted's Button Card.
+- **View Launcher styling** — every launcher button now uses the accent-tinted look by default (set the color via **Settings → Navbar → Launcher Buttons → Button color**), and the current view is marked with a colored ring around its button instead of a different fill. Also adds a `ring` option to Ted's Button Card.
 
 ### v1.0.207
 
@@ -1173,19 +1173,19 @@ the Home Assistant / HACS **update** dialog when you update. Newest first.
 
 ### v1.0.180
 
-- **Calendar card Appearance reorganised + header transparency** — the Calendar card editor's Appearance section is now grouped into collapsible **Header** (show header / header colour / header transparency, show name / name, show calendar badges) and **Advanced Visuals** (background colour, transparency, blur, width/height) subsections, with Theme styling and Weather sensor at the top. Added **Header transparency** (Daylight's `header_background_opacity`); the card-wide blur frosts a translucent header too.
+- **Calendar card Appearance reorganised + header transparency** — the Calendar card editor's Appearance section is now grouped into collapsible **Header** (show header / header color / header transparency, show name / name, show calendar badges) and **Advanced Visuals** (background color, transparency, blur, width/height) subsections, with Theme styling and Weather sensor at the top. Added **Header transparency** (Daylight's `header_background_opacity`); the card-wide blur frosts a translucent header too.
 
 ### v1.0.179
 
-- **Calendar card transparency fix** — the Calendar card's **Transparency** (and background colour / blur / Ted theme) now take effect. The card was baking in `background_opacity: 0`, which caused the underlying Daylight card to ignore the transparency request; it now drives the native `background_opacity` so the frosted surface (and the dashboard wallpaper) shows through.
+- **Calendar card transparency fix** — the Calendar card's **Transparency** (and background color / blur / Ted theme) now take effect. The card was baking in `background_opacity: 0`, which caused the underlying Daylight card to ignore the transparency request; it now drives the native `background_opacity` so the frosted surface (and the dashboard wallpaper) shows through.
 
 ### v1.0.178
 
-- **Calendar card appearance fixes** — the Calendar card's **Appearance** section now sits above the Calendars list, its colour pickers use the same standard picker as every other Ted's Card, and **theme styling / background colour / transparency / blur** now actually take effect (rendered as a frosted surface behind the calendar instead of relying on the calendar's own CSS injection). Blur is now a 0–100% amount, and `theme: ted-style` gives a translucent, blurred frost by default.
+- **Calendar card appearance fixes** — the Calendar card's **Appearance** section now sits above the Calendars list, its color pickers use the same standard picker as every other Ted's Card, and **theme styling / background color / transparency / blur** now actually take effect (rendered as a frosted surface behind the calendar instead of relying on the calendar's own CSS injection). Blur is now a 0–100% amount, and `theme: ted-style` gives a translucent, blurred frost by default.
 
 ### v1.0.177
 
-- **Calendar card — Appearance & per-calendar options** — the Calendar card editor now has an **Appearance** section (name / show name, theme styling, background colour + transparency + blur, show header + header colour, allow calendar toggling, weather sensor, and fixed width/height for non-grid layouts). Each calendar in the list also gains its own options: name, read-only, person, icon, icon source (person avatar vs icon), and colour. These map to the wrapped Daylight Calendar card's native settings (with a little injected CSS for background colour/blur, which it has no native option for).
+- **Calendar card — Appearance & per-calendar options** — the Calendar card editor now has an **Appearance** section (name / show name, theme styling, background color + transparency + blur, show header + header color, allow calendar toggling, weather sensor, and fixed width/height for non-grid layouts). Each calendar in the list also gains its own options: name, read-only, person, icon, icon source (person avatar vs icon), and color. These map to the wrapped Daylight Calendar card's native settings (with a little injected CSS for background color/blur, which it has no native option for).
 
 ### v1.0.176
 
@@ -1343,15 +1343,15 @@ the Home Assistant / HACS **update** dialog when you update. Newest first.
 
 ### v1.0.140
 
-- **Navbar debug outlines** — with Settings → General → Debug mode on, the navbar now shows colour-coded outlines: the bar bounds (magenta), the Left/Center/Right zones (red/green/blue), each section (yellow, with the dead-centre section in teal), and each item — making it obvious where the five positional sections land. No visual change when Debug mode is off.
+- **Navbar debug outlines** — with Settings → General → Debug mode on, the navbar now shows color-coded outlines: the bar bounds (magenta), the Left/Center/Right zones (red/green/blue), each section (yellow, with the dead-centre section in teal), and each item — making it obvious where the five positional sections land. No visual change when Debug mode is off.
 
 ### v1.0.139
 
-- **Restored v1.0.137 navbar behaviour** — reinstates the navbar bottom-reserve / `reserve_content_space` changes from v1.0.137 (rolling forward from the v1.0.138 revert).
+- **Restored v1.0.137 navbar behavior** — reinstates the navbar bottom-reserve / `reserve_content_space` changes from v1.0.137 (rolling forward from the v1.0.138 revert).
 
 ### v1.0.138
 
-- **Reverted v1.0.136 + v1.0.137** — rolls the navbar bottom-reserve / `reserve_content_space` changes back to the v1.0.135 behaviour.
+- **Reverted v1.0.136 + v1.0.137** — rolls the navbar bottom-reserve / `reserve_content_space` changes back to the v1.0.135 behavior.
 
 ### v1.0.135
 
@@ -1367,15 +1367,15 @@ the Home Assistant / HACS **update** dialog when you update. Newest first.
 
 ### v1.0.132
 
-- **Background Wallpaper tweaks** — the default Solid Color is now a muted indigo (`#57608E`), and the "gradient effect" now matches the "Ted's Home Theater" card surface: a 145° three-stop diagonal that steps the chosen colour darker. Pairs with Ted's Cards Backend v1.0.30+.
+- **Background Wallpaper tweaks** — the default Solid Color is now a muted indigo (`#57608E`), and the "gradient effect" now matches the "Ted's Home Theater" card surface: a 145° three-stop diagonal that steps the chosen color darker. Pairs with Ted's Cards Backend v1.0.30+.
 
 ### v1.0.131
 
-- **Background Wallpapers** — new **Settings → General → Background Wallpaper** control with four modes: **Solid Color** (colour picker + optional gradient), **Single Image** (recent thumbnails, browse HA media, or upload a new image), **Slideshow** (built-in album or a media folder, theme-matched/light/dark/all, shuffle, cycle duration), and **HA Theme** (defer to the active theme). Shared options for size, alignment, repeat, and fixed/scroll. Settings apply globally or per-device. A new invisible **Ted Background Card** (`custom:ted-background-card`) paints the dashboard from these settings — add one per view (e.g. a shared layout). Requires Ted's Cards Backend v1.0.29+.
+- **Background Wallpapers** — new **Settings → General → Background Wallpaper** control with four modes: **Solid Color** (color picker + optional gradient), **Single Image** (recent thumbnails, browse HA media, or upload a new image), **Slideshow** (built-in album or a media folder, theme-matched/light/dark/all, shuffle, cycle duration), and **HA Theme** (defer to the active theme). Shared options for size, alignment, repeat, and fixed/scroll. Settings apply globally or per-device. A new invisible **Ted Background Card** (`custom:ted-background-card`) paints the dashboard from these settings — add one per view (e.g. a shared layout). Requires Ted's Cards Backend v1.0.29+.
 
 ### v1.0.130
 
-- **Status items — button-style interactions** — every Navbar and Room Card status item now supports `tap_action`, `hold_action`, and `double_tap_action` (like the Button Card), replacing the old `datetime`/`weather` `tap_navigate`. For the interactive items (brightness, volume, notifications, alarms, timers) a configured action **overrides** that gesture's built-in behaviour; leave it unset to keep the default (e.g. brightness tap still opens its slider). Editable in the card editor under a new **Interactions** section. The `navigate-dashboard` action still requires the navbar's `backend_integration`; the Button Card and status items now share one action dispatcher.
+- **Status items — button-style interactions** — every Navbar and Room Card status item now supports `tap_action`, `hold_action`, and `double_tap_action` (like the Button Card), replacing the old `datetime`/`weather` `tap_navigate`. For the interactive items (brightness, volume, notifications, alarms, timers) a configured action **overrides** that gesture's built-in behavior; leave it unset to keep the default (e.g. brightness tap still opens its slider). Editable in the card editor under a new **Interactions** section. The `navigate-dashboard` action still requires the navbar's `backend_integration`; the Button Card and status items now share one action dispatcher.
 
 ### v1.0.129
 
@@ -1460,7 +1460,7 @@ the Home Assistant / HACS **update** dialog when you update. Newest first.
 
 ### v1.0.109
 
-- **Navbar `backend_integration` option (YAML-only)** — the Navbar Card gained a `backend_integration` flag (default `false`) that gates its Ted's Cards Backend behaviours: **auto-return-home** on idle, a new **welcome → home redirect** on load, and status-item **`tap_navigate`**. It's left off by default so the bar can be dropped into any dashboard without cross-navigation surprises; set `backend_integration: true` on the Ted Dashboard navbar to keep those behaviours.
+- **Navbar `backend_integration` option (YAML-only)** — the Navbar Card gained a `backend_integration` flag (default `false`) that gates its Ted's Cards Backend behaviors: **auto-return-home** on idle, a new **welcome → home redirect** on load, and status-item **`tap_navigate`**. It's left off by default so the bar can be dropped into any dashboard without cross-navigation surprises; set `backend_integration: true` on the Ted Dashboard navbar to keep those behaviors.
 - **Return to your Home view after a reboot/reload** — with `backend_integration` on, opening the dashboard's default welcome view now redirects to this device's configured **Home dashboard** (from Settings) instead of stranding wall panels on the welcome page. It fires once per page load, so the welcome view can still be opened manually afterwards.
 
 ### v1.0.108
@@ -1835,7 +1835,7 @@ the Home Assistant / HACS **update** dialog when you update. Newest first.
 ### v1.0.27
 
 - **Alarm & Timer Cards** — the editors are reorganised to match the other cards, with a standard **Appearance (general)** section and a new **Header** section (Display icon / name in header with size overrides, header divider line, and the Show add button toggle).
-- **Alarm & Timer Cards** — the header icon and **+** add button now match the header text colour.
+- **Alarm & Timer Cards** — the header icon and **+** add button now match the header text color.
 - **Timer Card** — recent-tile text is vertically centred.
 
 ### v1.0.26
@@ -1864,7 +1864,7 @@ the Home Assistant / HACS **update** dialog when you update. Newest first.
 ### v1.0.21
 
 - **Alarm & Timer Cards** — the header **+** (add) button now uses the same themed button as the other controls, so its corners follow your theme.
-- **Timer Card** — a **paused** active timer's **resume** button now uses a **caution (amber)** colour to make paused timers stand out.
+- **Timer Card** — a **paused** active timer's **resume** button now uses a **caution (amber)** color to make paused timers stand out.
 
 ### v1.0.20
 
@@ -1884,7 +1884,7 @@ the Home Assistant / HACS **update** dialog when you update. Newest first.
 
 ### v1.0.16
 
-- **Alarm & Timer Cards** — the inline row/tile controls (on/off, edit, delete, pause/resume, start) now share a single **themed icon button**, so they look and feel consistent across both cards and pick up theme colours and radii uniformly. Both cards also **auto-shrink** these buttons when the card is narrow.
+- **Alarm & Timer Cards** — the inline row/tile controls (on/off, edit, delete, pause/resume, start) now share a single **themed icon button**, so they look and feel consistent across both cards and pick up theme colors and radii uniformly. Both cards also **auto-shrink** these buttons when the card is narrow.
 - **Alarm Card** — the repeat-day badge now sits **inline with the alarm name**, and the row controls align to the **top**, level with the time.
 
 ### v1.0.15
@@ -1894,7 +1894,7 @@ the Home Assistant / HACS **update** dialog when you update. Newest first.
 
 ### v1.0.14
 
-- **Alarm & Timer Cards** — the **New alarm** / **New timer** / **Edit timer** popups no longer render with a blank body. Their fields were built on a Home Assistant component that is often not yet loaded when a card first appears; they now use self-contained native inputs so the form always shows. The popups also correctly follow the card's theme (border radii, surface, and accent colours) in both the HA and ted-style themes.
+- **Alarm & Timer Cards** — the **New alarm** / **New timer** / **Edit timer** popups no longer render with a blank body. Their fields were built on a Home Assistant component that is often not yet loaded when a card first appears; they now use self-contained native inputs so the form always shows. The popups also correctly follow the card's theme (border radii, surface, and accent colors) in both the HA and ted-style themes.
 
 ### v1.0.13
 
@@ -1966,7 +1966,7 @@ the Home Assistant / HACS **update** dialog when you update. Newest first.
 - **Clock Weather Card** — clock, date, and weather with basic/cool/fancy icon styles.
 - **Remote Card** and **Spacer Card**.
 - **Navbar Card** — pin top/bottom (horizontal) or left/right (vertical), snap or float, left/center/right zones, buttons + status items + popups, and auto-overflow.
-- **Every card** — Ted's Style or Home Assistant theme, background colour, transparency, and frosted-glass background blur.
+- **Every card** — Ted's Style or Home Assistant theme, background color, transparency, and frosted-glass background blur.
 
 ## Development
 

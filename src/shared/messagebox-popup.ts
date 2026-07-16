@@ -22,7 +22,7 @@ export interface ToastAction {
 export interface MessagePopupOptions {
   /** Bold heading line. */
   title?: string;
-  /** Accent-coloured lead phrase shown before the message (e.g. the timer name). */
+  /** Accent-colored lead phrase shown before the message (e.g. the timer name). */
   emphasis?: string;
   /** The message body. */
   message: string;

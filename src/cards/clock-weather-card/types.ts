@@ -11,7 +11,7 @@ export type WeatherSize = "standard" | "custom";
 export interface ClockWeatherCardConfig extends LovelaceCardConfig {
   type: string;
 
-  /** Opt into Ted's Cards Backend behaviours (YAML-only, default false). When true and
+  /** Opt into Ted's Cards Backend behaviors (YAML-only, default false). When true and
    *  no `weather_entity` is set on the card, the entity is sourced from the global
    *  `weather_entity` setting (device scope, then global). Off = no backend dependency. */
   backend_integration?: boolean;

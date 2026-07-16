@@ -4,7 +4,7 @@ import { customElement, property } from "lit/decorators.js";
 /**
  * Small, theme-consistent inline icon control shared by the cards (alarm/timer
  * row controls: pause, resume, edit, delete, …). A thin wrapper around HA's
- * `ha-icon-button` that standardises sizing and colour via `--ted-style-*`
+ * `ha-icon-button` that standardises sizing and color via `--ted-style-*`
  * tokens so every card's inline buttons look and feel the same.
  *
  * - `icon`  — MDI icon name.

@@ -1,7 +1,7 @@
 # Automatic Night Mode
 
 Automatic Night Mode dims Ted's Dashboard on a nightly schedule — darkening the background,
-lowering the screen brightness, and switching to a night font colour — then smoothly restores
+lowering the screen brightness, and switching to a night font color — then smoothly restores
 your daytime values in the morning. It's configured entirely from **Settings → General → Automatic
 night mode** and runs automatically on every view (no per-view configuration).
 
@@ -21,7 +21,7 @@ At night, over your configured **transition duration**, it:
    [Background brightness](#background-brightness) that applies during the day.
 2. **Lowers the screen brightness** to your **Dim brightness (screen)** target (see
    [Screen brightness target](#screen-brightness-target)).
-3. **Switches the font colour** dashboard-wide to your **Night font colour**.
+3. **Switches the font color** dashboard-wide to your **Night font color**.
 4. **Switches the device to Dark mode** (optional) a few seconds after the transition finishes —
    restoring your Auto/Light/Dark setting in the morning. See [Dark mode](#dark-mode).
 
@@ -51,7 +51,7 @@ that device's overrides and go back to inheriting Global.
 | **Night end time** | `7:00 am` | When night mode ends and daytime values are restored. |
 | **Dim brightness (screen)** | `75%` | Target brightness level for the entire screen. |
 | **Dim brightness (background)** | `25%` | Independent target brightness level for the background; stacks with the screen brightness. |
-| **Night font colour** | `red` | The font colour used dashboard-wide at night. Accepts a theme colour name (`red`, `accent`, …) or any CSS colour. |
+| **Night font color** | `red` | The font color used dashboard-wide at night. Accepts a theme color name (`red`, `accent`, …) or any CSS color. |
 | **Transition duration** | `1 min` | How long the fade into (and out of) night mode takes. |
 | **Switch to Dark mode** | `On` | Store this device's Auto/Light/Dark setting and switch to Dark at night (see [Dark mode](#dark-mode)). Needs browser_mod. |
 | **Screen brightness entity** | *(auto)* | *(This-device)* The entity that controls this screen's brightness. Leave empty to auto-use the device's browser_mod screen light. See below. |
@@ -83,7 +83,7 @@ represents the screen's brightness. Supported entity types:
 
 Because the brightness entity is specific to each physical screen, set it on the **This device** tab.
 If no entity is configured and no browser_mod screen light is found, the brightness step is skipped
-(the background dim and font colour still apply).
+(the background dim and font color still apply).
 
 ---
 
@@ -96,7 +96,7 @@ is already inside the night window:
 
 - The current daytime screen values are **snapshotted and saved** (see
   [Day-value storage & restore](#day-value-storage--restore)).
-- The background dim, screen brightness, and font colour transition to their night values over the
+- The background dim, screen brightness, and font color transition to their night values over the
   **Transition duration**.
 
 **Leaving night** — when the time reaches **Night end**, *or* on load when the time is outside the
@@ -119,11 +119,11 @@ daytime value instead of re-capturing the already-dimmed one.
 What's captured for the brightness entity:
 
 - **Brightness** level.
-- For **`light`** entities also the **colour temperature** and **on/off** state — so a light that was a
+- For **`light`** entities also the **color temperature** and **on/off** state — so a light that was a
   warm white (or off) during the day is restored to exactly that in the morning.
 
-The background dim and font colour need no stored values: night mode simply layers on top (an overlay
-plus a colour override), so removing those layers restores the original wallpaper and theme colours
+The background dim and font color need no stored values: night mode simply layers on top (an overlay
+plus a color override), so removing those layers restores the original wallpaper and theme colors
 exactly.
 
 Restore happens on **all** exit paths: the natural morning end, and manually turning **Enabled** off.
@@ -136,9 +136,9 @@ Restore happens on **all** exit paths: the natural morning end, and manually tur
   browser, so they work even for the browser_mod screen light, which ignores the native `transition`
   parameter). The background dim and the screen dim are separate overlays, so they **stack** — the
   background ends up darker than the rest of the screen at night.
-- **Font colour** cross-fades smoothly over the duration. Ted's own cards recolour via an overridable
+- **Font color** cross-fades smoothly over the duration. Ted's own cards recolor via an overridable
   `--ted-night-text` theme token (so it works in both the `ted-style` and `ha` themes), and native Home
-  Assistant cards recolour via the standard `--primary-text-color`.
+  Assistant cards recolor via the standard `--primary-text-color`.
 
 ---
 
@@ -172,7 +172,7 @@ Auto/Light/Dark mode changes.
   *registered* in its panel (the panel hint shows the resolved entity when found).
 - **Nothing happens at all** — confirm the backend is installed and the Settings panel loads, that
   **Enabled** is on, and that the current time falls inside your Night start/end window.
-- **Font colour doesn't apply to some cards** — Ted's own cards are recoloured via `--ted-style-text`;
-  third-party cards that hardcode their text colour may not follow the night colour.
+- **Font color doesn't apply to some cards** — Ted's own cards are recolored via `--ted-style-text`;
+  third-party cards that hardcode their text color may not follow the night color.
 - **Testing** — set a short window (e.g. start one minute ahead) and a short **Transition duration**
   so you don't have to wait to see the fade.

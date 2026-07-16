@@ -56,7 +56,7 @@ Each `menu_items` entry: `name` (required), `icon` (mdi), `entity` (optional), a
 
 | Option | Type | Default | Description |
 | --- | --- | --- | --- |
-| `backend_integration` | boolean | false | Opt into Ted's Cards Backend behaviours: auto-return-home on idle, welcome-view redirect to the device's home, and the `navigate-dashboard` action on status items. |
+| `backend_integration` | boolean | false | Opt into Ted's Cards Backend behaviors: auto-return-home on idle, welcome-view redirect to the device's home, and the `navigate-dashboard` action on status items. |
 
 ### Sections
 
@@ -85,7 +85,7 @@ weather, alarms/timers) can also appear in a section — see the
 Every status item supports button-style `tap_action`, `hold_action`, and
 `double_tap_action` ([actions](./README.md#actions)). For the interactive items
 (brightness, volume, notifications, alarms, timers) a configured action **overrides**
-the item's built-in behaviour for that gesture; leave it unset to keep the default
+the item's built-in behavior for that gesture; leave it unset to keep the default
 (e.g. brightness tap opens the slider). The `navigate-dashboard` action requires
 `backend_integration: true`; all other actions work regardless.
 

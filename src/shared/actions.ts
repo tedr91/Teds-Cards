@@ -2,7 +2,7 @@
  * Shared action dispatch for Ted's Cards: the single source of truth for running
  * a tap / hold / double-tap `ActionConfig`, used by the Button Card and the shared
  * status items (Navbar / Room card read-outs). Mirrors Home Assistant's built-in
- * button behaviour plus two Ted's extras: a corrected `toggle` (handles scenes,
+ * button behavior plus two Ted's extras: a corrected `toggle` (handles scenes,
  * buttons, valves, …) and the `navigate-dashboard` action that resolves a dashboard
  * path from the Ted's Cards Backend settings at tap time.
  */

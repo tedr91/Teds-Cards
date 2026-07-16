@@ -6,9 +6,9 @@
 //
 // Each source id may provide:
 //   - a COLOR icon: solid-fill facets (gradients are approximated as flat fills),
-//     each keeping its own brand colour in `color` mode.
-//   - a MONO icon: one or more single-colour paths rendered with `currentColor`,
-//     used in `monochrome` mode so the glyph follows the card/theme text colour.
+//     each keeping its own brand color in `color` mode.
+//   - a MONO icon: one or more single-color paths rendered with `currentColor`,
+//     used in `monochrome` mode so the glyph follows the card/theme text color.
 // Either may be omitted; the resolver falls back accordingly.
 
 export type SourceIconFacet = { d: string; fill: string };
@@ -27,13 +27,13 @@ export type MonoSvg = {
 
 // Raw inner-SVG markup, for marks that are stroke-based or composed of several
 // element types (lines, rects, transformed groups). The markup must paint with
-// `currentColor`; in colour mode an optional `tint` recolours it via the host
+// `currentColor`; in color mode an optional `tint` recolors it via the host
 // `color` property.
 export type RawSvg = {
   raw: string;
   /** Defaults to `0 0 24 24`. */
   viewBox?: string;
-  /** Brand colour applied in colour mode (monochrome always uses currentColor). */
+  /** Brand color applied in color mode (monochrome always uses currentColor). */
   tint?: string;
 };
 
@@ -78,23 +78,23 @@ const KALEIDESCAPE_COLOR: ColorSvg = {
 
 // --- Netflix --------------------------------------------------------------
 // The Netflix "N" mark (Simple Icons geometry, 24x24). Shared by both modes:
-// brand red in colour mode, currentColor in monochrome mode.
+// brand red in color mode, currentColor in monochrome mode.
 const NETFLIX_N = "m5.398 0 8.348 23.602c2.346.059 4.856.398 4.856.398L10.113 0H5.398zm8.489 0v9.172l4.715 13.33V0h-4.715zM5.398 1.5V24c1.873-.225 2.81-.312 4.715-.398V14.83L5.398 1.5z";
 
 // --- Spotify --------------------------------------------------------------
 // Spotify circle-and-waves mark (Simple Icons geometry, 24x24). Green disc in
-// colour mode; currentColor with the waves cut out in monochrome mode.
+// color mode; currentColor with the waves cut out in monochrome mode.
 const SPOTIFY = "M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z";
 
 // --- YouTube --------------------------------------------------------------
-// Rounded "play" badge (vectorlogo/Simple Icons geometry, 24x24). Colour mode is
+// Rounded "play" badge (vectorlogo/Simple Icons geometry, 24x24). Color mode is
 // the red body plus a white triangle; monochrome uses the single body path with
 // the triangle cut out.
 const YOUTUBE_BODY = "M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z";
 const YOUTUBE_TRIANGLE = "M9.545 15.568V8.432L15.818 12Z";
 
 // --- Plex -----------------------------------------------------------------
-// Plex chevron mark (CoreUI Brands geometry, 32x32). Brand gold in colour mode;
+// Plex chevron mark (CoreUI Brands geometry, 32x32). Brand gold in color mode;
 // currentColor in monochrome mode.
 const PLEX_CHEVRON = "M15.527 0H6.24l10.239 16L6.24 32h9.287L25.76 16z";
 
@@ -102,7 +102,7 @@ const PLEX_CHEVRON = "M15.527 0H6.24l10.239 16L6.24 32h9.287L25.76 16z";
 // Official "Amazon Prime Video" horizontal logo from the public Wikimedia SVG:
 // the "prime" wordmark + swoosh in Amazon blue (#00A8E1), the "video" wordmark
 // in dark navy (#232F3E), and a small light-blue (#D1EFFA) notch in the swoosh.
-// In colour mode the navy "video" is repainted in currentColor so it stays
+// In color mode the navy "video" is repainted in currentColor so it stays
 // legible on dark card surfaces (matching how Amazon renders the logo on dark
 // backgrounds) while "prime" + swoosh keep the brand blue. Monochrome mode
 // reuses the same path geometry painted entirely in currentColor.
@@ -125,8 +125,8 @@ const PRIME_VIDEO_FACETS: SourceIconFacet[] = [
   { d: "M685.3,82.3c5.8-0.4,11.6-1.5,16.8-4.3c5.3-2.6,9-7.5,10.1-13.3c0.7-3.6,0.7-7.4-0.1-11 c-2.1-9-7.8-14.6-16.4-17.5c-4.8-1.5-9.9-2.1-14.9-1.9c-16.8,0.4-29.6,8.9-34.8,25.7c-3.5,11.1-3,22.4,0.4,33.5 c3.5,11.4,11.5,18.3,22.9,21.4c4.9,1.2,10,1.7,15,1.5c7.3-0.1,14.6-1.5,21.5-4.1c2.9-1.1,3.6-2.1,3.6-5.2v-7.2 c-0.1-2.9-1.3-3.9-4.2-3.2c-2.2,0.6-4.3,1.1-6.5,1.6c-6.7,1.6-13.7,1.9-20.5,0.7c-6.8-1.3-11.4-5.2-13.2-12c-0.5-2-0.9-4-1.1-6.1 c0.5,0,1,0,1.4,0.2C671.9,82.3,678.6,82.8,685.3,82.3z M664.4,66.3c0.7-3.9,1.6-7.7,4-10.9c3.7-4.9,8.8-6.3,14.6-5.7 c0.5,0,0.9,0.2,1.4,0.2c7,1.1,8.7,6.7,7.4,12.1c-1,4-4.3,5.5-8,6.2c-2,0.4-4.1,0.6-6.2,0.5c-4.1-0.1-8.1-0.4-12.1-1 C664.6,67.6,664.2,67.2,664.4,66.3L664.4,66.3z", fill: "#232F3E" }
 ];
 const PRIME_VIDEO_PATHS = PRIME_VIDEO_FACETS.map((facet) => facet.d);
-// Colour-mode facets: the dark-navy "video" letters follow the card text colour
-// so they don't vanish on dark themes; everything else keeps its brand colour.
+// Color-mode facets: the dark-navy "video" letters follow the card text color
+// so they don't vanish on dark themes; everything else keeps its brand color.
 const PRIME_VIDEO_COLOR_FACETS: SourceIconFacet[] = PRIME_VIDEO_FACETS.map((facet) =>
   facet.fill === "#232F3E" ? { d: facet.d, fill: "currentColor" } : facet
 );
@@ -134,7 +134,7 @@ const PRIME_VIDEO_VIEWBOX = "0 0 800.3 246.3";
 
 // --- AirPlay --------------------------------------------------------------
 // Public-domain geometric AirPlay mark: a screen outline (open along the bottom)
-// with an upward triangle. Painted in currentColor for both modes (no brand colour).
+// with an upward triangle. Painted in currentColor for both modes (no brand color).
 const AIRPLAY_RAW =
   '<path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M5 17H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-1"/>' +
   '<path fill="currentColor" d="M12 15l5 6H7z"/>';
@@ -157,8 +157,8 @@ const SI_SONOS = "m12.988 12.36l-2.813-2.634v4.429h.837V11.7l2.813 2.633V9.905h-
 const SI_DENON = "M15.586 9.783a2.27 2.27 0 0 0-2.255 2.233a2.2 2.2 0 0 0 2.222 2.2a2.27 2.27 0 0 0 2.266-2.125a2.245 2.245 0 0 0-2.233-2.308m-.033 3.809a1.576 1.576 0 0 1 0-3.151a1.53 1.53 0 0 1 1.593 1.575a1.6 1.6 0 0 1-1.593 1.576M3.374 9.918H2v4.153h1.379a2.1 2.1 0 0 0 1.947-2.093a2.007 2.007 0 0 0-1.952-2.06m-.017 3.537h-.708v-2.937h.573A1.42 1.42 0 0 1 4.685 12a1.4 1.4 0 0 1-1.328 1.455M22 9.918h-.649v2.683l-.004-.013l-2.851-2.776v4.26h.658V11.36l-.003-.016L22 14.152ZM6.056 14.072h2.315v-.649H6.705v-1.234h1.298v-.648l-1.298.001v-.976h1.677v-.648H6.056Zm5.928-1.504L9.15 9.815v4.257h.649v-2.694l.005-.027l2.829 2.818V9.918h-.649Z";
 
 // --- Microsoft ------------------------------------------------------------
-// The Microsoft four-square logo (256x256). Colour mode keeps the four brand
-// colours; monochrome mode paints all four squares in currentColor.
+// The Microsoft four-square logo (256x256). Color mode keeps the four brand
+// colors; monochrome mode paints all four squares in currentColor.
 const MS_SQUARE_TL = "M121.666 121.666H0V0h121.666z";
 const MS_SQUARE_TR = "M256 121.666H134.335V0H256z";
 const MS_SQUARE_BL = "M121.663 256.002H0V134.336h121.663z";
@@ -168,7 +168,7 @@ const MS_VIEWBOX = "0 0 256 256";
 // --- Apple TV -------------------------------------------------------------
 // Official "Apple TV" logo (Apple mark + "tv" wordmark) from the public
 // Wikimedia SVG, kept on its native 53x27 viewBox. A monochrome wordmark,
-// rendered in currentColor so it follows the card/theme text colour.
+// rendered in currentColor so it follows the card/theme text color.
 const APPLE_TV_PATHS = [
   "M14.889225 4.3111C15.816331 3.14893 16.447942 1.59411 16.279104 0c-1.354598.0668-3.011479.89483-3.973421 2.05744-.860327.99388-1.621489 2.61882-1.425272 4.14226 1.527332.13356 3.046872-.76127 4.008814-1.8886",
   "M16.263078 6.49798c-2.214481-.13356-4.095181 1.25643-5.15128 1.25643-1.059549 0-2.6778106-1.18966-4.4289608-1.15827-2.277252.0334-4.3895615 1.32321-5.5478315 3.37275-2.3794228 4.09507-.62882908 10.17702 1.6843718 13.51437 1.1228775 1.65299 2.4774757 3.47081 4.2600117 3.40403 1.6843718-.0668 2.3479257-1.08737 4.3935678-1.08737 2.049538 0 2.642419 1.08737 4.424955 1.05621 1.853209-.0334 3.007584-1.65299 4.130461-3.30598 1.28782-1.8807 1.817929-3.69851 1.849314-3.80068-.03339-.0334-3.565071-1.38988-3.600464-5.45357-.03339-3.40413 2.775975-5.02184 2.90942-5.12-1.586208-2.34793-4.063683-2.61092-4.923565-2.6777",
@@ -177,7 +177,7 @@ const APPLE_TV_PATHS = [
 ];
 const APPLE_TV_VIEWBOX = "0 0 53.231222 26.889077";
 
-// --- Steam (colour) -------------------------------------------------------
+// --- Steam (color) -------------------------------------------------------
 // Official "Steam icon" logo from the public Wikimedia SVG: a blue radial-style
 // gradient disc with the white Steam valve mark. Authored as raw markup so the
 // vertical gradient is preserved (the flat-facet COLOR type can't express it).
@@ -200,7 +200,7 @@ const STEAM_COLOR_RAW =
   '</g>';
 const STEAM_COLOR_VIEWBOX = "0 0 65 65";
 
-// --- HEOS (colour) --------------------------------------------------------
+// --- HEOS (color) --------------------------------------------------------
 // Official HEOS icon (seeklogo vector): a warm vertical gradient "H" built from
 // rounded bars, flanked by dark sound-wave brackets. Authored as raw markup so
 // the gradient survives (the flat-facet COLOR type can't express it). The source
@@ -225,7 +225,7 @@ const HEOS_COLOR_VIEWBOX = ".33 -.05 775.27 799.83";
 // Official "marantz" wordmark from the public Wikimedia SVG, with the small (R)
 // registered-trademark mark removed (it's illegible at icon sizes) and the
 // viewBox tightened to the remaining 7 letterforms. The wordmark is a single
-// brand colour, so it serves both modes: Marantz blue in colour mode and
+// brand color, so it serves both modes: Marantz blue in color mode and
 // currentColor in monochrome mode. The two `a` counters are single-level holes,
 // rendered correctly under the card's `fill-rule: evenodd`.
 const MARANTZ_PATHS = [
@@ -243,13 +243,13 @@ const MARANTZ_COLOR: ColorSvg = {
   viewBox: MARANTZ_VIEWBOX
 };
 
-// --- Apple (colour) -------------------------------------------------------
+// --- Apple (color) -------------------------------------------------------
 // Classic six-stripe rainbow Apple logo from the public Wikimedia SVG. The mark
-// is the apple silhouette used as a clip path, with six horizontal colour bands
+// is the apple silhouette used as a clip path, with six horizontal color bands
 // (green, yellow, orange, red, purple, blue) clipped to it. Authored as raw
 // markup because it relies on a clipPath + transform that the flat-facet COLOR
 // type can't express. The clip id is namespaced so it can't collide with the
-// host page; it lives inside the card's shadow root. Only used in colour mode —
+// host page; it lives inside the card's shadow root. Only used in color mode —
 // monochrome mode keeps the solid Apple mark (SI_APPLE).
 const APPLE_RAINBOW_RAW =
   '<defs><clipPath id="appleRainbowClip">' +
@@ -265,7 +265,7 @@ const APPLE_RAINBOW_RAW =
   '</g>';
 const APPLE_RAINBOW_VIEWBOX = "0 0 89.89 104.6";
 
-// Bundled colour icons, keyed by source id (see SOURCE_ICONS in source-icons.ts).
+// Bundled color icons, keyed by source id (see SOURCE_ICONS in source-icons.ts).
 export const COLOR_SVGS: Record<string, ColorSvg | RawSvg> = {
   kaleidescape: KALEIDESCAPE_COLOR,
   apple: { raw: APPLE_RAINBOW_RAW, viewBox: APPLE_RAINBOW_VIEWBOX },

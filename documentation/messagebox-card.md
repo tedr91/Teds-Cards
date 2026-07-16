@@ -56,7 +56,7 @@ actions:
 
 | Option | Type | Default | Description |
 | --- | --- | --- | --- |
-| `severity` | `info` \| `success` \| `warning` \| `danger` \| `tip` | `info` | Accent colour + default icon. |
+| `severity` | `info` \| `success` \| `warning` \| `danger` \| `tip` | `info` | Accent color + default icon. |
 | `icon` | string | *(severity default)* | MDI icon. |
 | `title` | string | | Bold heading. |
 | `message` | string | | Body text. |
@@ -137,7 +137,7 @@ Action buttons rendered under the message.
 
 **Action kinds** (`action:`):
 
-| Kind | Extra fields | Behaviour |
+| Kind | Extra fields | Behavior |
 | --- | --- | --- |
 | `dismiss` | *(uses `dismiss_key`)* | Persistently hide the banner. |
 | `dismiss-session` | *(uses `dismiss_key`)* | Hide for this browser session only. |

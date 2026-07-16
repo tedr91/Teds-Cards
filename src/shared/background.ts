@@ -122,7 +122,7 @@ export function attachmentToCss(scroll: boolean): string {
 
 /** A subtle diagonal gradient derived from a base color, for the Solid Color mode.
  *  Mirrors the NovaStar / AV Receiver "Ted's Home Theater" card surface — a 145°
- *  three-stop diagonal that steps the picked colour darker (same 74% / 48% luminance
+ *  three-stop diagonal that steps the picked color darker (same 74% / 48% luminance
  *  ratios as `linear-gradient(145deg, #2e2e32, #222226 45%, #16161a)`). */
 export function solidGradient(color: string, gradient: boolean): string {
   if (!gradient) return color;

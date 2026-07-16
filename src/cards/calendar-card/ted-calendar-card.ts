@@ -286,8 +286,8 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
   /** Auto day-badges: a cake on birthday events, one badge per calendar (unless the
    *  calendar's `show_birthday_badge` is off). Calendars whose name contains "birthday"
    *  badge every event; other calendars badge only their birthday-titled events. Each
-   *  badge is tinted with the calendar's resolved colour at 50% opacity; the icon
-   *  follows the configured icon set. `colors` is the resolved id → colour map. */
+   *  badge is tinted with the calendar's resolved color at 50% opacity; the icon
+   *  follows the configured icon set. `colors` is the resolved id → color map. */
   private _birthdayBadges(colors: Record<string, string>): Record<string, unknown>[] {
     const icon = themedIcon("cake");
     const badges: Record<string, unknown>[] = [];
@@ -305,7 +305,7 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
     return badges;
   }
 
-  /** A calendar colour at ~50% opacity for a badge background. Hex → `rgba()` (a format
+  /** A calendar color at ~50% opacity for a badge background. Hex → `rgba()` (a format
    *  daylight accepts); other formats fall back to a `color-mix()` fade. */
   private _fadeBadgeColor(color: string): string {
     const s = color.trim();

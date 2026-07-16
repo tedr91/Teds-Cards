@@ -6,11 +6,11 @@
  *   - the background: darkened by {@link NIGHT_BACKGROUND_DIM} (via the background engine);
  *   - screen brightness: the target dim % on a brightness entity (browser_mod screen light by
  *     default) — a `light` transitions natively over the duration;
- *   - font colour: switched to the night colour dashboard-wide (injected into hui-root).
+ *   - font color: switched to the night color dashboard-wide (injected into hui-root).
  *
  * The "day" brightness value is snapshotted (persisted to localStorage) on the first entry into
  * night so it survives a page reload during the night, and restored in the morning. Background-dim
- * and font colour have trivial day values (no dim / theme colour) so only brightness is captured.
+ * and font color have trivial day values (no dim / theme color) so only brightness is captured.
  */
 import { settingsStore } from "../../shared/settings";
 import { SETTINGS_DEFAULTS, type SettingsMap, type SettingsValue } from "../../shared/settings-schema";
@@ -41,7 +41,7 @@ interface HassLike {
 interface DaySnapshot {
   entity: string | null;
   pct: number;
-  /** Light entities only: whether the light was on, and its colour temperature. */
+  /** Light entities only: whether the light was on, and its color temperature. */
   on?: boolean;
   kelvin?: number;
   mired?: number;
@@ -81,7 +81,7 @@ class NightModeEngine {
   private _appliedSig?: string;
   /** Current applied background-dim fraction (mirror of the background engine's value). */
   private curDim = 0;
-  /** Font-colour cross-fade state: rAF handle + endpoints + current mix (0=day, 1=night). */
+  /** Font-color cross-fade state: rAF handle + endpoints + current mix (0=day, 1=night). */
   private fontRaf?: number;
   private _fontDay = "";
   private _fontNight = "";
@@ -260,12 +260,12 @@ class NightModeEngine {
     this.dimRaf = requestAnimationFrame(tick);
   }
 
-  /** Switch (or restore) the dashboard-wide font colour by injecting a style into hui-root.
-   *  `color === null` fades back to the theme colours, then removes the style after `durMs`. */
-  /** Cross-fade the dashboard-wide font colour to `color` (or back to day when null) over `durMs`.
+  /** Switch (or restore) the dashboard-wide font color by injecting a style into hui-root.
+   *  `color === null` fades back to the theme colors, then removes the style after `durMs`. */
+  /** Cross-fade the dashboard-wide font color to `color` (or back to day when null) over `durMs`.
    *  We interpolate in JS via `color-mix` and rewrite the injected style each frame — the clock/
    *  weather cards read `var(--primary-text-color)` live, so this fades smoothly even though we
-   *  can't attach a CSS transition to their shadow-DOM text. Only text tokens are recoloured, and
+   *  can't attach a CSS transition to their shadow-DOM text. Only text tokens are recolored, and
    *  `--ted-style-surface-2` is pinned so surfaces don't pick up the red tint. */
   private _applyFont(color: string | null, durMs: number): void {
     const huiRoot = findHuiRoot();
@@ -280,7 +280,7 @@ class NightModeEngine {
       if (styleEl) this._animateFont(0, durMs, styleEl);
       return;
     }
-    // Capture endpoints: the current theme text colour (resolved) and the night colour.
+    // Capture endpoints: the current theme text color (resolved) and the night color.
     this._fontDay =
       getComputedStyle(document.documentElement).getPropertyValue("--primary-text-color").trim() || "#e1e1e1";
     this._fontNight = cssColor(color) || color;
@@ -321,7 +321,7 @@ class NightModeEngine {
     this.fontRaf = requestAnimationFrame(tick);
   }
 
-  /** Write the font-colour override at mix `p` (0=day … 1=night). */
+  /** Write the font-color override at mix `p` (0=day … 1=night). */
   private _writeFont(styleEl: HTMLStyleElement, p: number): void {
     const pct = Math.max(0, Math.min(100, Math.round(p * 100)));
     const mix =
@@ -332,13 +332,13 @@ class NightModeEngine {
           : `color-mix(in srgb, ${this._fontNight} ${pct}%, ${this._fontDay} ${100 - pct}%)`;
     const vars =
       // Ted cards read --ted-night-text via their theme tokens (see tedStyleTheme), so publishing
-      // it here recolours them in BOTH ted-style and ha themes (inheritance crosses shadow roots).
+      // it here recolors them in BOTH ted-style and ha themes (inheritance crosses shadow roots).
       `--ted-night-text: ${mix} !important;` +
       // Native HA cards + the daylight calendar use the standard HA text vars.
       `--primary-text-color: ${mix} !important;` +
       `--secondary-text-color: ${mix} !important;` +
-      // Keep surfaces neutral: Ted's `ha` theme derives --ted-style-surface-2 from the text colour,
-      // which would otherwise tint card surfaces with the night colour.
+      // Keep surfaces neutral: Ted's `ha` theme derives --ted-style-surface-2 from the text color,
+      // which would otherwise tint card surfaces with the night color.
       `--ted-style-surface-2: var(--ted-style-surface) !important;`;
     const css = `:not(.edit-mode) > hui-view { ${vars} }
     :not(.edit-mode) > hui-view * { ${vars} }`;
@@ -410,7 +410,7 @@ class NightModeEngine {
   }
 
   /** Capture the entity's current value as a day snapshot (brightness %, and for lights also
-   *  the on/off state and colour temperature) for later restore. Also captures the device's
+   *  the on/off state and color temperature) for later restore. Also captures the device's
    *  Auto/Light/Dark theme setting. */
   private _snapshotDay(entity: string | undefined): DaySnapshot {
     const snap: DaySnapshot = entity ? { entity, pct: this._readPct(entity) } : { entity: null, pct: 100 };
@@ -441,7 +441,7 @@ class NightModeEngine {
   }
 
   /** Restore an entity to its captured day snapshot, fading brightness over `durMs`. For a light
-   *  we also restore colour temperature (set once — kelvin can't be JS-stepped) and, if it was off
+   *  we also restore color temperature (set once — kelvin can't be JS-stepped) and, if it was off
    *  during the day, turn it back off after the fade. */
   private _restoreDay(day: DaySnapshot, durMs: number): void {
     const entity = day.entity;

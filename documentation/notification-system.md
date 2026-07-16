@@ -53,7 +53,7 @@ Each notification stored by the backend has this shape (exposed in the sensor's
 | `id` | string | Unique id. Passing an existing `id` to `notify` **replaces** (upserts) that notification. |
 | `title` | string | Bold heading line. |
 | `message` | string | Body text. |
-| `severity` | string | `info` \| `success` \| `warning` \| `danger` \| `tip`. Drives the accent colour and default icon. |
+| `severity` | string | `info` \| `success` \| `warning` \| `danger` \| `tip`. Drives the accent color and default icon. |
 | `icon` | string \| null | MDI icon (e.g. `mdi:alarm`). Falls back to a severity-appropriate icon. |
 | `area` | string \| null | Area id the notification is scoped to. `null` = **house-wide** (shows everywhere). |
 | `area_name` | string \| null | Friendly name of `area`, resolved server-side. |

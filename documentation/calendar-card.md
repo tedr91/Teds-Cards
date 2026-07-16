@@ -6,7 +6,7 @@ A full-featured calendar for the **current device**. It wraps the third-party
 [**Daylight Calendar Card**](https://github.com/superdingo101/daylight-calendar-card)
 (`custom:daylight-calendar-card`) and feeds it the calendars chosen for this device in
 **Settings → Calendars** — so one shared dashboard shows the right calendars on each
-device. Ted's styling defaults (colours, combined calendars, badges, etc.) are baked in,
+device. Ted's styling defaults (colors, combined calendars, badges, etc.) are baked in,
 so a view only needs to place the card and pick a default view.
 
 ---
@@ -95,11 +95,11 @@ calendar_config:
 | `name` | – | The calendar title shown in the header. |
 | `show_name` | `true` | Show the title/name in the header. |
 | `theme` | `ha` | Surface styling: `ha` (Home Assistant theme) or `ted-style` (Ted's frosted theme = translucent surface + blur, applied behind the calendar). |
-| `background_color` | – | Card background colour (standard Ted colour picker: theme colour or custom). Painted on a frosted surface behind the calendar. |
+| `background_color` | – | Card background color (standard Ted color picker: theme color or custom). Painted on a frosted surface behind the calendar. |
 | `transparency` | – | Background see-through 0–100% (empty = none). |
 | `blur` | – | Background blur 0–100% (empty = none) — frosts whatever shows through a translucent background. |
 | `show_header` | `true` | Show the calendar header (`hide_header` inverse). |
-| `header_color` | – | Header background colour (standard Ted colour picker; maps to Daylight's `header_color`). |
+| `header_color` | – | Header background color (standard Ted color picker; maps to Daylight's `header_color`). |
 | `header_transparency` | theme | Header background see-through 0–100% (maps to Daylight's `header_background_opacity`). Empty follows the theme (`ted-style` = 30). A card-wide `blur` frosts it. |
 | `allow_calendar_toggling` | `true` | Show the calendar on/off toggle list in the header (only when the header is shown; `hide_calendars` inverse). |
 | `weather_sensor` | – | A `weather.*` entity shown in the header (`header_weather_sensor`). |
@@ -118,7 +118,7 @@ In `config` mode each entry in `entities` may be an object with these keys (or a
 | `person` | – | A `person.*` whose avatar represents the calendar (`calendar_person_entities`). |
 | `icon` | calendar's icon | Badge icon (`calendar_badge_icons`). |
 | `icon_source` | `icon` | Badge shows the icon (`icon`) or the linked person's avatar (`person`). When you add a calendar whose name matches a person (e.g. "Ted Outlook Calendar" → Ted Roberts), the editor sets this to `person` automatically. |
-| `color` | auto | Event colour, hex (`colors`). |
+| `color` | auto | Event color, hex (`colors`). |
 
 ---
 
@@ -129,5 +129,5 @@ In `settings` mode the card shows this device's per-device **Calendars** list fr
 allow-list); each device then curates its own subset. If a device hasn't customized its
 list, it shows the whole Global list. If no calendars are selected (the Global list is
 empty), the card shows an empty **"No calendars yet"** prompt with a Settings button
-rather than picking calendars for you. Ted's styling defaults (colours, names, combined
+rather than picking calendars for you. Ted's styling defaults (colors, names, combined
 calendars, badges, etc.) still apply to whichever calendars you choose.

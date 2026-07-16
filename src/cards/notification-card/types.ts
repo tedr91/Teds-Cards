@@ -25,7 +25,7 @@ export interface NotificationCardConfig extends LovelaceCardConfig {
   header_name_size?: number;
   header_divider?: boolean;
 
-  // Behaviour
+  // Behavior
   /** Pop toasts for new notifications from this card. Defaults to true. */
   show_toasts?: boolean;
   /** Mark everything read when the panel is opened. Defaults to false (per-item). */

@@ -37,7 +37,7 @@ export function showConfirmation(element: HTMLElement, params: ConfirmationParam
  * Used instead of `ha-dialog`, which is lazy-loaded and often undefined when a
  * dashboard card first renders. Fields are native `<input>`s (not `ha-textfield`,
  * which is also lazy-loaded and renders blank until HA registers it) styled with
- * the card's own `--ted-style-*` theme tokens so radii/colours follow the card's
+ * the card's own `--ted-style-*` theme tokens so radii/colors follow the card's
  * theme. Give `.ted-modal` the same `tedCardThemeClass(...)` as the card so those
  * tokens resolve. Render the overlay as a sibling of `<ha-card>` (not inside it)
  * so it is not clipped by the card's `overflow: hidden`.
@@ -60,7 +60,7 @@ export const modalStyles = css`
     box-sizing: border-box;
     background: var(--ted-style-surface, var(--ha-card-background, var(--card-background-color, #fff)));
     /* Translucent themes (e.g. Windows 11 Mica) expose their surface fill as a
-       semi-transparent colour and rely on a backdrop blur; apply it so the sheet
+       semi-transparent color and rely on a backdrop blur; apply it so the sheet
        isn't see-through. Opaque themes leave the var unset -> no-op. */
     backdrop-filter: var(--ha-dialog-surface-backdrop-filter, var(--ha-card-backdrop-filter));
     -webkit-backdrop-filter: var(--ha-dialog-surface-backdrop-filter, var(--ha-card-backdrop-filter));

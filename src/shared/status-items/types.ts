@@ -40,11 +40,11 @@ export interface StatusItemBase {
   /** Action run on a single tap. Behaves like the Button Card's `tap_action`
    *  (navigate / call-service / url / toggle / more-info / navigate-dashboard).
    *  For the interactive items (brightness, volume, notifications, alarms, timers)
-   *  this OVERRIDES the built-in tap behaviour; leave unset to keep it. */
+   *  this OVERRIDES the built-in tap behavior; leave unset to keep it. */
   tap_action?: ActionConfig;
-  /** Action run on a long-press. Overrides the item's built-in hold behaviour. */
+  /** Action run on a long-press. Overrides the item's built-in hold behavior. */
   hold_action?: ActionConfig;
-  /** Action run on a double-tap. Overrides the item's built-in double-tap behaviour. */
+  /** Action run on a double-tap. Overrides the item's built-in double-tap behavior. */
   double_tap_action?: ActionConfig;
 }
 

@@ -74,7 +74,7 @@ function hasItemActions(item: StatusItem): boolean {
 }
 
 /** Resolve the effective per-gesture callbacks for an item: a configured action wins,
- *  otherwise the item's built-in behaviour (passed by the renderer) is used. */
+ *  otherwise the item's built-in behavior (passed by the renderer) is used. */
 function effectiveGestures(
   item: StatusItem,
   ctx: StatusItemContext,
@@ -202,7 +202,7 @@ function renderBrightnessItem(item: BrightnessStatusItem, ctx: StatusItemContext
   const popId = `${ctx.keyPrefix}-bri-pop-${index}`;
   const key = `${ctx.keyPrefix}-bri-${index}`;
   const show = itemDisplay(item);
-  // A configured action overrides the built-in "tap opens the slider" behaviour.
+  // A configured action overrides the built-in "tap opens the slider" behavior.
   const actions = hasItemActions(item);
   const g = actions ? effectiveGestures(item, ctx, { tap: () => ctx.slider.openPopover(popId) }) : undefined;
   const h = gestureHandlers(ctx, g);

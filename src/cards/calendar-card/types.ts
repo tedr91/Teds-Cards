@@ -20,7 +20,7 @@ export interface CalendarItemConfig {
   /** Display name (defaults to the calendar's own name). */
   name?: string;
   /** When true, this calendar is a VIRTUAL group anchor: it groups its own events with
-   *  the `virtual_members` calendars under one name/colour/icon in the header. */
+   *  the `virtual_members` calendars under one name/color/icon in the header. */
   virtual?: boolean;
   /** The group's display name (used instead of `name` when `virtual` is true). */
   virtual_name?: string;
@@ -42,7 +42,7 @@ export interface CalendarItemConfig {
   icon?: string;
   /** Whether the badge shows the linked person's avatar or the icon. Default `icon`. */
   icon_source?: CalendarIconSource;
-  /** Event colour (hex, e.g. `#43a1ce`). */
+  /** Event color (hex, e.g. `#43a1ce`). */
   color?: string;
 }
 
@@ -64,7 +64,7 @@ export interface CalendarCardConfig extends LovelaceCardConfig {
   theme?: TedStyleTheme;
   /** Slightly dim weekends so weekdays stand out (adds a daylight `day_styles` rule). */
   emphasize_weekdays?: boolean;
-  /** Card background colour (hex). Overrides the theme surface. */
+  /** Card background color (hex). Overrides the theme surface. */
   background_color?: string;
   /** Background transparency 0–100 (% see-through). */
   transparency?: number;
@@ -72,7 +72,7 @@ export interface CalendarCardConfig extends LovelaceCardConfig {
   blur?: number;
   /** Show the calendar header. Default true. */
   show_header?: boolean;
-  /** Header background colour (hex). */
+  /** Header background color (hex). */
   header_color?: string;
   /** Header background transparency 0–100 (% see-through). A card-wide `blur` frosts it. */
   header_transparency?: number;

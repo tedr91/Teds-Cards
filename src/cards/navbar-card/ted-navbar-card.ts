@@ -172,14 +172,14 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
       };
     });
     // Keep this device's settings live (+ registered). The auto-return-home and
-    // welcome→home redirect behaviours only run when the navbar opts into the
+    // welcome→home redirect behaviors only run when the navbar opts into the
     // Ted's Cards Backend integration (YAML `backend_integration: true`).
     new SettingsController(this, () => this.hass);
     new AutoReturnController(this, () => this._backendIntegration());
     new HomeRedirectController(this, () => this._backendIntegration());
   }
 
-  /** Whether this navbar opts into Ted's Cards Backend behaviours (YAML-only). */
+  /** Whether this navbar opts into Ted's Cards Backend behaviors (YAML-only). */
   private _backendIntegration(): boolean {
     return this._config?.backend_integration === true;
   }
@@ -1785,7 +1785,7 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
       /* Debug outlines — visible only when Settings > General > Debug mode is on
          (that publishes --ted-debug: solid on the document root; unset otherwise,
          so var(--ted-debug, none) resolves to outline-style: none = invisible).
-         Colour-codes the bar, the three zones, and every section/item so it's
+         Color-codes the bar, the three zones, and every section/item so it's
          obvious where each of the 5 positional sections lands and how much space
          the bar occupies. */
       .navbar-card {

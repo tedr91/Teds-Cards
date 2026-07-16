@@ -457,7 +457,7 @@ export class TedClockWeatherCard extends LitElement implements LovelaceCard {
     return this.hass ? Object.keys(this.hass.states).find((id) => id.startsWith("weather.")) : undefined;
   }
 
-  /** Whether this card opts into Ted's Cards Backend behaviours (YAML-only). */
+  /** Whether this card opts into Ted's Cards Backend behaviors (YAML-only). */
   private _backendIntegration(): boolean {
     return this._config?.backend_integration === true;
   }

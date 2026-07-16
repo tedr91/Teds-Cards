@@ -57,7 +57,7 @@ max_items: 20
 | `area` | area id | *(auto)* | Scope the card to a specific area. When omitted, the card resolves the **current device's** area and shows that area + house-wide items. |
 | `max_items` | number | `50` | Maximum notifications to list. |
 
-### Behaviour
+### Behavior
 
 | Option | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -79,7 +79,7 @@ max_items: 20
 | Option | Type | Default | Description |
 | --- | --- | --- | --- |
 | `theme` | `ted-style` \| `ha` | `ha` | Card styling. `ted-style` uses the Ted's Cards look. |
-| `background` | ui_color | | Background colour override. |
+| `background` | ui_color | | Background color override. |
 | `transparency` | number (0–100) | | Background transparency. |
 | `blur` | number (px) | | Backdrop blur (translucent themes). |
 | `brushed` | boolean | `false` | Brushed-metal overlay. |

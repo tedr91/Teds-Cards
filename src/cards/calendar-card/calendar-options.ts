@@ -180,7 +180,7 @@ export function calendarOptionHelper(name: string): string | undefined {
     case "readonly":
       return "Prevent editing events on this calendar.";
     case "virtual":
-      return "Group this calendar's events with other calendars under one name, colour, and icon in the header.";
+      return "Group this calendar's events with other calendars under one name, color, and icon in the header.";
     case "show_badge":
       return "Show this calendar's badge in the header (tap to toggle its events).";
     case "show_birthday_badge":

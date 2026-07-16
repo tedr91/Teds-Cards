@@ -212,7 +212,7 @@ export function dashboardKeyByViewPath(effective: Record<string, unknown>): Reco
 
 /**
  * The effective ordered available view paths: the curated `launcher_list` when set,
- * else all discovered non-subview views (zero-config behaviour).
+ * else all discovered non-subview views (zero-config behavior).
  */
 export function effectiveLauncherPaths(list: string[], discovered: LauncherViewInfo[]): string[] {
   if (list.length) return list;

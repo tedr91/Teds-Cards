@@ -99,7 +99,7 @@ const BUTTON_LABELS: Record<RemoteButton, string> = {
 /**
  * Built-in device-family brand logos shown in the header (no external assets).
  * Apple mark (simple-icons, tinted with the card text color) for Apple TV; the
- * Kaleidescape multi-colour diamond mark (from HA-Firemote) for Kaleidescape.
+ * Kaleidescape multi-color diamond mark (from HA-Firemote) for Kaleidescape.
  */
 const DEVICE_LOGOS: Record<DeviceFamily, TemplateResult> = {
   "apple-tv": html`<svg class="device-logo device-logo--mono" viewBox="0 0 16 16" aria-hidden="true">

@@ -2,7 +2,7 @@
 //
 // Icons are resolved with a bundled-first strategy so the card can show a
 // high-quality, theme-aware glyph for every source it knows about:
-//   1. The card's own bundled SVG artwork (see brand-icon-svgs.ts) — a colour
+//   1. The card's own bundled SVG artwork (see brand-icon-svgs.ts) — a color
 //      version for `color` mode and a monochrome version for `monochrome` mode.
 //   2. Custom Brand Icons (https://github.com/elax46/custom-brand-icons) via the
 //      `phu:` iconset, when the user has that optional HACS frontend module.
@@ -30,12 +30,12 @@ export type SourceIcon = {
   cbi?: string;
   /** Full Material Design Icons name, e.g. `mdi:netflix`. */
   mdi?: string;
-  /** Official brand colour, applied as a tint in `color` mode for icon-set glyphs. */
+  /** Official brand color, applied as a tint in `color` mode for icon-set glyphs. */
   color?: string;
   /**
-   * How to derive a monochrome glyph from the bundled colour SVG when no
-   * dedicated monochrome SVG exists. `dither` halftones the colours by luminance
-   * (good for multi-colour mosaics); `flatten` paints every facet in currentColor.
+   * How to derive a monochrome glyph from the bundled color SVG when no
+   * dedicated monochrome SVG exists. `dither` halftones the colors by luminance
+   * (good for multi-color mosaics); `flatten` paints every facet in currentColor.
    */
   monoFromColor?: "flatten" | "dither";
 };
@@ -166,7 +166,7 @@ export function resolveIconRef(icon: SourceIcon, mode: SourceIconMode, cbiAvaila
     return { kind: "name", name: PLACEHOLDER_ICON };
   }
 
-  // Colour mode.
+  // Color mode.
   if (color) {
     if (isRawSvg(color)) {
       return { kind: "rawsvg", raw: color.raw, viewBox: color.viewBox ?? DEFAULT_VIEW_BOX, tint: color.tint };
