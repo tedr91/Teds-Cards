@@ -97,6 +97,12 @@ class BackgroundEngine {
   private cycleMin?: number;
   private timer?: number;
   private lastDark?: boolean;
+  /** Automatic Night Mode: extra black-overlay fraction (0..1) darkening the wallpaper. */
+  private _nightDim = 0;
+  /** Last painted state, so `setNightDim` can repaint without re-resolving the image. */
+  private _lastS?: SettingsMap;
+  private _lastUrl: string | null = null;
+  private _lastScrim?: BackgroundScrim;
   /** url -> attribution for the current Bing "Photo of the Day" candidates. */
   private bingMeta = new Map<string, { title: string; copyright: string }>();
   /** Periodic re-poll of the Bing feed while the Bing album is active. */
@@ -169,6 +175,16 @@ class BackgroundEngine {
     return !!(this.hass as unknown as { themes?: { darkMode?: boolean } })?.themes?.darkMode;
   }
 
+  /** Automatic Night Mode: darken the current wallpaper by `frac` (0..1). Repaints
+   *  from the last-painted state (no image re-resolve), so the night-mode engine can
+   *  smoothly animate the dim over the transition duration. No-op in HA Theme mode. */
+  setNightDim(frac: number): void {
+    const f = Math.max(0, Math.min(1, frac));
+    if (f === this._nightDim) return;
+    this._nightDim = f;
+    if (this._lastS) applyBackground(backgroundLayerCss(this._lastS, this._lastUrl, this._lastScrim, this._nightDim));
+  }
+
   /** The last readability-scrim decision. */
   getDiagnostic(): BackgroundDiagnostic {
     return this._diag;
@@ -221,12 +237,16 @@ class BackgroundEngine {
 
     if (mode === "theme") {
       this._setModeDiag(s, "HA Theme mode — no wallpaper painted, so no readability scrim.");
+      this._lastS = undefined;
       applyBackground(null);
       return;
     }
     if (mode === "solid") {
       this._setModeDiag(s, "Solid Color mode — the readability scrim only applies to Single Image / Slideshow.");
-      applyBackground(backgroundLayerCss(s, null));
+      this._lastS = s;
+      this._lastUrl = null;
+      this._lastScrim = undefined;
+      applyBackground(backgroundLayerCss(s, null, undefined, this._nightDim));
       return;
     }
     if (mode === "image") {
@@ -243,7 +263,10 @@ class BackgroundEngine {
   private async _paint(s: SettingsMap, url: string | null, gen: number): Promise<void> {
     const scrim = await this._scrimFor(s, url);
     if (gen !== this.gen) return;
-    applyBackground(backgroundLayerCss(s, url, scrim));
+    this._lastS = s;
+    this._lastUrl = url;
+    this._lastScrim = scrim;
+    applyBackground(backgroundLayerCss(s, url, scrim, this._nightDim));
     this._updateAttribution(s, url);
   }
 
@@ -323,7 +346,10 @@ class BackgroundEngine {
     }
     if (gen !== this.gen) return;
     if (!this.slideUrls.length) {
-      applyBackground(backgroundLayerCss(s, null));
+      this._lastS = s;
+      this._lastUrl = null;
+      this._lastScrim = undefined;
+      applyBackground(backgroundLayerCss(s, null, undefined, this._nightDim));
       return;
     }
     if (this.slideIdx >= this.slideUrls.length) this.slideIdx = 0;

@@ -24,6 +24,7 @@ export type SettingKind =
   | "select"
   | "entity-list"
   | "background"
+  | "nightmode"
   | "launcher";
 
 export interface SettingField {
@@ -127,6 +128,13 @@ export const SETTINGS_DEFAULTS: SettingsMap = {
   debug_mode: false,
   icon_set: "auto",
   weather_entity: null,
+  night_enabled: true,
+  night_start: "21:00:00",
+  night_end: "07:00:00",
+  night_dim_brightness: 10,
+  night_font_color: "red",
+  night_transition_minutes: 5,
+  night_brightness_entity: null,
   background_mode: "solid",
   background_scroll: false,
   background_size: "fill",
@@ -273,6 +281,7 @@ export const SETTINGS_FIELDS: SettingField[] = [
     ],
     help: "Which icon family Ted's built-in icons use. Auto picks the best installed set; a specific set falls back to Material Design when an icon isn't available.",
   },
+  { key: "night_mode", label: "Automatic night mode", group: "General", kind: "nightmode", help: "Automatically dims the background, lowers screen brightness, and switches to a night font colour on a nightly schedule, restoring day values in the morning." },
   { key: "background", label: "Background Wallpaper", group: "General", kind: "background", help: "Dashboard background painted by the invisible ted-background-card." },
   { key: "debug_mode", label: "Debug mode", group: "General", kind: "boolean", subsection: "Advanced", help: "Publishes the --ted-debug CSS variable so dashboards can show layout debug outlines." },
   // Navigation

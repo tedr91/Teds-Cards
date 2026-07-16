@@ -16,7 +16,7 @@ import {
   subscribeUiScope,
 } from "../../shared/settings";
 import { resolveDeviceMediaPlayer } from "../../shared/device-id";
-import { resolveIconForSet, isIconSetAvailable } from "../../shared/icons";
+import { resolveIconForSet, isIconSetAvailable, themedIcon } from "../../shared/icons";
 import { resolveMusicPlayer } from "../../shared/music-player";
 import {
   fieldsByGroup,
@@ -32,6 +32,7 @@ import {
   stringList,
   type BackgroundFieldsCtx,
 } from "../../shared/background";
+import { NIGHTMODE_KEYS, resolveBrightnessEntity } from "../../shared/night-mode";
 import { getMediaFolder, isMediaSourceUri, pickMedia, resolveMediaSource, uploadImage, uploadToMediaFolder } from "../../shared/media";
 import { backgroundEngine } from "../background-card/background-engine";
 import {
@@ -151,6 +152,31 @@ const LAUNCHER_SETTING_KEYS = [
   "launcher_highlight_active",
   "launcher_highlight_color",
 ] as const;
+
+/** ha-form schema pieces for the Automatic Night Mode composite. */
+const NIGHT_ENABLED_SCHEMA = [{ name: "night_enabled", selector: { boolean: {} } }];
+const NIGHT_TIME_SCHEMA = [
+  { name: "night_start", selector: { time: {} } },
+  { name: "night_end", selector: { time: {} } },
+];
+const NIGHT_NUM_SCHEMA = [
+  { name: "night_dim_brightness", selector: { number: { min: 0, max: 100, mode: "box", unit_of_measurement: "%" } } },
+  { name: "night_transition_minutes", selector: { number: { min: 0, max: 120, mode: "box", unit_of_measurement: "min" } } },
+];
+const NIGHT_COLOR_SCHEMA = [{ name: "night_font_color", selector: { ui_color: { default_color: "red" } } }];
+const NIGHT_ENTITY_SCHEMA = [
+  { name: "night_brightness_entity", selector: { entity: { domain: ["light", "number", "input_number"] } } },
+];
+
+const NIGHT_LABELS: Record<string, string> = {
+  night_enabled: "Enabled",
+  night_start: "Night start time",
+  night_end: "Night end time",
+  night_dim_brightness: "Dim brightness",
+  night_font_color: "Night font color",
+  night_transition_minutes: "Transition duration",
+  night_brightness_entity: "Screen brightness entity",
+};
 
 registerCustomCard({
   type: SETTINGS_CARD_TYPE,
@@ -783,6 +809,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
   private _renderGlobalRow(field: SettingField): TemplateResult {
     if (field.kind === "entity-list") return this._renderCamerasGlobal(field);
     if (field.kind === "background") return this._renderBackground(field, "global");
+    if (field.kind === "nightmode") return this._renderNightMode(field, "global");
     if (field.kind === "launcher") return this._renderLauncher("global");
     // Device-only fields (e.g. the media player) have no sensible global value.
     if (field.deviceOnly) {
@@ -817,6 +844,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
   private _renderDeviceRow(field: SettingField): TemplateResult {
     if (field.kind === "entity-list") return this._renderCamerasDevice(field);
     if (field.kind === "background") return this._renderBackground(field, "device");
+    if (field.kind === "nightmode") return this._renderNightMode(field, "device");
     if (field.kind === "launcher") return this._renderLauncher("device");
     const overriding = this._deviceOverriding(field.key);
     return html`
@@ -1582,6 +1610,141 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
   private _resetBgDevice(): void {
     for (const k of BACKGROUND_KEYS) settingsStore.clearValue("device", k);
     this.requestUpdate();
+  }
+
+  // --- Automatic Night Mode composite --------------------------------------
+
+  private _nightLabel = (s: { name: string }): string => NIGHT_LABELS[s.name] ?? s.name;
+
+  /** Read a night_* value in the given scope (device falls back to inherited). */
+  private _nmVal(key: string, scope: "global" | "device"): SettingsValue {
+    return scope === "global" ? this._globalValue(key) : this._deviceValue(key);
+  }
+
+  /** Write a night_* value at the given scope. */
+  private _setNm(key: string, scope: "global" | "device", value: SettingsValue): void {
+    if (scope === "global") this._setGlobal(key, value);
+    else this._setDevice(key, value);
+    this.requestUpdate();
+  }
+
+  /** Clear this device's night-mode overrides (revert to Global). */
+  private _resetNightDevice(): void {
+    for (const k of NIGHTMODE_KEYS) settingsStore.clearValue("device", k);
+    this.requestUpdate();
+  }
+
+  private _onNightModeChanged(ev: CustomEvent, scope: "global" | "device"): void {
+    ev.stopPropagation();
+    if (scope === "global" && !this._isAdmin()) return;
+    const v = ev.detail.value as Record<string, unknown>;
+    for (const key of NIGHTMODE_KEYS) {
+      if (!(key in v)) continue;
+      let val = v[key] as SettingsValue;
+      if ((key === "night_font_color" || key === "night_brightness_entity") && (val === "" || val == null))
+        val = null;
+      if (val !== this._nmVal(key, scope)) this._setNm(key, scope, val);
+    }
+  }
+
+  private _renderNightMode(field: SettingField, scope: "global" | "device"): TemplateResult {
+    const disabled = scope === "global" && !this._isAdmin();
+    const overriding = scope === "device" && NIGHTMODE_KEYS.some((k) => k in settingsStore.deviceSettings());
+    const val = (k: string): SettingsValue => this._nmVal(k, scope);
+    const enabled = val("night_enabled") !== false;
+    const explicitEntity =
+      typeof val("night_brightness_entity") === "string" ? String(val("night_brightness_entity")) : "";
+    const autoEntity = resolveBrightnessEntity(this.hass);
+    const fontColor =
+      typeof val("night_font_color") === "string" && val("night_font_color") ? String(val("night_font_color")) : "red";
+
+    return html`
+      <ha-expansion-panel outlined class="sub-panel bg-panel">
+        <div slot="header" class="sub-head">
+          <ha-icon icon=${themedIcon("weather-night")}></ha-icon>
+          <span class="sub-head-label">${field.label}${scope === "device" ? " — this device" : ""}</span>
+          <span class="sub-head-value">${enabled ? "Enabled" : "Disabled"}</span>
+        </div>
+        <div class="bg-row">
+          <div class="cam-head">
+            <div class="row-label">
+              ${scope === "device" && !overriding
+                ? html`<span class="help">Not customized — this device follows the Global night mode.</span>`
+                : field.help
+                  ? html`<span class="help">${field.help}</span>`
+                  : nothing}
+            </div>
+            ${scope === "device" && overriding
+              ? html`<button class="cam-btn" @click=${() => this._resetNightDevice()}>
+                  <ha-icon icon="mdi:backup-restore"></ha-icon><span>Reset</span>
+                </button>`
+              : nothing}
+          </div>
+
+          <ha-form
+            .hass=${this.hass}
+            .data=${{ night_enabled: enabled }}
+            .schema=${NIGHT_ENABLED_SCHEMA}
+            .disabled=${disabled}
+            .computeLabel=${this._nightLabel}
+            @value-changed=${(ev: CustomEvent) => this._onNightModeChanged(ev, scope)}
+          ></ha-form>
+
+          ${enabled
+            ? html`
+                <ha-form
+                  .hass=${this.hass}
+                  .data=${{
+                    night_start: String(val("night_start") ?? "21:00:00"),
+                    night_end: String(val("night_end") ?? "07:00:00"),
+                  }}
+                  .schema=${NIGHT_TIME_SCHEMA}
+                  .disabled=${disabled}
+                  .computeLabel=${this._nightLabel}
+                  @value-changed=${(ev: CustomEvent) => this._onNightModeChanged(ev, scope)}
+                ></ha-form>
+                <ha-form
+                  .hass=${this.hass}
+                  .data=${{
+                    night_dim_brightness: Number(val("night_dim_brightness") ?? 10),
+                    night_transition_minutes: Number(val("night_transition_minutes") ?? 5),
+                  }}
+                  .schema=${NIGHT_NUM_SCHEMA}
+                  .disabled=${disabled}
+                  .computeLabel=${this._nightLabel}
+                  @value-changed=${(ev: CustomEvent) => this._onNightModeChanged(ev, scope)}
+                ></ha-form>
+                <ha-form
+                  .hass=${this.hass}
+                  .data=${{ night_font_color: fontColor }}
+                  .schema=${NIGHT_COLOR_SCHEMA}
+                  .disabled=${disabled}
+                  .computeLabel=${this._nightLabel}
+                  @value-changed=${(ev: CustomEvent) => this._onNightModeChanged(ev, scope)}
+                ></ha-form>
+                <ha-form
+                  .hass=${this.hass}
+                  .data=${{ night_brightness_entity: explicitEntity || undefined }}
+                  .schema=${NIGHT_ENTITY_SCHEMA}
+                  .disabled=${disabled}
+                  .computeLabel=${this._nightLabel}
+                  @value-changed=${(ev: CustomEvent) => this._onNightModeChanged(ev, scope)}
+                ></ha-form>
+                <div class="row-label">
+                  <span class="help">
+                    ${explicitEntity
+                      ? "Screen brightness is controlled via this entity."
+                      : autoEntity
+                        ? html`When empty, this device auto-uses its browser_mod screen light:
+                            <code>${autoEntity}</code>.`
+                        : "When empty, night mode looks for this device's browser_mod screen light. None found — pick a light/number entity that controls the display."}
+                  </span>
+                </div>
+              `
+            : nothing}
+        </div>
+      </ha-expansion-panel>
+    `;
   }
 
   // --- View Launcher (Navbar group) -----------------------------------------

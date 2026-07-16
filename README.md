@@ -939,6 +939,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.230
+
+- **Automatic night mode** — a new **Settings → General → Automatic night mode** panel (just below Icon set) dims the dashboard on a nightly schedule. Set a **night start/end time**, **dim brightness**, **night font colour**, and **transition duration**: at night it darkens the background, lowers the screen brightness (via the device's browser_mod screen light by default, or a light/number entity you pick per device), and switches the font colour to your night colour — then smoothly restores your daytime values in the morning. Settings are global with per-device overrides. Requires Ted's Cards Backend v1.0.49+.
+
 ### v1.0.229
 
 - **Bing attribution icon repositioned** — the Bing Photo of the Day info icon is now anchored to the top-left of the dashboard **content area** (just above the clock/content card) instead of the very screen corner, so it no longer hides behind Home Assistant's header menu button. Hover or tap it for the photo's title/copyright.

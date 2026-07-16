@@ -7,6 +7,7 @@ import { SettingsController } from "../../shared/settings";
 import { BACKGROUND_KEYS } from "../../shared/background";
 import type { SettingsMap, SettingsValue } from "../../shared/settings-schema";
 import { backgroundEngine } from "./background-engine";
+import { nightModeEngine } from "./night-mode-engine";
 import {
   BACKGROUND_CARD_DESCRIPTION,
   BACKGROUND_CARD_EDITOR_TYPE,
@@ -62,15 +63,20 @@ export class TedBackgroundCard extends LitElement implements LovelaceCard {
     // (ref-counted) so the background persists — and the slideshow stays on the
     // same image — as you navigate between views.
     backgroundEngine.attach(this.hass, this._overrides(), !!this._config?.backend_integration);
+    // The night-mode engine runs on the same always-present card; it only acts when the
+    // card opts into the backend settings store (backend_integration).
+    nightModeEngine.attach(this.hass, !!this._config?.backend_integration);
   }
 
   public disconnectedCallback(): void {
     super.disconnectedCallback();
     backgroundEngine.detach();
+    nightModeEngine.detach();
   }
 
   protected updated(): void {
     backgroundEngine.setHass(this.hass);
+    nightModeEngine.setHass(this.hass);
   }
 
   public setConfig(config: BackgroundCardConfig): void {

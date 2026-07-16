@@ -23,6 +23,7 @@ export type IconKey =
   | "requirements"
   | "web"
   | "weather"
+  | "weather-night"
   | "speaker"
   | "music"
   | "music-off"
@@ -48,6 +49,10 @@ export const SEMANTIC_ICONS: Record<IconKey, IconNames> = {
     mdi: "weather-partly-cloudy",
     fluent: "weather-partly-cloudy-day-24-regular",
     "streamline-ultimate-color": "rain-umbrella-sun",
+  },
+  "weather-night": {
+    mdi: "weather-night",
+    fluent: "weather-moon-24-regular",
   },
   speaker: { mdi: "speaker", fluent: "speaker-2-24-regular" },
   music: {

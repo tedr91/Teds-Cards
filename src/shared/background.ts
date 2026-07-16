@@ -153,9 +153,15 @@ export function backgroundLayerCss(
   s: SettingsMap,
   imageUrl: string | null,
   scrim?: BackgroundScrim,
+  nightDim = 0,
 ): { image: string; size: string; position: string; repeat: string; attachment: string; color: string } | null {
   const mode = (s.background_mode as BackgroundMode) ?? "solid";
   if (mode === "theme") return null;
+
+  // An extra flat black layer that darkens the background at night (Automatic
+  // Night Mode). Composited as the TOP-MOST layer, above any readability scrim.
+  const dim = Math.max(0, Math.min(1, nightDim));
+  const nightLayer = dim > 0 ? `linear-gradient(rgba(0,0,0,${dim}),rgba(0,0,0,${dim}))` : "";
 
   const size = (s.background_size as BackgroundSize) ?? "fill";
   const align = (s.background_align as BackgroundAlign) ?? "center";
@@ -171,8 +177,9 @@ export function backgroundLayerCss(
   if (mode === "solid") {
     const color = typeof s.background_color === "string" ? s.background_color : "#57608E";
     const gradient = s.background_gradient !== false;
+    const nightPrefix = nightLayer ? `${nightLayer}, ` : "";
     return {
-      image: solidGradient(color, gradient),
+      image: `${nightPrefix}${solidGradient(color, gradient)}`,
       size: "auto",
       position: "center center",
       repeat: "no-repeat",
@@ -183,15 +190,23 @@ export function backgroundLayerCss(
 
   // image / slideshow — need a resolved URL.
   if (!imageUrl) {
-    return { image: "none", size: cssSize, position, repeat: cssRepeat, attachment, color: "transparent" };
+    return {
+      image: nightLayer || "none",
+      size: cssSize,
+      position,
+      repeat: cssRepeat,
+      attachment,
+      color: "transparent",
+    };
   }
   // A scrim (if any) is a flat gradient composited ABOVE the image. Gradients
   // fill the box at any background-size, so one size/position/repeat covers both.
   const scrimLayer = scrim
     ? `linear-gradient(rgba(${scrim.color},${scrim.opacity}),rgba(${scrim.color},${scrim.opacity})), `
     : "";
+  const nightPrefix = nightLayer ? `${nightLayer}, ` : "";
   return {
-    image: `${scrimLayer}url("${cssEscapeUrl(imageUrl)}")`,
+    image: `${nightPrefix}${scrimLayer}url("${cssEscapeUrl(imageUrl)}")`,
     size: cssSize,
     position,
     repeat: cssRepeat,

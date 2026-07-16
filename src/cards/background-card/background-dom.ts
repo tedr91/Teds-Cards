@@ -15,7 +15,7 @@ export interface BackgroundLayer {
 }
 
 /** Locate HA's `hui-root` element (the host of the dashboard views), or null. */
-function findHuiRoot(): HTMLElement | null {
+export function findHuiRoot(): HTMLElement | null {
   return (
     (document
       .querySelector("home-assistant")
