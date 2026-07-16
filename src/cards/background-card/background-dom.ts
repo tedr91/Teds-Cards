@@ -92,9 +92,9 @@ const NEXT_ICON_PATH = "M16,18H18V6H16M6,18L14.5,12L6,6V18Z";
 
 const ATTRIBUTION_CSS = `
 #${ATTRIBUTION_ID} {
-  position: absolute;
-  top: 8px;
-  left: 8px;
+  position: fixed;
+  top: calc(env(safe-area-inset-top, 0px) + 8px);
+  left: calc(env(safe-area-inset-left, 0px) + 8px);
   z-index: -1;
   display: flex;
   align-items: flex-start;
@@ -183,21 +183,23 @@ function attributionParent(huiRoot: HTMLElement): HTMLElement | ShadowRoot | nul
   return (sr.querySelector("hui-view") as HTMLElement | null) ?? sr;
 }
 
-/** Anchor the overlay to the top-left of the dashboard CONTENT box. As an absolute
- *  child of `hui-view`, offsets are relative to it — so adding the view's padding
- *  (which is how a left/right navbar reserves its gutter) keeps the icon clear of
- *  the navbar, and it naturally starts below the header. */
+/** Anchor the overlay to the top-left of the dashboard CONTENT area. It's a
+ *  child of `hui-view` (so its negative z-index sits above the wallpaper but
+ *  behind content), yet positioned `fixed` in VIEWPORT coords via the view's
+ *  rect — so it lands below the header and clears a left/right navbar's padding
+ *  gutter, regardless of `hui-view`'s stacking-context ancestor. */
 function positionAttribution(el: HTMLElement): void {
   const view = findHuiRoot()?.shadowRoot?.querySelector("hui-view") as HTMLElement | null;
-  if (view) {
+  const rect = view?.getBoundingClientRect();
+  if (view && rect && rect.width > 0 && rect.height > 0) {
     const cs = getComputedStyle(view);
     const padLeft = parseFloat(cs.paddingLeft) || 0;
     const padTop = parseFloat(cs.paddingTop) || 0;
-    el.style.top = `${Math.round(padTop) + 8}px`;
-    el.style.left = `${Math.round(padLeft) + 8}px`;
+    el.style.top = `${Math.round(Math.max(0, rect.top) + padTop) + 8}px`;
+    el.style.left = `${Math.round(Math.max(0, rect.left) + padLeft) + 8}px`;
   } else {
-    el.style.top = "8px";
-    el.style.left = "8px";
+    el.style.top = "calc(env(safe-area-inset-top, 0px) + 8px)";
+    el.style.left = "calc(env(safe-area-inset-left, 0px) + 8px)";
   }
 }
 
