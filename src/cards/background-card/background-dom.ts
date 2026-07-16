@@ -62,6 +62,9 @@ export function removeBackground(): void {
 // ── Photo attribution overlay (Bing "Photo of the Day") ───────────────────────
 
 const ATTRIBUTION_ID = "ted-background-attribution";
+/** Transparent, always-on-top tap target that opens the flyout — needed because
+ *  the overlay itself rests BEHIND content (z-index:-1) and so can't be clicked. */
+const OPENER_ID = "ted-background-attribution-opener";
 
 /** Title/copyright shown by the attribution overlay. */
 export interface BackgroundAttribution {
@@ -142,6 +145,8 @@ const ATTRIBUTION_CSS = `
 #${ATTRIBUTION_ID}:hover .tba-caption,
 #${ATTRIBUTION_ID}:focus-within .tba-caption,
 #${ATTRIBUTION_ID}.open .tba-caption { opacity: 1; transform: translateX(0); }
+/* When open, pop the flyout ABOVE the content (it rests at z-index:-1 behind it). */
+#${ATTRIBUTION_ID}.open { z-index: 6; }
 #${ATTRIBUTION_ID} .tba-title { font-weight: 600; }
 #${ATTRIBUTION_ID} .tba-copyright { opacity: 0.85; }
 #${ATTRIBUTION_ID} .tba-actions {
@@ -196,21 +201,34 @@ function attributionParent(huiRoot: HTMLElement): HTMLElement | ShadowRoot | nul
  *  the header, clear of a left/right navbar's padding gutter) and convert it into
  *  offsets relative to the actual offset parent. */
 function positionAttribution(el: HTMLElement): void {
-  const view = findHuiRoot()?.shadowRoot?.querySelector("hui-view") as HTMLElement | null;
+  const huiRoot = findHuiRoot();
+  const view = huiRoot?.shadowRoot?.querySelector("hui-view") as HTMLElement | null;
   const rect = view?.getBoundingClientRect();
-  if (!view || !rect || rect.width === 0 || rect.height === 0) {
+  let desiredTop = 8;
+  let desiredLeft = 8;
+  let haveRect = false;
+  if (view && rect && rect.width > 0 && rect.height > 0) {
+    const cs = getComputedStyle(view);
+    desiredTop = Math.max(0, rect.top) + (parseFloat(cs.paddingTop) || 0) + 8;
+    desiredLeft = Math.max(0, rect.left) + (parseFloat(cs.paddingLeft) || 0) + 8;
+    haveRect = true;
+  }
+  // Overlay is an `absolute` child of hui-view: convert the viewport target into
+  // offsets relative to its actual offset parent.
+  if (haveRect) {
+    const opRect = (el.offsetParent as HTMLElement | null)?.getBoundingClientRect();
+    el.style.top = `${Math.round(desiredTop - (opRect?.top ?? 0))}px`;
+    el.style.left = `${Math.round(desiredLeft - (opRect?.left ?? 0))}px`;
+  } else {
     el.style.top = "8px";
     el.style.left = "8px";
-    return;
   }
-  const cs = getComputedStyle(view);
-  const padLeft = parseFloat(cs.paddingLeft) || 0;
-  const padTop = parseFloat(cs.paddingTop) || 0;
-  const desiredTop = Math.max(0, rect.top) + padTop + 8;
-  const desiredLeft = Math.max(0, rect.left) + padLeft + 8;
-  const opRect = (el.offsetParent as HTMLElement | null)?.getBoundingClientRect();
-  el.style.top = `${Math.round(desiredTop - (opRect?.top ?? 0))}px`;
-  el.style.left = `${Math.round(desiredLeft - (opRect?.left ?? 0))}px`;
+  // Opener is `fixed`: place it directly at the viewport target (over the icon).
+  const opener = huiRoot?.shadowRoot?.querySelector<HTMLElement>(`#${OPENER_ID}`);
+  if (opener) {
+    opener.style.top = `${Math.round(desiredTop)}px`;
+    opener.style.left = `${Math.round(desiredLeft)}px`;
+  }
 }
 
 let attrResizeBound = false;
@@ -251,10 +269,15 @@ function openAttr(el: HTMLElement): void {
   teardownAttrDismiss();
   // Auto-dismiss after 15s.
   attrCloseTimer = window.setTimeout(() => closeAttr(el), ATTRIBUTION_TIMEOUT_MS);
-  // Any interaction outside the overlay closes it. Registered on pointerdown
-  // AFTER the opening tap's pointerdown, so it never self-closes immediately.
+  // Any interaction outside the overlay (or its opener tap-target) closes it.
+  // Registered on pointerdown AFTER the opening tap's pointerdown, so it never
+  // self-closes immediately.
   attrOutsideHandler = (e: Event) => {
-    if (!e.composedPath().includes(el)) closeAttr(el);
+    const path = e.composedPath();
+    if (path.includes(el)) return;
+    const opener = findHuiRoot()?.shadowRoot?.querySelector(`#${OPENER_ID}`);
+    if (opener && path.includes(opener)) return;
+    closeAttr(el);
   };
   document.addEventListener("pointerdown", attrOutsideHandler, true);
 }
@@ -307,6 +330,7 @@ export function applyAttribution(
       teardownAttrDismiss();
       el.remove();
     }
+    huiRoot.shadowRoot.querySelector(`#${OPENER_ID}`)?.remove();
     attrActions = undefined;
     return;
   }
@@ -359,6 +383,25 @@ export function applyAttribution(
     const parent = attributionParent(huiRoot);
     if (parent && el.parentNode !== parent) parent.appendChild(el);
   }
+  // The overlay rests BEHIND content (z-index:-1) so it can't be clicked; a tiny
+  // transparent tap-target stays on top to open it (the flyout pops above content
+  // while open, then drops back behind on close).
+  let opener = huiRoot.shadowRoot.querySelector<HTMLElement>(`#${OPENER_ID}`);
+  if (!opener) {
+    opener = document.createElement("button");
+    opener.id = OPENER_ID;
+    opener.setAttribute("type", "button");
+    opener.setAttribute("aria-label", "Photo information");
+    opener.style.cssText =
+      "position:fixed;width:28px;height:28px;padding:0;margin:0;border:none;" +
+      "background:transparent;cursor:pointer;z-index:7;";
+    opener.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const ov = findHuiRoot()?.shadowRoot?.querySelector<HTMLElement>(`#${ATTRIBUTION_ID}`);
+      if (ov) toggleAttr(ov);
+    });
+    huiRoot.shadowRoot.appendChild(opener);
+  }
   const titleEl = el.querySelector<HTMLElement>(".tba-title");
   const copyEl = el.querySelector<HTMLElement>(".tba-copyright");
   if (titleEl) {
@@ -375,6 +418,7 @@ export function applyAttribution(
 /** Remove the attribution overlay (used on disconnect / mode change). */
 export function removeAttribution(): void {
   teardownAttrDismiss();
-  const huiRoot = findHuiRoot();
-  huiRoot?.shadowRoot?.querySelector(`#${ATTRIBUTION_ID}`)?.remove();
+  const sr = findHuiRoot()?.shadowRoot;
+  sr?.querySelector(`#${ATTRIBUTION_ID}`)?.remove();
+  sr?.querySelector(`#${OPENER_ID}`)?.remove();
 }

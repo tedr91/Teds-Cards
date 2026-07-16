@@ -939,6 +939,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.244
+
+- **Attribution icon is clickable again** — the Bing Photo of the Day info icon now rests behind content but opens on tap: a small transparent tap target keeps the corner clickable, and the title/copyright + Favorite/Remove/Next flyout pops above content while open, then drops back behind on close.
+
 ### v1.0.243
 
 - **Attribution icon layering (actually fixed)** — the Bing Photo of the Day info icon no longer disappears behind the wallpaper. `hui-view` (which carries the background) isn't a stacking context, so a behind‑content layer was painting behind the background too; it's now isolated into its own stacking context while the icon is present, so the icon sits above the wallpaper and behind content from the first frame.
