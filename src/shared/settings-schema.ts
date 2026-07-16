@@ -135,6 +135,7 @@ export const SETTINGS_DEFAULTS: SettingsMap = {
   night_font_color: "red",
   night_transition_minutes: 5,
   night_brightness_entity: null,
+  night_day_snapshot: null,
   background_mode: "solid",
   background_scroll: false,
   background_size: "fill",

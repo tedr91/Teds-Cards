@@ -13,7 +13,7 @@
  * and font colour have trivial day values (no dim / theme colour) so only brightness is captured.
  */
 import { settingsStore } from "../../shared/settings";
-import { SETTINGS_DEFAULTS, type SettingsMap } from "../../shared/settings-schema";
+import { SETTINGS_DEFAULTS, type SettingsMap, type SettingsValue } from "../../shared/settings-schema";
 import {
   isNight,
   NIGHT_BACKGROUND_DIM,
@@ -31,15 +31,23 @@ interface HassLike {
   devices?: Record<string, { identifiers?: [string, string][] } | undefined>;
 }
 
-/** Persisted "day" brightness snapshot so a reload during night keeps the true day value. */
+/** Persisted "day" snapshot (per device, in the backend settings store) so we can restore the
+ *  screen-brightness entity when night ends — even across a page reload. `entity: null` marks the
+ *  device "night active" when no brightness entity is in play. */
 interface DaySnapshot {
-  entity: string;
+  entity: string | null;
   pct: number;
+  /** Light entities only: whether the light was on, and its colour temperature. */
+  on?: boolean;
+  kelvin?: number;
+  mired?: number;
 }
 
 const NIGHT_FONT_STYLE_ID = "ted-night-mode-font";
-const LS_ACTIVE = "ted_night_active";
-const LS_DAY = "ted_night_day";
+/** Per-device settings key holding the day snapshot; its presence also = "night active". */
+const NIGHT_DAY_SNAPSHOT_KEY = "night_day_snapshot";
+/** Fixed restore duration (ms) when night mode is toggled OFF via the Enabled switch. */
+const DISABLE_RESTORE_MS = 10_000;
 /** How often to re-check the clock for a night-window boundary crossing. */
 const POLL_MS = 30_000;
 
@@ -55,7 +63,8 @@ class NightModeEngine {
   private dimRaf?: number;
   private brightTimer?: number;
   private fontCleanupTimer?: number;
-  /** Whether night mode is currently applied (in-memory; localStorage mirrors it across reloads). */
+  private restoreTimer?: number;
+  /** Whether night mode is currently applied (in-memory; the backend snapshot mirrors it across reloads). */
   private active = false;
   /** Signature of the last-applied night settings, so the clock poll doesn't re-apply (and snap
    *  an in-progress transition) unless a relevant setting actually changed. */
@@ -98,6 +107,10 @@ class NightModeEngine {
         clearInterval(this.brightTimer);
         this.brightTimer = undefined;
       }
+      if (this.restoreTimer !== undefined) {
+        clearTimeout(this.restoreTimer);
+        this.restoreTimer = undefined;
+      }
     }
   }
 
@@ -109,19 +122,23 @@ class NightModeEngine {
   /** Decide whether it should be night now and apply/restore accordingly. */
   private _evaluate(): void {
     if (!this.backendInt || !this.hass) return;
+    // Wait for the backend snapshot: acting on an empty store would miss a persisted day
+    // snapshot and re-capture the already-dimmed brightness as the "day" value.
+    if (!settingsStore.hasLoaded()) return;
     const s = this._settings();
     const enabled = s.night_enabled !== false;
     const startM = parseTimeToMinutes(s.night_start) ?? DEFAULT_START;
     const endM = parseTimeToMinutes(s.night_end) ?? DEFAULT_END;
     const wantNight = enabled && isNight(nowMinutes(), startM, endM);
-    const wasActive = this._lsActive();
+    const wasActive = this._getDay() !== null;
     const durMs = Math.max(0, Number(s.night_transition_minutes ?? 5)) * 60_000;
 
     if (wantNight && !this.active) {
       // Fresh entry transitions; resuming after a reload (wasActive) snaps instantly + keeps day value.
       this._applyNight(s, wasActive ? 0 : durMs, !wasActive);
     } else if (!wantNight && (this.active || wasActive)) {
-      this._exitNight(durMs);
+      // Toggling Enabled off restores over a fixed 10s; a natural morning end uses the transition.
+      this._exitNight(enabled ? durMs : DISABLE_RESTORE_MS);
     } else if (wantNight && this.active) {
       // Already night: re-apply instantly only if a relevant setting changed (not on the
       // clock poll — that would snap an in-progress transition to its target).
@@ -139,29 +156,27 @@ class NightModeEngine {
   }
 
   private _applyNight(s: SettingsMap, durMs: number, snapshot: boolean): void {
+    // Set active + signature BEFORE writing the snapshot: _setDay emits synchronously and
+    // re-enters _evaluate, which must see us as already-night to skip re-applying.
     this.active = true;
-    this._lsSetActive(true);
     this._appliedSig = this._nightSig(s);
 
     const entity = this._brightnessEntity(s);
-    if (entity) {
-      if (snapshot && !this._lsDay()) this._lsSetDay(this._snapshotDay(entity));
-      this._animateBrightness(entity, this._clampPct(Number(s.night_dim_brightness ?? 10)), durMs);
-    }
+    if (snapshot && !this._getDay()) this._setDay(this._snapshotDay(entity));
+    if (entity) this._animateBrightness(entity, this._clampPct(Number(s.night_dim_brightness ?? 10)), durMs);
     this._animateDim(NIGHT_BACKGROUND_DIM, durMs);
     this._applyFont(String(s.night_font_color ?? "red"), durMs);
   }
 
   private _exitNight(durMs: number): void {
     this.active = false;
-    this._lsSetActive(false);
     this._appliedSig = undefined;
 
-    const day = this._lsDay();
-    if (day?.entity) this._animateBrightness(day.entity, this._clampPct(day.pct), durMs);
+    const day = this._getDay();
+    if (day) this._restoreDay(day, durMs);
     this._animateDim(0, durMs);
     this._applyFont(null, durMs);
-    this._lsClearDay();
+    this._clearDay();
   }
 
   // --- Effects ------------------------------------------------------------
@@ -212,11 +227,15 @@ class NightModeEngine {
       }
       return;
     }
-    const css = `:not(.edit-mode) > hui-view {
-      --primary-text-color: ${color} !important;
+    // Set the colour vars on hui-view AND on every descendant host: Ted's cards redefine
+    // --ted-style-text on their own :host, so a value inherited from hui-view alone is ignored —
+    // declaring it directly on the card host (with !important) overrides the card's own default.
+    const vars = `--primary-text-color: ${color} !important;
       --secondary-text-color: ${color} !important;
       --ted-style-text: ${color} !important;
-    }
+      --ted-style-muted: ${color} !important;`;
+    const css = `:not(.edit-mode) > hui-view { ${vars} }
+    :not(.edit-mode) > hui-view * { ${vars} }
     ${transition}`;
     if (!styleEl) {
       styleEl = document.createElement("style");
@@ -290,9 +309,45 @@ class NightModeEngine {
     return !Number.isNaN(v) && max > min ? this._clampPct(Math.round(((v - min) / (max - min)) * 100)) : 100;
   }
 
-  /** Capture the entity's current value as a day-brightness percent (0..100). */
-  private _snapshotDay(entity: string): DaySnapshot {
-    return { entity, pct: this._readPct(entity) };
+  /** Capture the entity's current value as a day snapshot (brightness %, and for lights also
+   *  the on/off state and colour temperature) for later restore. */
+  private _snapshotDay(entity: string | undefined): DaySnapshot {
+    if (!entity) return { entity: null, pct: 100 };
+    const st = this.hass?.states?.[entity];
+    const domain = entity.split(".")[0];
+    const snap: DaySnapshot = { entity, pct: this._readPct(entity) };
+    if (domain === "light") {
+      snap.on = st?.state === "on";
+      const k = Number(st?.attributes?.color_temp_kelvin);
+      const m = Number(st?.attributes?.color_temp);
+      if (!Number.isNaN(k) && k > 0) snap.kelvin = k;
+      else if (!Number.isNaN(m) && m > 0) snap.mired = m;
+    }
+    return snap;
+  }
+
+  /** Restore an entity to its captured day snapshot, fading brightness over `durMs`. For a light
+   *  we also restore colour temperature (set once — kelvin can't be JS-stepped) and, if it was off
+   *  during the day, turn it back off after the fade. */
+  private _restoreDay(day: DaySnapshot, durMs: number): void {
+    const entity = day.entity;
+    if (!entity) return;
+    const domain = entity.split(".")[0];
+    if (domain === "light") {
+      if (day.on === false) {
+        this._animateBrightness(entity, 0, durMs);
+        if (this.restoreTimer !== undefined) clearTimeout(this.restoreTimer);
+        this.restoreTimer = window.setTimeout(() => {
+          void this.hass?.callService?.("light", "turn_off", { entity_id: entity });
+        }, durMs + 100);
+        return;
+      }
+      const data: Record<string, unknown> = { entity_id: entity };
+      if (typeof day.kelvin === "number") data.color_temp_kelvin = day.kelvin;
+      else if (typeof day.mired === "number") data.color_temp = day.mired;
+      if (Object.keys(data).length > 1) void this.hass?.callService?.("light", "turn_on", data);
+    }
+    this._animateBrightness(entity, this._clampPct(day.pct), durMs);
   }
 
   private _brightnessEntity(s: SettingsMap): string | undefined {
@@ -306,50 +361,29 @@ class NightModeEngine {
     return Math.max(0, Math.min(100, Math.round(n)));
   }
 
-  // --- localStorage helpers (guarded so blocked storage never throws) ------
+  // --- Day-snapshot persistence (backend per-device setting) ---------------
 
-  private _lsActive(): boolean {
-    try {
-      return localStorage.getItem(LS_ACTIVE) === "1";
-    } catch {
-      return false;
-    }
+  /** The stored day snapshot for this device, or null when night isn't active. */
+  private _getDay(): DaySnapshot | null {
+    const raw = settingsStore.deviceSettings()[NIGHT_DAY_SNAPSHOT_KEY];
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+    const v = raw as Record<string, unknown>;
+    const snap: DaySnapshot = {
+      entity: typeof v.entity === "string" ? v.entity : null,
+      pct: typeof v.pct === "number" ? v.pct : 100,
+    };
+    if (typeof v.on === "boolean") snap.on = v.on;
+    if (typeof v.kelvin === "number") snap.kelvin = v.kelvin;
+    if (typeof v.mired === "number") snap.mired = v.mired;
+    return snap;
   }
 
-  private _lsSetActive(on: boolean): void {
-    try {
-      if (on) localStorage.setItem(LS_ACTIVE, "1");
-      else localStorage.removeItem(LS_ACTIVE);
-    } catch {
-      // ignore
-    }
+  private _setDay(day: DaySnapshot): void {
+    settingsStore.setValue("device", NIGHT_DAY_SNAPSHOT_KEY, day as unknown as SettingsValue);
   }
 
-  private _lsDay(): DaySnapshot | null {
-    try {
-      const raw = localStorage.getItem(LS_DAY);
-      if (!raw) return null;
-      const v = JSON.parse(raw) as DaySnapshot;
-      return typeof v?.entity === "string" && typeof v?.pct === "number" ? v : null;
-    } catch {
-      return null;
-    }
-  }
-
-  private _lsSetDay(day: DaySnapshot): void {
-    try {
-      localStorage.setItem(LS_DAY, JSON.stringify(day));
-    } catch {
-      // ignore
-    }
-  }
-
-  private _lsClearDay(): void {
-    try {
-      localStorage.removeItem(LS_DAY);
-    } catch {
-      // ignore
-    }
+  private _clearDay(): void {
+    settingsStore.clearValue("device", NIGHT_DAY_SNAPSHOT_KEY);
   }
 }
 
