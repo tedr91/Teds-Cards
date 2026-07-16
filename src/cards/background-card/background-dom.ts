@@ -242,8 +242,8 @@ function bindAttrResize(): void {
   });
 }
 
-// ── caption flyout open/close (tap toggles; outside tap or 15s auto-dismiss) ──
-const ATTRIBUTION_TIMEOUT_MS = 15000;
+// ── caption flyout open/close (tap toggles; outside tap or 8s auto-dismiss) ──
+const ATTRIBUTION_TIMEOUT_MS = 8000;
 let attrCloseTimer: number | undefined;
 let attrOutsideHandler: ((e: Event) => void) | undefined;
 
