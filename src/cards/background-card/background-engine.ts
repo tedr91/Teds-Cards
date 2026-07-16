@@ -32,7 +32,7 @@ import {
   listFolderImages,
   resolveMediaSource,
 } from "../../shared/media";
-import { applyAttribution, applyBackground } from "./background-dom";
+import { type AttributionActions, applyAttribution, applyBackground } from "./background-dom";
 
 interface HassLike {
   callWS?<T>(msg: Record<string, unknown>): Promise<T>;
@@ -290,7 +290,66 @@ class BackgroundEngine {
       applyAttribution(null);
       return;
     }
-    applyAttribution({ title: meta.title, copyright: meta.copyright });
+    const actions: AttributionActions = {
+      favorite: () => void this.favoriteCurrentBing(),
+      remove: () => void this.removeCurrentBing(),
+      next: () => this.nextBingSlide(),
+    };
+    applyAttribution({ title: meta.title, copyright: meta.copyright }, actions);
+  }
+
+  /** The bing_pod filename (`<startdate>.jpg`) for the current slide, or null. */
+  private _currentBingFilename(): string | null {
+    const url = this.slideUrls[this.slideIdx];
+    const m = url ? /\/bing_pod\/([^/]+\.jpg)$/i.exec(url) : null;
+    return m ? m[1] : null;
+  }
+
+  /** Advance the slideshow to the next image immediately + restart the cycle. */
+  nextBingSlide(): void {
+    if (this.slideUrls.length < 1) return;
+    this.slideIdx = (this.slideIdx + 1) % this.slideUrls.length;
+    const s = this._effective();
+    const gen = ++this.gen;
+    void this._paint(s, this.slideUrls[this.slideIdx], gen);
+    this._startTimer(Math.max(1, Number(s.background_cycle_minutes ?? 30)));
+  }
+
+  /** Copy the current Bing image into the backend's favorites folder. */
+  async favoriteCurrentBing(): Promise<void> {
+    const filename = this._currentBingFilename();
+    if (!filename || !this.backendInt || !this.hass?.callWS) return;
+    try {
+      await this.hass.callWS({ type: "teds_cards_backend/favorite_bing_photo", filename });
+    } catch {
+      /* best-effort */
+    }
+  }
+
+  /** Delete the current Bing image from the cache, then advance to a new one. */
+  async removeCurrentBing(): Promise<void> {
+    const filename = this._currentBingFilename();
+    const url = this.slideUrls[this.slideIdx];
+    if (filename && this.backendInt && this.hass?.callWS) {
+      try {
+        await this.hass.callWS({ type: "teds_cards_backend/remove_bing_photo", filename });
+      } catch {
+        /* best-effort */
+      }
+    }
+    // Drop it locally and show a new image immediately (rebuild if it was the last).
+    if (url) this.bingMeta.delete(url);
+    this.slideUrls = this.slideUrls.filter((u) => u !== url);
+    if (this.slideUrls.length === 0) {
+      this.slideSig = undefined;
+      this.apply();
+      return;
+    }
+    if (this.slideIdx >= this.slideUrls.length) this.slideIdx = 0;
+    const s = this._effective();
+    const gen = ++this.gen;
+    void this._paint(s, this.slideUrls[this.slideIdx], gen);
+    this._startTimer(Math.max(1, Number(s.background_cycle_minutes ?? 30)));
   }
 
   /** A luminance-derived scrim that tones a clashing image toward the theme's

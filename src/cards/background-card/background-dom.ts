@@ -69,9 +69,26 @@ export interface BackgroundAttribution {
   copyright: string;
 }
 
+/** Actions offered in the attribution flyout (Bing "Photo of the Day"). */
+export interface AttributionActions {
+  /** Copy the current image into the favorites folder. */
+  favorite(): void;
+  /** Delete the current image from the cache and advance to a new one. */
+  remove(): void;
+  /** Advance to the next image immediately. */
+  next(): void;
+}
+
 /** mdi:information-outline */
 const INFO_ICON_PATH =
   "M11,9H13V7H11M12,20C7.59,20 4,16.41 4,12C4,7.59 7.59,4 12,4C16.41,4 20,7.59 20,12C20,16.41 16.41,20 12,20M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M11,17H13V11H11V17Z";
+
+/** mdi:star-outline / mdi:delete-outline / mdi:skip-next */
+const STAR_ICON_PATH =
+  "M12,15.39L8.24,17.66L9.23,13.38L5.91,10.5L10.29,10.13L12,6.09L13.71,10.13L18.09,10.5L14.77,13.38L15.76,17.66M22,9.24L14.81,8.63L12,2L9.19,8.63L2,9.24L7.45,13.97L5.82,21L12,17.27L18.18,21L16.54,13.97L22,9.24Z";
+const DELETE_ICON_PATH =
+  "M9,3V4H4V6H5V19A2,2 0 0,0 7,21H17A2,2 0 0,0 19,19V6H20V4H15V3H9M7,6H17V19H7V6M9,8V17H11V8H9M13,8V17H15V8H13Z";
+const NEXT_ICON_PATH = "M16,18H18V6H16M6,18L14.5,12L6,6V18Z";
 
 const ATTRIBUTION_CSS = `
 #${ATTRIBUTION_ID} {
@@ -127,6 +144,33 @@ const ATTRIBUTION_CSS = `
 #${ATTRIBUTION_ID}.open .tba-caption { opacity: 1; transform: translateX(0); }
 #${ATTRIBUTION_ID} .tba-title { font-weight: 600; }
 #${ATTRIBUTION_ID} .tba-copyright { opacity: 0.85; }
+#${ATTRIBUTION_ID} .tba-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+  pointer-events: none;
+}
+#${ATTRIBUTION_ID}:hover .tba-actions,
+#${ATTRIBUTION_ID}:focus-within .tba-actions,
+#${ATTRIBUTION_ID}.open .tba-actions { pointer-events: auto; }
+#${ATTRIBUTION_ID} .tba-act {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border: none;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+#${ATTRIBUTION_ID} .tba-act:hover { background: rgba(255, 255, 255, 0.26); }
+#${ATTRIBUTION_ID} .tba-act svg { width: 14px; height: 14px; fill: currentColor; }
+#${ATTRIBUTION_ID} .tba-act.done { background: rgba(120, 200, 120, 0.4); }
 `;
 
 /** Anchor the overlay to the top-left of the dashboard CONTENT area (the
@@ -202,13 +246,41 @@ function toggleAttr(el: HTMLElement): void {
   else openAttr(el);
 }
 
+/** Restart the auto-dismiss timer while the flyout is open (used after an action
+ *  so the user keeps interacting without it closing under them). */
+function resetAttrTimer(el: HTMLElement): void {
+  if (!el.classList.contains("open")) return;
+  if (attrCloseTimer !== undefined) clearTimeout(attrCloseTimer);
+  attrCloseTimer = window.setTimeout(() => closeAttr(el), ATTRIBUTION_TIMEOUT_MS);
+}
+
+/** The latest actions for the (singleton) overlay's buttons — updated on each
+ *  applyAttribution call, so the buttons always act on the current image. */
+let attrActions: AttributionActions | undefined;
+
+/** Optimistic feedback for the Favorite button (label + tint for ~1.5s). */
+function markFavorited(btn: HTMLElement): void {
+  const label = btn.querySelector<HTMLElement>(".tba-act-label");
+  const prev = label?.textContent ?? "Favorite";
+  btn.classList.add("done");
+  if (label) label.textContent = "Favorited";
+  window.setTimeout(() => {
+    btn.classList.remove("done");
+    if (label && label.textContent === "Favorited") label.textContent = prev;
+  }, 1500);
+}
+
 /**
  * Show (or update) a small info-icon overlay in the top-left corner whose
- * hover/tap caption gives the photo's title + copyright. Pass `null` to remove
- * it (any non-Bing wallpaper). Injected into `hui-root`'s shadow like the
- * wallpaper style so it persists across view navigation.
+ * hover/tap caption gives the photo's title + copyright (and, when `actions` are
+ * provided, Favorite / Remove / Next buttons). Pass `null` to remove it (any
+ * non-Bing wallpaper). Injected into `hui-root`'s shadow like the wallpaper
+ * style so it persists across view navigation.
  */
-export function applyAttribution(meta: BackgroundAttribution | null): void {
+export function applyAttribution(
+  meta: BackgroundAttribution | null,
+  actions?: AttributionActions,
+): void {
   const huiRoot = findHuiRoot();
   if (!huiRoot?.shadowRoot) return;
   let el = huiRoot.shadowRoot.querySelector<HTMLElement>(`#${ATTRIBUTION_ID}`);
@@ -217,8 +289,10 @@ export function applyAttribution(meta: BackgroundAttribution | null): void {
       teardownAttrDismiss();
       el.remove();
     }
+    attrActions = undefined;
     return;
   }
+  attrActions = actions;
   if (!el) {
     el = document.createElement("div");
     el.id = ATTRIBUTION_ID;
@@ -226,12 +300,39 @@ export function applyAttribution(meta: BackgroundAttribution | null): void {
       `<style>${ATTRIBUTION_CSS}</style>` +
       `<button class="tba-icon" type="button" aria-label="Photo information">` +
       `<svg viewBox="0 0 24 24"><path d="${INFO_ICON_PATH}"></path></svg></button>` +
-      `<div class="tba-caption"><div class="tba-title"></div><div class="tba-copyright"></div></div>`;
+      `<div class="tba-caption">` +
+      `<div class="tba-title"></div><div class="tba-copyright"></div>` +
+      `<div class="tba-actions">` +
+      `<button class="tba-act" type="button" data-act="favorite">` +
+      `<svg viewBox="0 0 24 24"><path d="${STAR_ICON_PATH}"></path></svg>` +
+      `<span class="tba-act-label">Favorite</span></button>` +
+      `<button class="tba-act" type="button" data-act="remove">` +
+      `<svg viewBox="0 0 24 24"><path d="${DELETE_ICON_PATH}"></path></svg>` +
+      `<span class="tba-act-label">Remove</span></button>` +
+      `<button class="tba-act" type="button" data-act="next">` +
+      `<svg viewBox="0 0 24 24"><path d="${NEXT_ICON_PATH}"></path></svg>` +
+      `<span class="tba-act-label">Next</span></button>` +
+      `</div></div>`;
     // Tap toggles the caption (outside tap / 15s auto-dismiss handled in openAttr).
     const captionEl = el;
     el.querySelector(".tba-icon")?.addEventListener("click", (e) => {
       e.stopPropagation();
       toggleAttr(captionEl);
+    });
+    el.querySelectorAll<HTMLElement>(".tba-act").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const act = btn.dataset.act;
+        if (act === "favorite") {
+          attrActions?.favorite();
+          markFavorited(btn);
+        } else if (act === "remove") {
+          attrActions?.remove();
+        } else if (act === "next") {
+          attrActions?.next();
+        }
+        resetAttrTimer(captionEl);
+      });
     });
     huiRoot.shadowRoot.appendChild(el);
     bindAttrResize();
