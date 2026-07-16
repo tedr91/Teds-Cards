@@ -136,9 +136,9 @@ Restore happens on **all** exit paths: the natural morning end, and manually tur
   browser, so they work even for the browser_mod screen light, which ignores the native `transition`
   parameter). The background dim and the screen dim are separate overlays, so they **stack** — the
   background ends up darker than the rest of the screen at night.
-- **Font colour** is applied via a CSS variable override. Text in most places cross-fades, but text
-  **inside a card's own shadow DOM** (e.g. the clock/weather figures) switches to the night colour
-  without a gradual fade. This is a browser limitation — the colour still changes correctly.
+- **Font colour** cross-fades smoothly over the duration. Ted's own cards recolour via an overridable
+  `--ted-night-text` theme token (so it works in both the `ted-style` and `ha` themes), and native Home
+  Assistant cards recolour via the standard `--primary-text-color`.
 
 ---
 

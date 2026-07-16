@@ -331,10 +331,12 @@ class NightModeEngine {
           ? this._fontDay
           : `color-mix(in srgb, ${this._fontNight} ${pct}%, ${this._fontDay} ${100 - pct}%)`;
     const vars =
+      // Ted cards read --ted-night-text via their theme tokens (see tedStyleTheme), so publishing
+      // it here recolours them in BOTH ted-style and ha themes (inheritance crosses shadow roots).
+      `--ted-night-text: ${mix} !important;` +
+      // Native HA cards + the daylight calendar use the standard HA text vars.
       `--primary-text-color: ${mix} !important;` +
       `--secondary-text-color: ${mix} !important;` +
-      `--ted-style-text: ${mix} !important;` +
-      `--ted-style-muted: ${mix} !important;` +
       // Keep surfaces neutral: Ted's `ha` theme derives --ted-style-surface-2 from the text colour,
       // which would otherwise tint card surfaces with the night colour.
       `--ted-style-surface-2: var(--ted-style-surface) !important;`;

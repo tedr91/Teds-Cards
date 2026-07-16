@@ -20,8 +20,8 @@ export const tedStyleTheme: CSSResult = css`
     /* Default "Ted's Home Theater" theme — Windows 11 Fluent (Mica dark). */
     --ted-style-accent: #4cc2ff;
     --ted-style-on-accent: #000000;
-    --ted-style-text: #ffffff;
-    --ted-style-muted: rgba(255, 255, 255, 0.786);
+    --ted-style-text: var(--ted-night-text, #ffffff);
+    --ted-style-muted: var(--ted-night-text, rgba(255, 255, 255, 0.786));
     --ted-style-icon-dim: rgba(255, 255, 255, 0.5);
     --ted-style-divider: rgba(255, 255, 255, 0.0931);
     --ted-style-surface: #2b2b2b;
@@ -46,8 +46,8 @@ export const tedStyleTheme: CSSResult = css`
     /* Follow the active Home Assistant theme. */
     --ted-style-accent: var(--primary-color, #2196f3);
     --ted-style-on-accent: var(--text-primary-color, #ffffff);
-    --ted-style-text: var(--primary-text-color, #1c1c1c);
-    --ted-style-muted: var(--secondary-text-color, #6f6f6f);
+    --ted-style-text: var(--ted-night-text, var(--primary-text-color, #1c1c1c));
+    --ted-style-muted: var(--ted-night-text, var(--secondary-text-color, #6f6f6f));
     --ted-style-icon-dim: var(--state-icon-color, var(--ted-style-muted));
     --ted-style-divider: var(--divider-color, rgba(120, 120, 120, 0.22));
     --ted-style-surface: var(--ha-card-background, var(--card-background-color, #ffffff));

@@ -939,6 +939,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.236
+
+- **Night mode font colour now works in the `ted-style` theme** — Ted's cards now recolour (and smoothly cross-fade) to the night font colour in both the `ted-style` and `ha` themes, via a new overridable `--ted-night-text` theme token. Previously only `ha`-themed cards followed the night colour.
+
 ### v1.0.235
 
 - **Night mode visual fixes** — the font colour now cross-fades smoothly across the whole transition instead of snapping in partway through; card surfaces no longer pick up a red tint from the night font colour; and the wallpaper is no longer double-darkened when Dark mode kicks in (the readability scrim is suppressed while night mode is dimming the background).
