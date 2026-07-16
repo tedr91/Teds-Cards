@@ -15,8 +15,8 @@
 import { settingsStore } from "../../shared/settings";
 import { SETTINGS_DEFAULTS, type SettingsMap, type SettingsValue } from "../../shared/settings-schema";
 import {
+  brightnessToDim,
   isNight,
-  NIGHT_BACKGROUND_DIM,
   nowMinutes,
   parseTimeToMinutes,
   resolveBrightnessEntity,
@@ -131,7 +131,7 @@ class NightModeEngine {
     const endM = parseTimeToMinutes(s.night_end) ?? DEFAULT_END;
     const wantNight = enabled && isNight(nowMinutes(), startM, endM);
     const wasActive = this._getDay() !== null;
-    const durMs = Math.max(0, Number(s.night_transition_minutes ?? 5)) * 60_000;
+    const durMs = Math.max(0, Number(s.night_transition_minutes ?? 1)) * 60_000;
 
     if (wantNight && !this.active) {
       // Fresh entry transitions; resuming after a reload (wasActive) snaps instantly + keeps day value.
@@ -150,7 +150,8 @@ class NightModeEngine {
   private _nightSig(s: SettingsMap): string {
     return JSON.stringify({
       font: String(s.night_font_color ?? "red"),
-      dim: this._clampPct(Number(s.night_dim_brightness ?? 10)),
+      dim: this._clampPct(Number(s.night_dim_brightness ?? 75)),
+      bgDim: this._clampPct(Number(s.night_dim_background ?? 25)),
       entity: this._brightnessEntity(s) ?? "",
     });
   }
@@ -163,8 +164,8 @@ class NightModeEngine {
 
     const entity = this._brightnessEntity(s);
     if (snapshot && !this._getDay()) this._setDay(this._snapshotDay(entity));
-    if (entity) this._animateBrightness(entity, this._clampPct(Number(s.night_dim_brightness ?? 10)), durMs);
-    this._animateDim(NIGHT_BACKGROUND_DIM, durMs);
+    if (entity) this._animateBrightness(entity, this._clampPct(Number(s.night_dim_brightness ?? 75)), durMs);
+    this._animateDim(brightnessToDim(Number(s.night_dim_background ?? 25)), durMs);
     this._applyFont(String(s.night_font_color ?? "red"), durMs);
   }
 

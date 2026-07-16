@@ -47,6 +47,7 @@ export const BACKGROUND_KEYS = [
   "background_bing_cache_size",
   "background_enhance_readability",
   "background_readability_strength",
+  "background_brightness",
 ] as const;
 
 /** How many recent single-image picks to remember. */
@@ -599,12 +600,30 @@ function bgCommon(ctx: BackgroundFieldsCtx): TemplateResult {
 /** Render the Background field stack (Mode + solid/image/slideshow + common). */
 export function renderBackgroundFields(ctx: BackgroundFieldsCtx): TemplateResult {
   const mode = (ctx.get("background_mode") as BackgroundMode) ?? "solid";
+  const brightness = Number(ctx.get("background_brightness") ?? 100);
   return html`
     ${bgField("Mode", bgSelect(ctx, "background_mode", BACKGROUND_MODE_OPTIONS))}
     ${mode === "solid" ? bgSolid(ctx) : nothing}
     ${mode === "image" ? bgImage(ctx) : nothing}
     ${mode === "slideshow" ? bgSlideshow(ctx) : nothing}
     ${mode === "image" || mode === "slideshow" ? bgCommon(ctx) : nothing}
+    ${mode !== "theme"
+      ? bgField(
+          "Background brightness",
+          html`<div class="pct">
+            <input
+              type="range"
+              min="0"
+              max="100"
+              .value=${String(brightness)}
+              ?disabled=${ctx.disabled}
+              @input=${(e: Event) => ctx.set("background_brightness", Number((e.target as HTMLInputElement).value))}
+            />
+            <span class="pct-val">${brightness}%</span>
+          </div>`,
+          "Dims the background at all times. 100% = full brightness.",
+        )
+      : nothing}
   `;
 }
 

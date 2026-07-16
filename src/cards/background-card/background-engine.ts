@@ -182,7 +182,16 @@ class BackgroundEngine {
     const f = Math.max(0, Math.min(1, frac));
     if (f === this._nightDim) return;
     this._nightDim = f;
-    if (this._lastS) applyBackground(backgroundLayerCss(this._lastS, this._lastUrl, this._lastScrim, this._nightDim));
+    if (this._lastS)
+      applyBackground(backgroundLayerCss(this._lastS, this._lastUrl, this._lastScrim, this._dimFor(this._lastS)));
+  }
+
+  /** The effective background-dim fraction: the base dim from `background_brightness`
+   *  (100% = none) combined with (max of) the Night Mode override. */
+  private _dimFor(s: SettingsMap): number {
+    const pct = Math.max(0, Math.min(100, Number(s.background_brightness ?? 100)));
+    const base = 1 - pct / 100;
+    return Math.max(base, this._nightDim);
   }
 
   /** The last readability-scrim decision. */
@@ -246,7 +255,7 @@ class BackgroundEngine {
       this._lastS = s;
       this._lastUrl = null;
       this._lastScrim = undefined;
-      applyBackground(backgroundLayerCss(s, null, undefined, this._nightDim));
+      applyBackground(backgroundLayerCss(s, null, undefined, this._dimFor(s)));
       return;
     }
     if (mode === "image") {
@@ -266,7 +275,7 @@ class BackgroundEngine {
     this._lastS = s;
     this._lastUrl = url;
     this._lastScrim = scrim;
-    applyBackground(backgroundLayerCss(s, url, scrim, this._nightDim));
+    applyBackground(backgroundLayerCss(s, url, scrim, this._dimFor(s)));
     this._updateAttribution(s, url);
   }
 
@@ -349,7 +358,7 @@ class BackgroundEngine {
       this._lastS = s;
       this._lastUrl = null;
       this._lastScrim = undefined;
-      applyBackground(backgroundLayerCss(s, null, undefined, this._nightDim));
+      applyBackground(backgroundLayerCss(s, null, undefined, this._dimFor(s)));
       return;
     }
     if (this.slideIdx >= this.slideUrls.length) this.slideIdx = 0;

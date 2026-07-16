@@ -161,6 +161,7 @@ const NIGHT_TIME_SCHEMA = [
 ];
 const NIGHT_NUM_SCHEMA = [
   { name: "night_dim_brightness", selector: { number: { min: 0, max: 100, mode: "box", unit_of_measurement: "%" } } },
+  { name: "night_dim_background", selector: { number: { min: 0, max: 100, mode: "box", unit_of_measurement: "%" } } },
   { name: "night_transition_minutes", selector: { number: { min: 0, max: 120, mode: "box", unit_of_measurement: "min" } } },
 ];
 const NIGHT_COLOR_SCHEMA = [{ name: "night_font_color", selector: { ui_color: { default_color: "red" } } }];
@@ -172,10 +173,16 @@ const NIGHT_LABELS: Record<string, string> = {
   night_enabled: "Enabled",
   night_start: "Night start time",
   night_end: "Night end time",
-  night_dim_brightness: "Dim brightness",
+  night_dim_brightness: "Dim brightness (screen)",
+  night_dim_background: "Dim brightness (background)",
   night_font_color: "Night font color",
   night_transition_minutes: "Transition duration",
   night_brightness_entity: "Screen brightness entity",
+};
+
+const NIGHT_HELPERS: Record<string, string> = {
+  night_dim_brightness: "Target brightness level for the entire screen",
+  night_dim_background: "Independant target brightness level for the background; stacks with screen brightness",
 };
 
 registerCustomCard({
@@ -1615,6 +1622,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
   // --- Automatic Night Mode composite --------------------------------------
 
   private _nightLabel = (s: { name: string }): string => NIGHT_LABELS[s.name] ?? s.name;
+  private _nightHelper = (s: { name: string }): string => NIGHT_HELPERS[s.name] ?? "";
 
   /** Read a night_* value in the given scope (device falls back to inherited). */
   private _nmVal(key: string, scope: "global" | "device"): SettingsValue {
@@ -1706,12 +1714,14 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
                 <ha-form
                   .hass=${this.hass}
                   .data=${{
-                    night_dim_brightness: Number(val("night_dim_brightness") ?? 10),
-                    night_transition_minutes: Number(val("night_transition_minutes") ?? 5),
+                    night_dim_brightness: Number(val("night_dim_brightness") ?? 75),
+                    night_dim_background: Number(val("night_dim_background") ?? 25),
+                    night_transition_minutes: Number(val("night_transition_minutes") ?? 1),
                   }}
                   .schema=${NIGHT_NUM_SCHEMA}
                   .disabled=${disabled}
                   .computeLabel=${this._nightLabel}
+                  .computeHelper=${this._nightHelper}
                   @value-changed=${(ev: CustomEvent) => this._onNightModeChanged(ev, scope)}
                 ></ha-form>
                 <ha-form

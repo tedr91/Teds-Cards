@@ -14,13 +14,20 @@ export const NIGHTMODE_KEYS = [
   "night_start",
   "night_end",
   "night_dim_brightness",
+  "night_dim_background",
   "night_font_color",
   "night_transition_minutes",
   "night_brightness_entity",
 ] as const;
 
-/** How much the background is darkened during night mode (0..1). Fixed per requirement. */
+/** Default background brightness at night (percent) → used if `night_dim_background` is unset. */
 export const NIGHT_BACKGROUND_DIM = 0.5;
+
+/** Convert a brightness percent (0..100) to a black-overlay dim fraction (0..1). */
+export function brightnessToDim(pct: number): number {
+  const p = Number.isNaN(pct) ? 100 : Math.max(0, Math.min(100, pct));
+  return 1 - p / 100;
+}
 
 /** Parse an "HH:MM" / "HH:MM:SS" time string to minutes-since-midnight. `null` if invalid. */
 export function parseTimeToMinutes(time: unknown): number | null {

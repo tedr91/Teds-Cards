@@ -31,6 +31,13 @@ picker, where most have a visual editor).
 See also the [Notification System](./notification-system.md) overview for how the
 backend-driven alerts (notifications, alarms, timers) fit together.
 
+## Systems
+
+| System | What it's for |
+| --- | --- |
+| [Automatic Night Mode](./night-mode.md) | Schedule-based background dim, screen brightness, and night font colour (needs the backend). |
+| [Notification System](./notification-system.md) | How backend-driven notifications, alarms and timers fit together. |
+
 ## Backend-dependent cards
 
 These cards need the **Ted's Cards Backend** integration

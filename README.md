@@ -939,6 +939,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.233
+
+- **Background brightness + night dim controls** — added a **Background brightness** slider under **Settings → General → Background Wallpaper** (default 100%) that dims the wallpaper at all times. Automatic Night Mode's dim control is now split into **Dim brightness (screen)** and an independent **Dim brightness (background)** that stacks with it. New defaults: transition duration **1 min**, screen **75%**, background **25%**. Requires Ted's Cards Backend v1.0.51+.
+
 ### v1.0.232
 
 - **Night mode fixes & restore hardening** — the night font colour now correctly recolours Ted's cards (clock, weather, etc.) that define their own text colour. The captured daytime values are now stored per-device in the backend (surviving cache clears) instead of the browser, and for light entities night mode now also snapshots and restores the colour temperature and on/off state. Toggling **Enabled** off during the night restores your daytime values over a quick 10 seconds. Requires Ted's Cards Backend v1.0.50+.
