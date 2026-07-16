@@ -92,9 +92,9 @@ const NEXT_ICON_PATH = "M16,18H18V6H16M6,18L14.5,12L6,6V18Z";
 
 const ATTRIBUTION_CSS = `
 #${ATTRIBUTION_ID} {
-  position: fixed;
-  top: calc(env(safe-area-inset-top, 0px) + 8px);
-  left: calc(env(safe-area-inset-left, 0px) + 8px);
+  position: absolute;
+  top: 8px;
+  left: 8px;
   z-index: -1;
   display: flex;
   align-items: flex-start;
@@ -183,24 +183,29 @@ function attributionParent(huiRoot: HTMLElement): HTMLElement | ShadowRoot | nul
   return (sr.querySelector("hui-view") as HTMLElement | null) ?? sr;
 }
 
-/** Anchor the overlay to the top-left of the dashboard CONTENT area. It's a
- *  child of `hui-view` (so its negative z-index sits above the wallpaper but
- *  behind content), yet positioned `fixed` in VIEWPORT coords via the view's
- *  rect — so it lands below the header and clears a left/right navbar's padding
- *  gutter, regardless of `hui-view`'s stacking-context ancestor. */
+/** Anchor the overlay to the top-left of the dashboard CONTENT area. It's an
+ *  `absolute` child of `hui-view` — which keeps its negative z-index layered
+ *  above the wallpaper but behind content (`fixed` escapes that stacking and
+ *  slips behind the background). To land it at the right spot regardless of which
+ *  ancestor is its offset parent, we compute the desired VIEWPORT position (below
+ *  the header, clear of a left/right navbar's padding gutter) and convert it into
+ *  offsets relative to the actual offset parent. */
 function positionAttribution(el: HTMLElement): void {
   const view = findHuiRoot()?.shadowRoot?.querySelector("hui-view") as HTMLElement | null;
   const rect = view?.getBoundingClientRect();
-  if (view && rect && rect.width > 0 && rect.height > 0) {
-    const cs = getComputedStyle(view);
-    const padLeft = parseFloat(cs.paddingLeft) || 0;
-    const padTop = parseFloat(cs.paddingTop) || 0;
-    el.style.top = `${Math.round(Math.max(0, rect.top) + padTop) + 8}px`;
-    el.style.left = `${Math.round(Math.max(0, rect.left) + padLeft) + 8}px`;
-  } else {
-    el.style.top = "calc(env(safe-area-inset-top, 0px) + 8px)";
-    el.style.left = "calc(env(safe-area-inset-left, 0px) + 8px)";
+  if (!view || !rect || rect.width === 0 || rect.height === 0) {
+    el.style.top = "8px";
+    el.style.left = "8px";
+    return;
   }
+  const cs = getComputedStyle(view);
+  const padLeft = parseFloat(cs.paddingLeft) || 0;
+  const padTop = parseFloat(cs.paddingTop) || 0;
+  const desiredTop = Math.max(0, rect.top) + padTop + 8;
+  const desiredLeft = Math.max(0, rect.left) + padLeft + 8;
+  const opRect = (el.offsetParent as HTMLElement | null)?.getBoundingClientRect();
+  el.style.top = `${Math.round(desiredTop - (opRect?.top ?? 0))}px`;
+  el.style.left = `${Math.round(desiredLeft - (opRect?.left ?? 0))}px`;
 }
 
 let attrResizeBound = false;

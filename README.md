@@ -939,6 +939,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.242
+
+- **Attribution icon layering (final)** — the Bing Photo of the Day info icon now reliably sits above the wallpaper *and* behind content in the correct position; fixed the previous build where it rendered behind the background and only flashed before the image loaded.
+
 ### v1.0.241
 
 - **Attribution icon placement fix** — corrected the Bing Photo of the Day info icon's vertical position after the layering change; it no longer tucks under the view tabs on desktop or slides off the top on kiosk devices, while still sitting behind content.
