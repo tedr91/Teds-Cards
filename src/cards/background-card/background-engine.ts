@@ -321,6 +321,8 @@ class BackgroundEngine {
       return scrim;
     };
     if (!url) return record(null, undefined, "No image resolved yet.");
+    if (this._nightDim > 0.001)
+      return record(null, undefined, "Automatic Night Mode is dimming the background — readability scrim suppressed so the wallpaper isn't double-darkened.");
     if (!enhance) return record(null, undefined, "Enhance readability is off.");
     if (strength <= 0) return record(null, undefined, "Readability strength is 0%.");
     const l = await imageLuminance(url);

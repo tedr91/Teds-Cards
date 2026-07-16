@@ -24,6 +24,7 @@ import {
 import { backgroundEngine } from "./background-engine";
 import { findHuiRoot } from "./background-dom";
 import { browserModId } from "../../shared/device-id";
+import { cssColor } from "../../shared/appearance";
 
 type ThemeMode = "auto" | "dark" | "light";
 
@@ -80,6 +81,11 @@ class NightModeEngine {
   private _appliedSig?: string;
   /** Current applied background-dim fraction (mirror of the background engine's value). */
   private curDim = 0;
+  /** Font-colour cross-fade state: rAF handle + endpoints + current mix (0=day, 1=night). */
+  private fontRaf?: number;
+  private _fontDay = "";
+  private _fontNight = "";
+  private _fontP = 0;
 
   /** A card connected: keep the engine live, subscribe to settings, start the clock poll. */
   attach(hass: HassLike | undefined, backendInt = false): void {
@@ -123,6 +129,10 @@ class NightModeEngine {
       if (this.darkTimer !== undefined) {
         clearTimeout(this.darkTimer);
         this.darkTimer = undefined;
+      }
+      if (this.fontRaf !== undefined) {
+        cancelAnimationFrame(this.fontRaf);
+        this.fontRaf = undefined;
       }
     }
   }
@@ -252,6 +262,11 @@ class NightModeEngine {
 
   /** Switch (or restore) the dashboard-wide font colour by injecting a style into hui-root.
    *  `color === null` fades back to the theme colours, then removes the style after `durMs`. */
+  /** Cross-fade the dashboard-wide font colour to `color` (or back to day when null) over `durMs`.
+   *  We interpolate in JS via `color-mix` and rewrite the injected style each frame — the clock/
+   *  weather cards read `var(--primary-text-color)` live, so this fades smoothly even though we
+   *  can't attach a CSS transition to their shadow-DOM text. Only text tokens are recoloured, and
+   *  `--ted-style-surface-2` is pinned so surfaces don't pick up the red tint. */
   private _applyFont(color: string | null, durMs: number): void {
     const huiRoot = findHuiRoot();
     if (!huiRoot?.shadowRoot) return;
@@ -259,33 +274,72 @@ class NightModeEngine {
       clearTimeout(this.fontCleanupTimer);
       this.fontCleanupTimer = undefined;
     }
-    let styleEl = huiRoot.shadowRoot.querySelector<HTMLStyleElement>(`#${NIGHT_FONT_STYLE_ID}`);
-    const transition = `:not(.edit-mode) > hui-view, :not(.edit-mode) > hui-view * { transition: color ${Math.max(0, durMs)}ms ease !important; }`;
+    const styleEl = huiRoot.shadowRoot.querySelector<HTMLStyleElement>(`#${NIGHT_FONT_STYLE_ID}`);
     if (color === null) {
-      // Keep the transition rule so text fades back, then remove the style entirely.
-      if (styleEl) {
-        styleEl.textContent = transition;
-        this.fontCleanupTimer = window.setTimeout(() => {
-          findHuiRoot()?.shadowRoot?.querySelector(`#${NIGHT_FONT_STYLE_ID}`)?.remove();
-        }, Math.max(0, durMs) + 100);
-      }
+      // Fade back to day, then remove the style. No-op if it was never applied this session.
+      if (styleEl) this._animateFont(0, durMs, styleEl);
       return;
     }
-    // Set the colour vars on hui-view AND on every descendant host: Ted's cards redefine
-    // --ted-style-text on their own :host, so a value inherited from hui-view alone is ignored —
-    // declaring it directly on the card host (with !important) overrides the card's own default.
-    const vars = `--primary-text-color: ${color} !important;
-      --secondary-text-color: ${color} !important;
-      --ted-style-text: ${color} !important;
-      --ted-style-muted: ${color} !important;`;
-    const css = `:not(.edit-mode) > hui-view { ${vars} }
-    :not(.edit-mode) > hui-view * { ${vars} }
-    ${transition}`;
-    if (!styleEl) {
-      styleEl = document.createElement("style");
-      styleEl.id = NIGHT_FONT_STYLE_ID;
-      huiRoot.shadowRoot.appendChild(styleEl);
+    // Capture endpoints: the current theme text colour (resolved) and the night colour.
+    this._fontDay =
+      getComputedStyle(document.documentElement).getPropertyValue("--primary-text-color").trim() || "#e1e1e1";
+    this._fontNight = cssColor(color) || color;
+    let el = styleEl;
+    if (!el) {
+      el = document.createElement("style");
+      el.id = NIGHT_FONT_STYLE_ID;
+      huiRoot.shadowRoot.appendChild(el);
     }
+    this._animateFont(1, durMs, el);
+  }
+
+  /** Drive the font mix from its current value to `toP` (0=day, 1=night) over `durMs`. */
+  private _animateFont(toP: number, durMs: number, styleEl: HTMLStyleElement): void {
+    if (this.fontRaf !== undefined) {
+      cancelAnimationFrame(this.fontRaf);
+      this.fontRaf = undefined;
+    }
+    const from = this._fontP;
+    if (durMs <= 0 || from === toP) {
+      this._fontP = toP;
+      this._writeFont(styleEl, toP);
+      if (toP <= 0) styleEl.remove();
+      return;
+    }
+    const start = performance.now();
+    const tick = (now: number): void => {
+      const t = Math.min(1, (now - start) / durMs);
+      this._fontP = from + (toP - from) * t;
+      this._writeFont(styleEl, this._fontP);
+      if (t < 1) {
+        this.fontRaf = requestAnimationFrame(tick);
+      } else {
+        this.fontRaf = undefined;
+        if (toP <= 0) styleEl.remove();
+      }
+    };
+    this.fontRaf = requestAnimationFrame(tick);
+  }
+
+  /** Write the font-colour override at mix `p` (0=day … 1=night). */
+  private _writeFont(styleEl: HTMLStyleElement, p: number): void {
+    const pct = Math.max(0, Math.min(100, Math.round(p * 100)));
+    const mix =
+      pct >= 100
+        ? this._fontNight
+        : pct <= 0
+          ? this._fontDay
+          : `color-mix(in srgb, ${this._fontNight} ${pct}%, ${this._fontDay} ${100 - pct}%)`;
+    const vars =
+      `--primary-text-color: ${mix} !important;` +
+      `--secondary-text-color: ${mix} !important;` +
+      `--ted-style-text: ${mix} !important;` +
+      `--ted-style-muted: ${mix} !important;` +
+      // Keep surfaces neutral: Ted's `ha` theme derives --ted-style-surface-2 from the text colour,
+      // which would otherwise tint card surfaces with the night colour.
+      `--ted-style-surface-2: var(--ted-style-surface) !important;`;
+    const css = `:not(.edit-mode) > hui-view { ${vars} }
+    :not(.edit-mode) > hui-view * { ${vars} }`;
     if (styleEl.textContent !== css) styleEl.textContent = css;
   }
 
