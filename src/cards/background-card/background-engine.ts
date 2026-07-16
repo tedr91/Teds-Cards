@@ -308,8 +308,8 @@ class BackgroundEngine {
   /** Advance the slideshow to the next image immediately + restart the cycle. */
   nextBingSlide(): void {
     if (this.slideUrls.length < 1) return;
-    this.slideIdx = (this.slideIdx + 1) % this.slideUrls.length;
     const s = this._effective();
+    this._advanceSlide(s);
     const gen = ++this.gen;
     void this._paint(s, this.slideUrls[this.slideIdx], gen);
     this._startTimer(Math.max(1, Number(s.background_cycle_minutes ?? 30)));
@@ -444,9 +444,33 @@ class BackgroundEngine {
     this._stopTimer();
     if (this.slideUrls.length < 2) return;
     this.timer = window.setInterval(() => {
-      this.slideIdx = (this.slideIdx + 1) % this.slideUrls.length;
-      void this._paint(this._effective(), this.slideUrls[this.slideIdx], this.gen);
+      const s = this._effective();
+      this._advanceSlide(s);
+      void this._paint(s, this.slideUrls[this.slideIdx], this.gen);
     }, cycleMinutes * 60_000);
+  }
+
+  /** Advance to the next slide. When shuffle is on, reshuffle at each full loop
+   *  (avoiding an immediate repeat) so the order stays random over time instead
+   *  of cycling through one fixed shuffle forever. */
+  private _advanceSlide(s: SettingsMap): void {
+    const n = this.slideUrls.length;
+    if (n < 2) {
+      this.slideIdx = 0;
+      return;
+    }
+    const prev = this.slideUrls[this.slideIdx];
+    this.slideIdx += 1;
+    if (this.slideIdx >= n) {
+      if (s.background_shuffle !== false) {
+        shuffle(this.slideUrls);
+        if (this.slideUrls[0] === prev) {
+          const j = 1 + Math.floor(Math.random() * (n - 1));
+          [this.slideUrls[0], this.slideUrls[j]] = [this.slideUrls[j], this.slideUrls[0]];
+        }
+      }
+      this.slideIdx = 0;
+    }
   }
 
   private _stopTimer(): void {
