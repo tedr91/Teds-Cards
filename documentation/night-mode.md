@@ -62,7 +62,7 @@ The night window may span midnight (e.g. `9:00 pm → 7:00 am`) or fall within a
 ### Background brightness
 
 Separate from night mode, **Settings → General → Background Wallpaper** has a **Background
-brightness** slider (default **100%**) that dims the wallpaper at **all** times. Night mode's
+brightness** slider (default **75%**) that dims the wallpaper at **all** times. Night mode's
 **Dim brightness (background)** is the night-time target the background transitions *to*; in the
 morning it returns to this base Background brightness.
 

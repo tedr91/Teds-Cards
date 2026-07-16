@@ -600,13 +600,8 @@ function bgCommon(ctx: BackgroundFieldsCtx): TemplateResult {
 /** Render the Background field stack (Mode + solid/image/slideshow + common). */
 export function renderBackgroundFields(ctx: BackgroundFieldsCtx): TemplateResult {
   const mode = (ctx.get("background_mode") as BackgroundMode) ?? "solid";
-  const brightness = Number(ctx.get("background_brightness") ?? 100);
+  const brightness = Number(ctx.get("background_brightness") ?? 75);
   return html`
-    ${bgField("Mode", bgSelect(ctx, "background_mode", BACKGROUND_MODE_OPTIONS))}
-    ${mode === "solid" ? bgSolid(ctx) : nothing}
-    ${mode === "image" ? bgImage(ctx) : nothing}
-    ${mode === "slideshow" ? bgSlideshow(ctx) : nothing}
-    ${mode === "image" || mode === "slideshow" ? bgCommon(ctx) : nothing}
     ${mode !== "theme"
       ? bgField(
           "Background brightness",
@@ -624,6 +619,11 @@ export function renderBackgroundFields(ctx: BackgroundFieldsCtx): TemplateResult
           "Dims the background at all times. 100% = full brightness.",
         )
       : nothing}
+    ${bgField("Mode", bgSelect(ctx, "background_mode", BACKGROUND_MODE_OPTIONS))}
+    ${mode === "solid" ? bgSolid(ctx) : nothing}
+    ${mode === "image" ? bgImage(ctx) : nothing}
+    ${mode === "slideshow" ? bgSlideshow(ctx) : nothing}
+    ${mode === "image" || mode === "slideshow" ? bgCommon(ctx) : nothing}
   `;
 }
 

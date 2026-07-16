@@ -155,7 +155,7 @@ export const SETTINGS_DEFAULTS: SettingsMap = {
   background_bing_cache_size: 100,
   background_enhance_readability: true,
   background_readability_strength: 45,
-  background_brightness: 100,
+  background_brightness: 75,
   dashboard_root: "ted-dashboard",
   home_dashboard: "[root]/home-welcome",
   alarms_dashboard: "[root]/alarms-timers?tab=alarms",
