@@ -165,6 +165,7 @@ const NIGHT_NUM_SCHEMA = [
   { name: "night_transition_minutes", selector: { number: { min: 0, max: 120, mode: "box", unit_of_measurement: "min" } } },
 ];
 const NIGHT_COLOR_SCHEMA = [{ name: "night_font_color", selector: { ui_color: { default_color: "red" } } }];
+const NIGHT_DARK_SCHEMA = [{ name: "night_dark_mode", selector: { boolean: {} } }];
 const NIGHT_ENTITY_SCHEMA = [
   { name: "night_brightness_entity", selector: { entity: { domain: ["light", "number", "input_number"] } } },
 ];
@@ -177,12 +178,15 @@ const NIGHT_LABELS: Record<string, string> = {
   night_dim_background: "Dim brightness (background)",
   night_font_color: "Night font color",
   night_transition_minutes: "Transition duration",
+  night_dark_mode: "Switch to Dark mode",
   night_brightness_entity: "Screen brightness entity",
 };
 
 const NIGHT_HELPERS: Record<string, string> = {
   night_dim_brightness: "Target brightness level for the entire screen",
   night_dim_background: "Independant target brightness level for the background; stacks with screen brightness",
+  night_dark_mode:
+    "Stores this device's Auto/Light/Dark setting, switches to Dark shortly after the night transition, and restores it when night ends (needs browser_mod).",
 };
 
 registerCustomCard({
@@ -1730,6 +1734,15 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
                   .schema=${NIGHT_COLOR_SCHEMA}
                   .disabled=${disabled}
                   .computeLabel=${this._nightLabel}
+                  @value-changed=${(ev: CustomEvent) => this._onNightModeChanged(ev, scope)}
+                ></ha-form>
+                <ha-form
+                  .hass=${this.hass}
+                  .data=${{ night_dark_mode: val("night_dark_mode") !== false }}
+                  .schema=${NIGHT_DARK_SCHEMA}
+                  .disabled=${disabled}
+                  .computeLabel=${this._nightLabel}
+                  .computeHelper=${this._nightHelper}
                   @value-changed=${(ev: CustomEvent) => this._onNightModeChanged(ev, scope)}
                 ></ha-form>
                 <ha-form

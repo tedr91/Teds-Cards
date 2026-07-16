@@ -939,6 +939,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.234
+
+- **Night mode: automatic Dark mode** — Automatic Night Mode can now switch the device to **Dark** theme mode at night. It stores this device's current **Auto / Light / Dark** setting, switches to Dark a few seconds after the transition finishes, and restores your setting at night's end (or when you disable night mode). Toggle it under **Settings → General → Automatic night mode → Switch to Dark mode** (needs browser_mod). Requires Ted's Cards Backend v1.0.52+.
+
 ### v1.0.233
 
 - **Background brightness + night dim controls** — added a **Background brightness** slider under **Settings → General → Background Wallpaper** (default 100%) that dims the wallpaper at all times. Automatic Night Mode's dim control is now split into **Dim brightness (screen)** and an independent **Dim brightness (background)** that stacks with it. New defaults: transition duration **1 min**, screen **75%**, background **25%**. Requires Ted's Cards Backend v1.0.51+.

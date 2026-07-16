@@ -22,6 +22,8 @@ At night, over your configured **transition duration**, it:
 2. **Lowers the screen brightness** to your **Dim brightness (screen)** target (see
    [Screen brightness target](#screen-brightness-target)).
 3. **Switches the font colour** dashboard-wide to your **Night font colour**.
+4. **Switches the device to Dark mode** (optional) a few seconds after the transition finishes —
+   restoring your Auto/Light/Dark setting in the morning. See [Dark mode](#dark-mode).
 
 In the morning it reverses all three back to their daytime values. See
 [How the schedule works](#how-the-schedule-works) for the exact timing rules.
@@ -51,6 +53,7 @@ that device's overrides and go back to inheriting Global.
 | **Dim brightness (background)** | `25%` | Independent target brightness level for the background; stacks with the screen brightness. |
 | **Night font colour** | `red` | The font colour used dashboard-wide at night. Accepts a theme colour name (`red`, `accent`, …) or any CSS colour. |
 | **Transition duration** | `1 min` | How long the fade into (and out of) night mode takes. |
+| **Switch to Dark mode** | `On` | Store this device's Auto/Light/Dark setting and switch to Dark at night (see [Dark mode](#dark-mode)). Needs browser_mod. |
 | **Screen brightness entity** | *(auto)* | *(This-device)* The entity that controls this screen's brightness. Leave empty to auto-use the device's browser_mod screen light. See below. |
 
 The night window may span midnight (e.g. `9:00 pm → 7:00 am`) or fall within a single day
@@ -139,6 +142,18 @@ Restore happens on **all** exit paths: the natural morning end, and manually tur
 
 ---
 
+## Dark mode
+
+With **Switch to Dark mode** on, night mode also flips this device to **Dark** theme mode. It:
+
+- **Stores** the device's current **Auto / Light / Dark** setting (and theme name) in the day snapshot;
+- **Switches to Dark** 5 seconds *after* the night transition finishes;
+- **Restores** your stored setting exactly at **Night end** (or when you turn night mode off).
+
+This uses [browser_mod](https://github.com/thomasloven/hass-browser_mod)'s `set_theme` (targeted at this
+browser only), so it's per-device and needs browser_mod installed. It keeps your current theme — only the
+Auto/Light/Dark mode changes.
+
 ## Requirements
 
 | Requirement | Why |
@@ -146,7 +161,7 @@ Restore happens on **all** exit paths: the natural morning end, and manually tur
 | **Ted's Cards Backend** v1.0.50+ | Stores the night settings and the per-device day snapshot. |
 | **Ted's Cards** v1.0.232+ | The night-mode engine + Settings panel. |
 | Background card with `backend_integration: true` | The engine runs on the invisible Background card. Ted's Dashboard already includes it on every view. |
-| [browser_mod](https://github.com/thomasloven/hass-browser_mod) *(optional)* | Provides the auto-resolved per-device **screen light** used to dim the display. Not required if you point **Screen brightness entity** at your own `light`/`number` entity. |
+| [browser_mod](https://github.com/thomasloven/hass-browser_mod) *(optional)* | Provides the auto-resolved per-device **screen light** used to dim the display, and the per-device **Dark mode** switching. Not required if you point **Screen brightness entity** at your own `light`/`number` entity and leave **Switch to Dark mode** off. |
 
 ---
 

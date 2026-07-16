@@ -23,6 +23,9 @@ import {
 } from "../../shared/night-mode";
 import { backgroundEngine } from "./background-engine";
 import { findHuiRoot } from "./background-dom";
+import { browserModId } from "../../shared/device-id";
+
+type ThemeMode = "auto" | "dark" | "light";
 
 interface HassLike {
   states?: Record<string, { state?: string; attributes?: Record<string, unknown> } | undefined>;
@@ -41,6 +44,9 @@ interface DaySnapshot {
   on?: boolean;
   kelvin?: number;
   mired?: number;
+  /** The device's Auto/Light/Dark theme setting + theme name, restored when night ends. */
+  themeMode?: ThemeMode;
+  themeName?: string | null;
 }
 
 const NIGHT_FONT_STYLE_ID = "ted-night-mode-font";
@@ -48,6 +54,8 @@ const NIGHT_FONT_STYLE_ID = "ted-night-mode-font";
 const NIGHT_DAY_SNAPSHOT_KEY = "night_day_snapshot";
 /** Fixed restore duration (ms) when night mode is toggled OFF via the Enabled switch. */
 const DISABLE_RESTORE_MS = 10_000;
+/** Switch to Dark mode this long AFTER the night transition finishes. */
+const DARK_AFTER_TRANSITION_MS = 5_000;
 /** How often to re-check the clock for a night-window boundary crossing. */
 const POLL_MS = 30_000;
 
@@ -64,6 +72,7 @@ class NightModeEngine {
   private brightTimer?: number;
   private fontCleanupTimer?: number;
   private restoreTimer?: number;
+  private darkTimer?: number;
   /** Whether night mode is currently applied (in-memory; the backend snapshot mirrors it across reloads). */
   private active = false;
   /** Signature of the last-applied night settings, so the clock poll doesn't re-apply (and snap
@@ -111,6 +120,10 @@ class NightModeEngine {
         clearTimeout(this.restoreTimer);
         this.restoreTimer = undefined;
       }
+      if (this.darkTimer !== undefined) {
+        clearTimeout(this.darkTimer);
+        this.darkTimer = undefined;
+      }
     }
   }
 
@@ -152,6 +165,7 @@ class NightModeEngine {
       font: String(s.night_font_color ?? "red"),
       dim: this._clampPct(Number(s.night_dim_brightness ?? 75)),
       bgDim: this._clampPct(Number(s.night_dim_background ?? 25)),
+      dark: s.night_dark_mode !== false,
       entity: this._brightnessEntity(s) ?? "",
     });
   }
@@ -167,14 +181,43 @@ class NightModeEngine {
     if (entity) this._animateBrightness(entity, this._clampPct(Number(s.night_dim_brightness ?? 75)), durMs);
     this._animateDim(brightnessToDim(Number(s.night_dim_background ?? 25)), durMs);
     this._applyFont(String(s.night_font_color ?? "red"), durMs);
+    this._applyDarkMode(s, durMs);
+  }
+
+  /** Switch to Dark mode 5s after the transition finishes (needs browser_mod). Toggling the
+   *  setting off while night restores the stored Auto/Light/Dark value. */
+  private _applyDarkMode(s: SettingsMap, durMs: number): void {
+    if (!browserModId()) return;
+    if (this.darkTimer !== undefined) {
+      clearTimeout(this.darkTimer);
+      this.darkTimer = undefined;
+    }
+    if (s.night_dark_mode === false) {
+      const day = this._getDay();
+      if (day?.themeMode) this._setTheme(day.themeName ?? null, day.themeMode);
+      return;
+    }
+    const day = this._getDay();
+    const themeName = day?.themeName ?? null;
+    const delay = durMs > 0 ? durMs + DARK_AFTER_TRANSITION_MS : 0;
+    this.darkTimer = window.setTimeout(() => {
+      this.darkTimer = undefined;
+      this._setTheme(themeName, "dark");
+    }, delay);
   }
 
   private _exitNight(durMs: number): void {
     this.active = false;
     this._appliedSig = undefined;
 
+    if (this.darkTimer !== undefined) {
+      clearTimeout(this.darkTimer);
+      this.darkTimer = undefined;
+    }
     const day = this._getDay();
     if (day) this._restoreDay(day, durMs);
+    // Restore the Auto/Light/Dark setting immediately at night's end.
+    if (day?.themeMode && browserModId()) this._setTheme(day.themeName ?? null, day.themeMode);
     this._animateDim(0, durMs);
     this._applyFont(null, durMs);
     this._clearDay();
@@ -311,20 +354,34 @@ class NightModeEngine {
   }
 
   /** Capture the entity's current value as a day snapshot (brightness %, and for lights also
-   *  the on/off state and colour temperature) for later restore. */
+   *  the on/off state and colour temperature) for later restore. Also captures the device's
+   *  Auto/Light/Dark theme setting. */
   private _snapshotDay(entity: string | undefined): DaySnapshot {
-    if (!entity) return { entity: null, pct: 100 };
-    const st = this.hass?.states?.[entity];
-    const domain = entity.split(".")[0];
-    const snap: DaySnapshot = { entity, pct: this._readPct(entity) };
-    if (domain === "light") {
+    const snap: DaySnapshot = entity ? { entity, pct: this._readPct(entity) } : { entity: null, pct: 100 };
+    if (entity && entity.split(".")[0] === "light") {
+      const st = this.hass?.states?.[entity];
       snap.on = st?.state === "on";
       const k = Number(st?.attributes?.color_temp_kelvin);
       const m = Number(st?.attributes?.color_temp);
       if (!Number.isNaN(k) && k > 0) snap.kelvin = k;
       else if (!Number.isNaN(m) && m > 0) snap.mired = m;
     }
+    const theme = (this.hass as unknown as { selectedTheme?: { theme?: string; dark?: boolean } | null } | undefined)
+      ?.selectedTheme;
+    snap.themeMode = theme?.dark === true ? "dark" : theme?.dark === false ? "light" : "auto";
+    snap.themeName = typeof theme?.theme === "string" ? theme.theme : null;
     return snap;
+  }
+
+  /** Apply a theme mode (Auto/Light/Dark) to THIS browser via browser_mod, keeping the theme name. */
+  private _setTheme(themeName: string | null, mode: ThemeMode): void {
+    const bid = browserModId();
+    if (!bid || !this.hass?.callService) return;
+    void this.hass.callService("browser_mod", "set_theme", {
+      theme: themeName ?? "auto",
+      dark: mode,
+      browser_id: [bid],
+    });
   }
 
   /** Restore an entity to its captured day snapshot, fading brightness over `durMs`. For a light
@@ -376,6 +433,8 @@ class NightModeEngine {
     if (typeof v.on === "boolean") snap.on = v.on;
     if (typeof v.kelvin === "number") snap.kelvin = v.kelvin;
     if (typeof v.mired === "number") snap.mired = v.mired;
+    if (v.themeMode === "auto" || v.themeMode === "dark" || v.themeMode === "light") snap.themeMode = v.themeMode;
+    if (typeof v.themeName === "string" || v.themeName === null) snap.themeName = v.themeName as string | null;
     return snap;
   }
 
