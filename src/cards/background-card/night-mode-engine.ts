@@ -53,9 +53,13 @@ class NightModeEngine {
   private unsub?: () => void;
   private poll?: number;
   private dimRaf?: number;
+  private brightTimer?: number;
   private fontCleanupTimer?: number;
   /** Whether night mode is currently applied (in-memory; localStorage mirrors it across reloads). */
   private active = false;
+  /** Signature of the last-applied night settings, so the clock poll doesn't re-apply (and snap
+   *  an in-progress transition) unless a relevant setting actually changed. */
+  private _appliedSig?: string;
   /** Current applied background-dim fraction (mirror of the background engine's value). */
   private curDim = 0;
 
@@ -90,6 +94,10 @@ class NightModeEngine {
         cancelAnimationFrame(this.dimRaf);
         this.dimRaf = undefined;
       }
+      if (this.brightTimer !== undefined) {
+        clearInterval(this.brightTimer);
+        this.brightTimer = undefined;
+      }
     }
   }
 
@@ -115,19 +123,30 @@ class NightModeEngine {
     } else if (!wantNight && (this.active || wasActive)) {
       this._exitNight(durMs);
     } else if (wantNight && this.active) {
-      // Already night: a settings change (e.g. font colour) — re-apply instantly.
-      this._applyNight(s, 0, false);
+      // Already night: re-apply instantly only if a relevant setting changed (not on the
+      // clock poll — that would snap an in-progress transition to its target).
+      if (this._nightSig(s) !== this._appliedSig) this._applyNight(s, 0, false);
     }
+  }
+
+  /** Signature of the night settings that affect the applied look. */
+  private _nightSig(s: SettingsMap): string {
+    return JSON.stringify({
+      font: String(s.night_font_color ?? "red"),
+      dim: this._clampPct(Number(s.night_dim_brightness ?? 10)),
+      entity: this._brightnessEntity(s) ?? "",
+    });
   }
 
   private _applyNight(s: SettingsMap, durMs: number, snapshot: boolean): void {
     this.active = true;
     this._lsSetActive(true);
+    this._appliedSig = this._nightSig(s);
 
     const entity = this._brightnessEntity(s);
     if (entity) {
       if (snapshot && !this._lsDay()) this._lsSetDay(this._snapshotDay(entity));
-      this._setBrightness(entity, this._clampPct(Number(s.night_dim_brightness ?? 10)), durMs);
+      this._animateBrightness(entity, this._clampPct(Number(s.night_dim_brightness ?? 10)), durMs);
     }
     this._animateDim(NIGHT_BACKGROUND_DIM, durMs);
     this._applyFont(String(s.night_font_color ?? "red"), durMs);
@@ -136,9 +155,10 @@ class NightModeEngine {
   private _exitNight(durMs: number): void {
     this.active = false;
     this._lsSetActive(false);
+    this._appliedSig = undefined;
 
     const day = this._lsDay();
-    if (day?.entity) this._setBrightness(day.entity, this._clampPct(day.pct), durMs);
+    if (day?.entity) this._animateBrightness(day.entity, this._clampPct(day.pct), durMs);
     this._animateDim(0, durMs);
     this._applyFont(null, durMs);
     this._lsClearDay();
@@ -206,15 +226,44 @@ class NightModeEngine {
     if (styleEl.textContent !== css) styleEl.textContent = css;
   }
 
-  /** Set a brightness entity to `pct` (0..100). Lights transition natively over `durMs`. */
-  private _setBrightness(entity: string, pct: number, durMs: number): void {
+  /** Animate a brightness entity from its current value to `toPct` over `durMs`, stepping in
+   *  JS. The browser_mod screen light (and many entities) ignore `light.turn_on`'s `transition`,
+   *  so we drive the fade ourselves instead of relying on native transitions. */
+  private _animateBrightness(entity: string, toPct: number, durMs: number): void {
+    if (this.brightTimer !== undefined) {
+      clearInterval(this.brightTimer);
+      this.brightTimer = undefined;
+    }
+    const to = this._clampPct(toPct);
+    if (durMs <= 0) {
+      this._setBrightness(entity, to);
+      return;
+    }
+    const from = this._readPct(entity);
+    if (from === to) {
+      this._setBrightness(entity, to);
+      return;
+    }
+    // ~1 step/sec (clamped 500ms..2000ms) — smooth without spamming the service.
+    const stepMs = Math.min(2000, Math.max(500, Math.round(durMs / 120)));
+    const start = performance.now();
+    this._setBrightness(entity, from);
+    this.brightTimer = window.setInterval(() => {
+      const t = Math.min(1, (performance.now() - start) / durMs);
+      this._setBrightness(entity, Math.round(from + (to - from) * t));
+      if (t >= 1 && this.brightTimer !== undefined) {
+        clearInterval(this.brightTimer);
+        this.brightTimer = undefined;
+      }
+    }, stepMs);
+  }
+
+  /** Set a brightness entity to `pct` (0..100) immediately (no native transition). */
+  private _setBrightness(entity: string, pct: number): void {
     if (!this.hass?.callService) return;
     const domain = entity.split(".")[0];
     if (domain === "light") {
-      const transition = Math.round(durMs / 1000);
-      const data: Record<string, unknown> = { entity_id: entity, brightness_pct: pct };
-      if (transition > 0) data.transition = transition;
-      void this.hass.callService("light", "turn_on", data);
+      void this.hass.callService("light", "turn_on", { entity_id: entity, brightness_pct: pct });
       return;
     }
     if (domain === "number" || domain === "input_number") {
@@ -226,22 +275,24 @@ class NightModeEngine {
     }
   }
 
-  /** Capture the entity's current value as a day-brightness percent (0..100). */
-  private _snapshotDay(entity: string): DaySnapshot {
+  /** Read an entity's current value as a brightness percent (0..100). */
+  private _readPct(entity: string): number {
     const st = this.hass?.states?.[entity];
     const domain = entity.split(".")[0];
-    let pct = 100;
     if (domain === "light") {
       const on = st?.state === "on";
       const b = Number(st?.attributes?.brightness);
-      pct = on && !Number.isNaN(b) ? Math.round((b / 255) * 100) : 100;
-    } else {
-      const v = Number(st?.state);
-      const min = Number(st?.attributes?.min ?? 0);
-      const max = Number(st?.attributes?.max ?? 100);
-      pct = !Number.isNaN(v) && max > min ? Math.round(((v - min) / (max - min)) * 100) : 100;
+      return on && !Number.isNaN(b) ? this._clampPct(Math.round((b / 255) * 100)) : 100;
     }
-    return { entity, pct: this._clampPct(pct) };
+    const v = Number(st?.state);
+    const min = Number(st?.attributes?.min ?? 0);
+    const max = Number(st?.attributes?.max ?? 100);
+    return !Number.isNaN(v) && max > min ? this._clampPct(Math.round(((v - min) / (max - min)) * 100)) : 100;
+  }
+
+  /** Capture the entity's current value as a day-brightness percent (0..100). */
+  private _snapshotDay(entity: string): DaySnapshot {
+    return { entity, pct: this._readPct(entity) };
   }
 
   private _brightnessEntity(s: SettingsMap): string | undefined {
