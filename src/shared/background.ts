@@ -15,7 +15,7 @@ import type { SettingsValue } from "./settings-schema";
 export type BackgroundMode = "solid" | "image" | "slideshow" | "theme";
 export type BackgroundSize = "original" | "fill" | "fit";
 export type BackgroundRepeat = "tile" | "no-repeat";
-export type BackgroundAlbum = "builtin" | "folder";
+export type BackgroundAlbum = "builtin" | "folder" | "bing_pod";
 export type BackgroundTypePref = "match" | "all" | "light" | "dark";
 export type BackgroundAlign =
   | "top-left"
@@ -44,6 +44,7 @@ export const BACKGROUND_KEYS = [
   "background_type_pref",
   "background_shuffle",
   "background_cycle_minutes",
+  "background_bing_cache_size",
   "background_enhance_readability",
   "background_readability_strength",
 ] as const;
@@ -84,6 +85,7 @@ export const BACKGROUND_REPEAT_OPTIONS: { value: BackgroundRepeat; label: string
 export const BACKGROUND_ALBUM_OPTIONS: { value: BackgroundAlbum; label: string }[] = [
   { value: "builtin", label: "Built-in" },
   { value: "folder", label: "Select media folder" },
+  { value: "bing_pod", label: "Bing Photo of the Day" },
 ];
 
 export const BACKGROUND_TYPE_PREF_OPTIONS: { value: BackgroundTypePref; label: string }[] = [
@@ -344,6 +346,8 @@ export interface BackgroundFieldsCtx {
   selectRecent(ref: string): void;
   /** Pick the slideshow folder. */
   pickFolder(): void;
+  /** Clear the Bing "Photo of the Day" server cache (admin only; optional). */
+  clearBingCache?(): void;
 }
 
 /** Set an image as the wallpaper and push it onto the recents MRU (cap 5). */
@@ -472,8 +476,13 @@ function bgSlideshow(ctx: BackgroundFieldsCtx): TemplateResult {
   const album = String(ctx.get("background_album") ?? "builtin");
   const folder = String(ctx.get("background_folder") ?? ctx.mediaFolder ?? "");
   const cycle = Number(ctx.get("background_cycle_minutes") ?? 30);
+  const bingCache = Number(ctx.get("background_bing_cache_size") ?? 100);
+  // "Bing Photo of the Day" needs the backend (its feed isn't CORS-accessible).
+  const albumOptions = BACKGROUND_ALBUM_OPTIONS.filter(
+    (o) => o.value !== "bing_pod" || ctx.backendAvailable,
+  );
   return html`
-    ${bgField("Album source", bgSelect(ctx, "background_album", BACKGROUND_ALBUM_OPTIONS))}
+    ${bgField("Album source", bgSelect(ctx, "background_album", albumOptions))}
     ${album === "folder"
       ? bgField(
           "Media folder",
@@ -485,6 +494,39 @@ function bgSlideshow(ctx: BackgroundFieldsCtx): TemplateResult {
           </div>`,
           "Pick any image inside the target folder — its whole folder is used.",
         )
+      : nothing}
+    ${album === "bing_pod"
+      ? html`
+          ${bgField(
+            "Cache size",
+            html`<input
+                class="num"
+                type="number"
+                min="1"
+                max="500"
+                .value=${String(bingCache)}
+                ?disabled=${ctx.disabled}
+                @change=${(e: Event) =>
+                  ctx.set("background_bing_cache_size", Number((e.target as HTMLInputElement).value))}
+              /><span class="unit">photos</span>`,
+            "Most recent Bing daily photos to keep on the server; oldest are removed.",
+          )}
+          ${ctx.clearBingCache
+            ? bgField(
+                "Bing cache",
+                html`<div class="bg-actions">
+                  <button
+                    class="cam-btn"
+                    ?disabled=${ctx.disabled}
+                    @click=${() => ctx.clearBingCache?.()}
+                  >
+                    <ha-icon icon="mdi:delete-sweep"></ha-icon><span>Clear cache</span>
+                  </button>
+                </div>`,
+                "Downloaded photos are stored on the server, separate from Built-in.",
+              )
+            : nothing}
+        `
       : nothing}
     ${bgField(
       "Mood matching",

@@ -939,6 +939,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.227
+
+- **Bing Photo of the Day wallpapers** — the Background slideshow gains a new **Bing Photo of the Day** album source (requires Ted's Cards Backend). The backend downloads Bing's daily images into its own cache and serves them locally, so Mood matching and the Readability scrim work as usual. A small info icon in the top-left corner reveals the photo's title/copyright on hover or tap, the slideshow auto-refreshes daily (even on always-on kiosks), and the cache size is configurable (default 100 photos) with a **Clear cache** button.
+
 ### v1.0.226
 
 - **Launcher color defaults shown muted** — the launcher Button color / Highlight color pickers now surface their default (`white` / `accent`) in a muted font while unset, instead of appearing blank.

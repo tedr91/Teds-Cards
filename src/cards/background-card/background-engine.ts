@@ -32,12 +32,24 @@ import {
   listFolderImages,
   resolveMediaSource,
 } from "../../shared/media";
-import { applyBackground } from "./background-dom";
+import { applyAttribution, applyBackground } from "./background-dom";
 
 interface HassLike {
   callWS?<T>(msg: Record<string, unknown>): Promise<T>;
   fetchWithAuth?(path: string, init?: RequestInit): Promise<Response>;
 }
+
+/** One entry returned by the backend `list_bing_photos` WebSocket command. */
+interface BingPhoto {
+  url: string;
+  title?: string;
+  copyright?: string;
+  startdate?: string;
+}
+
+/** How often to re-poll the Bing feed for a fresh daily image (long-running
+ *  kiosks never navigate, so the slideshow list is refreshed on this cadence). */
+const BING_REFRESH_MS = 6 * 60 * 60 * 1000;
 
 /** A snapshot of the last readability-scrim decision, for the Settings debug panel. */
 export interface BackgroundDiagnostic {
@@ -85,6 +97,10 @@ class BackgroundEngine {
   private cycleMin?: number;
   private timer?: number;
   private lastDark?: boolean;
+  /** url -> attribution for the current Bing "Photo of the Day" candidates. */
+  private bingMeta = new Map<string, { title: string; copyright: string }>();
+  /** Periodic re-poll of the Bing feed while the Bing album is active. */
+  private bingRefreshTimer?: number;
 
   /** A card connected: keep the engine live and paint the current wallpaper. */
   attach(hass: HassLike | undefined, config?: SettingsMap, backendInt = false): void {
@@ -133,6 +149,7 @@ class BackgroundEngine {
       this.unsub?.();
       this.unsub = undefined;
       this._stopTimer();
+      this._stopBingRefresh();
     }
   }
 
@@ -196,8 +213,10 @@ class BackgroundEngine {
 
     if (mode !== "slideshow") {
       this._stopTimer();
+      this._stopBingRefresh();
       this.slideSig = undefined;
       this.slideUrls = [];
+      if (mode !== "image") applyAttribution(null);
     }
 
     if (mode === "theme") {
@@ -225,6 +244,21 @@ class BackgroundEngine {
     const scrim = await this._scrimFor(s, url);
     if (gen !== this.gen) return;
     applyBackground(backgroundLayerCss(s, url, scrim));
+    this._updateAttribution(s, url);
+  }
+
+  /** Show the Bing attribution overlay (title/copyright) for the current image,
+   *  or remove it for any non-Bing wallpaper. */
+  private _updateAttribution(s: SettingsMap, url: string | null): void {
+    const isBing =
+      String(s.background_mode ?? "solid") === "slideshow" &&
+      String(s.background_album ?? "builtin") === "bing_pod";
+    const meta = url ? this.bingMeta.get(url) : undefined;
+    if (!isBing || !meta || (!meta.title && !meta.copyright)) {
+      applyAttribution(null);
+      return;
+    }
+    applyAttribution({ title: meta.title, copyright: meta.copyright });
   }
 
   /** A luminance-derived scrim that tones a clashing image toward the theme's
@@ -295,6 +329,11 @@ class BackgroundEngine {
     if (this.slideIdx >= this.slideUrls.length) this.slideIdx = 0;
     await this._paint(s, this.slideUrls[this.slideIdx], gen);
 
+    // Long-running-kiosk freshness: while the Bing album is active, re-poll the
+    // feed daily so a new "Photo of the Day" swaps in without navigation.
+    if (s.background_album === "bing_pod") this._startBingRefresh();
+    else this._stopBingRefresh();
+
     // Start/keep the cycle timer. Don't restart it on a plain navigation or an
     // unrelated settings change (that would keep resetting the countdown) — only
     // when the list was rebuilt, the cycle changed, or no timer is running yet.
@@ -332,6 +371,23 @@ class BackgroundEngine {
       const uris = await listFolderImages(this.hass, folder);
       const resolved = await Promise.all(uris.map((u) => this._resolveRef(u)));
       candidates = resolved.filter((u): u is string => !!u);
+    } else if (s.background_album === "bing_pod") {
+      // Bing "Photo of the Day": the backend downloads + serves the images and
+      // returns their attribution. Requires the integration (the feed isn't
+      // CORS-accessible from the browser).
+      this.bingMeta.clear();
+      if (!this.backendInt || !this.hass?.callWS) return [];
+      try {
+        const r = await this.hass.callWS<{ photos?: BingPhoto[] }>({
+          type: "teds_cards_backend/list_bing_photos",
+        });
+        const photos = r?.photos ?? [];
+        for (const p of photos)
+          this.bingMeta.set(p.url, { title: p.title ?? "", copyright: p.copyright ?? "" });
+        candidates = photos.map((p) => p.url);
+      } catch {
+        candidates = [];
+      }
     } else {
       // Built-ins: served locally by the backend when integrated, else from the CDN
       // (so card-only users without the integration still get the bundled wallpapers).
@@ -356,6 +412,45 @@ class BackgroundEngine {
       .filter(({ l }) => l !== null && l < DARK_LUMINANCE_THRESHOLD === wantDark)
       .map((t) => t.u);
     return matched.length ? matched : urls;
+  }
+
+  private _startBingRefresh(): void {
+    if (this.bingRefreshTimer !== undefined) return;
+    this.bingRefreshTimer = window.setInterval(
+      () => void this._bingRefreshTick(),
+      BING_REFRESH_MS,
+    );
+  }
+
+  private _stopBingRefresh(): void {
+    if (this.bingRefreshTimer !== undefined) {
+      clearInterval(this.bingRefreshTimer);
+      this.bingRefreshTimer = undefined;
+    }
+  }
+
+  /** Re-fetch the Bing list; if the set of images changed, swap it in (keeping
+   *  the current image where possible) and repaint. */
+  private async _bingRefreshTick(): Promise<void> {
+    const s = this._effective();
+    if (
+      String(s.background_mode ?? "solid") !== "slideshow" ||
+      String(s.background_album ?? "builtin") !== "bing_pod"
+    ) {
+      this._stopBingRefresh();
+      return;
+    }
+    const urls = await this._slideshowUrls(s);
+    const changed =
+      urls.length !== this.slideUrls.length || urls.some((u) => !this.slideUrls.includes(u));
+    if (!changed || urls.length === 0) return;
+    if (s.background_shuffle !== false) shuffle(urls);
+    const currentUrl = this.slideUrls[this.slideIdx];
+    this.slideUrls = urls;
+    const idx = currentUrl ? urls.indexOf(currentUrl) : -1;
+    this.slideIdx = idx >= 0 ? idx : 0;
+    const gen = ++this.gen;
+    await this._paint(s, this.slideUrls[this.slideIdx], gen);
   }
 }
 

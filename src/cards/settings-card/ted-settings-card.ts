@@ -6,7 +6,7 @@ import { type HomeAssistant, type LovelaceCard, type LovelaceCardConfig, type Lo
 
 import { appearanceStyle, cssColor } from "../../shared/appearance";
 import { brushedOverlay, tedCardThemeClass, tedStyleTheme } from "../../shared/theme";
-import { modalStyles } from "../../shared/dialogs";
+import { modalStyles, showConfirmation } from "../../shared/dialogs";
 import { registerCustomCard } from "../../shared/register-card";
 import {
   SettingsController,
@@ -1484,6 +1484,23 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     if (uri && uri.includes("/")) this._setBg("background_folder", scope, uri.replace(/\/[^/]*$/, ""));
   }
 
+  /** Clear the HA-wide Bing "Photo of the Day" cache (admin only). */
+  private async _clearBingCache(): Promise<void> {
+    if (!this.hass) return;
+    const ok = await showConfirmation(this, {
+      title: "Clear Bing photo cache?",
+      text: "This deletes the downloaded Bing “Photo of the Day” images for the whole Home Assistant instance. They re-download the next time the slideshow runs.",
+      confirmText: "Clear",
+      destructive: true,
+    });
+    if (!ok) return;
+    try {
+      await this.hass.callWS({ type: "teds_cards_backend/clear_bing_photos_cache" });
+    } catch {
+      /* best-effort */
+    }
+  }
+
   private _renderBackground(field: SettingField, scope: "global" | "device"): TemplateResult {
     const disabled = scope === "global" && !this._isAdmin();
     const overriding = scope === "device" && BACKGROUND_KEYS.some((k) => k in settingsStore.deviceSettings());
@@ -1500,6 +1517,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
       clearImage: () => this._setBg("background_image", scope, null),
       selectRecent: (ref) => this._selectBgImage(scope, ref),
       pickFolder: () => void this._pickBgFolder(scope),
+      clearBingCache: this._isAdmin() ? () => void this._clearBingCache() : undefined,
     };
 
     const modeVal = String(this._bgVal("background_mode", scope) ?? "solid");

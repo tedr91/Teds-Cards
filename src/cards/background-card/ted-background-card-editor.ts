@@ -9,6 +9,7 @@ import {
   type BackgroundFieldsCtx,
 } from "../../shared/background";
 import type { SettingsValue } from "../../shared/settings-schema";
+import { showConfirmation } from "../../shared/dialogs";
 import {
   getMediaFolder,
   isMediaSourceUri,
@@ -85,6 +86,23 @@ export class TedBackgroundCardEditor extends LitElement implements LovelaceCardE
     if (uri && uri.includes("/")) this._set("background_folder", uri.replace(/\/[^/]*$/, ""));
   }
 
+  /** Clear the HA-wide Bing "Photo of the Day" cache. */
+  private async _clearBingCache(): Promise<void> {
+    if (!this.hass) return;
+    const ok = await showConfirmation(this, {
+      title: "Clear Bing photo cache?",
+      text: "This deletes the downloaded Bing “Photo of the Day” images for the whole Home Assistant instance. They re-download the next time the slideshow runs.",
+      confirmText: "Clear",
+      destructive: true,
+    });
+    if (!ok) return;
+    try {
+      await this.hass.callWS({ type: "teds_cards_backend/clear_bing_photos_cache" });
+    } catch {
+      /* best-effort */
+    }
+  }
+
   protected render(): TemplateResult | typeof nothing {
     if (!this._config) return nothing;
     const backendInt = this._config.backend_integration === true;
@@ -100,6 +118,7 @@ export class TedBackgroundCardEditor extends LitElement implements LovelaceCardE
       clearImage: () => this._set("background_image", null),
       selectRecent: (ref) => applyBgImage((k) => this._get(k), (k, v) => this._set(k, v), ref),
       pickFolder: () => void this._pickFolder(),
+      clearBingCache: () => void this._clearBingCache(),
     };
 
     return html`
