@@ -171,6 +171,11 @@ const ATTRIBUTION_CSS = `
 #${ATTRIBUTION_ID} .tba-act:hover { background: rgba(255, 255, 255, 0.26); }
 #${ATTRIBUTION_ID} .tba-act svg { width: 14px; height: 14px; fill: currentColor; }
 #${ATTRIBUTION_ID} .tba-act.done { background: rgba(120, 200, 120, 0.4); }
+/* hui-view (which carries the wallpaper background) is not a stacking context by
+   default, so a z-index:-1 child would paint BEHIND its own background. Isolate it
+   into a stacking context — only while it hosts our overlay — so the icon sits
+   ABOVE the wallpaper but BEHIND content. isolation adds no layout side effects. */
+hui-view:has(> #${ATTRIBUTION_ID}) { isolation: isolate; }
 `;
 
 /** The element the overlay is mounted into: `hui-view` itself, so the overlay is
