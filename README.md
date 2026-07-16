@@ -939,6 +939,11 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.245
+
+- **Wallpaper defaults** — new/unset devices now default to the **Bing Photo of the Day slideshow** at **75%** brightness. Requires Ted's Cards Backend v1.0.56+.
+- **Combined Bing cache setting** — the slideshow's "Cache size" and "Clear cache" controls are now a single **Bing photo cache** field: a photo-count input with a trash-can button beside it (hover for "Clear cache").
+
 ### v1.0.244
 
 - **Attribution icon is clickable again** — the Bing Photo of the Day info icon now rests behind content but opens on tap: a small transparent tap target keeps the corner clickable, and the title/copyright + Favorite/Remove/Next flyout pops above content while open, then drops back behind on close.

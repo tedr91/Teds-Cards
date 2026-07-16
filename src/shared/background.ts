@@ -512,37 +512,33 @@ function bgSlideshow(ctx: BackgroundFieldsCtx): TemplateResult {
         )
       : nothing}
     ${album === "bing_pod"
-      ? html`
-          ${bgField(
-            "Cache size",
-            html`<input
-                class="num"
-                type="number"
-                min="1"
-                max="500"
-                .value=${String(bingCache)}
-                ?disabled=${ctx.disabled}
-                @change=${(e: Event) =>
-                  ctx.set("background_bing_cache_size", Number((e.target as HTMLInputElement).value))}
-              /><span class="unit">photos</span>`,
-            "Most recent Bing daily photos to keep on the server; oldest are removed.",
-          )}
-          ${ctx.clearBingCache
-            ? bgField(
-                "Bing cache",
-                html`<div class="bg-actions">
-                  <button
-                    class="cam-btn"
-                    ?disabled=${ctx.disabled}
-                    @click=${() => ctx.clearBingCache?.()}
-                  >
-                    <ha-icon icon="mdi:delete-sweep"></ha-icon><span>Clear cache</span>
-                  </button>
-                </div>`,
-                "Downloaded photos are stored on the server, separate from Built-in.",
-              )
-            : nothing}
-        `
+      ? bgField(
+          "Bing photo cache",
+          html`<div class="bg-inline">
+            <input
+              class="num"
+              type="number"
+              min="1"
+              max="500"
+              .value=${String(bingCache)}
+              ?disabled=${ctx.disabled}
+              @change=${(e: Event) =>
+                ctx.set("background_bing_cache_size", Number((e.target as HTMLInputElement).value))}
+            /><span class="unit">photos</span>
+            ${ctx.clearBingCache
+              ? html`<button
+                  class="bg-iconbtn"
+                  title="Clear cache"
+                  aria-label="Clear cache"
+                  ?disabled=${ctx.disabled}
+                  @click=${() => ctx.clearBingCache?.()}
+                >
+                  <ha-icon icon="mdi:delete"></ha-icon>
+                </button>`
+              : nothing}
+          </div>`,
+          "Max number of Bing daily photos to keep on the server before removing oldest.",
+        )
       : nothing}
     ${bgField(
       "Mood matching",
@@ -672,6 +668,34 @@ export const backgroundFieldsStyles: CSSResultGroup = css`
   .unit {
     font-size: 0.85rem;
     color: var(--secondary-text-color);
+  }
+  .bg-inline {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    justify-content: flex-end;
+  }
+  .bg-iconbtn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    border-radius: 8px;
+    border: 1px solid var(--divider-color, #ccc);
+    background: var(--card-background-color, #fff);
+    color: var(--primary-text-color);
+    cursor: pointer;
+    --mdc-icon-size: 20px;
+  }
+  .bg-iconbtn:hover {
+    color: var(--error-color, #db4437);
+    border-color: var(--error-color, #db4437);
+  }
+  .bg-iconbtn:disabled {
+    opacity: 0.5;
+    pointer-events: none;
   }
   .bg-color {
     width: 48px;
