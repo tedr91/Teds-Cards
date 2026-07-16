@@ -78,7 +78,7 @@ const ATTRIBUTION_CSS = `
   position: fixed;
   top: calc(env(safe-area-inset-top, 0px) + 8px);
   left: calc(env(safe-area-inset-left, 0px) + 8px);
-  z-index: 2;
+  z-index: 6;
   display: flex;
   align-items: flex-start;
   gap: 8px;
