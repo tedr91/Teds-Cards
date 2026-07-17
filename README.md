@@ -939,6 +939,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.249
+
+- **Music card: alternate `yamp` engine** — `ted-music-card` can now render [yet-another-media-player](https://github.com/jianyu-li/yet-another-media-player) instead of mass-player-card via `engine: yamp` (with a `yamp_config` passthrough), unlocking Music Assistant search/browse, Next Up queue, and synced lyrics. Same per-device player resolution; `fill` sizes YAMP to the content area. Requires the YAMP card installed via HACS.
+
 ### v1.0.248
 
 - **Fix: confirmation dialogs (Delete, etc.) did nothing on kiosk dashboards** — the shared confirmation popup relied on Home Assistant's lazy-loaded `dialog-box`, which never appeared on dashboards that hadn't already opened one (so an alarm's **Delete** button looked dead). Confirmations are now self-contained and always render — fixing alarm/timer delete, notification clear, and other confirm prompts.

@@ -14,7 +14,12 @@ import {
   warmMassProviders,
   type MusicPlayerResolution,
 } from "../../shared/music-player";
-import { MASS_PLAYER_CARD_TYPE, MUSIC_CARD_EDITOR_TYPE, MUSIC_CARD_TYPE } from "./const";
+import {
+  MASS_PLAYER_CARD_TYPE,
+  MUSIC_CARD_EDITOR_TYPE,
+  MUSIC_CARD_TYPE,
+  YAMP_CARD_TYPE,
+} from "./const";
 import type { MusicCardConfig } from "./types";
 
 /** The MessageBox card used for the empty / unmatched states (UX consistency). */
@@ -56,6 +61,9 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
   /** Tracks the resolved player's last observed state to detect a fresh playback start. */
   private _lastPlayEntity?: string;
   private _lastPlayState?: string;
+  /** For engine:yamp + fill, the measured content-area height passed as `card_height`. */
+  @state() private _fillHeight?: number;
+  private _resizeObserver?: ResizeObserver;
 
   public constructor() {
     super();
@@ -66,6 +74,25 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
   public connectedCallback(): void {
     super.connectedCallback();
     void this._loadHelpers();
+    // YAMP sizes via `card_height` (px), not a CSS var, so measure the content area
+    // ourselves and feed it as card_height when engine:yamp + fill.
+    this._resizeObserver ??= new ResizeObserver(() => this._measureFill());
+    this._resizeObserver.observe(this);
+  }
+
+  public disconnectedCallback(): void {
+    super.disconnectedCallback();
+    this._resizeObserver?.disconnect();
+  }
+
+  /** Measure the host (content area) for engine:yamp + fill; updates `_fillHeight`. */
+  private _measureFill(): void {
+    if (this._config?.engine !== "yamp" || !this._config.fill) {
+      if (this._fillHeight !== undefined) this._fillHeight = undefined;
+      return;
+    }
+    const h = Math.round(this.clientHeight);
+    if (h > 0 && h !== this._fillHeight) this._fillHeight = h;
   }
 
   public setConfig(config: MusicCardConfig): void {
@@ -108,6 +135,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
       this._maybeApplyStartVolume();
     }
     if (this.hass) void warmMassProviders(this.hass).then((c) => c && this.requestUpdate());
+    this._measureFill();
   }
 
   /** On the leading edge of playback starting, set the player to this device's
@@ -156,9 +184,19 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
   // --- Embedded mass-player-card ---------------------------------------------
 
   private _childConfig(entity: string): LovelaceCardConfig {
-    // NOTE: `fill` is handled purely with CSS (see the `.player.fill` styles) by
-    // driving mass-player-card's `--mass-player-card-section-height`. We do NOT set
-    // its `panel` option: panel mode hard-codes the card height to window.innerHeight
+    if (this._config?.engine === "yamp") {
+      // YAMP has no section-height CSS var; for `fill` we pass the measured
+      // content-area height as `card_height` (yamp_config can still override it).
+      return {
+        type: YAMP_CARD_TYPE,
+        entities: [entity],
+        ...(this._config.fill && this._fillHeight ? { card_height: this._fillHeight } : {}),
+        ...(this._config.yamp_config ?? {}),
+      };
+    }
+    // engine: mass (default). `fill` is handled purely with CSS (see the `.player.fill`
+    // styles) by driving mass-player-card's `--mass-player-card-section-height`. We do NOT
+    // set its `panel` option: panel mode hard-codes the card height to window.innerHeight
     // (an inline style we can't override), which overflows past our header/navbar.
     return {
       type: MASS_PLAYER_CARD_TYPE,

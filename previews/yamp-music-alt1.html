@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Music-Alt1 · YAMP template previews</title>
+<style>
+  :root {
+    --bg: #0f1216; --surface: #171c22; --surface2: #1e252d;
+    --text: #e6edf3; --muted: #9aa7b2; --accent: #4aa3ff; --border: #2a333d;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font: 15px/1.55 system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+  header { position: sticky; top: 0; z-index: 10; background: rgba(15,18,22,.9);
+    backdrop-filter: blur(8px); border-bottom: 1px solid var(--border); padding: 14px 20px; }
+  header h1 { margin: 0 0 8px; font-size: 18px; }
+  nav { display: flex; flex-wrap: wrap; gap: 8px; }
+  nav a { color: var(--text); text-decoration: none; font-size: 13px;
+    background: var(--surface2); border: 1px solid var(--border);
+    padding: 5px 10px; border-radius: 999px; }
+  nav a:hover { border-color: var(--accent); color: var(--accent); }
+  main { max-width: 1100px; margin: 0 auto; padding: 24px 20px 80px; }
+  .intro { color: var(--muted); margin-bottom: 28px; }
+  section { background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; padding: 20px; margin: 0 0 22px; scroll-margin-top: 96px; }
+  section h2 { margin: 0 0 4px; font-size: 20px; }
+  .badge { display: inline-block; font-size: 11px; color: var(--accent);
+    border: 1px solid var(--accent); border-radius: 6px; padding: 1px 6px; margin-left: 8px; vertical-align: middle; }
+  .desc { color: var(--muted); margin: 8px 0 16px; }
+  .shots { display: flex; flex-wrap: wrap; gap: 14px; }
+  .shots a { flex: 1 1 320px; }
+  .shots img { width: 100%; border-radius: 10px; border: 1px solid var(--border);
+    background: var(--surface2); display: block; }
+  .cap { font-size: 12px; color: var(--muted); margin-top: 6px; }
+  details { margin-top: 16px; background: var(--surface2);
+    border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; }
+  summary { cursor: pointer; color: var(--accent); font-size: 13px; }
+  pre { margin: 12px 0 0; overflow-x: auto; font-size: 12.5px;
+    color: #cfe3ff; background: #0c1015; border-radius: 8px; padding: 12px; }
+  .note { font-size: 12.5px; color: var(--muted); border-left: 3px solid var(--accent);
+    padding: 4px 12px; margin-top: 12px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Music-Alt1 · YAMP template previews</h1>
+  <nav>
+    <a href="#large_modern">large_modern</a>
+    <a href="#huge_yamp">huge_yamp</a>
+    <a href="#crisp_clean">crisp_clean</a>
+    <a href="#minimal_mini">minimal_mini</a>
+    <a href="#normal_mini">normal_mini</a>
+    <a href="#quick_and_easy">quick_and_easy</a>
+    <a href="#features">Search / Queue / Lyrics</a>
+  </nav>
+</header>
+<main>
+  <p class="intro">
+    These are YAMP's own reference screenshots (jianyu-li/yet-another-media-player), grouped by the
+    <code>template</code> we'd set on Music-Alt1. In our setup each maps to a
+    <code>custom:ted-music-card</code> with <code>engine: yamp</code> &mdash; the wrapper resolves this
+    device's Music&nbsp;Assistant player and feeds it to YAMP. Click any image to open full-size.
+  </p>
+
+  <section id="large_modern">
+    <h2>large_modern <span class="badge">recommended</span></h2>
+    <p class="desc">Big cover&#8209;art background, modern (more&#8209;info style) controls, adaptive control
+      sizing, dynamic card height. Best fit for a full kiosk content area.</p>
+    <div class="shots">
+      <a href="https://raw.githubusercontent.com/jianyu-li/yet-another-media-player/main/preview/largepreview.png" target="_blank" rel="noopener">
+        <img loading="lazy" src="https://raw.githubusercontent.com/jianyu-li/yet-another-media-player/main/preview/largepreview.png" alt="large_modern">
+        <div class="cap">largepreview.png</div></a>
+      <a href="https://raw.githubusercontent.com/jianyu-li/yet-another-media-player/main/preview/modern_controls_preview.png" target="_blank" rel="noopener">
+        <img loading="lazy" src="https://raw.githubusercontent.com/jianyu-li/yet-another-media-player/main/preview/modern_controls_preview.png" alt="modern controls">
+        <div class="cap">modern_controls_preview.png</div></a>
+    </div>
+    <details><summary>Music-Alt1 config for this look</summary>
+<pre>type: custom:ted-music-card
+player_source: settings
+engine: yamp
+fill: true
+yamp_config:
+  template: large_modern
+  idle_screen: search        # now-playing when playing, search when idle
+  match_theme: true
+  artwork_object_fit: cover</pre></details>
+  </section>
+
+  <section id="huge_yamp">
+    <h2>huge_yamp</h2>
+    <p class="desc">Maximized controls, large text, and a giant progress bar for across&#8209;the&#8209;room
+      viewing &mdash; essentially a scaled&#8209;up large_modern. No dedicated screenshot in the repo; the
+      large_modern shots are the closest reference.</p>
+    <div class="shots">
+      <a href="https://raw.githubusercontent.com/jianyu-li/yet-another-media-player/main/preview/largepreview.png" target="_blank" rel="noopener">
+        <img loading="lazy" src="https://raw.githubusercontent.com/jianyu-li/yet-another-media-player/main/preview/largepreview.png" alt="huge_yamp proxy">
+        <div class="cap">largepreview.png (proxy)</div></a>
+    </div>
+    <details><summary>Music-Alt1 config for this look</summary>
+<pre>type: custom:ted-music-card
+player_source: settings
+engine: yamp
+fill: true
+yamp_config:
+  template: huge_yamp
+  idle_screen: search
+  match_theme: true</pre></details>
+  </section>
+
+  <section id="crisp_clean">
+    <h2>crisp_clean</h2>
+    <p class="desc">Clean minimalist layout: scaled&#8209;contain (inset) artwork with a blurred backdrop,
+      modern controls, center&#8209;aligned track details, stepper volume.</p>
+    <div class="shots">
+      <a href="https://raw.githubusercontent.com/jianyu-li/yet-another-media-player/main/preview/clean_card.png" target="_blank" rel="noopener">
+        <img loading="lazy" src="https://raw.githubusercontent.com/jianyu-li/yet-another-media-player/main/preview/clean_card.png" alt="crisp_clean">
+        <div class="cap">clean_card.png</div></a>
+      <a href="https://raw.githubusercontent.com/jianyu-li/yet-another-media-player/main/preview/scale-contain-artwork-preview.png" target="_blank" rel="noopener">
+        <img loading="lazy" src="https://raw.githubusercontent.com/jianyu-li/yet-another-media-player/main/preview/scale-contain-artwork-preview.png" alt="scaled-contain">
+        <div class="cap">scale-contain-artwork-preview.png</div></a>
+    </div>
+    <details><summary>Music-Alt1 config for this look</summary>
+<pre>type: custom:ted-music-card
+player_source: settings
+engine: yamp
+fill: true
+yamp_config:
+  template: crisp_clean
+  idle_screen: search
+  match_theme: true</pre></details>
+  </section>
+
+  <section id="minimal_mini">
+    <h2>minimal_mini</h2>
+    <p class="desc">Compact mini card with no visible artwork, stepper volume, clean text alignment.
+      Better suited to small tiles than a full&#8209;page view.</p>
+    <div class="shots">
+      <a href="https://raw.githubusercontent.com/jianyu-li/yet-another-media-player/main/preview/minimal-preview.png" target="_blank" rel="noopener">
+        <img loading="lazy" src="https://raw.githubusercontent.com/jianyu-li/yet-another-media-player/main/preview/minimal-preview.png" alt="minimal_mini">
+        <div class="cap">minimal-preview.png</div></a>
+    </div>
+  </section>
+
+  <section id="normal_mini">
+    <h2>normal_mini</h2>
+    <p class="desc">Standard compact mini player with a blurred background&#8209;artwork effect
+      (shown here collapsed).</p>
+    <div class="shots">
+      <a href="https://raw.githubusercontent.com/jianyu-li/yet-another-media-player/main/preview/collapsed.png" target="_blank" rel="noopener">
+        <img loading="lazy" src="https://raw.githubusercontent.com/jianyu-li/yet-another-media-player/main/preview/collapsed.png" alt="normal_mini">
+        <div class="cap">collapsed.png</div></a>
+    </div>
+  </section>
+
+  <section id="quick_and_easy">
+    <h2>quick_and_easy</h2>
+    <p class="desc">High&#8209;accessibility layout: persistent entity chip row, volume overlays, and
+      always&#8209;active quick&#8209;grouping. No dedicated screenshot; the multi&#8209;layout overview shows the
+      chip&#8209;row style.</p>
+    <div class="shots">
+      <a href="https://raw.githubusercontent.com/jianyu-li/yet-another-media-player/main/preview/layouts.png" target="_blank" rel="noopener">
+        <img loading="lazy" src="https://raw.githubusercontent.com/jianyu-li/yet-another-media-player/main/preview/layouts.png" alt="layouts overview">
+        <div class="cap">layouts.png (overview)</div></a>
+    </div>
+    <div class="note">Note: with &ldquo;music player only&rdquo;, the chip row is hidden by default
+      (<code>show_chip_row: auto</code>), so quick_and_easy's grouping benefits mostly apply if we
+      later expose multiple Music&nbsp;Assistant players.</div>
+  </section>
+
+  <section id="features">
+    <h2>Feature previews (available in any template)</h2>
+    <p class="desc">These are the big upgrades over the current Music view &mdash; all work with your
+      Music&nbsp;Assistant + mass_queue setup.</p>
+    <div class="shots">
+      <a href="https://raw.githubusercontent.com/jianyu-li/yet-another-media-player/main/preview/search.png" target="_blank" rel="noopener">
+        <img loading="lazy" src="https://raw.githubusercontent.com/jianyu-li/yet-another-media-player/main/preview/search.png" alt="search list">
+        <div class="cap">Search &mdash; list view</div></a>
+      <a href="https://raw.githubusercontent.com/jianyu-li/yet-another-media-player/main/preview/search_card_view.png" target="_blank" rel="noopener">
+        <img loading="lazy" src="https://raw.githubusercontent.com/jianyu-li/yet-another-media-player/main/preview/search_card_view.png" alt="search card grid">
+        <div class="cap">Search &mdash; card grid</div></a>
+      <a href="https://raw.githubusercontent.com/jianyu-li/yet-another-media-player/main/preview/up-next.png" target="_blank" rel="noopener">
+        <img loading="lazy" src="https://raw.githubusercontent.com/jianyu-li/yet-another-media-player/main/preview/up-next.png" alt="up next queue">
+        <div class="cap">Next Up queue (drag to reorder)</div></a>
+      <a href="https://raw.githubusercontent.com/jianyu-li/yet-another-media-player/main/preview/lyrics-light-mode.png" target="_blank" rel="noopener">
+        <img loading="lazy" src="https://raw.githubusercontent.com/jianyu-li/yet-another-media-player/main/preview/lyrics-light-mode.png" alt="lyrics">
+        <div class="cap">Synced lyrics</div></a>
+      <a href="https://raw.githubusercontent.com/jianyu-li/yet-another-media-player/main/preview/group-player-menu.png" target="_blank" rel="noopener">
+        <img loading="lazy" src="https://raw.githubusercontent.com/jianyu-li/yet-another-media-player/main/preview/group-player-menu.png" alt="group players">
+        <div class="cap">Group players</div></a>
+      <a href="https://raw.githubusercontent.com/jianyu-li/yet-another-media-player/main/preview/idle-image-preview.png" target="_blank" rel="noopener">
+        <img loading="lazy" src="https://raw.githubusercontent.com/jianyu-li/yet-another-media-player/main/preview/idle-image-preview.png" alt="idle image">
+        <div class="cap">Idle image / slideshow</div></a>
+    </div>
+  </section>
+</main>
+</body>
+</html>
