@@ -59,6 +59,20 @@ function browserModArea(hass: RegistryHass): string | undefined {
   return undefined;
 }
 
+/** The HA device-registry id of the device registered for this browser_mod browser.
+ *  Used to match a server-side navigation signal that targets a specific device id
+ *  (e.g. when the dashboard device is also acting as a voice satellite). */
+export function resolveDeviceHaId(hass: HomeAssistant | undefined): string | undefined {
+  const bid = browserModId();
+  const devices = (hass as RegistryHass | undefined)?.devices;
+  if (!bid || !devices) return undefined;
+  for (const [id, device] of Object.entries(devices)) {
+    const ids = device?.identifiers;
+    if (ids?.some((x) => x[0] === "browser_mod" && x[1] === bid)) return id;
+  }
+  return undefined;
+}
+
 /** The manual per-device area saved into localStorage, if any. */
 function localArea(): string | undefined {
   try {

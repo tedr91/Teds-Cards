@@ -16,6 +16,7 @@ import { registerCustomCard } from "../../shared/register-card";
 import { NotificationToastController } from "../../shared/notifications";
 import { resolveDeviceArea } from "../../shared/device-area";
 import { SettingsController, settingsStore } from "../../shared/settings";
+import { navigationSignal } from "../../shared/navigation-signal";
 import type { SettingsValue } from "../../shared/settings-schema";
 import { AutoReturnController } from "../../shared/auto-return";
 import { HomeRedirectController } from "../../shared/home-redirect";
@@ -218,6 +219,8 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
     this._applyPadding();
     this._syncClockTimer();
     this._settingsUnsub = settingsStore.subscribe(this._onSettingsChanged);
+    // Primary activator for the shared navigation-signal listener (voice “show <view>”).
+    navigationSignal.attach(this.hass, this._backendIntegration());
     this.addEventListener("pointerdown", this._guardTap, true);
     this.addEventListener("click", this._guardTap, true);
     window.addEventListener("resize", this._onResize);
@@ -725,6 +728,7 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
     this._measureContentInset();
     this._measureMidInset();
     this._measureOverflow();
+    navigationSignal.setHass(this.hass);
   }
 
   /** Inset the fixed bar to the dashboard content area so the HA sidebar doesn't cover

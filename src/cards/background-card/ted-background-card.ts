@@ -8,6 +8,7 @@ import { BACKGROUND_KEYS } from "../../shared/background";
 import type { SettingsMap, SettingsValue } from "../../shared/settings-schema";
 import { backgroundEngine } from "./background-engine";
 import { nightModeEngine } from "./night-mode-engine";
+import { navigationSignal } from "../../shared/navigation-signal";
 import {
   BACKGROUND_CARD_DESCRIPTION,
   BACKGROUND_CARD_EDITOR_TYPE,
@@ -66,6 +67,9 @@ export class TedBackgroundCard extends LitElement implements LovelaceCard {
     // The night-mode engine runs on the same always-present card; it only acts when the
     // card opts into the backend settings store (backend_integration).
     nightModeEngine.attach(this.hass, !!this._config?.backend_integration);
+    // Fallback activator for the shared navigation-signal listener (the navbar is the
+    // primary activator; the background card covers views without a navbar).
+    navigationSignal.attach(this.hass, !!this._config?.backend_integration);
   }
 
   public disconnectedCallback(): void {
@@ -77,6 +81,7 @@ export class TedBackgroundCard extends LitElement implements LovelaceCard {
   protected updated(): void {
     backgroundEngine.setHass(this.hass);
     nightModeEngine.setHass(this.hass);
+    navigationSignal.setHass(this.hass);
   }
 
   public setConfig(config: BackgroundCardConfig): void {

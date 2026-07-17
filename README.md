@@ -939,6 +939,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.247
+
+- **Voice navigation** — dashboards now follow Ted's Cards Backend navigation signals: saying *"show cameras / go to climate / open music"* (or asking about the weather, or changing a thermostat by voice) navigates the screens **in that room** to the matching view. Activated by the navbar and background card when `backend_integration` is enabled. Requires Ted's Cards Backend v1.0.61+.
+
 ### v1.0.246
 
 - **Attribution flyout timeout** — the Bing Photo of the Day info flyout now auto-closes after 8 seconds of inactivity (was 15).
