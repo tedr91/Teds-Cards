@@ -939,6 +939,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.250
+
+- **Music card (`yamp` engine): opaque search overlay** — on translucent themes, YAMP's search/menu overlay was see-through, letting the now-playing artwork bleed through onto the filter chips. The card now forces that overlay to a near-opaque, theme-tinted surface while keeping `match_theme` accent colors.
+
 ### v1.0.249
 
 - **Music card: alternate `yamp` engine** — `ted-music-card` can now render [yet-another-media-player](https://github.com/jianyu-li/yet-another-media-player) instead of mass-player-card via `engine: yamp` (with a `yamp_config` passthrough), unlocking Music Assistant search/browse, Next Up queue, and synced lyrics. Same per-device player resolution; `fill` sizes YAMP to the content area. Requires the YAMP card installed via HACS.

@@ -220,6 +220,15 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
     }
     const el = this._helpers.createCardElement(desired.cfg);
     if (this.hass) el.hass = this.hass;
+    if (desired.kind === "player" && this._config?.engine === "yamp") {
+      // Force YAMP's search/menu overlays to a near-opaque, theme-tinted surface so the
+      // now-playing artwork doesn't bleed through the overlay on translucent HA themes
+      // (match_theme). Inline styles on the child host win over YAMP's own :host rules.
+      const overlay =
+        "rgb(from var(--ha-card-background, var(--card-background-color, #1c1c1c)) r g b / 0.96)";
+      el.style.setProperty("--yamp-overlay-bg", overlay);
+      el.style.setProperty("--search-overlay-bg", overlay);
+    }
     this._child = { el, json };
     this._childKind = desired.kind;
   }
