@@ -939,6 +939,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.255
+
+- **Music card: layout pill polish** — narrower gap between panes, the pill now stays centered in the gap at every split ratio (no longer drifts into a pane), and a subtle drop-shadow.
+
 ### v1.0.254
 
 - **Music card: cleaner layout pill** — the split layout-switcher is now a thin translucent grabber bar (like the navbar reveal pill) that floats between the panes, instead of a boxed surface.

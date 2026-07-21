@@ -67,6 +67,9 @@ const SPLIT_CHOICES: { value: number; label: string }[] = [
   { value: 30, label: "30 / 70" },
 ];
 
+/** Gap (px) between the split panes; also used to center the switcher pill in it. */
+const SPLIT_GAP_PX = 12;
+
 @customElement(MUSIC_CARD_TYPE)
 export class TedMusicCard extends LitElement implements LovelaceCard {
   public static async getConfigElement(): Promise<LovelaceCardEditor> {
@@ -500,9 +503,15 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
       return html`<div class="msg">${this._els.get("message")?.el}</div>`;
 
     const left = this._splitLeft();
+    // Center the pill in the ACTUAL gap between panes (the flex gap shifts the true
+    // divider off the raw left% by an amount that depends on the ratio).
+    const pillPos =
+      this._paneKind === "split"
+        ? `calc(${left}% - ${((left * SPLIT_GAP_PX) / 100).toFixed(2)}px + ${SPLIT_GAP_PX / 2}px)`
+        : `${left}%`;
     const panes =
       this._paneKind === "split"
-        ? html`<div class="split">
+        ? html`<div class="split" style="gap: ${SPLIT_GAP_PX}px">
             <div class="pane left" style="flex: ${left} 1 0">${this._els.get("left")?.el}</div>
             <div class="pane right" style="flex: ${100 - left} 1 0">${this._els.get("right")?.el}</div>
           </div>`
@@ -510,11 +519,11 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
             ${this._els.get("single")?.el}
           </div>`;
 
-    return html`<div class="layout">${panes}${this._renderSwitcher(left)}</div>`;
+    return html`<div class="layout">${panes}${this._renderSwitcher(pillPos)}</div>`;
   }
 
-  /** The vertical layout pill (at the split divider) + its flyout of layout choices. */
-  private _renderSwitcher(left: number): TemplateResult | typeof nothing {
+  /** The vertical layout pill (centered in the split gap) + its flyout of layout choices. */
+  private _renderSwitcher(pos: string): TemplateResult | typeof nothing {
     if (!this._showSwitcher()) return nothing;
     const current = this._splitLeft();
     return html`
@@ -523,7 +532,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
         : nothing}
       <button
         class="split-pill ${this._flyoutOpen ? "open" : ""}"
-        style="left: ${left}%"
+        style="left: ${pos}"
         title="Layout"
         aria-label="Change layout"
         @click=${this._toggleFlyout}
@@ -606,8 +615,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
       display: flex;
       flex-direction: row;
       align-items: stretch;
-      /* Room for the centered grabber bar to float clear of both panes. */
-      gap: 24px;
+      /* gap is set inline (SPLIT_GAP_PX) so the pill can be centered in it. */
       width: 100%;
       height: 100%;
     }
@@ -650,6 +658,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
       height: 100%;
       border-radius: 999px;
       background: rgb(from var(--primary-text-color, #ffffff) r g b / 0.35);
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
       transition: background 0.15s ease;
     }
     .split-pill:hover .grip,
