@@ -82,6 +82,7 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
   private _fitting = false;
   private _fitAttempts = 0;
   private _prevFitHeight?: number;
+  private _prevFitScale?: number;
   private _fitRaf?: number;
   // Track daylight's runtime view (from its selector) so our setConfig calls preserve it
   // — daylight's own setConfig resets its view to `default_view`.
@@ -697,6 +698,7 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
       this._fitting = true;
       this._fitAttempts = 0;
       this._prevFitHeight = undefined;
+      this._prevFitScale = undefined;
       if (this._heightScale !== 1) {
         this._heightScale = 1; // restart from the natural size
         return;
@@ -711,27 +713,56 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
     }
     const contentH = scroller.scrollHeight;
     const viewportH = scroller.clientHeight;
+    if (viewportH <= 0) {
+      this._fitting = false;
+      return;
+    }
 
     // Bail if a scale change didn't move the content (height_scale not in effect here,
-    // e.g. a non-Schedule view), or we've iterated enough / can't shrink further.
+    // e.g. a non-Schedule view) — avoids a pointless loop.
     if (
       this._fitAttempts > 0 &&
       this._prevFitHeight != null &&
+      this._prevFitScale != null &&
+      Math.abs(this._prevFitScale - this._heightScale) > 0.001 &&
       Math.abs(contentH - this._prevFitHeight) < 2
     ) {
       this._fitting = false;
       return;
     }
-    if (this._fitAttempts >= 6 || viewportH <= 0) {
+    if (this._fitAttempts >= 10) {
       this._fitting = false;
       return;
     }
-    const next = Math.min(1, Math.max(0.35, this._heightScale * (viewportH / contentH) * 0.98));
-    if (next >= this._heightScale - 0.005) {
+
+    // Estimate the scale that removes the overflow. daylight's height_scale only
+    // compresses the Schedule HOUR ROWS — not the fixed day-header/weather strip — so the
+    // naive viewportH/contentH ratio systematically undershoots (it assumes ALL content
+    // scales) and leaves ~an hour cut off. When we have a prior (scale, height) sample we
+    // linearly solve for the scale where content == viewport (secant), isolating the fixed
+    // part; otherwise fall back to the ratio for the first pass.
+    let target: number;
+    if (
+      this._prevFitHeight != null &&
+      this._prevFitScale != null &&
+      Math.abs(this._prevFitScale - this._heightScale) > 0.001
+    ) {
+      // px of content per unit of height_scale (slope of the scaling portion).
+      const slope = (this._prevFitHeight - contentH) / (this._prevFitScale - this._heightScale);
+      const fixed = contentH - slope * this._heightScale; // non-scaling part (headers, etc.)
+      target =
+        slope > 0 ? (viewportH - fixed) / slope : this._heightScale * (viewportH / contentH);
+    } else {
+      target = this._heightScale * (viewportH / contentH);
+    }
+    // Aim a hair under the exact fit so a sub-pixel rounding doesn't re-trigger the bar.
+    const next = Math.min(1, Math.max(0.35, target - 0.01));
+    if (next >= this._heightScale - 0.002) {
       this._fitting = false; // converged or hit the floor
       return;
     }
     this._prevFitHeight = contentH;
+    this._prevFitScale = this._heightScale;
     this._fitAttempts += 1;
     this._heightScale = next; // triggers a re-render + another measure pass
   }

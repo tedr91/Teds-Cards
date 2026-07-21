@@ -939,6 +939,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.257
+
+- **Schedule view auto-fit now removes the last-hour scrollbar.** The height fit accounted only for uniformly-scaling content, but daylight's `height_scale` compresses just the hour rows (not the day-header/weather strip), so it converged ~an hour short and cut off the bottom of the day. It now measures the fixed vs. scaling portions and solves directly for the exact fit, compressing the full day into the available height.
+
 ### v1.0.256
 
 - **Music card: drag the layout pill to resize** — in addition to tapping it for the layout flyout, you can now drag the split pill left/right to resize the panes (snaps to the preset ratios, works with touch). The choice still persists per view.
