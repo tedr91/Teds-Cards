@@ -939,6 +939,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.252
+
+- **Music card: live layout switcher** — a vertical pill at the split divider opens a flyout to switch the side-by-side ratio (player only / 70-30 / 60-40 / 50-50 / 40-60 / 30-70) on the fly; the choice persists per view. Disable with `layout_switcher: false`.
+
 ### v1.0.251
 
 - **Music card: side-by-side split layout** — `ted-music-card` can now show the player on the left and a library/search/queue pane on the right via `split` (left width %: `100`/`70`/`60`/`50`/`40`/`30`; `100` = player only). Works with both engines (`mass` = player-only + media-browser/queue panes; `yamp` = player + dedicated search). Per-pane overrides via `left_config`/`right_config`; collapses to player-only on narrow screens. Engine + split are now in the visual editor.
