@@ -939,6 +939,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.258
+
+- **Schedule view auto-fit actually works now.** The previous fix adjusted the wrong lever: with `compact_height` on, daylight sizes hour rows from the window bottom (behind a docked navbar), so its value always won and our scaling did nothing — leaving the last hour clipped behind the bar. The fit now measures the real grid overflow and drives `height_scale` so it becomes the binding row height, compressing the full day into the visible cell.
+
 ### v1.0.257
 
 - **Schedule view auto-fit now removes the last-hour scrollbar.** The height fit accounted only for uniformly-scaling content, but daylight's `height_scale` compresses just the hour rows (not the day-header/weather strip), so it converged ~an hour short and cut off the bottom of the day. It now measures the fixed vs. scaling portions and solves directly for the exact fit, compressing the full day into the available height.

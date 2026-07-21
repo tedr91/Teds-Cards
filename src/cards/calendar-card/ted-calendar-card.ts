@@ -82,7 +82,6 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
   private _fitting = false;
   private _fitAttempts = 0;
   private _prevFitHeight?: number;
-  private _prevFitScale?: number;
   private _fitRaf?: number;
   // Track daylight's runtime view (from its selector) so our setConfig calls preserve it
   // — daylight's own setConfig resets its view to `default_view`.
@@ -659,23 +658,40 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
     });
   }
 
-  /** Find the tallest internally-scrolling descendant of the daylight card (searching
-   *  both its light children and its shadow root), or undefined when nothing overflows. */
-  private _findScroller(): HTMLElement | undefined {
+  /** Measure the rendered Schedule (week-standard) grid: the scroller's content/viewport
+   *  heights, one hour-row's height, and the number of hour rows. Undefined when the
+   *  Schedule grid isn't rendered (or can't be measured). */
+  private _scheduleMetrics():
+    | { scrollHeight: number; clientHeight: number; hourHeight: number; hourCount: number }
+    | undefined {
     const el = this._child?.el as HTMLElement | undefined;
     if (!el) return undefined;
     const roots: ParentNode[] = [el];
     if (el.shadowRoot) roots.push(el.shadowRoot);
-    let best: HTMLElement | undefined;
+    let container: HTMLElement | undefined;
+    let slot: HTMLElement | undefined;
+    let hourCount = 0;
     for (const root of roots) {
-      for (const node of Array.from(root.querySelectorAll<HTMLElement>("*"))) {
-        if (node.scrollHeight - node.clientHeight <= 2) continue;
-        const oy = getComputedStyle(node).overflowY;
-        if (oy !== "auto" && oy !== "scroll") continue;
-        if (!best || node.clientHeight > best.clientHeight) best = node;
+      container =
+        container ?? ((root.querySelector?.(".week-standard-container") as HTMLElement | null) ?? undefined);
+      if (!slot) {
+        const s = root.querySelector?.(".day-time-slot") as HTMLElement | null;
+        if (s) slot = s;
+      }
+      if (hourCount === 0) {
+        const labels = root.querySelectorAll?.(".time-slot");
+        if (labels && labels.length) hourCount = labels.length;
       }
     }
-    return best;
+    if (!container || !slot || hourCount <= 0) return undefined;
+    const hourHeight = slot.getBoundingClientRect().height;
+    if (hourHeight <= 0) return undefined;
+    return {
+      scrollHeight: container.scrollHeight,
+      clientHeight: container.clientHeight,
+      hourHeight,
+      hourCount,
+    };
   }
 
   private _runFit(): void {
@@ -698,7 +714,6 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
       this._fitting = true;
       this._fitAttempts = 0;
       this._prevFitHeight = undefined;
-      this._prevFitScale = undefined;
       if (this._heightScale !== 1) {
         this._heightScale = 1; // restart from the natural size
         return;
@@ -706,63 +721,46 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
     }
     if (!this._fitting) return;
 
-    const scroller = this._findScroller();
-    if (!scroller) {
-      this._fitting = false; // no overflow — it already fits
+    const m = this._scheduleMetrics();
+    if (!m) {
+      this._fitting = false; // Schedule grid not measurable — nothing to do
       return;
     }
-    const contentH = scroller.scrollHeight;
-    const viewportH = scroller.clientHeight;
-    if (viewportH <= 0) {
-      this._fitting = false;
+    const overflow = m.scrollHeight - m.clientHeight;
+    if (overflow <= 2) {
+      this._fitting = false; // already fits — no scrollbar
       return;
     }
-
-    // Bail if a scale change didn't move the content (height_scale not in effect here,
-    // e.g. a non-Schedule view) — avoids a pointless loop.
+    // Bail if the previous shrink didn't reduce the content (daylight clamps hour rows to
+    // a 20px floor, so we can't compress further).
     if (
       this._fitAttempts > 0 &&
       this._prevFitHeight != null &&
-      this._prevFitScale != null &&
-      Math.abs(this._prevFitScale - this._heightScale) > 0.001 &&
-      Math.abs(contentH - this._prevFitHeight) < 2
+      this._prevFitHeight - m.scrollHeight < 1
     ) {
       this._fitting = false;
       return;
     }
-    if (this._fitAttempts >= 10) {
+    if (this._fitAttempts >= 8) {
       this._fitting = false;
       return;
     }
 
-    // Estimate the scale that removes the overflow. daylight's height_scale only
-    // compresses the Schedule HOUR ROWS — not the fixed day-header/weather strip — so the
-    // naive viewportH/contentH ratio systematically undershoots (it assumes ALL content
-    // scales) and leaves ~an hour cut off. When we have a prior (scale, height) sample we
-    // linearly solve for the scale where content == viewport (secant), isolating the fixed
-    // part; otherwise fall back to the ratio for the first pass.
-    let target: number;
-    if (
-      this._prevFitHeight != null &&
-      this._prevFitScale != null &&
-      Math.abs(this._prevFitScale - this._heightScale) > 0.001
-    ) {
-      // px of content per unit of height_scale (slope of the scaling portion).
-      const slope = (this._prevFitHeight - contentH) / (this._prevFitScale - this._heightScale);
-      const fixed = contentH - slope * this._heightScale; // non-scaling part (headers, etc.)
-      target =
-        slope > 0 ? (viewportH - fixed) / slope : this._heightScale * (viewportH / contentH);
-    } else {
-      target = this._heightScale * (viewportH / contentH);
-    }
-    // Aim a hair under the exact fit so a sub-pixel rounding doesn't re-trigger the bar.
-    const next = Math.min(1, Math.max(0.35, target - 0.01));
+    // daylight sizes each Schedule hour row as
+    //   hourHeight = max(20, min(120 * height_scale, compactHourHeight))
+    // where compactHourHeight fills to the WINDOW bottom (visualViewport.height − top),
+    // ignoring our navbar-reserved cell — so it overshoots and the last hour clips. We
+    // drive height_scale so that 120 * height_scale becomes the binding (smaller) term:
+    // shave each row by the overflow spread across the hour rows. (120 is daylight's
+    // documented baseHourHeight.)
+    const DAYLIGHT_BASE_HOUR_HEIGHT = 120;
+    const desiredHourHeight = m.hourHeight - overflow / m.hourCount - 1;
+    const next = Math.min(1, Math.max(0.15, desiredHourHeight / DAYLIGHT_BASE_HOUR_HEIGHT));
     if (next >= this._heightScale - 0.002) {
       this._fitting = false; // converged or hit the floor
       return;
     }
-    this._prevFitHeight = contentH;
-    this._prevFitScale = this._heightScale;
+    this._prevFitHeight = m.scrollHeight;
     this._fitAttempts += 1;
     this._heightScale = next; // triggers a re-render + another measure pass
   }
