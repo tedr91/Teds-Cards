@@ -27,6 +27,14 @@ export interface MusicCardConfig extends LovelaceCardConfig {
   /** Extra options merged into the embedded `yet-another-media-player` config
    *  (everything except `type`/`entities`). Used when `engine` is `yamp`. */
   yamp_config?: Record<string, unknown>;
+  /** Side-by-side split: LEFT width percent. One of 100 | 70 | 60 | 50 | 40 | 30.
+   *  100 (default) = single pane. When < 100, renders the player on the LEFT and a
+   *  library/search/queue pane on the RIGHT (both driving the same resolved player). */
+  split?: number;
+  /** Extra options merged into the LEFT (player) pane when `split` < 100 (engine-specific keys). */
+  left_config?: Record<string, unknown>;
+  /** Extra options merged into the RIGHT (library/search/queue) pane when `split` < 100. */
+  right_config?: Record<string, unknown>;
   /** Stretch the player to fill the dashboard content area (sizes the embedded
    *  mass-player-card to the content area's height, minus its own tab bar).
    *  Off (default) sizes the player to its content, centered in the view. */

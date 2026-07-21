@@ -38,6 +38,25 @@ interface GridOptions {
   min_rows?: number;
 }
 
+/** True for a mergeable plain object (not an array/null). */
+function isPlainObject(v: unknown): v is Record<string, unknown> {
+  return typeof v === "object" && v !== null && !Array.isArray(v);
+}
+
+/** Recursively merge plain objects (later sources win per leaf; arrays/primitives replace). */
+function deepMerge(
+  target: Record<string, unknown>,
+  ...sources: Record<string, unknown>[]
+): Record<string, unknown> {
+  for (const src of sources) {
+    for (const [k, v] of Object.entries(src)) {
+      const cur = target[k];
+      target[k] = isPlainObject(cur) && isPlainObject(v) ? deepMerge({ ...cur }, v) : v;
+    }
+  }
+  return target;
+}
+
 @customElement(MUSIC_CARD_TYPE)
 export class TedMusicCard extends LitElement implements LovelaceCard {
   public static async getConfigElement(): Promise<LovelaceCardEditor> {
@@ -54,9 +73,9 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
   @state() private _config?: MusicCardConfig;
 
   private _helpers?: CardHelpers;
-  /** The embedded child card (the player, or a MessageBox for empty/unmatched states). */
-  private _child?: { el: LovelaceCard; json: string };
-  private _childKind?: "player" | "message";
+  /** The embedded pane cards, keyed by slot: `single` | `left` | `right` | `message`. */
+  private _els = new Map<string, { el: LovelaceCard; json: string }>();
+  private _paneKind?: "message" | "single" | "split";
   private _lastPropagatedHass?: HomeAssistant;
   /** Tracks the resolved player's last observed state to detect a fresh playback start. */
   private _lastPlayEntity?: string;
@@ -87,7 +106,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
 
   /** Measure the host (content area) for engine:yamp + fill; updates `_fillHeight`. */
   private _measureFill(): void {
-    if (this._config?.engine !== "yamp" || !this._config.fill) {
+    if (this._config?.engine !== "yamp" || !this._effectiveFill()) {
       if (this._fillHeight !== undefined) this._fillHeight = undefined;
       return;
     }
@@ -126,7 +145,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
   }
 
   protected willUpdate(): void {
-    this._buildCard();
+    this._buildCards();
   }
 
   protected updated(changed: Map<string, unknown>): void {
@@ -181,62 +200,101 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
     });
   }
 
-  // --- Embedded mass-player-card ---------------------------------------------
+  // --- Embedded player cards -------------------------------------------------
 
-  private _childConfig(entity: string): LovelaceCardConfig {
-    if (this._config?.engine === "yamp") {
-      // YAMP has no section-height CSS var; for `fill` we pass the measured
-      // content-area height as `card_height` (yamp_config can still override it).
-      return {
-        type: YAMP_CARD_TYPE,
-        entities: [entity],
-        ...(this._config.fill && this._fillHeight ? { card_height: this._fillHeight } : {}),
-        ...(this._config.yamp_config ?? {}),
-      };
-    }
-    // engine: mass (default). `fill` is handled purely with CSS (see the `.player.fill`
-    // styles) by driving mass-player-card's `--mass-player-card-section-height`. We do NOT
-    // set its `panel` option: panel mode hard-codes the card height to window.innerHeight
-    // (an inline style we can't override), which overflows past our header/navbar.
+  /** Per-engine base config for the LEFT (player) pane in split mode. */
+  private _leftBase(): Record<string, unknown> {
+    if (this._config?.engine === "yamp") return { card_type: "default" };
+    // mass: show only the player section.
     return {
-      type: MASS_PLAYER_CARD_TYPE,
-      entities: [entity],
-      ...(this._config?.mass_config ?? {}),
+      player: { enabled: true },
+      queue: { enabled: false },
+      media_browser: { enabled: false },
+      players: { enabled: false },
+      default_section: "music_player",
     };
   }
 
-  private _buildCard(): void {
+  /** Per-engine base config for the RIGHT (library/search/queue) pane in split mode. */
+  private _rightBase(): Record<string, unknown> {
+    if (this._config?.engine === "yamp") return { card_type: "search", hide_menu_player: true };
+    // mass: show the media browser (search + favorites/recents/recommendations) + queue.
+    return {
+      player: { enabled: false },
+      queue: { enabled: true },
+      media_browser: { enabled: true },
+      players: { enabled: false },
+      default_section: "media_browser",
+    };
+  }
+
+  /** Build the embedded card config for one pane. `single` = the whole card (split
+   *  disabled, current behavior); `left`/`right` = the split panes. Merge order:
+   *  per-engine base -> shared (mass_config/yamp_config) -> per-side override. */
+  private _paneConfig(entity: string, side: "single" | "left" | "right"): LovelaceCardConfig {
+    const yamp = this._config?.engine === "yamp";
+    const type = yamp ? YAMP_CARD_TYPE : MASS_PLAYER_CARD_TYPE;
+    const shared = (yamp ? this._config?.yamp_config : this._config?.mass_config) ?? {};
+    const base =
+      side === "left" ? this._leftBase() : side === "right" ? this._rightBase() : {};
+    const override =
+      side === "left"
+        ? (this._config?.left_config ?? {})
+        : side === "right"
+          ? (this._config?.right_config ?? {})
+          : {};
+    const merged = deepMerge({}, base, shared, override);
+    // YAMP sizes via `card_height` (px); mass fills via the section-height CSS var.
+    const yampFill =
+      yamp && this._effectiveFill() && this._fillHeight ? { card_height: this._fillHeight } : {};
+    return { type, entities: [entity], ...yampFill, ...merged };
+  }
+
+  private _buildCards(): void {
     if (!this._helpers) return;
-    const desired = this._desiredChild();
+    const desired = this._desiredPanes();
     if (!desired) {
-      this._child = undefined;
-      this._childKind = undefined;
+      this._els.clear();
+      this._paneKind = undefined;
       return;
     }
-    const json = JSON.stringify(desired.cfg);
-    if (this._child?.json === json) {
-      this._childKind = desired.kind;
-      return;
+    this._paneKind = desired.kind;
+    const wanted = new Map<string, LovelaceCardConfig>();
+    if (desired.kind === "message") wanted.set("message", desired.message);
+    else if (desired.kind === "single") wanted.set("single", desired.single);
+    else {
+      wanted.set("left", desired.left);
+      wanted.set("right", desired.right);
     }
-    const el = this._helpers.createCardElement(desired.cfg);
-    if (this.hass) el.hass = this.hass;
-    if (desired.kind === "player" && this._config?.engine === "yamp") {
-      // Force YAMP's search/menu overlays to a near-opaque, theme-tinted surface so the
-      // now-playing artwork doesn't bleed through the overlay on translucent HA themes
-      // (match_theme). Inline styles on the child host win over YAMP's own :host rules.
-      const overlay =
-        "rgb(from var(--ha-card-background, var(--card-background-color, #1c1c1c)) r g b / 0.96)";
-      el.style.setProperty("--yamp-overlay-bg", overlay);
-      el.style.setProperty("--search-overlay-bg", overlay);
+    // Drop panes that are no longer needed (e.g. leaving split mode).
+    for (const id of [...this._els.keys()]) if (!wanted.has(id)) this._els.delete(id);
+    // Build or reuse each pane, cached by its config JSON.
+    for (const [id, cfg] of wanted) {
+      const json = JSON.stringify(cfg);
+      const existing = this._els.get(id);
+      if (existing && existing.json === json) continue;
+      const el = this._helpers.createCardElement(cfg);
+      if (this.hass) el.hass = this.hass;
+      this._injectOverlayOpacity(id, el);
+      this._els.set(id, { el, json });
     }
-    this._child = { el, json };
-    this._childKind = desired.kind;
+  }
+
+  /** Force YAMP's search/menu overlay to a near-opaque, theme-tinted surface so the
+   *  now-playing artwork doesn't bleed through it on translucent HA themes (match_theme).
+   *  Inline styles on the child host win over YAMP's own :host rules. */
+  private _injectOverlayOpacity(id: string, el: LovelaceCard): void {
+    if (id === "message" || this._config?.engine !== "yamp") return;
+    const overlay =
+      "rgb(from var(--ha-card-background, var(--card-background-color, #1c1c1c)) r g b / 0.96)";
+    el.style.setProperty("--yamp-overlay-bg", overlay);
+    el.style.setProperty("--search-overlay-bg", overlay);
   }
 
   private _propagateHass(): void {
     if (!this.hass || this.hass === this._lastPropagatedHass) return;
     this._lastPropagatedHass = this.hass;
-    if (this._child) this._child.el.hass = this.hass;
+    for (const slot of this._els.values()) slot.el.hass = this.hass;
   }
 
   // --- Navigation ------------------------------------------------------------
@@ -249,15 +307,49 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
     return path;
   }
 
+  // --- Split / layout --------------------------------------------------------
+
+  /** Allowed LEFT-width percentages for the side-by-side split. */
+  private static readonly SPLITS = new Set([100, 70, 60, 50, 40, 30]);
+
+  /** Normalized LEFT width percent (100 = single pane). */
+  private _splitLeft(): number {
+    const s = this._config?.split;
+    return typeof s === "number" && TedMusicCard.SPLITS.has(s) ? s : 100;
+  }
+
+  private _hasSplit(): boolean {
+    return this._splitLeft() < 100;
+  }
+
+  /** Split always fills the content area; otherwise honor the `fill` flag. */
+  private _effectiveFill(): boolean {
+    return this._config?.fill === true || this._hasSplit();
+  }
+
   // --- State cards -----------------------------------------------------------
 
-  /** The child card to render for the current state: the player, or a MessageBox. */
-  private _desiredChild(): { cfg: LovelaceCardConfig; kind: "player" | "message" } | undefined {
+  /** The pane(s) to render for the current state: a MessageBox, a single player,
+   *  or a left/right split. */
+  private _desiredPanes():
+    | { kind: "message"; message: LovelaceCardConfig }
+    | { kind: "single"; single: LovelaceCardConfig }
+    | { kind: "split"; left: LovelaceCardConfig; right: LovelaceCardConfig }
+    | undefined {
     const res = this._resolve();
-    if (res.state === "ok") return { cfg: this._childConfig(res.entity), kind: "player" };
-    if (res.state === "empty") return { cfg: this._emptyMessageConfig(), kind: "message" };
+    if (res.state === "empty") return { kind: "message", message: this._emptyMessageConfig() };
     if (res.state === "unmatched")
-      return { cfg: this._unmatchedMessageConfig(res.base), kind: "message" };
+      return { kind: "message", message: this._unmatchedMessageConfig(res.base) };
+    if (res.state === "ok") {
+      if (this._hasSplit()) {
+        return {
+          kind: "split",
+          left: this._paneConfig(res.entity, "left"),
+          right: this._paneConfig(res.entity, "right"),
+        };
+      }
+      return { kind: "single", single: this._paneConfig(res.entity, "single") };
+    }
     return undefined;
   }
 
@@ -346,10 +438,20 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
 
   protected render(): TemplateResult | typeof nothing {
     if (!this._config || !this.hass) return nothing;
-    if (!this._helpers || !this._child) return html`<div class="loading"></div>`;
-    if (this._childKind === "message") return html`<div class="msg">${this._child.el}</div>`;
-    const cls = this._config.fill ? "player fill" : "player natural";
-    return html`<div class=${cls}>${this._child.el}</div>`;
+    if (!this._helpers || !this._paneKind || this._els.size === 0)
+      return html`<div class="loading"></div>`;
+    if (this._paneKind === "message")
+      return html`<div class="msg">${this._els.get("message")?.el}</div>`;
+    if (this._paneKind === "split") {
+      const left = this._splitLeft();
+      const right = 100 - left;
+      return html`<div class="split">
+        <div class="pane left" style="flex: ${left} 1 0">${this._els.get("left")?.el}</div>
+        <div class="pane right" style="flex: ${right} 1 0">${this._els.get("right")?.el}</div>
+      </div>`;
+    }
+    const cls = this._effectiveFill() ? "player fill" : "player natural";
+    return html`<div class=${cls}>${this._els.get("single")?.el}</div>`;
   }
 
   static styles = css`
@@ -358,6 +460,8 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
       align-items: center;
       justify-content: center;
       height: 100%;
+      /* Establish a container so the split can collapse based on OUR width. */
+      container-type: inline-size;
     }
     /* The mass-player-card brings its own surface, so this card is a transparent
        passthrough — no wrapping ha-card (avoids double borders and backdrop-filter/
@@ -369,14 +473,14 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
     .player.natural {
       align-self: center;
     }
-    /* Opt-in: fill the dashboard content area. mass-player-card's own panel mode
-       hard-codes its height to window.innerHeight (unoverridable inline style), which
-       overflows past our header/navbar. Instead we size it via its public
+    /* Opt-in / split: fill the dashboard content area. mass-player-card's own panel
+       mode hard-codes its height to window.innerHeight (unoverridable inline style),
+       which overflows past our header/navbar. Instead we size it via its public
        --mass-player-card-section-height token: total card height = that + the card's
        internal tab bar (--navbar-height: 4em). We mirror shared/layout-content.yaml's
-       content-area height and subtract 4em so the card lands exactly on the content
-       area. */
-    .player.fill {
+       content-area height and subtract 4em so the card lands exactly on the content area. */
+    .player.fill,
+    .split .pane {
       height: 100%;
       --mass-player-card-section-height: calc(
         100dvh - var(
@@ -386,8 +490,31 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
           var(--ted-navbar-bottom-reserve, 48px) - 24px - 4em
       );
     }
-    .player.fill > * {
+    .player.fill > *,
+    .split .pane > * {
       height: 100%;
+    }
+    /* Side-by-side split: player on the left, library/search/queue on the right.
+       Pane widths come from the inline flex ratio set in render(). */
+    .split {
+      display: flex;
+      flex-direction: row;
+      align-items: stretch;
+      gap: 12px;
+      width: 100%;
+      height: 100%;
+    }
+    .split .pane {
+      min-width: 0;
+    }
+    /* Narrow: collapse to the player pane only (inline flex overridden with !important). */
+    @container (max-width: 700px) {
+      .split .pane.right {
+        display: none !important;
+      }
+      .split .pane.left {
+        flex: 1 1 auto !important;
+      }
     }
     .loading {
       height: 100%;
