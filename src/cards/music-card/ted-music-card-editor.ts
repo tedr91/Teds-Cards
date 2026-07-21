@@ -10,6 +10,20 @@ const SOURCE_OPTIONS = [
   { value: "config", label: "This card (choose below)" },
 ];
 
+const ENGINE_OPTIONS = [
+  { value: "mass", label: "Music Assistant Player Card" },
+  { value: "yamp", label: "Yet Another Media Player" },
+];
+
+const SPLIT_OPTIONS = [
+  { value: "100", label: "Player only" },
+  { value: "70", label: "70% player / 30% library" },
+  { value: "60", label: "60% / 40%" },
+  { value: "50", label: "50% / 50%" },
+  { value: "40", label: "40% / 60%" },
+  { value: "30", label: "30% player / 70% library" },
+];
+
 @customElement(MUSIC_CARD_EDITOR_TYPE)
 export class TedMusicCardEditor extends LitElement implements LovelaceCardEditor {
   @property({ attribute: false }) public hass?: HomeAssistant;
@@ -24,11 +38,22 @@ export class TedMusicCardEditor extends LitElement implements LovelaceCardEditor
     const source: MusicPlayerSource = this._config.player_source ?? "settings";
     const topData = {
       player_source: source,
+      engine: this._config.engine ?? "mass",
+      split: String(this._config.split ?? 100),
       auto_resolve_mass_player: this._config.auto_resolve_mass_player !== false,
       fill: this._config.fill ?? false,
     };
     const topSchema = [
       { name: "player_source", selector: { select: { mode: "dropdown", options: SOURCE_OPTIONS } } },
+      {
+        type: "grid",
+        name: "",
+        column_min_width: "160px",
+        schema: [
+          { name: "engine", selector: { select: { mode: "dropdown", options: ENGINE_OPTIONS } } },
+          { name: "split", selector: { select: { mode: "dropdown", options: SPLIT_OPTIONS } } },
+        ],
+      },
       {
         type: "grid",
         name: "",
@@ -71,6 +96,12 @@ export class TedMusicCardEditor extends LitElement implements LovelaceCardEditor
     if (schema.name === "player_source") {
       return "\"This device's Settings player\" uses the per-device Music player from Ted's Cards Settings.";
     }
+    if (schema.name === "engine") {
+      return "Which card renders the player. Yet Another Media Player adds a dedicated library/search/queue pane.";
+    }
+    if (schema.name === "split") {
+      return "Show a library/search/queue pane beside the player. Collapses to player-only on narrow screens.";
+    }
     if (schema.name === "auto_resolve_mass_player") {
       return "If the player isn't a Music Assistant entity, find its Music Assistant match at runtime.";
     }
@@ -84,6 +115,10 @@ export class TedMusicCardEditor extends LitElement implements LovelaceCardEditor
     switch (schema.name) {
       case "player_source":
         return "Player source";
+      case "engine":
+        return "Player card";
+      case "split":
+        return "Side-by-side split";
       case "auto_resolve_mass_player":
         return "Auto-match player";
       case "fill":
@@ -94,7 +129,16 @@ export class TedMusicCardEditor extends LitElement implements LovelaceCardEditor
   };
 
   private _valueChanged = (ev: CustomEvent): void => {
-    this._commit({ ...this._config, ...ev.detail.value } as MusicCardConfig);
+    const value = ev.detail.value as Record<string, unknown>;
+    const merged = { ...this._config, ...value } as MusicCardConfig;
+    // `split` comes back from the select as a string; store it as a number (drop 100 = default).
+    const rawSplit = value.split;
+    if (typeof rawSplit === "string") {
+      const n = Number(rawSplit);
+      if (Number.isFinite(n) && n !== 100) merged.split = n;
+      else delete merged.split;
+    }
+    this._commit(merged);
   };
 
   private _entityChanged = (ev: CustomEvent): void => {

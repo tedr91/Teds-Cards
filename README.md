@@ -939,6 +939,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.251
+
+- **Music card: side-by-side split layout** — `ted-music-card` can now show the player on the left and a library/search/queue pane on the right via `split` (left width %: `100`/`70`/`60`/`50`/`40`/`30`; `100` = player only). Works with both engines (`mass` = player-only + media-browser/queue panes; `yamp` = player + dedicated search). Per-pane overrides via `left_config`/`right_config`; collapses to player-only on narrow screens. Engine + split are now in the visual editor.
+
 ### v1.0.250
 
 - **Music card (`yamp` engine): opaque search overlay** — on translucent themes, YAMP's search/menu overlay was see-through, letting the now-playing artwork bleed through onto the filter chips. The card now forces that overlay to a near-opaque, theme-tinted surface while keeping `match_theme` accent colors.
