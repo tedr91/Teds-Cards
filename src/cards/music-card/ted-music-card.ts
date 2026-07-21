@@ -99,6 +99,10 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
   /** Layout-switcher flyout state + the runtime split override (persisted per view path). */
   @state() private _flyoutOpen = false;
   @state() private _runtimeSplit?: number;
+  /** Pill drag state (drag resizes the split; a tap without moving opens the flyout). */
+  private _dragging = false;
+  private _dragStartX = 0;
+  private _dragMoved = false;
 
   public constructor() {
     super();
@@ -367,10 +371,66 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
     return `ted-music-split:${path}`;
   }
 
-  private _toggleFlyout = (e: Event): void => {
+  // --- Layout pill: tap opens the flyout, horizontal drag resizes the split ---
+
+  private _onPillDown = (e: PointerEvent): void => {
+    if (e.pointerType === "mouse" && e.button !== 0) return;
     e.stopPropagation();
-    this._flyoutOpen = !this._flyoutOpen;
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    this._dragStartX = e.clientX;
+    this._dragMoved = false;
+    this._dragging = true;
   };
+
+  private _onPillMove = (e: PointerEvent): void => {
+    if (!this._dragging) return;
+    if (!this._dragMoved && Math.abs(e.clientX - this._dragStartX) <= 4) return;
+    this._dragMoved = true;
+    e.preventDefault();
+    const layout = this.renderRoot.querySelector(".layout");
+    if (!(layout instanceof HTMLElement)) return;
+    const rect = layout.getBoundingClientRect();
+    if (rect.width <= 0) return;
+    const pct = ((e.clientX - rect.left) / rect.width) * 100;
+    const snapped = this._snapSplit(pct);
+    if (snapped !== this._splitLeft()) this._runtimeSplit = snapped;
+  };
+
+  private _onPillUp = (e: PointerEvent): void => {
+    if (!this._dragging) return;
+    this._dragging = false;
+    try {
+      (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+    } catch {
+      /* ignore */
+    }
+    if (this._dragMoved) {
+      // A drag committed a new ratio — persist it (and don't open the flyout).
+      try {
+        window.localStorage.setItem(this._splitStorageKey(), String(this._splitLeft()));
+      } catch {
+        /* ignore */
+      }
+      this.requestUpdate();
+    } else {
+      // A plain tap — open/close the flyout.
+      this._flyoutOpen = !this._flyoutOpen;
+    }
+  };
+
+  /** Snap a raw percentage to the nearest allowed split value. */
+  private _snapSplit(pct: number): number {
+    let best = 100;
+    let bestD = Infinity;
+    for (const v of TedMusicCard.SPLITS) {
+      const d = Math.abs(v - pct);
+      if (d < bestD) {
+        bestD = d;
+        best = v;
+      }
+    }
+    return best;
+  }
 
   private _closeFlyout = (): void => {
     this._flyoutOpen = false;
@@ -531,11 +591,14 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
         ? html`<div class="flyout-backdrop" @click=${this._closeFlyout}></div>`
         : nothing}
       <button
-        class="split-pill ${this._flyoutOpen ? "open" : ""}"
+        type="button"
+        class="split-pill ${this._flyoutOpen ? "open" : ""} ${this._dragging ? "dragging" : ""}"
         style="left: ${pos}"
-        title="Layout"
+        title="Drag to resize, tap for layouts"
         aria-label="Change layout"
-        @click=${this._toggleFlyout}
+        @pointerdown=${this._onPillDown}
+        @pointermove=${this._onPillMove}
+        @pointerup=${this._onPillUp}
       >
         <span class="grip"></span>
       </button>
@@ -648,7 +711,10 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
       padding: 0;
       border: none;
       background: none;
-      cursor: pointer;
+      cursor: ew-resize;
+      touch-action: none;
+      user-select: none;
+      -webkit-user-select: none;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -662,7 +728,8 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
       transition: background 0.15s ease;
     }
     .split-pill:hover .grip,
-    .split-pill.open .grip {
+    .split-pill.open .grip,
+    .split-pill.dragging .grip {
       background: rgb(from var(--primary-text-color, #ffffff) r g b / 0.6);
     }
     .split-flyout {

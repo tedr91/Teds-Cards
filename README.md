@@ -939,6 +939,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.256
+
+- **Music card: drag the layout pill to resize** — in addition to tapping it for the layout flyout, you can now drag the split pill left/right to resize the panes (snaps to the preset ratios, works with touch). The choice still persists per view.
+
 ### v1.0.255
 
 - **Music card: layout pill polish** — narrower gap between panes, the pill now stays centered in the gap at every split ratio (no longer drifts into a pane), and a subtle drop-shadow.
