@@ -939,6 +939,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.253
+
+- **Music card defaults to the YAMP engine** — `ted-music-card` now uses [yet-another-media-player](https://github.com/jianyu-li/yet-another-media-player) by default; set `engine: mass` to use mass-player-card instead. (Requires the YAMP card installed via HACS.)
+
 ### v1.0.252
 
 - **Music card: live layout switcher** — a vertical pill at the split divider opens a flyout to switch the side-by-side ratio (player only / 70-30 / 60-40 / 50-50 / 40-60 / 30-70) on the fly; the choice persists per view. Disable with `layout_switcher: false`.
