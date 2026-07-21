@@ -35,6 +35,9 @@ export interface MusicCardConfig extends LovelaceCardConfig {
   left_config?: Record<string, unknown>;
   /** Extra options merged into the RIGHT (library/search/queue) pane when `split` < 100. */
   right_config?: Record<string, unknown>;
+  /** Show the vertical layout-switcher pill (between the panes) that opens a flyout of
+   *  split choices. Default true when the card fills its area. */
+  layout_switcher?: boolean;
   /** Stretch the player to fill the dashboard content area (sizes the embedded
    *  mass-player-card to the content area's height, minus its own tab bar).
    *  Off (default) sizes the player to its content, centered in the view. */

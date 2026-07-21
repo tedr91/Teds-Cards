@@ -57,6 +57,16 @@ function deepMerge(
   return target;
 }
 
+/** Layout choices offered by the switcher pill (LEFT width percent). */
+const SPLIT_CHOICES: { value: number; label: string }[] = [
+  { value: 100, label: "Player only" },
+  { value: 70, label: "70 / 30" },
+  { value: 60, label: "60 / 40" },
+  { value: 50, label: "50 / 50" },
+  { value: 40, label: "40 / 60" },
+  { value: 30, label: "30 / 70" },
+];
+
 @customElement(MUSIC_CARD_TYPE)
 export class TedMusicCard extends LitElement implements LovelaceCard {
   public static async getConfigElement(): Promise<LovelaceCardEditor> {
@@ -83,6 +93,9 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
   /** For engine:yamp + fill, the measured content-area height passed as `card_height`. */
   @state() private _fillHeight?: number;
   private _resizeObserver?: ResizeObserver;
+  /** Layout-switcher flyout state + the runtime split override (persisted per view path). */
+  @state() private _flyoutOpen = false;
+  @state() private _runtimeSplit?: number;
 
   public constructor() {
     super();
@@ -97,6 +110,13 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
     // ourselves and feed it as card_height when engine:yamp + fill.
     this._resizeObserver ??= new ResizeObserver(() => this._measureFill());
     this._resizeObserver.observe(this);
+    // Restore the per-view runtime layout choice from the switcher pill.
+    try {
+      const v = Number(window.localStorage.getItem(this._splitStorageKey()));
+      if (Number.isFinite(v) && TedMusicCard.SPLITS.has(v)) this._runtimeSplit = v;
+    } catch {
+      /* localStorage unavailable — ignore */
+    }
   }
 
   public disconnectedCallback(): void {
@@ -312,8 +332,10 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
   /** Allowed LEFT-width percentages for the side-by-side split. */
   private static readonly SPLITS = new Set([100, 70, 60, 50, 40, 30]);
 
-  /** Normalized LEFT width percent (100 = single pane). */
+  /** Normalized LEFT width percent (100 = single pane). Runtime pill choice wins. */
   private _splitLeft(): number {
+    const rt = this._runtimeSplit;
+    if (typeof rt === "number" && TedMusicCard.SPLITS.has(rt)) return rt;
     const s = this._config?.split;
     return typeof s === "number" && TedMusicCard.SPLITS.has(s) ? s : 100;
   }
@@ -325,6 +347,40 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
   /** Split always fills the content area; otherwise honor the `fill` flag. */
   private _effectiveFill(): boolean {
     return this._config?.fill === true || this._hasSplit();
+  }
+
+  /** The layout-switcher pill shows only when the card fills its area (and not opted out). */
+  private _showSwitcher(): boolean {
+    return this._config?.layout_switcher !== false && this._effectiveFill();
+  }
+
+  private _splitStorageKey(): string {
+    let path = "";
+    try {
+      path = window.location.pathname;
+    } catch {
+      /* ignore */
+    }
+    return `ted-music-split:${path}`;
+  }
+
+  private _toggleFlyout = (e: Event): void => {
+    e.stopPropagation();
+    this._flyoutOpen = !this._flyoutOpen;
+  };
+
+  private _closeFlyout = (): void => {
+    this._flyoutOpen = false;
+  };
+
+  private _chooseSplit(value: number): void {
+    this._runtimeSplit = value;
+    this._flyoutOpen = false;
+    try {
+      window.localStorage.setItem(this._splitStorageKey(), String(value));
+    } catch {
+      /* ignore */
+    }
   }
 
   // --- State cards -----------------------------------------------------------
@@ -442,16 +498,57 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
       return html`<div class="loading"></div>`;
     if (this._paneKind === "message")
       return html`<div class="msg">${this._els.get("message")?.el}</div>`;
-    if (this._paneKind === "split") {
-      const left = this._splitLeft();
-      const right = 100 - left;
-      return html`<div class="split">
-        <div class="pane left" style="flex: ${left} 1 0">${this._els.get("left")?.el}</div>
-        <div class="pane right" style="flex: ${right} 1 0">${this._els.get("right")?.el}</div>
-      </div>`;
-    }
-    const cls = this._effectiveFill() ? "player fill" : "player natural";
-    return html`<div class=${cls}>${this._els.get("single")?.el}</div>`;
+
+    const left = this._splitLeft();
+    const panes =
+      this._paneKind === "split"
+        ? html`<div class="split">
+            <div class="pane left" style="flex: ${left} 1 0">${this._els.get("left")?.el}</div>
+            <div class="pane right" style="flex: ${100 - left} 1 0">${this._els.get("right")?.el}</div>
+          </div>`
+        : html`<div class=${this._effectiveFill() ? "player fill" : "player natural"}>
+            ${this._els.get("single")?.el}
+          </div>`;
+
+    return html`<div class="layout">${panes}${this._renderSwitcher(left)}</div>`;
+  }
+
+  /** The vertical layout pill (at the split divider) + its flyout of layout choices. */
+  private _renderSwitcher(left: number): TemplateResult | typeof nothing {
+    if (!this._showSwitcher()) return nothing;
+    const current = this._splitLeft();
+    return html`
+      ${this._flyoutOpen
+        ? html`<div class="flyout-backdrop" @click=${this._closeFlyout}></div>`
+        : nothing}
+      <button
+        class="split-pill ${this._flyoutOpen ? "open" : ""}"
+        style="left: ${left}%"
+        title="Layout"
+        aria-label="Change layout"
+        @click=${this._toggleFlyout}
+      >
+        <span class="grip"></span>
+      </button>
+      ${this._flyoutOpen
+        ? html`<div class="split-flyout" @click=${(e: Event) => e.stopPropagation()}>
+            ${SPLIT_CHOICES.map(
+              (c) => html`<button
+                class="flyout-item ${current === c.value ? "active" : ""}"
+                @click=${() => this._chooseSplit(c.value)}
+              >
+                <span class="ratio">
+                  <span class="seg l" style="flex: ${c.value}"></span>
+                  ${c.value < 100
+                    ? html`<span class="seg r" style="flex: ${100 - c.value}"></span>`
+                    : nothing}
+                </span>
+                <span class="lbl">${c.label}</span>
+              </button>`,
+            )}
+          </div>`
+        : nothing}
+    `;
   }
 
   static styles = css`
@@ -462,6 +559,15 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
       height: 100%;
       /* Establish a container so the split can collapse based on OUR width. */
       container-type: inline-size;
+    }
+    /* Positioning context for the panes + the layout-switcher pill/flyout. */
+    .layout {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      height: 100%;
     }
     /* The mass-player-card brings its own surface, so this card is a transparent
        passthrough — no wrapping ha-card (avoids double borders and backdrop-filter/
@@ -515,6 +621,101 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
       .split .pane.left {
         flex: 1 1 auto !important;
       }
+    }
+    /* --- Layout switcher (vertical pill at the divider + flyout of layout choices) --- */
+    .flyout-backdrop {
+      position: absolute;
+      inset: 0;
+      z-index: 3;
+    }
+    .split-pill {
+      position: absolute;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 5;
+      width: 15px;
+      height: 52px;
+      padding: 0;
+      border: none;
+      border-radius: 999px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgb(from var(--ha-card-background, var(--card-background-color, #1c1c1c)) r g b / 0.7);
+      -webkit-backdrop-filter: blur(8px);
+      backdrop-filter: blur(8px);
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+      transition:
+        width 0.15s ease,
+        background 0.15s ease;
+    }
+    .split-pill:hover,
+    .split-pill.open {
+      width: 17px;
+      background: rgb(from var(--ha-card-background, var(--card-background-color, #1c1c1c)) r g b / 0.92);
+    }
+    .split-pill .grip {
+      width: 4px;
+      height: 22px;
+      border-radius: 2px;
+      background: var(--secondary-text-color, #9aa7b2);
+    }
+    .split-flyout {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 6;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 168px;
+      padding: 6px;
+      border-radius: 12px;
+      border: 1px solid var(--divider-color, rgba(255, 255, 255, 0.12));
+      background: rgb(from var(--ha-card-background, var(--card-background-color, #1c1c1c)) r g b / 0.97);
+      -webkit-backdrop-filter: blur(14px);
+      backdrop-filter: blur(14px);
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+    }
+    .flyout-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 10px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font: inherit;
+      text-align: left;
+      color: var(--primary-text-color, #e6edf3);
+      background: none;
+    }
+    .flyout-item:hover {
+      background: rgb(from var(--primary-text-color, #ffffff) r g b / 0.1);
+    }
+    .flyout-item.active {
+      background: var(--primary-color, #3b82f6);
+      color: var(--text-primary-color, #fff);
+    }
+    .flyout-item .ratio {
+      display: flex;
+      gap: 2px;
+      width: 38px;
+      height: 18px;
+      flex: 0 0 auto;
+    }
+    .flyout-item .ratio .seg {
+      background: currentColor;
+      opacity: 0.45;
+      border-radius: 2px;
+    }
+    .flyout-item.active .ratio .seg {
+      opacity: 0.95;
+    }
+    .flyout-item .lbl {
+      white-space: nowrap;
     }
     .loading {
       height: 100%;
