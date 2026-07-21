@@ -38,7 +38,7 @@ export class TedMusicCardEditor extends LitElement implements LovelaceCardEditor
     const source: MusicPlayerSource = this._config.player_source ?? "settings";
     const topData = {
       player_source: source,
-      engine: this._config.engine ?? "mass",
+      engine: this._config.engine ?? "yamp",
       split: String(this._config.split ?? 100),
       auto_resolve_mass_player: this._config.auto_resolve_mass_player !== false,
       fill: this._config.fill ?? false,

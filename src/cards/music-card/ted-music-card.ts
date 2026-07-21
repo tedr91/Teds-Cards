@@ -126,7 +126,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
 
   /** Measure the host (content area) for engine:yamp + fill; updates `_fillHeight`. */
   private _measureFill(): void {
-    if (this._config?.engine !== "yamp" || !this._effectiveFill()) {
+    if (this._config?.engine === "mass" || !this._effectiveFill()) {
       if (this._fillHeight !== undefined) this._fillHeight = undefined;
       return;
     }
@@ -224,7 +224,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
 
   /** Per-engine base config for the LEFT (player) pane in split mode. */
   private _leftBase(): Record<string, unknown> {
-    if (this._config?.engine === "yamp") return { card_type: "default" };
+    if (this._config?.engine !== "mass") return { card_type: "default" };
     // mass: show only the player section.
     return {
       player: { enabled: true },
@@ -237,7 +237,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
 
   /** Per-engine base config for the RIGHT (library/search/queue) pane in split mode. */
   private _rightBase(): Record<string, unknown> {
-    if (this._config?.engine === "yamp") return { card_type: "search", hide_menu_player: true };
+    if (this._config?.engine !== "mass") return { card_type: "search", hide_menu_player: true };
     // mass: show the media browser (search + favorites/recents/recommendations) + queue.
     return {
       player: { enabled: false },
@@ -252,7 +252,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
    *  disabled, current behavior); `left`/`right` = the split panes. Merge order:
    *  per-engine base -> shared (mass_config/yamp_config) -> per-side override. */
   private _paneConfig(entity: string, side: "single" | "left" | "right"): LovelaceCardConfig {
-    const yamp = this._config?.engine === "yamp";
+    const yamp = this._config?.engine !== "mass";
     const type = yamp ? YAMP_CARD_TYPE : MASS_PLAYER_CARD_TYPE;
     const shared = (yamp ? this._config?.yamp_config : this._config?.mass_config) ?? {};
     const base =
@@ -304,7 +304,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
    *  now-playing artwork doesn't bleed through it on translucent HA themes (match_theme).
    *  Inline styles on the child host win over YAMP's own :host rules. */
   private _injectOverlayOpacity(id: string, el: LovelaceCard): void {
-    if (id === "message" || this._config?.engine !== "yamp") return;
+    if (id === "message" || this._config?.engine === "mass") return;
     const overlay =
       "rgb(from var(--ha-card-background, var(--card-background-color, #1c1c1c)) r g b / 0.96)";
     el.style.setProperty("--yamp-overlay-bg", overlay);

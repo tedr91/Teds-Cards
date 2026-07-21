@@ -19,7 +19,7 @@ export interface MusicCardConfig extends LovelaceCardConfig {
    *  Music Assistant counterpart at runtime (by device, then by name). Default true. */
   auto_resolve_mass_player?: boolean;
   /** Which player card renders the resolved Music Assistant entity:
-   *  `mass` (default) = droans/mass-player-card, `yamp` = jianyu-li/yet-another-media-player. */
+   *  `yamp` (default) = jianyu-li/yet-another-media-player, `mass` = droans/mass-player-card. */
   engine?: "mass" | "yamp";
   /** Extra options merged into the embedded `mass-player-card` config
    *  (everything except `type`/`entities`). Used when `engine` is `mass`. */
