@@ -606,7 +606,8 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
       display: flex;
       flex-direction: row;
       align-items: stretch;
-      gap: 12px;
+      /* Room for the centered grabber bar to float clear of both panes. */
+      gap: 24px;
       width: 100%;
       height: 100%;
     }
@@ -628,38 +629,32 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
       inset: 0;
       z-index: 3;
     }
+    /* Just a subtle grabber bar (like the auto-hide navbar reveal pill) — no surface. */
     .split-pill {
       position: absolute;
       top: 50%;
       transform: translate(-50%, -50%);
       z-index: 5;
-      width: 15px;
-      height: 52px;
+      width: 24px;
+      height: 160px;
       padding: 0;
       border: none;
-      border-radius: 999px;
+      background: none;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
-      background: rgb(from var(--ha-card-background, var(--card-background-color, #1c1c1c)) r g b / 0.7);
-      -webkit-backdrop-filter: blur(8px);
-      backdrop-filter: blur(8px);
-      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
-      transition:
-        width 0.15s ease,
-        background 0.15s ease;
-    }
-    .split-pill:hover,
-    .split-pill.open {
-      width: 17px;
-      background: rgb(from var(--ha-card-background, var(--card-background-color, #1c1c1c)) r g b / 0.92);
     }
     .split-pill .grip {
-      width: 4px;
-      height: 22px;
-      border-radius: 2px;
-      background: var(--secondary-text-color, #9aa7b2);
+      width: 5px;
+      height: 100%;
+      border-radius: 999px;
+      background: rgb(from var(--primary-text-color, #ffffff) r g b / 0.35);
+      transition: background 0.15s ease;
+    }
+    .split-pill:hover .grip,
+    .split-pill.open .grip {
+      background: rgb(from var(--primary-text-color, #ffffff) r g b / 0.6);
     }
     .split-flyout {
       position: absolute;
