@@ -872,9 +872,12 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
         ${this._renderVolumeControl(volPct, muted)}
       </div>
       <div class="sub">
-        <span class="artist">${artist}</span>${showAlbum
-          ? html` <span class="album">(${album})</span>`
-          : nothing}
+        <span class="sub-text"
+          ><span class="artist">${artist}</span>${showAlbum
+            ? html` <span class="album">(${album})</span>`
+            : nothing}</span
+        >
+        ${this._renderCastChip()}
       </div>
     </div>`;
 
@@ -918,8 +921,6 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
             repeat !== "off",
           )}
         </div>
-
-        ${this._renderCastChip()}
       </div>
     `;
   }
@@ -1079,26 +1080,30 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
     const entity = this._entityId();
     const name = entity ? this._friendly(entity) : "";
     const locked = this._locked();
-    return html`<div class="cast-wrap">
+    return html`<div class="cast-wrap ${this._castOpen ? "open" : ""}">
       <button
         type="button"
         class="cast ${locked ? "locked" : ""}"
-        title=${locked ? "Playback target (locked)" : "Change playback target"}
+        title=${locked ? `Playback target: ${name}` : name}
         aria-label=${locked ? "Playback target" : "Change playback target"}
         ?disabled=${locked}
         @click=${this._toggleCast}
       >
-        <ha-icon icon="mdi:cast-variant"></ha-icon><span>${name}</span>
+        <ha-icon icon="mdi:cast-variant"></ha-icon><span class="cast-name">${name}</span>
       </button>
       ${this._castOpen ? this._renderCastFlyout(entity) : nothing}
     </div>`;
   }
 
   private _renderCastFlyout(current: string | undefined): TemplateResult {
+    const header = html`<div class="cast-header">
+      ${current ? this._friendly(current) : "Playback target"}
+    </div>`;
     if (!this._supportsGrouping()) {
       return html`
         <div class="cast-backdrop" @click=${this._closeCast}></div>
         <div class="cast-flyout" role="menu">
+          ${header}
           <div class="cast-note">This player can't be grouped with other speakers.</div>
         </div>`;
     }
@@ -1107,6 +1112,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
     return html`
       <div class="cast-backdrop" @click=${this._closeCast}></div>
       <div class="cast-flyout" role="menu">
+        ${header}
         ${players.map((id) => {
           const isCurrent = id === current;
           const grouped = members.includes(id);
@@ -1532,6 +1538,13 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
         margin-top: 2px;
         font-size: 1.05em;
         opacity: 0.92;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .sub-text {
+        flex: 1 1 auto;
+        min-width: 0;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -1559,6 +1572,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
         justify-content: space-between;
         gap: 4px;
         width: 100%;
+        margin-top: -4px;
       }
       .ctrl {
         border: none;
@@ -1667,15 +1681,14 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
       /* Cast chip */
       .cast-wrap {
         position: relative;
-        display: flex;
-        justify-content: center;
+        flex: 0 0 auto;
+        display: inline-flex;
         max-width: 100%;
       }
       .cast {
         display: inline-flex;
         align-items: center;
-        gap: 8px;
-        padding: 6px 14px;
+        padding: 5px 7px;
         border: none;
         cursor: pointer;
         color: inherit;
@@ -1687,10 +1700,23 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
       .cast.locked {
         cursor: default;
       }
-      .cast span {
-        white-space: nowrap;
+      .cast-name {
+        max-width: 0;
+        opacity: 0;
+        margin-left: 0;
         overflow: hidden;
+        white-space: nowrap;
         text-overflow: ellipsis;
+        transition:
+          max-width 0.2s ease,
+          opacity 0.2s ease,
+          margin-left 0.2s ease;
+      }
+      .cast:hover .cast-name,
+      .cast-wrap.open .cast-name {
+        max-width: 160px;
+        opacity: 1;
+        margin-left: 6px;
       }
       .cast ha-icon {
         --mdc-icon-size: 18px;
@@ -1702,9 +1728,8 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
       }
       .cast-flyout {
         position: absolute;
-        bottom: calc(100% + 8px);
-        left: 50%;
-        transform: translateX(-50%);
+        top: calc(100% + 8px);
+        right: 0;
         z-index: 9;
         min-width: 220px;
         max-width: 300px;
@@ -1732,6 +1757,17 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
         font-size: 0.88em;
         opacity: 0.8;
         line-height: 1.4;
+      }
+      .cast-header {
+        padding: 8px 10px 6px;
+        font-size: 0.78em;
+        font-weight: 700;
+        opacity: 0.7;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
       }
       .cast-row ha-icon {
         --mdc-icon-size: 20px;

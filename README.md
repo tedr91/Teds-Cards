@@ -939,6 +939,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.273
+
+- **Music card: layout polish.** Tightened the gap between the progress bar and the control buttons, and moved the "cast to" target badge below the volume (right-aligned). The badge is now icon-only — the device name slides in on hover, or when tapped (the flyout also shows the target name as a header).
+
 ### v1.0.272
 
 - **Music card: adaptive art layout + fixes.** On short cards, when the album art would be no taller than the title/artist rows, the player switches to a horizontal header — the art becomes a square to the left of the title/artist (which shrink to fit). The album art's drop shadow is no longer clipped at the bottom, and the "cast to" flyout now checks whether the player supports grouping and shows a note instead of a broken add-list when it doesn't.
