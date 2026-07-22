@@ -829,6 +829,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
             >
               <ha-icon icon=${fav ? "mdi:heart" : "mdi:heart-outline"}></ha-icon>
             </button>
+            ${this._renderVolumeControl(volPct, muted)}
           </div>
           <div class="sub">
             <span class="artist">${artist}</span>${showAlbum
@@ -870,7 +871,6 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
             this._onRepeat,
             repeat !== "off",
           )}
-          ${this._renderVolumeControl(volPct, muted)}
         </div>
 
         ${this._renderCastChip()}
@@ -883,9 +883,9 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
     const icon =
       muted || volPct === 0
         ? "mdi:volume-off"
-        : volPct < 40
+        : volPct < 10
           ? "mdi:volume-low"
-          : volPct < 75
+          : volPct < 50
             ? "mdi:volume-medium"
             : "mdi:volume-high";
     const tip = muted ? "Volume - Muted" : `Volume - ${volPct}%`;
@@ -1431,6 +1431,12 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
       .fav ha-icon {
         --mdc-icon-size: 20px;
       }
+      .title-row .vol-wrap {
+        margin-left: auto;
+      }
+      .title-row .vol-wrap .ctrl ha-icon {
+        --mdc-icon-size: 22px;
+      }
       .sub {
         margin-top: 2px;
         font-size: 1.05em;
@@ -1522,9 +1528,8 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
       }
       .vol-flyout {
         position: absolute;
-        bottom: calc(100% + 8px);
-        left: 50%;
-        transform: translateX(-50%);
+        top: calc(100% + 8px);
+        right: 0;
         z-index: 9;
         display: flex;
         align-items: center;

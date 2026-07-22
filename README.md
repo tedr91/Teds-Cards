@@ -939,6 +939,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.269
+
+- **Music card: volume tweaks.** The volume icon moved up into the title row (right-aligned, next to the favorite heart), and its level thresholds were retuned — low 1–9%, medium 10–49%, high 50%+.
+
 ### v1.0.268
 
 - **Music card: player controls refresh.** The favorite heart moved next to the song title and is functional (presses the Music Assistant favorite button, and fills in when the track is favorited). Volume is now an icon at the end of the controls row — tap to open a slider, double-tap or hold to mute, with a "Volume - X%" tooltip. The album art auto-resizes to fill the available space.
