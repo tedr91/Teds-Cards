@@ -40,6 +40,50 @@ function fmtTime(sec: number): string {
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
+/** RGB (0-255) → HSL (h,s,l in 0-1). */
+function rgbToHsl(r: number, g: number, b: number): { h: number; s: number; l: number } {
+  r /= 255;
+  g /= 255;
+  b /= 255;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const l = (max + min) / 2;
+  const d = max - min;
+  let h = 0;
+  let s = 0;
+  if (d) {
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    if (max === r) h = (g - b) / d + (g < b ? 6 : 0);
+    else if (max === g) h = (b - r) / d + 2;
+    else h = (r - g) / d + 4;
+    h /= 6;
+  }
+  return { h, s, l };
+}
+
+/** HSL (0-1) → RGB (0-255). */
+function hslToRgb(h: number, s: number, l: number): { r: number; g: number; b: number } {
+  if (!s) {
+    const v = Math.round(l * 255);
+    return { r: v, g: v, b: v };
+  }
+  const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+  const p = 2 * l - q;
+  const hue = (t: number): number => {
+    if (t < 0) t += 1;
+    if (t > 1) t -= 1;
+    if (t < 1 / 6) return p + (q - p) * 6 * t;
+    if (t < 1 / 2) return q;
+    if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+    return p;
+  };
+  return {
+    r: Math.round(hue(h + 1 / 3) * 255),
+    g: Math.round(hue(h) * 255),
+    b: Math.round(hue(h - 1 / 3) * 255),
+  };
+}
+
 @customElement(MUSIC_CARD_TYPE)
 export class TedMusicCard extends LitElement implements LovelaceCard {
   public static async getConfigElement(): Promise<LovelaceCardEditor> {
@@ -59,7 +103,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
   @state() private _tab: MusicTab = "media";
   private _tabTouched = false;
 
-  /** Average album-art color "r, g, b" + a legible foreground for the blurred bg. */
+  /** Adjusted frost tint "r, g, b" (from the album's average color) + a legible foreground. */
   @state() private _avgColor?: string;
   @state() private _avgFg?: string;
   private _artColorUrl?: string;
@@ -117,6 +161,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
     }, 1000);
     this._ro ??= new ResizeObserver(() => this._measureLayout());
     this._ro.observe(this);
+    document.addEventListener("pointerdown", this._onDocDown, true);
   }
 
   public disconnectedCallback(): void {
@@ -127,7 +172,22 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
     }
     this._ro?.disconnect();
     this._ro = undefined;
+    document.removeEventListener("pointerdown", this._onDocDown, true);
   }
+
+  /** Close the cast / volume popups when the user interacts outside them. */
+  private _onDocDown = (e: Event): void => {
+    if (!this._castOpen && !this._volOpen) return;
+    const path = e.composedPath();
+    if (this._castOpen) {
+      const w = this.renderRoot?.querySelector?.(".cast-wrap");
+      if (w && !path.includes(w)) this._castOpen = false;
+    }
+    if (this._volOpen) {
+      const w = this.renderRoot?.querySelector?.(".vol-wrap");
+      if (w && !path.includes(w)) this._volOpen = false;
+    }
+  };
 
   /** Decide vertical vs. horizontal (compact) player layout by comparing the album
    *  art's would-be height to the title/artist block. Hysteresis avoids flapping. */
@@ -318,10 +378,15 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
         r = Math.round(r / count);
         g = Math.round(g / count);
         b = Math.round(b / count);
-        this._avgColor = `${r}, ${g}, ${b}`;
-        // Relative luminance → pick a legible foreground for the gradient/blur bg.
-        const lum = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
-        this._avgFg = lum > 0.6 ? "#141414" : "#ffffff";
+        // Smart frost tint: keep the album hue, but pull the lightness into a
+        // comfortable band — lift very dark averages and deepen very light ones —
+        // and slightly boost saturation so the frosted glass stays rich and legible.
+        const { h, s, l } = rgbToHsl(r, g, b);
+        const lt = Math.max(0.28, Math.min(0.48, l));
+        const st = Math.min(1, s * 1.12);
+        const f = hslToRgb(h, st, lt);
+        this._avgColor = `${f.r}, ${f.g}, ${f.b}`;
+        this._avgFg = lt > 0.58 ? "#141414" : "#ffffff";
       } catch {
         this._avgColor = undefined;
         this._avgFg = undefined;
@@ -394,10 +459,6 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
       this._volClickTimer = undefined;
     }
     this._toggleMute();
-  };
-
-  private _closeVol = (): void => {
-    this._volOpen = false;
   };
 
   private _toggleMute(): void {
@@ -480,10 +541,6 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
 
   private _toggleCast = (): void => {
     if (!this._locked()) this._castOpen = !this._castOpen;
-  };
-
-  private _closeCast = (): void => {
-    this._castOpen = false;
   };
 
   private _join(id: string): void {
@@ -766,7 +823,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
   // --- Render ----------------------------------------------------------------
 
   protected render(): TemplateResult {
-    const themeClass = tedCardThemeClass(this._config?.theme);
+    const themeClass = tedCardThemeClass(this._config?.theme ?? "ha");
     const mode: MusicBackgroundMode = this._config?.background_mode ?? "blur";
     const res = this._resolve();
 
@@ -924,10 +981,23 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
             ? "mdi:volume-medium"
             : "mdi:volume-high";
     const tip = muted ? "Volume - Muted" : `Volume - ${volPct}%`;
-    return html`<div class="vol-wrap">
+    return html`<div class="vol-wrap ${this._volOpen ? "open" : ""}">
+      <span class="vol-slide">
+        <input
+          class="vol"
+          type="range"
+          min="0"
+          max="100"
+          .value=${String(volPct)}
+          @input=${this._onVolume}
+          @change=${this._onVolume}
+          aria-label="Volume"
+        />
+        <span class="vol-num">${volPct}</span>
+      </span>
       <button
         type="button"
-        class="ctrl ${muted ? "active" : ""}"
+        class="ctrl vol-btn ${muted ? "active" : ""}"
         title=${tip}
         aria-label=${tip}
         @pointerdown=${this._onVolPointerDown}
@@ -938,22 +1008,6 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
       >
         <ha-icon icon=${icon}></ha-icon>
       </button>
-      ${this._volOpen
-        ? html`<div class="vol-backdrop" @click=${this._closeVol}></div>
-            <div class="vol-flyout">
-              <input
-                class="vol"
-                type="range"
-                min="0"
-                max="100"
-                .value=${String(volPct)}
-                @input=${this._onVolume}
-                @change=${this._onVolume}
-                aria-label="Volume"
-              />
-              <span class="vol-num">${volPct}</span>
-            </div>`
-        : nothing}
     </div>`;
   }
 
@@ -1089,7 +1143,6 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
     </div>`;
     if (!this._supportsGrouping()) {
       return html`
-        <div class="cast-backdrop" @click=${this._closeCast}></div>
         <div class="cast-flyout" role="menu">
           ${header}
           <div class="cast-note">This player can't be grouped with other speakers.</div>
@@ -1098,7 +1151,6 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
     const members = this._groupMembers();
     const players = this._massPlayerIds();
     return html`
-      <div class="cast-backdrop" @click=${this._closeCast}></div>
       <div class="cast-flyout" role="menu">
         ${header}
         ${players.map((id) => {
@@ -1600,34 +1652,33 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
         text-align: right;
       }
 
-      /* Volume flyout (opened from the controls-row volume button) */
+      /* Volume: icon that expands a slider inline on hover (or tap). */
       .vol-wrap {
         position: relative;
         display: inline-flex;
-      }
-      .vol-backdrop {
-        position: fixed;
-        inset: 0;
-        z-index: 8;
-      }
-      .vol-flyout {
-        position: absolute;
-        top: calc(100% + 8px);
-        right: 0;
-        z-index: 9;
-        display: flex;
         align-items: center;
-        gap: 10px;
-        padding: 10px 14px;
-        min-width: 190px;
-        border-radius: 12px;
-        background: var(--ted-style-surface, #2b2b2b);
-        color: var(--ted-style-text, #fff);
-        border: 1px solid var(--ted-style-divider, rgba(255, 255, 255, 0.12));
-        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
       }
-      .vol-flyout .vol {
-        width: 130px;
+      .vol-slide {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        max-width: 0;
+        opacity: 0;
+        margin-right: 0;
+        overflow: hidden;
+        transition:
+          max-width 0.2s ease,
+          opacity 0.2s ease,
+          margin-right 0.2s ease;
+      }
+      .vol-wrap:hover .vol-slide,
+      .vol-wrap.open .vol-slide {
+        max-width: 170px;
+        opacity: 1;
+        margin-right: 8px;
+      }
+      .vol-slide .vol {
+        width: 110px;
       }
 
       /* Range inputs */
@@ -1663,6 +1714,9 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
         flex: 0 0 auto;
         display: inline-flex;
         max-width: 100%;
+      }
+      .cast-wrap.open {
+        z-index: 20;
       }
       .cast {
         display: inline-flex;

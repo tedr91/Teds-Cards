@@ -44,7 +44,7 @@ export class TedMusicCardEditor extends LitElement implements LovelaceCardEditor
     const restData = {
       mode: this._config.mode ?? "full",
       background_mode: this._config.background_mode ?? "blur",
-      theme: this._config.theme ?? "ted-style",
+      theme: this._config.theme ?? "ha",
       auto_resolve_mass_player: this._config.auto_resolve_mass_player !== false,
       lock_target_device: this._config.lock_target_device ?? false,
       apply_music_volume: this._config.apply_music_volume !== false,

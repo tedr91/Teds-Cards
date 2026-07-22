@@ -939,6 +939,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.275
+
+- **Music card: polish pass.** The theme now defaults to the Home Assistant theme. The frost tint smartly adjusts its lightness from the album's average color (lifting dark averages, deepening light ones) so it always looks rich and legible. The volume control now expands its slider inline on hover/tap (like the cast badge). Fixed the target-device popup appearing behind the controls, and it now dismisses when you interact anywhere outside it.
+
 ### v1.0.274
 
 - **Music card: album-tinted frosted glass.** The frosted-glass layer over the blurred album art is now tinted with the album's average color, so the background takes on the album's hue. Background options are simplified to **Blurred album art** (default) and **None** (shows the themed card surface, like the old Home Assistant theme option); the separate gradient / Ted's-style / HA background modes were folded into this.
