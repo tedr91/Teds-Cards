@@ -939,6 +939,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.285
+
+- **Music card: progress bar polish.** The seek handle is now the accent color with a thin black outline, and the track shows a 1px accent "played" line filling from the left to the current position (full and mini players).
+
 ### v1.0.284
 
 - **Music card: Media start feedback + matching art corners.** Tapping a Media-tab item now shows a **LOADING** pill (styled like the NOW PLAYING badge) with a spinner on that row until playback starts, so there's instant feedback during the start-up gap. The album art corners now use the card's own corner radius (in both full and mini modes).

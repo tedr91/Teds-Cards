@@ -1402,6 +1402,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
             type="range"
             min="0"
             max="100"
+            style="--seek-fill:${Math.min(100, Math.max(0, pct))}%"
             .value=${String(pct)}
             @change=${this._onSeek}
             aria-label="Seek"
@@ -1525,6 +1526,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
         type="range"
         min="0"
         max="100"
+        style="--seek-fill:${Math.min(100, Math.max(0, pct))}%"
         .value=${String(pct)}
         @change=${this._onSeek}
         aria-label="Seek"
@@ -2252,6 +2254,14 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
         background: rgba(127, 127, 127, 0.4);
         cursor: pointer;
       }
+      /* Seek track: a 1px accent "played" line, centered in the grey bar, filling from
+         the left to the current position (--seek-fill set inline per render). */
+      .seek {
+        background:
+          linear-gradient(var(--ted-style-accent), var(--ted-style-accent)) left center /
+            var(--seek-fill, 0%) 1px no-repeat,
+          rgba(127, 127, 127, 0.4);
+      }
       input[type="range"]::-webkit-slider-thumb {
         -webkit-appearance: none;
         appearance: none;
@@ -2267,6 +2277,17 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
         border: none;
         border-radius: 50%;
         background: currentColor;
+      }
+      /* Progress/seek thumb: accent-filled with a thin black outline. */
+      .seek::-webkit-slider-thumb {
+        background: var(--ted-style-accent);
+        border: 1px solid #000;
+        box-sizing: border-box;
+      }
+      .seek::-moz-range-thumb {
+        background: var(--ted-style-accent);
+        border: 1px solid #000;
+        box-sizing: border-box;
       }
 
       /* Cast chip */
