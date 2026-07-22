@@ -11,12 +11,10 @@ export type MusicPlayerSource = "settings" | "config";
 
 /**
  * Background treatment for the player surface.
- * - `avg_gradient` (default) — vertical gradient derived from the album art's average colour.
- * - `blur`                   — heavily blurred, scaled album art.
- * - `ted`                    — Ted's brushed dark surface.
- * - `ha`                     — the active Home Assistant theme surface.
+ * - `blur` (default) — heavily blurred album art, frosted with the album's average color.
+ * - `none`           — the active theme surface (Ted's style or Home Assistant), no overlay.
  */
-export type MusicBackgroundMode = "avg_gradient" | "blur" | "ted" | "ha";
+export type MusicBackgroundMode = "blur" | "none";
 
 /** The tabs shown on the right side of the full player. */
 export type MusicTab = "media" | "queue" | "recent" | "lyrics";

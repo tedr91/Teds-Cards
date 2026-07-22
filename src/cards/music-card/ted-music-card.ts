@@ -12,7 +12,7 @@ import {
   warmMassProviders,
   type MusicPlayerResolution,
 } from "../../shared/music-player";
-import { brushedOverlay, tedCardThemeClass, tedStyleTheme } from "../../shared/theme";
+import { tedCardThemeClass, tedStyleTheme } from "../../shared/theme";
 import { MUSIC_CARD_EDITOR_TYPE, MUSIC_CARD_TYPE } from "./const";
 import type { MusicBackgroundMode, MusicCardConfig, MusicTab } from "./types";
 
@@ -59,7 +59,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
   @state() private _tab: MusicTab = "media";
   private _tabTouched = false;
 
-  /** Average album-art colour "r, g, b" + a legible foreground for the gradient/blur bg. */
+  /** Average album-art color "r, g, b" + a legible foreground for the blurred bg. */
   @state() private _avgColor?: string;
   @state() private _avgFg?: string;
   private _artColorUrl?: string;
@@ -280,7 +280,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
     });
   }
 
-  // --- Average colour extraction --------------------------------------------
+  // --- Average color extraction --------------------------------------------
 
   private _updateAvgColor(url?: string): void {
     if (!url) {
@@ -775,8 +775,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
     }
 
     const hasMedia = this._hasMedia();
-    const fg =
-      mode === "avg_gradient" || mode === "blur" ? (this._avgFg ?? "#ffffff") : "var(--ted-style-text)";
+    const fg = mode === "blur" ? (this._avgFg ?? "#ffffff") : "var(--ted-style-text)";
 
     if (this._config?.mode === "mini") {
       return html`
@@ -805,32 +804,21 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
     `;
   }
 
-  /** A card-wide frosted-glass layer over image backgrounds so content stands out. */
+  /** A card-wide frosted-glass layer, tinted with the album's average color, over the
+   *  blurred art so content stands out. */
   private _renderFrost(mode: MusicBackgroundMode): TemplateResult | typeof nothing {
-    return mode === "blur" || mode === "avg_gradient" ? html`<div class="frost"></div>` : nothing;
+    if (mode !== "blur") return nothing;
+    const c = this._avgColor;
+    const style = c ? `background:rgba(${c}, 0.6)` : "background:rgba(16, 16, 20, 0.4)";
+    return html`<div class="frost" style=${style}></div>`;
   }
 
-  private _renderBackground(mode: MusicBackgroundMode): TemplateResult {
-    if (mode === "ted") {
-      return html`<div class="bg bg-ted">${brushedOverlay}</div>`;
-    }
-    if (mode === "ha") {
-      return html`<div class="bg bg-ha"></div>`;
-    }
+  private _renderBackground(mode: MusicBackgroundMode): TemplateResult | typeof nothing {
+    // "none" lets the themed ha-card surface (Ted's style or HA theme) show through.
+    if (mode !== "blur") return nothing;
     const art = this._artUrl();
-    if (mode === "blur") {
-      const img = art
-        ? `background-image:url("${art}")`
-        : "background:var(--ted-style-surface)";
-      return html`<div class="bg bg-blur" style=${img}></div>
-        <div class="bg bg-blur-scrim"></div>`;
-    }
-    // avg_gradient (default)
-    const c = this._avgColor;
-    const style = c
-      ? `background:linear-gradient(180deg, color-mix(in srgb, rgb(${c}) 22%, #ffffff 78%) 0%, rgb(${c}) 100%)`
-      : "background:linear-gradient(180deg, var(--ted-style-surface-2) 0%, var(--ted-style-surface) 100%)";
-    return html`<div class="bg" style=${style}></div>`;
+    const img = art ? `background-image:url("${art}")` : "background:var(--ted-style-surface)";
+    return html`<div class="bg bg-blur" style=${img}></div>`;
   }
 
   private _renderPlayer(): TemplateResult {
@@ -1330,27 +1318,18 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
         inset: 0;
         z-index: 0;
       }
-      .bg-ted {
-        background: linear-gradient(145deg, #2e2e32 0%, #222226 45%, #16161a 100%);
-      }
-      .bg-ha {
-        background: var(--ha-card-background, var(--card-background-color, transparent));
-      }
       .bg-blur {
         background-size: cover;
         background-position: center;
         filter: blur(42px) saturate(1.4);
         transform: scale(1.3);
       }
-      .bg-blur-scrim {
-        background: rgba(0, 0, 0, 0.28);
-      }
-      /* Card-wide frosted glass over image backgrounds so content stands out. */
+      /* Card-wide frosted glass, tinted with the album's average color (set inline),
+         over the blurred art so content stands out. */
       .frost {
         position: absolute;
         inset: 0;
         z-index: 0;
-        background: rgba(16, 16, 20, 0.32);
         -webkit-backdrop-filter: blur(12px) saturate(1.1);
         backdrop-filter: blur(12px) saturate(1.1);
       }

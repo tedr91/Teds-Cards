@@ -16,10 +16,8 @@ const MODE_OPTIONS = [
 ];
 
 const BACKGROUND_OPTIONS = [
-  { value: "avg_gradient", label: "Album colour gradient" },
   { value: "blur", label: "Blurred album art" },
-  { value: "ted", label: "Ted's style" },
-  { value: "ha", label: "Home Assistant theme" },
+  { value: "none", label: "None" },
 ];
 
 const THEME_OPTIONS = [

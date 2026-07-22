@@ -939,6 +939,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.274
+
+- **Music card: album-tinted frosted glass.** The frosted-glass layer over the blurred album art is now tinted with the album's average color, so the background takes on the album's hue. Background options are simplified to **Blurred album art** (default) and **None** (shows the themed card surface, like the old Home Assistant theme option); the separate gradient / Ted's-style / HA background modes were folded into this.
+
 ### v1.0.273
 
 - **Music card: layout polish.** Tightened the gap between the progress bar and the control buttons, and moved the "cast to" target badge below the volume (right-aligned). The badge is now icon-only — the device name slides in on hover, or when tapped (the flyout also shows the target name as a header).
