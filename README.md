@@ -939,6 +939,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.263
+
+- **Music card: reverted the deeper layout-pill shadow.** The heavier drop shadow from v1.0.262 made the resizer pill harder to see, so the grip is back to its original subtle shadow.
+
 ### v1.0.262
 
 - **Music card: deeper shadow behind the layout pill.** The split resizer pill's grip now casts a softer, more pronounced drop shadow so it lifts off the panes and reads clearly against any background.
