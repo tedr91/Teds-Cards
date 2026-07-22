@@ -939,6 +939,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.282
+
+- **Music card: fixed rounded corners.** The frosted/blurred background layer is now clipped to the card's actual corner radius again (a regression from the popup un-clipping change in v1.0.281).
+
 ### v1.0.281
 
 - **Music card: queue drag-to-reorder, reshuffle & polish.** The queue's `...` is now a **drag handle** — drag items to reorder them; tapping a row opens its options menu. **Hold or double-tap the shuffle button** for a **Reshuffle queue** option. In **mini** mode the target-device icon is replaced by the volume control. Popups (queue menu, target picker, reshuffle) no longer get clipped by the card edge and flip above/below to whichever side has room. The Queue/Recent tab counts are restyled to be more visible, like the Music Assistant UI.

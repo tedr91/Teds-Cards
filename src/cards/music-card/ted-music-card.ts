@@ -1778,12 +1778,14 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
       }
 
       /* Clips only the (scaled/blurred) background layers to the card's rounded
-         edge, while letting content — notably popups — overflow the card. */
+         edge, while letting content (notably popups) overflow the card. Uses the
+         card-radius var directly instead of inherit, which would resolve to the
+         ha-card slot's 0 radius for this slotted child. */
       .bg-clip {
         position: absolute;
         inset: 0;
         overflow: hidden;
-        border-radius: inherit;
+        border-radius: var(--ha-card-border-radius, 12px);
         z-index: 0;
       }
 
