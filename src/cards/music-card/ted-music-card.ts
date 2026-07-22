@@ -72,6 +72,9 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
   private _lastPlayEntity?: string;
   private _lastPlayState?: string;
 
+  /** Cast/grouping flyout open state. */
+  @state() private _castOpen = false;
+
   public constructor() {
     super();
     // Keep this device's settings live so `player_source: settings` stays in sync.
@@ -303,6 +306,80 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
     if (dur) this._call("media_seek", { seek_position: (pct / 100) * dur });
   };
 
+  // --- Favorite (Music Assistant per-player button entity) -------------------
+
+  private _reg(): Record<string, { device_id?: string | null; platform?: string } | undefined> {
+    return (
+      (this.hass as unknown as {
+        entities?: Record<string, { device_id?: string | null; platform?: string } | undefined>;
+      })?.entities ?? {}
+    );
+  }
+
+  /** The Music Assistant "favorite now playing" button entity on the resolved
+   *  player's device (MA registers one per player), or undefined if none. */
+  private _favoriteButtonId(): string | undefined {
+    const entity = this._entityId();
+    if (!entity) return undefined;
+    const reg = this._reg();
+    const dev = reg[entity]?.device_id;
+    if (!dev) return undefined;
+    return Object.keys(reg).find(
+      (id) =>
+        id.startsWith("button.") &&
+        reg[id]?.platform === "music_assistant" &&
+        reg[id]?.device_id === dev,
+    );
+  }
+
+  private _onFavorite = (): void => {
+    const btn = this._favoriteButtonId();
+    if (btn && this.hass) void this.hass.callService("button", "press", { entity_id: btn });
+  };
+
+  // --- Cast target / grouping ------------------------------------------------
+
+  private _locked(): boolean {
+    return this._config?.lock_target_device === true;
+  }
+
+  private _friendly(id: string): string {
+    const fn = this.hass?.states[id]?.attributes?.friendly_name;
+    return typeof fn === "string" ? fn : id;
+  }
+
+  /** All Music Assistant media_player entity ids. */
+  private _massPlayerIds(): string[] {
+    const reg = this._reg();
+    return Object.keys(reg)
+      .filter((id) => id.startsWith("media_player.") && reg[id]?.platform === "music_assistant")
+      .sort((a, b) => this._friendly(a).localeCompare(this._friendly(b)));
+  }
+
+  private _groupMembers(): string[] {
+    const m = this._attr<string[]>("group_members");
+    return Array.isArray(m) ? m : [];
+  }
+
+  private _toggleCast = (): void => {
+    if (!this._locked()) this._castOpen = !this._castOpen;
+  };
+
+  private _closeCast = (): void => {
+    this._castOpen = false;
+  };
+
+  private _join(id: string): void {
+    const e = this._entityId();
+    if (e && this.hass) {
+      void this.hass.callService("media_player", "join", { entity_id: e, group_members: [id] });
+    }
+  }
+
+  private _unjoin(id: string): void {
+    if (this.hass) void this.hass.callService("media_player", "unjoin", { entity_id: id });
+  }
+
   private _pickTab(id: MusicTab): void {
     this._tab = id;
     this._tabTouched = true;
@@ -418,7 +495,13 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
         </div>
 
         <div class="controls">
-          ${this._ctrl("mdi:heart-outline", "Favorite", () => undefined, false, true)}
+          ${this._ctrl(
+            "mdi:heart-outline",
+            "Favorite current track",
+            this._onFavorite,
+            false,
+            !this._favoriteButtonId(),
+          )}
           ${this._ctrl("mdi:shuffle", "Shuffle", this._onShuffle, shuffle)}
           ${this._ctrl("mdi:skip-previous", "Previous", this._onPrev)}
           ${this._ctrl(
@@ -484,15 +567,52 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
     return html`<span class="sq" title="Stream quality"><span class="sq-dot"></span>SQ</span>`;
   }
 
-  /** The "cast to" target-device chip. In Phase 2 this opens a device/grouping flyout
-   *  unless `lock_target_device` is on. */
+  /** The "cast to" target-device chip. Opens a device/grouping flyout unless
+   *  `lock_target_device` is on (then it's a static label). */
   private _renderCastChip(): TemplateResult {
     const entity = this._entityId();
-    const name =
-      (this.hass?.states[entity ?? ""]?.attributes?.friendly_name as string | undefined) ?? "";
-    return html`<div class="cast" title="Playback target">
-      <ha-icon icon="mdi:cast-variant"></ha-icon><span>${name}</span>
+    const name = entity ? this._friendly(entity) : "";
+    const locked = this._locked();
+    return html`<div class="cast-wrap">
+      <button
+        type="button"
+        class="cast ${locked ? "locked" : ""}"
+        title=${locked ? "Playback target (locked)" : "Change playback target"}
+        aria-label=${locked ? "Playback target" : "Change playback target"}
+        ?disabled=${locked}
+        @click=${this._toggleCast}
+      >
+        <ha-icon icon="mdi:cast-variant"></ha-icon><span>${name}</span>
+      </button>
+      ${this._castOpen ? this._renderCastFlyout(entity) : nothing}
     </div>`;
+  }
+
+  private _renderCastFlyout(current: string | undefined): TemplateResult {
+    const members = this._groupMembers();
+    const players = this._massPlayerIds();
+    return html`
+      <div class="cast-backdrop" @click=${this._closeCast}></div>
+      <div class="cast-flyout" role="menu">
+        ${players.map((id) => {
+          const isCurrent = id === current;
+          const grouped = members.includes(id);
+          return html`<div class="cast-row ${isCurrent ? "cur" : ""}">
+            <ha-icon icon="mdi:speaker"></ha-icon>
+            <span class="cast-name">${this._friendly(id)}</span>
+            ${isCurrent
+              ? html`<span class="cast-tag">Target</span>`
+              : html`<button
+                  type="button"
+                  class="cast-toggle ${grouped ? "on" : ""}"
+                  title=${grouped ? "Ungroup" : "Group with target"}
+                  @click=${() => (grouped ? this._unjoin(id) : this._join(id))}
+                >
+                  <ha-icon icon=${grouped ? "mdi:minus" : "mdi:plus"}></ha-icon>
+                </button>`}
+          </div>`;
+        })}
+      </div>`;
   }
 
   private _renderTabs(): TemplateResult {
@@ -773,15 +893,27 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
       }
 
       /* Cast chip */
+      .cast-wrap {
+        position: relative;
+        display: flex;
+        justify-content: center;
+        max-width: 100%;
+      }
       .cast {
         display: inline-flex;
         align-items: center;
         gap: 8px;
         padding: 6px 14px;
+        border: none;
+        cursor: pointer;
+        color: inherit;
         border-radius: var(--ted-style-pill);
         background: rgba(127, 127, 127, 0.22);
         font-size: 0.85em;
         max-width: 100%;
+      }
+      .cast.locked {
+        cursor: default;
       }
       .cast span {
         white-space: nowrap;
@@ -789,6 +921,72 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
         text-overflow: ellipsis;
       }
       .cast ha-icon {
+        --mdc-icon-size: 18px;
+      }
+      .cast-backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 8;
+      }
+      .cast-flyout {
+        position: absolute;
+        bottom: calc(100% + 8px);
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 9;
+        min-width: 220px;
+        max-width: 300px;
+        max-height: 260px;
+        overflow: auto;
+        padding: 6px;
+        border-radius: 12px;
+        background: var(--ted-style-surface, #2b2b2b);
+        color: var(--ted-style-text, #fff);
+        border: 1px solid var(--ted-style-divider, rgba(255, 255, 255, 0.12));
+        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+      }
+      .cast-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 10px;
+        border-radius: 8px;
+      }
+      .cast-row.cur {
+        background: rgba(127, 127, 127, 0.16);
+      }
+      .cast-row ha-icon {
+        --mdc-icon-size: 20px;
+        opacity: 0.85;
+      }
+      .cast-name {
+        flex: 1 1 auto;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        font-size: 0.9em;
+      }
+      .cast-tag {
+        font-size: 0.72em;
+        font-weight: 600;
+        opacity: 0.7;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+      .cast-toggle {
+        border: none;
+        cursor: pointer;
+        display: inline-flex;
+        padding: 4px;
+        border-radius: 50%;
+        background: rgba(127, 127, 127, 0.28);
+        color: inherit;
+      }
+      .cast-toggle.on {
+        background: var(--ted-style-accent);
+        color: var(--ted-style-on-accent);
+      }
+      .cast-toggle ha-icon {
         --mdc-icon-size: 18px;
       }
 
