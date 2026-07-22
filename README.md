@@ -939,6 +939,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.260
+
+- **Night mode: fixed the morning restore dimming the screen to black.** When exiting night mode, the display sometimes dimmed all the way to zero (and turned the screen light off) instead of restoring your daytime brightness — this happened when the screen light was momentarily off/unavailable at the moment night mode started. Night mode now always restores to your daytime brightness (falling back to full brightness if the saved value is missing) and never turns the screen light off.
+
 ### v1.0.259
 
 - **Music card: fixed the on-screen-keyboard flicker loop on tablets.** The embedded search box auto-focused on load, opening the keyboard, which resized the layout and stole/restored focus in an endless loop. The card now rejects programmatic autofocus of text inputs (blurring focus that arrives without a real tap/keypress), so the keyboard stays closed until you actually tap the search field.

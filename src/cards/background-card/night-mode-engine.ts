@@ -75,7 +75,6 @@ class NightModeEngine {
   private dimRaf?: number;
   private brightTimer?: number;
   private fontCleanupTimer?: number;
-  private restoreTimer?: number;
   private darkTimer?: number;
   /** Whether night mode is currently applied (in-memory; the backend snapshot mirrors it across reloads). */
   private active = false;
@@ -124,10 +123,6 @@ class NightModeEngine {
       if (this.brightTimer !== undefined) {
         clearInterval(this.brightTimer);
         this.brightTimer = undefined;
-      }
-      if (this.restoreTimer !== undefined) {
-        clearTimeout(this.restoreTimer);
-        this.restoreTimer = undefined;
       }
       if (this.darkTimer !== undefined) {
         clearTimeout(this.darkTimer);
@@ -442,28 +437,22 @@ class NightModeEngine {
     });
   }
 
-  /** Restore an entity to its captured day snapshot, fading brightness over `durMs`. For a light
-   *  we also restore color temperature (set once — kelvin can't be JS-stepped) and, if it was off
-   *  during the day, turn it back off after the fade. */
+  /** Restore an entity to its captured day snapshot, fading brightness over `durMs`. For a light we
+   *  also restore color temperature (set once — kelvin can't be JS-stepped). We NEVER restore to 0 or
+   *  turn the light off: for a screen-brightness light that would black out the display, and a
+   *  snapshot taken while the entity was momentarily off/unavailable can hold pct 0 / on:false — so
+   *  in that case we fall back to full brightness. */
   private _restoreDay(day: DaySnapshot, durMs: number): void {
     const entity = day.entity;
     if (!entity) return;
-    const domain = entity.split(".")[0];
-    if (domain === "light") {
-      if (day.on === false) {
-        this._animateBrightness(entity, 0, durMs);
-        if (this.restoreTimer !== undefined) clearTimeout(this.restoreTimer);
-        this.restoreTimer = window.setTimeout(() => {
-          void this.hass?.callService?.("light", "turn_off", { entity_id: entity });
-        }, durMs + 100);
-        return;
-      }
+    const restorePct = day.pct > 0 ? this._clampPct(day.pct) : 100;
+    if (entity.split(".")[0] === "light") {
       const data: Record<string, unknown> = { entity_id: entity };
       if (typeof day.kelvin === "number") data.color_temp_kelvin = day.kelvin;
       else if (typeof day.mired === "number") data.color_temp = day.mired;
       if (Object.keys(data).length > 1) void this.hass?.callService?.("light", "turn_on", data);
     }
-    this._animateBrightness(entity, this._clampPct(day.pct), durMs);
+    this._animateBrightness(entity, restorePct, durMs);
   }
 
   private _brightnessEntity(s: SettingsMap): string | undefined {
