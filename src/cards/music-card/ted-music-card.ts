@@ -74,6 +74,11 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
 
   /** Cast/grouping flyout open state. */
   @state() private _castOpen = false;
+  /** Volume slider flyout open state. */
+  @state() private _volOpen = false;
+  private _volHoldTimer?: number;
+  private _volHeld = false;
+  private _volClickTimer?: number;
 
   /** Music Assistant config entry id (for get_library), lazily resolved. */
   private _maConfigEntryId?: string;
@@ -323,6 +328,51 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
     this._call("volume_set", { volume_level: Math.max(0, Math.min(1, v / 100)) });
   };
 
+  // Volume button gestures: tap = open slider, hold/double-tap = mute toggle.
+  private _onVolPointerDown = (): void => {
+    this._volHeld = false;
+    this._volHoldTimer = window.setTimeout(() => {
+      this._volHeld = true;
+      this._toggleMute();
+    }, 500);
+  };
+
+  private _onVolPointerUp = (): void => {
+    if (this._volHoldTimer) {
+      clearTimeout(this._volHoldTimer);
+      this._volHoldTimer = undefined;
+    }
+  };
+
+  private _onVolClick = (): void => {
+    if (this._volHeld) {
+      this._volHeld = false;
+      return;
+    }
+    if (this._volClickTimer) return; // second click of a double — let dblclick handle it
+    this._volClickTimer = window.setTimeout(() => {
+      this._volClickTimer = undefined;
+      this._volOpen = !this._volOpen;
+    }, 220);
+  };
+
+  private _onVolDblClick = (): void => {
+    if (this._volClickTimer) {
+      clearTimeout(this._volClickTimer);
+      this._volClickTimer = undefined;
+    }
+    this._toggleMute();
+  };
+
+  private _closeVol = (): void => {
+    this._volOpen = false;
+  };
+
+  private _toggleMute(): void {
+    const muted = !!this._attr<boolean>("is_volume_muted");
+    this._call("volume_mute", { is_volume_muted: !muted });
+  }
+
   private _onSeek = (e: Event): void => {
     const pct = Number((e.target as HTMLInputElement).value);
     const dur = this._duration();
@@ -347,12 +397,18 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
     const reg = this._reg();
     const dev = reg[entity]?.device_id;
     if (!dev) return undefined;
-    return Object.keys(reg).find(
+    const buttons = Object.keys(reg).filter(
       (id) =>
         id.startsWith("button.") &&
         reg[id]?.platform === "music_assistant" &&
         reg[id]?.device_id === dev,
     );
+    return buttons.find((id) => /favorite|favourite|like/.test(id)) ?? buttons[0];
+  }
+
+  /** Whether the currently-playing track is favorited (from the loaded queue, if any). */
+  private _isCurrentFavorite(): boolean {
+    return !!this._queue?.[this._queueCurrentIdx]?.favorite;
   }
 
   private _onFavorite = (): void => {
@@ -535,6 +591,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
         image: typeof it.media_image === "string" && it.media_image ? it.media_image : undefined,
         uri: typeof it.media_content_id === "string" ? it.media_content_id : undefined,
         duration: typeof it.duration === "number" ? it.duration : undefined,
+        favorite: !!it.favorite,
       }));
       const cur = this._attr<string>("media_content_id");
       let idx = items.findIndex((x) => x.uri && x.uri === cur);
@@ -747,6 +804,9 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
     const playing = this._isPlaying();
     const volLevel = this._attr<number>("volume_level");
     const volPct = typeof volLevel === "number" ? Math.round(volLevel * 100) : 0;
+    const muted = !!this._attr<boolean>("is_volume_muted");
+    const favBtn = !!this._favoriteButtonId();
+    const fav = this._isCurrentFavorite();
 
     return html`
       <div class="player">
@@ -757,7 +817,19 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
         </div>
 
         <div class="details">
-          <div class="title" title=${title}>${title}</div>
+          <div class="title-row">
+            <span class="title" title=${title}>${title}</span>
+            <button
+              type="button"
+              class="fav ${fav ? "on" : ""}"
+              title="Favorite current track"
+              aria-label="Favorite current track"
+              ?disabled=${!favBtn}
+              @click=${this._onFavorite}
+            >
+              <ha-icon icon=${fav ? "mdi:heart" : "mdi:heart-outline"}></ha-icon>
+            </button>
+          </div>
           <div class="sub">
             <span class="artist">${artist}</span>${showAlbum
               ? html` <span class="album">(${album})</span>`
@@ -781,13 +853,6 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
         </div>
 
         <div class="controls">
-          ${this._ctrl(
-            "mdi:heart-outline",
-            "Favorite current track",
-            this._onFavorite,
-            false,
-            !this._favoriteButtonId(),
-          )}
           ${this._ctrl("mdi:shuffle", "Shuffle", this._onShuffle, shuffle)}
           ${this._ctrl("mdi:skip-previous", "Previous", this._onPrev)}
           ${this._ctrl(
@@ -805,25 +870,56 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
             this._onRepeat,
             repeat !== "off",
           )}
-        </div>
-
-        <div class="volume">
-          <ha-icon icon="mdi:volume-high"></ha-icon>
-          <input
-            class="vol"
-            type="range"
-            min="0"
-            max="100"
-            .value=${String(volPct)}
-            @change=${this._onVolume}
-            aria-label="Volume"
-          />
-          <span class="vol-num">${volPct}</span>
+          ${this._renderVolumeControl(volPct, muted)}
         </div>
 
         ${this._renderCastChip()}
       </div>
     `;
+  }
+
+  /** Volume button in the controls row: tap opens a slider, double-tap/hold mutes. */
+  private _renderVolumeControl(volPct: number, muted: boolean): TemplateResult {
+    const icon =
+      muted || volPct === 0
+        ? "mdi:volume-off"
+        : volPct < 40
+          ? "mdi:volume-low"
+          : volPct < 75
+            ? "mdi:volume-medium"
+            : "mdi:volume-high";
+    const tip = muted ? "Volume - Muted" : `Volume - ${volPct}%`;
+    return html`<div class="vol-wrap">
+      <button
+        type="button"
+        class="ctrl ${muted ? "active" : ""}"
+        title=${tip}
+        aria-label=${tip}
+        @pointerdown=${this._onVolPointerDown}
+        @pointerup=${this._onVolPointerUp}
+        @pointercancel=${this._onVolPointerUp}
+        @click=${this._onVolClick}
+        @dblclick=${this._onVolDblClick}
+      >
+        <ha-icon icon=${icon}></ha-icon>
+      </button>
+      ${this._volOpen
+        ? html`<div class="vol-backdrop" @click=${this._closeVol}></div>
+            <div class="vol-flyout">
+              <input
+                class="vol"
+                type="range"
+                min="0"
+                max="100"
+                .value=${String(volPct)}
+                @input=${this._onVolume}
+                @change=${this._onVolume}
+                aria-label="Volume"
+              />
+              <span class="vol-num">${volPct}</span>
+            </div>`
+        : nothing}
+    </div>`;
   }
 
   /** Compact one-row player (mode: mini). */
@@ -1201,28 +1297,44 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
         padding: 18px 20px;
         box-sizing: border-box;
         color: var(--music-fg, var(--ted-style-text));
-        text-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
       }
-      /* Lift all content off the (possibly light) background for legibility. */
-      .content ha-icon {
-        filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5));
+      /* Lift text/glyphs off the (possibly light) background — same approach as the
+         Clock-Weather card: a drop shadow whose opacity scales with the text
+         lightness (relative-color syntax), so it fades out for dark text. */
+      .title,
+      .sub,
+      .times,
+      .tabbtn,
+      .qtitle,
+      .qsub,
+      .row-title,
+      .row-sub,
+      .lrc,
+      .vol-num,
+      .placeholder,
+      .mini-title,
+      .mini-artist,
+      .content ha-icon,
+      .thumb {
+        filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.28));
+        filter: drop-shadow(0 1px 2px hsl(from currentColor 0 0% 0% / max(0, (l - 50) * 0.004)));
       }
-      .content img {
-        filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.4));
-      }
-      input[type="range"] {
-        filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.35));
-      }
-      /* ...but popover menus have their own solid surfaces — keep them crisp. */
+      /* Badges: shadow the PILL itself, not the text/icon inside it. Popover menus
+         and flyouts have their own solid surfaces, so keep their content crisp. */
+      .cast,
+      .cast *,
+      .np-pill,
       .qmenu,
       .qmenu *,
       .cast-flyout,
-      .cast-flyout * {
-        text-shadow: none;
-      }
-      .qmenu ha-icon,
-      .cast-flyout ha-icon {
+      .cast-flyout *,
+      .vol-flyout,
+      .vol-flyout * {
         filter: none;
+      }
+      .cast,
+      .np-pill {
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
       }
       .content.idle .tabs {
         flex: 1 1 0;
@@ -1246,17 +1358,25 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
       /* Album art */
       .art-wrap {
         width: 100%;
+        flex: 1 1 auto;
+        min-height: 0;
         display: flex;
+        align-items: center;
         justify-content: center;
       }
       .art {
-        width: min(56%, 240px);
-        aspect-ratio: 1 / 1;
-        object-fit: cover;
+        max-width: 100%;
+        max-height: 100%;
+        width: auto;
+        height: auto;
+        object-fit: contain;
         border-radius: 12px;
         box-shadow: 0 10px 26px rgba(0, 0, 0, 0.4);
       }
       .art-empty {
+        width: 40%;
+        aspect-ratio: 1 / 1;
+        max-height: 100%;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -1272,6 +1392,11 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
         width: 100%;
         text-align: left;
       }
+      .title-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
       .title {
         font-size: 1.5em;
         font-weight: 700;
@@ -1279,6 +1404,32 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
+        flex: 0 1 auto;
+        min-width: 0;
+      }
+      .fav {
+        flex: 0 0 auto;
+        border: none;
+        background: none;
+        color: inherit;
+        cursor: pointer;
+        display: inline-flex;
+        padding: 2px;
+        opacity: 0.9;
+      }
+      .fav:hover {
+        opacity: 1;
+      }
+      .fav[disabled] {
+        opacity: 0.4;
+        cursor: default;
+      }
+      .fav.on {
+        color: #ff5c7a;
+        opacity: 1;
+      }
+      .fav ha-icon {
+        --mdc-icon-size: 20px;
       }
       .sub {
         margin-top: 2px;
@@ -1357,6 +1508,37 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
         opacity: 0.8;
         min-width: 1.6em;
         text-align: right;
+      }
+
+      /* Volume flyout (opened from the controls-row volume button) */
+      .vol-wrap {
+        position: relative;
+        display: inline-flex;
+      }
+      .vol-backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 8;
+      }
+      .vol-flyout {
+        position: absolute;
+        bottom: calc(100% + 8px);
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 9;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 14px;
+        min-width: 190px;
+        border-radius: 12px;
+        background: var(--ted-style-surface, #2b2b2b);
+        color: var(--ted-style-text, #fff);
+        border: 1px solid var(--ted-style-divider, rgba(255, 255, 255, 0.12));
+        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+      }
+      .vol-flyout .vol {
+        width: 130px;
       }
 
       /* Range inputs */
@@ -1926,6 +2108,7 @@ interface QueueItem {
   image?: string;
   uri?: string;
   duration?: number;
+  favorite?: boolean;
 }
 
 /** A single synced lyric line. */

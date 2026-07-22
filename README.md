@@ -939,6 +939,11 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.268
+
+- **Music card: player controls refresh.** The favorite heart moved next to the song title and is functional (presses the Music Assistant favorite button, and fills in when the track is favorited). Volume is now an icon at the end of the controls row — tap to open a slider, double-tap or hold to mute, with a "Volume - X%" tooltip. The album art auto-resizes to fill the available space.
+- **Music card: shadows match the rest of Ted's Cards.** Text and glyphs now use the Clock-Weather-style drop shadow (opacity scales with text lightness) instead of a flat text-shadow, and the "cast to" / "now playing" badges shadow the pill itself rather than the text inside it.
+
 ### v1.0.267
 
 - **Music card: default background is now Blurred album art.** New cards default to the blurred-artwork background instead of the album-colour gradient (still selectable in the editor).
