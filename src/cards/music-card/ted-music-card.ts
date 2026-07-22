@@ -743,7 +743,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
     if (this._config?.mode === "mini") {
       return html`
         <ha-card class="ted-card ${themeClass}" style="--music-fg:${fg}">
-          ${this._renderBackground(mode)}
+          ${this._renderBackground(mode)}${this._renderFrost(mode)}
           <div class="content mini-content">${this._renderMini()}</div>
         </ha-card>
       `;
@@ -758,13 +758,18 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
 
     return html`
       <ha-card class="ted-card ${themeClass}" style="--music-fg:${fg}">
-        ${this._renderBackground(mode)}
+        ${this._renderBackground(mode)}${this._renderFrost(mode)}
         <div class="content">
           ${this._renderPlayer()}
           <div class="tabs">${this._renderTabs()}</div>
         </div>
       </ha-card>
     `;
+  }
+
+  /** A card-wide frosted-glass layer over image backgrounds so content stands out. */
+  private _renderFrost(mode: MusicBackgroundMode): TemplateResult | typeof nothing {
+    return mode === "blur" || mode === "avg_gradient" ? html`<div class="frost"></div>` : nothing;
   }
 
   private _renderBackground(mode: MusicBackgroundMode): TemplateResult {
@@ -1150,7 +1155,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
       ${items.map((it, i) => {
         const isCurrent = !recent && i === 0;
         const label = it.title;
-        const sub = [it.artist, it.album].filter(Boolean).join(" - ");
+        const sub = it.artist;
         return html`<div class="qrow ${isCurrent ? "cur" : ""}">
           ${it.image
             ? html`<img class="thumb" src=${it.image} alt="" />`
@@ -1285,6 +1290,15 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
       }
       .bg-blur-scrim {
         background: rgba(0, 0, 0, 0.28);
+      }
+      /* Card-wide frosted glass over image backgrounds so content stands out. */
+      .frost {
+        position: absolute;
+        inset: 0;
+        z-index: 0;
+        background: rgba(16, 16, 20, 0.32);
+        -webkit-backdrop-filter: blur(12px) saturate(1.1);
+        backdrop-filter: blur(12px) saturate(1.1);
       }
 
       /* Layout */
@@ -1817,7 +1831,10 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
         background: rgba(127, 127, 127, 0.12);
       }
       .qrow.cur {
-        background: rgba(127, 127, 127, 0.16);
+        background: rgba(255, 255, 255, 0.12);
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        -webkit-backdrop-filter: blur(8px) saturate(1.3);
+        backdrop-filter: blur(8px) saturate(1.3);
       }
       .qmain {
         flex: 1 1 auto;

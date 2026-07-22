@@ -939,6 +939,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.271
+
+- **Music card: frosted-glass background.** Image backgrounds (blurred art / album-colour gradient) now get a card-wide frosted-glass overlay so the content stands out, and the now-playing queue row has its own lighter frosted panel so it still pops. Queue rows now show just the **Artist** on the second line.
+
 ### v1.0.270
 
 - **Music card: cleanup + fixes.** Removed the legacy wrapper card (`custom:ted-music-card-old`) now that the native player is complete. In the editor, the entity picker appears immediately below the Player Source when "This card" is selected. And the album art now sizes into only the leftover space, so it can never grow large enough to push the controls off the card.
