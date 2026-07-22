@@ -20,7 +20,6 @@ import "./cards/spacer-card/ted-spacer-card";
 import "./cards/camera-card/ted-camera-card";
 import "./cards/climate-card/ted-climate-card";
 import "./cards/music-card/ted-music-card";
-import "./cards/music-card-old/ted-music-card";
 import "./cards/calendar-card/ted-calendar-card";
 import "./cards/navbar-card/ted-navbar-card";
 import "./cards/alarm-card/ted-alarm-card";

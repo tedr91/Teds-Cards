@@ -39,8 +39,11 @@ export class TedMusicCardEditor extends LitElement implements LovelaceCardEditor
   protected render(): TemplateResult | typeof nothing {
     if (!this.hass || !this._config) return nothing;
     const source: MusicPlayerSource = this._config.player_source ?? "settings";
-    const data = {
-      player_source: source,
+    const sourceData = { player_source: source };
+    const sourceSchema = [
+      { name: "player_source", selector: { select: { mode: "dropdown", options: SOURCE_OPTIONS } } },
+    ];
+    const restData = {
       mode: this._config.mode ?? "full",
       background_mode: this._config.background_mode ?? "blur",
       theme: this._config.theme ?? "ted-style",
@@ -48,8 +51,7 @@ export class TedMusicCardEditor extends LitElement implements LovelaceCardEditor
       lock_target_device: this._config.lock_target_device ?? false,
       apply_music_volume: this._config.apply_music_volume !== false,
     };
-    const schema = [
-      { name: "player_source", selector: { select: { mode: "dropdown", options: SOURCE_OPTIONS } } },
+    const restSchema = [
       {
         type: "grid",
         name: "",
@@ -79,8 +81,8 @@ export class TedMusicCardEditor extends LitElement implements LovelaceCardEditor
       <div class="editor">
         <ha-form
           .hass=${this.hass}
-          .data=${data}
-          .schema=${schema}
+          .data=${sourceData}
+          .schema=${sourceSchema}
           .computeLabel=${this._computeLabel}
           .computeHelper=${this._computeHelper}
           @value-changed=${this._valueChanged}
@@ -98,6 +100,14 @@ export class TedMusicCardEditor extends LitElement implements LovelaceCardEditor
               allow-custom-entity
               @value-changed=${this._entityChanged}
             ></ha-entity-picker>`}
+        <ha-form
+          .hass=${this.hass}
+          .data=${restData}
+          .schema=${restSchema}
+          .computeLabel=${this._computeLabel}
+          .computeHelper=${this._computeHelper}
+          @value-changed=${this._valueChanged}
+        ></ha-form>
       </div>
     `;
   }

@@ -939,6 +939,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.270
+
+- **Music card: cleanup + fixes.** Removed the legacy wrapper card (`custom:ted-music-card-old`) now that the native player is complete. In the editor, the entity picker appears immediately below the Player Source when "This card" is selected. And the album art now sizes into only the leftover space, so it can never grow large enough to push the controls off the card.
+
 ### v1.0.269
 
 - **Music card: volume tweaks.** The volume icon moved up into the title row (right-aligned, next to the favorite heart), and its level thresholds were retuned — low 1–9%, medium 10–49%, high 50%+.

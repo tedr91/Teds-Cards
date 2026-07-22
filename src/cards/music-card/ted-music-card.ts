@@ -1342,6 +1342,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
       .player {
         flex: 1 1 0;
         min-width: 0;
+        min-height: 0;
         display: flex;
         flex-direction: column;
         align-items: center;
@@ -1358,8 +1359,9 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
       /* Album art */
       .art-wrap {
         width: 100%;
-        flex: 1 1 auto;
+        flex: 1 1 0;
         min-height: 0;
+        overflow: hidden;
         display: flex;
         align-items: center;
         justify-content: center;
