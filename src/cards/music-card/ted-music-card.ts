@@ -125,10 +125,13 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
   }
 
   public getCardSize(): number {
-    return 12;
+    return this._config?.mode === "mini" ? 2 : 12;
   }
 
   public getGridOptions(): GridOptions {
+    if (this._config?.mode === "mini") {
+      return { columns: 12, rows: 1, min_columns: 6, min_rows: 1 };
+    }
     return { columns: 12, rows: 6, min_columns: 6, min_rows: 4 };
   }
 
@@ -454,7 +457,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
   }
 
   private _orchestrateTabData(): void {
-    if (!this.hass) return;
+    if (!this.hass || this._config?.mode === "mini") return;
     if (this._tab === "media") void this._ensureMedia();
     else if (this._tab === "queue" || this._tab === "recent") void this._ensureQueue();
     else if (this._tab === "lyrics") void this._ensureLyrics();
@@ -661,15 +664,24 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
     }
 
     const hasMedia = this._hasMedia();
+    const fg =
+      mode === "avg_gradient" || mode === "blur" ? (this._avgFg ?? "#ffffff") : "var(--ted-style-text)";
+
+    if (this._config?.mode === "mini") {
+      return html`
+        <ha-card class="ted-card ${themeClass}" style="--music-fg:${fg}">
+          ${this._renderBackground(mode)}
+          <div class="content mini-content">${this._renderMini()}</div>
+        </ha-card>
+      `;
+    }
+
     const tabs = this._visibleTabs();
     if (!tabs.some((t) => t.id === this._tab)) {
       this._tab = "media";
     } else if (!this._tabTouched) {
       this._tab = hasMedia && this._massQueueAvailable() ? "queue" : "media";
     }
-
-    const fg =
-      mode === "avg_gradient" || mode === "blur" ? (this._avgFg ?? "#ffffff") : "var(--ted-style-text)";
 
     return html`
       <ha-card class="ted-card ${themeClass}" style="--music-fg:${fg}">
@@ -796,6 +808,89 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
 
         ${this._renderCastChip()}
       </div>
+    `;
+  }
+
+  /** Compact one-row player (mode: mini). */
+  private _renderMini(): TemplateResult {
+    const art = this._artUrl();
+    const title = this._title() ?? "Not playing";
+    const artist = this._attr<string>("media_artist") ?? "";
+    const dur = this._duration();
+    const pct = dur ? (this._elapsed() / dur) * 100 : 0;
+    const shuffle = !!this._attr<boolean>("shuffle");
+    const repeat = this._attr<string>("repeat") ?? "off";
+    const playing = this._isPlaying();
+    const volLevel = this._attr<number>("volume_level");
+    const volPct = typeof volLevel === "number" ? Math.round(volLevel * 100) : 0;
+    const entity = this._entityId();
+    const locked = this._locked();
+    return html`
+      <div class="mini">
+        <div class="mini-art-wrap">
+          ${art
+            ? html`<img class="mini-art" src=${art} alt="" />`
+            : html`<div class="mini-art ph"><ha-icon icon="mdi:music"></ha-icon></div>`}
+        </div>
+        <div class="mini-meta">
+          <div class="mini-title one">${title}</div>
+          <div class="mini-artist one">${artist}</div>
+        </div>
+        <div class="mini-controls">
+          ${this._ctrl("mdi:shuffle", "Shuffle", this._onShuffle, shuffle)}
+          ${this._ctrl("mdi:skip-previous", "Previous", this._onPrev)}
+          ${this._ctrl(
+            playing ? "mdi:pause-circle" : "mdi:play-circle",
+            playing ? "Pause" : "Play",
+            this._onPlayPause,
+            false,
+            false,
+            true,
+          )}
+          ${this._ctrl("mdi:skip-next", "Next", this._onNext)}
+          ${this._ctrl(
+            repeat === "one" ? "mdi:repeat-once" : "mdi:repeat",
+            `Repeat: ${repeat}`,
+            this._onRepeat,
+            repeat !== "off",
+          )}
+        </div>
+        <div class="mini-right">
+          <div class="cast-wrap">
+            <button
+              type="button"
+              class="ctrl ${locked ? "" : ""}"
+              title=${locked ? "Playback target (locked)" : "Change playback target"}
+              aria-label="Playback target"
+              ?disabled=${locked}
+              @click=${this._toggleCast}
+            >
+              <ha-icon icon="mdi:cast-variant"></ha-icon>
+            </button>
+            ${this._castOpen ? this._renderCastFlyout(entity) : nothing}
+          </div>
+          <ha-icon class="mini-vol-icon" icon="mdi:volume-high"></ha-icon>
+          <input
+            class="vol mini-vol"
+            type="range"
+            min="0"
+            max="100"
+            .value=${String(volPct)}
+            @change=${this._onVolume}
+            aria-label="Volume"
+          />
+          <span class="vol-num">${volPct}</span>
+        </div>
+      </div>
+      <input
+        class="seek mini-seek"
+        type="range"
+        min="0"
+        max="100"
+        .value=${String(pct)}
+        @change=${this._onSeek}
+        aria-label="Seek"
+      />
     `;
   }
 
@@ -1552,6 +1647,83 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
         }
         .player {
           flex: 0 0 auto;
+        }
+      }
+
+      /* Mini player (mode: mini) */
+      .one {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .mini-content {
+        display: block;
+        padding: 10px 16px;
+      }
+      .mini {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+      }
+      .mini-art {
+        width: 48px;
+        height: 48px;
+        border-radius: 6px;
+        object-fit: cover;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+      }
+      .mini-art.ph {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(127, 127, 127, 0.25);
+      }
+      .mini-art.ph ha-icon {
+        --mdc-icon-size: 24px;
+      }
+      .mini-meta {
+        flex: 1 1 0;
+        min-width: 0;
+      }
+      .mini-title {
+        font-weight: 700;
+      }
+      .mini-artist {
+        font-size: 0.85em;
+        opacity: 0.72;
+      }
+      .mini-controls,
+      .mini-right {
+        flex: 0 0 auto;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
+      .mini-controls .ctrl ha-icon {
+        --mdc-icon-size: 22px;
+      }
+      .mini-controls .ctrl.primary ha-icon {
+        --mdc-icon-size: 40px;
+      }
+      .mini-vol-icon {
+        --mdc-icon-size: 18px;
+        opacity: 0.85;
+      }
+      .mini-vol {
+        width: 84px;
+      }
+      .mini-seek {
+        margin-top: 8px;
+        height: 3px;
+      }
+      @container (max-width: 620px) {
+        .mini-meta {
+          flex: 1 1 60px;
+        }
+        .mini-vol,
+        .mini-vol-icon,
+        .mini-right .vol-num {
+          display: none;
         }
       }
     `,

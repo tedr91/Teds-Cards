@@ -21,12 +21,17 @@ export type MusicBackgroundMode = "avg_gradient" | "blur" | "ted" | "ha";
 /** The tabs shown on the right side of the full player. */
 export type MusicTab = "media" | "queue" | "recent" | "lyrics";
 
+/** Player layout. `full` = the two-pane player + tabs; `mini` = a compact one-row bar. */
+export type MusicMode = "full" | "mini";
+
 export interface MusicCardConfig extends LovelaceCardConfig {
   type: string;
   /** Explicit media_player entity. Wins over the Settings value; required for `player_source: config`. */
   entity?: string;
   /** Where the player entity comes from. Defaults to `settings`. */
   player_source?: MusicPlayerSource;
+  /** Player layout. Default `full`. */
+  mode?: MusicMode;
   /** When the resolved entity is not a Music Assistant player, try to find its
    *  Music Assistant counterpart at runtime (by device, then by name). Default true. */
   auto_resolve_mass_player?: boolean;

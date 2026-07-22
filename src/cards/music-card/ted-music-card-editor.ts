@@ -10,6 +10,11 @@ const SOURCE_OPTIONS = [
   { value: "config", label: "This card (choose below)" },
 ];
 
+const MODE_OPTIONS = [
+  { value: "full", label: "Full player" },
+  { value: "mini", label: "Mini player" },
+];
+
 const BACKGROUND_OPTIONS = [
   { value: "avg_gradient", label: "Album colour gradient" },
   { value: "blur", label: "Blurred album art" },
@@ -36,6 +41,7 @@ export class TedMusicCardEditor extends LitElement implements LovelaceCardEditor
     const source: MusicPlayerSource = this._config.player_source ?? "settings";
     const data = {
       player_source: source,
+      mode: this._config.mode ?? "full",
       background_mode: this._config.background_mode ?? "avg_gradient",
       theme: this._config.theme ?? "ted-style",
       auto_resolve_mass_player: this._config.auto_resolve_mass_player !== false,
@@ -49,6 +55,7 @@ export class TedMusicCardEditor extends LitElement implements LovelaceCardEditor
         name: "",
         column_min_width: "160px",
         schema: [
+          { name: "mode", selector: { select: { mode: "dropdown", options: MODE_OPTIONS } } },
           {
             name: "background_mode",
             selector: { select: { mode: "dropdown", options: BACKGROUND_OPTIONS } },
@@ -116,6 +123,8 @@ export class TedMusicCardEditor extends LitElement implements LovelaceCardEditor
     switch (schema.name) {
       case "player_source":
         return "Player source";
+      case "mode":
+        return "Layout";
       case "background_mode":
         return "Background";
       case "theme":
