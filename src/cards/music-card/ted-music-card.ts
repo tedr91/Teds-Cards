@@ -68,6 +68,11 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
   @state() private _tick = 0;
   private _progressTimer?: number;
 
+  /** When the vertical album art would be no taller than the title/artist rows,
+   *  switch to a horizontal header (art to the left of the details). */
+  @state() private _compact = false;
+  private _ro?: ResizeObserver;
+
   /** For apply_music_volume: the resolved player's last observed entity/state. */
   private _lastPlayEntity?: string;
   private _lastPlayState?: string;
@@ -110,6 +115,8 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
       const s = this._stateObj();
       if (s?.state === "playing") this._tick++;
     }, 1000);
+    this._ro ??= new ResizeObserver(() => this._measureLayout());
+    this._ro.observe(this);
   }
 
   public disconnectedCallback(): void {
@@ -118,6 +125,30 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
       clearInterval(this._progressTimer);
       this._progressTimer = undefined;
     }
+    this._ro?.disconnect();
+    this._ro = undefined;
+  }
+
+  /** Decide vertical vs. horizontal (compact) player layout by comparing the album
+   *  art's would-be height to the title/artist block. Hysteresis avoids flapping. */
+  private _measureLayout(): void {
+    if (this._config?.mode === "mini") return;
+    const root = this.renderRoot as ShadowRoot | undefined;
+    const player = root?.querySelector(".player") as HTMLElement | null;
+    const details = root?.querySelector(".details") as HTMLElement | null;
+    if (!player || !details) return;
+    const progress = root?.querySelector(".progress") as HTMLElement | null;
+    const controls = root?.querySelector(".controls") as HTMLElement | null;
+    const cast = root?.querySelector(".cast-wrap") as HTMLElement | null;
+    const hd = details.offsetHeight;
+    const hRest =
+      (progress?.offsetHeight ?? 0) + (controls?.offsetHeight ?? 0) + (cast?.offsetHeight ?? 0);
+    const gaps = 12 * 4;
+    // Height the album art would occupy in the vertical layout.
+    const artAvail = player.clientHeight - hd - hRest - gaps;
+    if (artAvail < hd - 8) this._compact = true;
+    else if (artAvail > hd + 8) this._compact = false;
+    if (this._compact) player.style.setProperty("--art-sq", `${hd}px`);
   }
 
   public setConfig(config: MusicCardConfig): void {
@@ -150,6 +181,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
     }
     this._orchestrateTabData();
     this._scrollActiveLyric();
+    this._measureLayout();
   }
 
   // --- Entity resolution -----------------------------------------------------
@@ -438,6 +470,12 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
   private _groupMembers(): string[] {
     const m = this._attr<string[]>("group_members");
     return Array.isArray(m) ? m : [];
+  }
+
+  /** Whether the resolved player supports grouping (MediaPlayerEntityFeature.GROUPING = 524288). */
+  private _supportsGrouping(): boolean {
+    const sf = Number(this._attr<number>("supported_features") ?? 0);
+    return (sf & 524288) !== 0;
   }
 
   private _toggleCast = (): void => {
@@ -813,35 +851,38 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
     const favBtn = !!this._favoriteButtonId();
     const fav = this._isCurrentFavorite();
 
-    return html`
-      <div class="player">
-        <div class="art-wrap">
-          ${art
-            ? html`<img class="art" src=${art} alt="" />`
-            : html`<div class="art art-empty"><ha-icon icon="mdi:music"></ha-icon></div>`}
-        </div>
+    const artTpl = html`<div class="art-wrap">
+      ${art
+        ? html`<img class="art" src=${art} alt="" />`
+        : html`<div class="art art-empty"><ha-icon icon="mdi:music"></ha-icon></div>`}
+    </div>`;
+    const detailsTpl = html`<div class="details">
+      <div class="title-row">
+        <span class="title" title=${title}>${title}</span>
+        <button
+          type="button"
+          class="fav ${fav ? "on" : ""}"
+          title="Favorite current track"
+          aria-label="Favorite current track"
+          ?disabled=${!favBtn}
+          @click=${this._onFavorite}
+        >
+          <ha-icon icon=${fav ? "mdi:heart" : "mdi:heart-outline"}></ha-icon>
+        </button>
+        ${this._renderVolumeControl(volPct, muted)}
+      </div>
+      <div class="sub">
+        <span class="artist">${artist}</span>${showAlbum
+          ? html` <span class="album">(${album})</span>`
+          : nothing}
+      </div>
+    </div>`;
 
-        <div class="details">
-          <div class="title-row">
-            <span class="title" title=${title}>${title}</span>
-            <button
-              type="button"
-              class="fav ${fav ? "on" : ""}"
-              title="Favorite current track"
-              aria-label="Favorite current track"
-              ?disabled=${!favBtn}
-              @click=${this._onFavorite}
-            >
-              <ha-icon icon=${fav ? "mdi:heart" : "mdi:heart-outline"}></ha-icon>
-            </button>
-            ${this._renderVolumeControl(volPct, muted)}
-          </div>
-          <div class="sub">
-            <span class="artist">${artist}</span>${showAlbum
-              ? html` <span class="album">(${album})</span>`
-              : nothing}
-          </div>
-        </div>
+    return html`
+      <div class="player ${this._compact ? "compact" : ""}">
+        ${this._compact
+          ? html`<div class="header">${artTpl}${detailsTpl}</div>`
+          : html`${artTpl}${detailsTpl}`}
 
         <div class="progress">
           <input
@@ -1054,6 +1095,13 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
   }
 
   private _renderCastFlyout(current: string | undefined): TemplateResult {
+    if (!this._supportsGrouping()) {
+      return html`
+        <div class="cast-backdrop" @click=${this._closeCast}></div>
+        <div class="cast-flyout" role="menu">
+          <div class="cast-note">This player can't be grouped with other speakers.</div>
+        </div>`;
+    }
     const members = this._groupMembers();
     const players = this._massPlayerIds();
     return html`
@@ -1375,7 +1423,6 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
         width: 100%;
         flex: 1 1 0;
         min-height: 0;
-        overflow: hidden;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -1398,6 +1445,34 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
         justify-content: center;
         background: rgba(127, 127, 127, 0.25);
         color: var(--music-fg, #fff);
+      }
+
+      /* Compact: album art becomes a square to the LEFT of the title/artist. */
+      .player.compact {
+        justify-content: center;
+      }
+      .player.compact .header {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        width: 100%;
+        min-height: 0;
+      }
+      .player.compact .header .art-wrap {
+        flex: 0 0 auto;
+        width: var(--art-sq, 72px);
+        height: var(--art-sq, 72px);
+      }
+      .player.compact .header .art {
+        height: 100%;
+        width: 100%;
+        max-width: none;
+        max-height: none;
+        object-fit: cover;
+      }
+      .player.compact .header .details {
+        flex: 1 1 auto;
+        min-width: 0;
       }
       .art-empty ha-icon {
         --mdc-icon-size: 44px;
@@ -1651,6 +1726,12 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
       }
       .cast-row.cur {
         background: rgba(127, 127, 127, 0.16);
+      }
+      .cast-note {
+        padding: 10px 12px;
+        font-size: 0.88em;
+        opacity: 0.8;
+        line-height: 1.4;
       }
       .cast-row ha-icon {
         --mdc-icon-size: 20px;

@@ -939,6 +939,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.272
+
+- **Music card: adaptive art layout + fixes.** On short cards, when the album art would be no taller than the title/artist rows, the player switches to a horizontal header — the art becomes a square to the left of the title/artist (which shrink to fit). The album art's drop shadow is no longer clipped at the bottom, and the "cast to" flyout now checks whether the player supports grouping and shows a note instead of a broken add-list when it doesn't.
+
 ### v1.0.271
 
 - **Music card: frosted-glass background.** Image backgrounds (blurred art / album-colour gradient) now get a card-wide frosted-glass overlay so the content stands out, and the now-playing queue row has its own lighter frosted panel so it still pops. Queue rows now show just the **Artist** on the second line.
