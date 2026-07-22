@@ -939,6 +939,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.284
+
+- **Music card: Media start feedback + matching art corners.** Tapping a Media-tab item now shows a **LOADING** pill (styled like the NOW PLAYING badge) with a spinner on that row until playback starts, so there's instant feedback during the start-up gap. The album art corners now use the card's own corner radius (in both full and mini modes).
+
 ### v1.0.283
 
 - **Shared collapsing tab strip + music tab overflow.** The overflow "collapse tabs into a … menu" logic is now a shared helper used by the Tab card, Settings card, and (new) the Music card — the Music card's Media/Queue/Recent/Lyrics tabs now collapse into a "…" menu when they don't fit.

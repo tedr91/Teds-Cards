@@ -201,6 +201,10 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
   /** Media tab (playlists). */
   @state() private _playlists?: MediaItem[];
   private _mediaLoading = false;
+  /** Media tab: the item uri currently being started (shows a loading indicator on its row). */
+  @state() private _mediaStartingUri?: string;
+  private _mediaStartingPrevId?: string;
+  private _mediaStartingTimer?: number;
   /** Queue/Recent tab data + the currently-playing index within it. */
   @state() private _queue?: QueueItem[];
   private _queueCurrentIdx = 0;
@@ -319,6 +323,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
     if (changed.has("hass")) {
       this._maybeApplyStartVolume();
       this._updateAvgColor(this._artUrl());
+      this._clearMediaStartingIfPlaying();
       if (this.hass) void warmMassProviders(this.hass).then((c) => c && this.requestUpdate());
     }
     this._orchestrateTabData();
@@ -1084,13 +1089,30 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
 
   private _playMedia(uri: string): void {
     const e = this._entityId();
-    if (e && this.hass && uri) {
-      void this.hass.callService("music_assistant", "play_media", {
-        entity_id: e,
-        media_id: uri,
-        media_type: "playlist",
-        enqueue: "replace",
-      });
+    if (!e || !this.hass || !uri) return;
+    // Show a loading indicator on the tapped row until playback actually starts (the
+    // current track changes) or a safety timeout elapses.
+    this._mediaStartingUri = uri;
+    this._mediaStartingPrevId = this._attr<string>("media_content_id") ?? "";
+    window.clearTimeout(this._mediaStartingTimer);
+    this._mediaStartingTimer = window.setTimeout(() => {
+      this._mediaStartingUri = undefined;
+    }, 15000);
+    void this.hass.callService("music_assistant", "play_media", {
+      entity_id: e,
+      media_id: uri,
+      media_type: "playlist",
+      enqueue: "replace",
+    });
+  }
+
+  /** Clear the Media-tab loading indicator once playback of the started item begins. */
+  private _clearMediaStartingIfPlaying(): void {
+    if (!this._mediaStartingUri) return;
+    const cur = this._attr<string>("media_content_id") ?? "";
+    if (cur !== (this._mediaStartingPrevId ?? "")) {
+      this._mediaStartingUri = undefined;
+      window.clearTimeout(this._mediaStartingTimer);
     }
   }
 
@@ -1734,15 +1756,19 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
     if (!this._playlists) return this._loadingBody();
     if (!this._playlists.length) return this._emptyBody(ic(IC.playlistRemove), "No playlists");
     return html`<div class="list">
-      ${this._playlists.map(
-        (p) => html`<button type="button" class="row" @click=${() => this._playMedia(p.uri)}>
+      ${this._playlists.map((p) => {
+        const starting = this._mediaStartingUri === p.uri;
+        return html`<button type="button" class="row" @click=${() => this._playMedia(p.uri)}>
           ${p.image
             ? html`<img class="thumb" src=${p.image} alt="" />`
             : html`<div class="thumb ph"><ha-icon icon=${ic(IC.playlist)}></ha-icon></div>`}
           <span class="row-title one">${p.name}</span>
-          <ha-icon class="row-play" icon=${ic(IC.playSmall)}></ha-icon>
-        </button>`,
-      )}
+          ${starting
+            ? html`<span class="row-loading">loading…</span>
+                <ha-icon class="row-play spin" icon=${ic(IC.loading)}></ha-icon>`
+            : html`<ha-icon class="row-play" icon=${ic(IC.playSmall)}></ha-icon>`}
+        </button>`;
+      })}
     </div>`;
   }
 
@@ -2002,7 +2028,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
         width: auto;
         height: auto;
         object-fit: contain;
-        border-radius: 12px;
+        border-radius: var(--ha-card-border-radius, 12px);
         box-shadow: 0 10px 26px rgba(0, 0, 0, 0.4);
       }
       .art-empty {
@@ -2583,6 +2609,18 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
         opacity: 0.7;
         flex: 0 0 auto;
       }
+      .row-loading {
+        flex: 0 0 auto;
+        font-size: 0.62em;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        padding: 3px 8px;
+        border-radius: 999px;
+        background: var(--ted-style-accent);
+        color: var(--ted-style-on-accent);
+        white-space: nowrap;
+      }
       .np {
         flex: 0 0 auto;
         font-size: 0.68em;
@@ -2866,7 +2904,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
       .mini-art {
         width: 48px;
         height: 48px;
-        border-radius: 6px;
+        border-radius: var(--ha-card-border-radius, 12px);
         object-fit: cover;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
       }
