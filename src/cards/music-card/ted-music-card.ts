@@ -75,6 +75,22 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
   /** Cast/grouping flyout open state. */
   @state() private _castOpen = false;
 
+  /** Music Assistant config entry id (for get_library), lazily resolved. */
+  private _maConfigEntryId?: string;
+  /** Media tab (playlists). */
+  @state() private _playlists?: MediaItem[];
+  private _mediaLoading = false;
+  /** Queue/Recent tab data + the currently-playing index within it. */
+  @state() private _queue?: QueueItem[];
+  private _queueCurrentIdx = 0;
+  private _queueKey?: string;
+  private _queueLoading = false;
+  /** Lyrics: undefined = loading, null = none, [] = plain-only, [lines] = synced. */
+  @state() private _lyrics?: LyricLine[] | null;
+  private _lyricsPlain?: string;
+  private _lyricsKey?: string;
+  private _lyricsLoading = false;
+
   public constructor() {
     super();
     // Keep this device's settings live so `player_source: settings` stays in sync.
@@ -122,6 +138,8 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
       this._updateAvgColor(this._artUrl());
       if (this.hass) void warmMassProviders(this.hass).then((c) => c && this.requestUpdate());
     }
+    this._orchestrateTabData();
+    this._scrollActiveLyric();
   }
 
   // --- Entity resolution -----------------------------------------------------
@@ -380,6 +398,243 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
     if (this.hass) void this.hass.callService("media_player", "unjoin", { entity_id: id });
   }
 
+  // --- Right-tab data (Music Assistant via mass_queue / get_library) ---------
+
+  private _conn():
+    | { sendMessagePromise<T = unknown>(m: Record<string, unknown>): Promise<T> }
+    | undefined {
+    return (
+      this.hass as unknown as {
+        connection?: { sendMessagePromise<T>(m: Record<string, unknown>): Promise<T> };
+      }
+    ).connection;
+  }
+
+  private async _callWithResponse(
+    domain: string,
+    service: string,
+    data: Record<string, unknown>,
+  ): Promise<unknown> {
+    const conn = this._conn();
+    if (!conn) return undefined;
+    const r = await conn.sendMessagePromise<{ response?: unknown }>({
+      type: "call_service",
+      domain,
+      service,
+      service_data: data,
+      return_response: true,
+    });
+    return r?.response;
+  }
+
+  /** True when the mass_queue integration (Queue/Recent/Lyrics data source) is present. */
+  private _massQueueAvailable(): boolean {
+    const svc = (this.hass as unknown as { services?: Record<string, Record<string, unknown>> })
+      .services;
+    return !!svc?.mass_queue?.get_queue_items;
+  }
+
+  private _visibleTabs(): { id: MusicTab; label: string }[] {
+    return this._massQueueAvailable() ? TABS : TABS.filter((t) => t.id === "media");
+  }
+
+  private async _ensureConfigEntry(): Promise<string | undefined> {
+    if (this._maConfigEntryId) return this._maConfigEntryId;
+    const conn = this._conn();
+    if (!conn) return undefined;
+    try {
+      const entries = await conn.sendMessagePromise<{ domain: string; entry_id: string }[]>({
+        type: "config_entries/get",
+      });
+      this._maConfigEntryId = entries.find((e) => e.domain === "music_assistant")?.entry_id;
+    } catch {
+      /* ignore */
+    }
+    return this._maConfigEntryId;
+  }
+
+  private _orchestrateTabData(): void {
+    if (!this.hass) return;
+    if (this._tab === "media") void this._ensureMedia();
+    else if (this._tab === "queue" || this._tab === "recent") void this._ensureQueue();
+    else if (this._tab === "lyrics") void this._ensureLyrics();
+  }
+
+  private async _ensureMedia(): Promise<void> {
+    if (this._playlists || this._mediaLoading) return;
+    this._mediaLoading = true;
+    try {
+      const cfg = await this._ensureConfigEntry();
+      if (!cfg) {
+        this._playlists = [];
+        return;
+      }
+      const resp = await this._callWithResponse("music_assistant", "get_library", {
+        config_entry_id: cfg,
+        media_type: "playlist",
+        limit: 100,
+        order_by: "last_played_desc",
+      });
+      this._playlists = this._parseMediaItems(resp);
+    } catch {
+      this._playlists = [];
+    } finally {
+      this._mediaLoading = false;
+      this.requestUpdate();
+    }
+  }
+
+  private _parseMediaItems(resp: unknown): MediaItem[] {
+    if (!resp) return [];
+    let arr: Record<string, unknown>[] = [];
+    if (Array.isArray(resp)) arr = resp as Record<string, unknown>[];
+    else {
+      const found = Object.values(resp as Record<string, unknown>).find((v) => Array.isArray(v));
+      arr = (found as Record<string, unknown>[]) ?? [];
+    }
+    return arr
+      .map((it) => ({
+        name: String(it.name ?? it.media_title ?? it.title ?? "Unknown"),
+        uri: String(it.uri ?? it.media_content_id ?? ""),
+        image: this._pickImage(it),
+      }))
+      .filter((x) => x.uri);
+  }
+
+  private _pickImage(it: Record<string, unknown>): string | undefined {
+    const direct = it.image ?? it.media_image ?? it.image_url;
+    if (typeof direct === "string" && direct) return direct;
+    const meta = it.metadata as { images?: { path?: string; url?: string }[] } | undefined;
+    const first = meta?.images?.[0];
+    return first?.path ?? first?.url ?? undefined;
+  }
+
+  private async _ensureQueue(): Promise<void> {
+    const entity = this._entityId();
+    if (!entity || this._queueLoading) return;
+    const key = `${entity}|${this._attr<string>("media_content_id") ?? ""}`;
+    if (this._queue && this._queueKey === key) return;
+    this._queueLoading = true;
+    try {
+      const resp = (await this._callWithResponse("mass_queue", "get_queue_items", {
+        entity,
+        limit_before: 20,
+        limit_after: 100,
+      })) as Record<string, Record<string, unknown>[]> | undefined;
+      const arr = resp?.[entity] ?? (resp ? (Object.values(resp)[0] ?? []) : []);
+      const items: QueueItem[] = arr.map((it) => ({
+        id: String(it.queue_item_id ?? ""),
+        title: String(it.media_title ?? "Unknown"),
+        artist: String(it.media_artist ?? ""),
+        album: String(it.media_album_name ?? ""),
+        image: typeof it.media_image === "string" && it.media_image ? it.media_image : undefined,
+        uri: typeof it.media_content_id === "string" ? it.media_content_id : undefined,
+        duration: typeof it.duration === "number" ? it.duration : undefined,
+      }));
+      const cur = this._attr<string>("media_content_id");
+      let idx = items.findIndex((x) => x.uri && x.uri === cur);
+      if (idx < 0) idx = 0;
+      this._queue = items;
+      this._queueCurrentIdx = idx;
+      this._queueKey = key;
+    } catch {
+      this._queue = [];
+      this._queueCurrentIdx = 0;
+      this._queueKey = key;
+    } finally {
+      this._queueLoading = false;
+      this.requestUpdate();
+    }
+  }
+
+  private async _ensureLyrics(): Promise<void> {
+    const title = this._title();
+    const artist = this._attr<string>("media_artist") ?? "";
+    if (!title) {
+      this._lyrics = null;
+      return;
+    }
+    const key = `${artist}|${title}`;
+    if (this._lyricsLoading) return;
+    if (this._lyricsKey === key && this._lyrics !== undefined) return;
+    this._lyricsLoading = true;
+    this._lyricsKey = key;
+    this._lyrics = undefined;
+    try {
+      const album = this._attr<string>("media_album_name") ?? "";
+      const dur = Math.round(this._duration());
+      const url =
+        "https://lrclib.net/api/get?" +
+        `artist_name=${encodeURIComponent(artist)}` +
+        `&track_name=${encodeURIComponent(title)}` +
+        `&album_name=${encodeURIComponent(album)}` +
+        `&duration=${dur}`;
+      const r = await fetch(url, { headers: { Accept: "application/json" } });
+      if (r.ok) {
+        const j = (await r.json()) as { syncedLyrics?: string; plainLyrics?: string };
+        this._lyricsPlain = j.plainLyrics ?? undefined;
+        this._lyrics = j.syncedLyrics ? this._parseLrc(j.syncedLyrics) : j.plainLyrics ? [] : null;
+      } else {
+        this._lyrics = null;
+        this._lyricsPlain = undefined;
+      }
+    } catch {
+      this._lyrics = null;
+    } finally {
+      this._lyricsLoading = false;
+      this.requestUpdate();
+    }
+  }
+
+  private _parseLrc(lrc: string): LyricLine[] {
+    const out: LyricLine[] = [];
+    for (const line of lrc.split(/\r?\n/)) {
+      const m = line.match(/^\[(\d+):(\d+(?:\.\d+)?)\]\s?(.*)$/);
+      if (!m) continue;
+      out.push({ t: parseInt(m[1], 10) * 60 + parseFloat(m[2]), text: m[3] });
+    }
+    return out;
+  }
+
+  private _scrollActiveLyric(): void {
+    if (this._tab !== "lyrics") return;
+    const el = this.renderRoot?.querySelector?.(".lrc.on");
+    (el as HTMLElement | null)?.scrollIntoView?.({ block: "center", behavior: "smooth" });
+  }
+
+  private _playMedia(uri: string): void {
+    const e = this._entityId();
+    if (e && this.hass && uri) {
+      void this.hass.callService("music_assistant", "play_media", {
+        entity_id: e,
+        media_id: uri,
+        media_type: "playlist",
+        enqueue: "replace",
+      });
+    }
+  }
+
+  private _playQueueItem(id: string): void {
+    const e = this._entityId();
+    if (e && this.hass && id) {
+      void this.hass.callService("mass_queue", "play_queue_item", {
+        entity: e,
+        queue_item_id: id,
+      });
+    }
+  }
+
+  private _removeQueueItem(id: string): void {
+    const e = this._entityId();
+    if (e && this.hass && id) {
+      void this.hass.callService("mass_queue", "remove_queue_item", {
+        entity: e,
+        queue_item_id: id,
+      });
+      this._queueKey = undefined;
+    }
+  }
+
   private _pickTab(id: MusicTab): void {
     this._tab = id;
     this._tabTouched = true;
@@ -406,8 +661,12 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
     }
 
     const hasMedia = this._hasMedia();
-    // Follow the auto default tab until the user manually picks one.
-    if (!this._tabTouched) this._tab = hasMedia ? "queue" : "media";
+    const tabs = this._visibleTabs();
+    if (!tabs.some((t) => t.id === this._tab)) {
+      this._tab = "media";
+    } else if (!this._tabTouched) {
+      this._tab = hasMedia && this._massQueueAvailable() ? "queue" : "media";
+    }
 
     const fg =
       mode === "avg_gradient" || mode === "blur" ? (this._avgFg ?? "#ffffff") : "var(--ted-style-text)";
@@ -616,9 +875,10 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
   }
 
   private _renderTabs(): TemplateResult {
+    const tabs = this._visibleTabs();
     return html`
       <div class="tabbar" role="tablist">
-        ${TABS.map(
+        ${tabs.map(
           (t) => html`<button
             type="button"
             role="tab"
@@ -630,13 +890,107 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
           </button>`,
         )}
       </div>
-      <div class="tabbody">
-        <div class="placeholder">
-          <ha-icon icon="mdi:playlist-music"></ha-icon>
-          <span>${TABS.find((t) => t.id === this._tab)?.label} — coming soon</span>
-        </div>
-      </div>
+      <div class="tabbody">${this._renderTabBody()}</div>
     `;
+  }
+
+  private _renderTabBody(): TemplateResult {
+    switch (this._tab) {
+      case "media":
+        return this._renderMedia();
+      case "queue":
+        return this._renderQueue(false);
+      case "recent":
+        return this._renderQueue(true);
+      case "lyrics":
+        return this._renderLyrics();
+    }
+  }
+
+  private _loadingBody(): TemplateResult {
+    return html`<div class="placeholder">
+      <ha-icon icon="mdi:loading" class="spin"></ha-icon>
+    </div>`;
+  }
+
+  private _emptyBody(icon: string, msg: string): TemplateResult {
+    return html`<div class="placeholder">
+      <ha-icon icon=${icon}></ha-icon><span>${msg}</span>
+    </div>`;
+  }
+
+  private _renderMedia(): TemplateResult {
+    if (!this._playlists) return this._loadingBody();
+    if (!this._playlists.length) return this._emptyBody("mdi:playlist-remove", "No playlists");
+    return html`<div class="list">
+      ${this._playlists.map(
+        (p) => html`<button type="button" class="row" @click=${() => this._playMedia(p.uri)}>
+          ${p.image
+            ? html`<img class="thumb" src=${p.image} alt="" />`
+            : html`<div class="thumb ph"><ha-icon icon="mdi:playlist-music"></ha-icon></div>`}
+          <span class="row-title one">${p.name}</span>
+          <ha-icon class="row-play" icon="mdi:play"></ha-icon>
+        </button>`,
+      )}
+    </div>`;
+  }
+
+  private _renderQueue(recent: boolean): TemplateResult {
+    if (!this._queue) return this._loadingBody();
+    const idx = this._queueCurrentIdx;
+    const items = recent ? this._queue.slice(0, idx).reverse() : this._queue.slice(idx);
+    if (!items.length) {
+      return this._emptyBody(
+        "mdi:music-note-off",
+        recent ? "Nothing played yet" : "Queue is empty",
+      );
+    }
+    return html`<div class="list">
+      ${items.map((it, i) => {
+        const isCurrent = !recent && i === 0;
+        const sub = `${it.duration ? fmtTime(it.duration) + " | " : ""}${it.album || it.artist}`;
+        return html`<div class="row ${isCurrent ? "cur" : ""}">
+          ${it.image
+            ? html`<img class="thumb" src=${it.image} alt="" />`
+            : html`<div class="thumb ph"><ha-icon icon="mdi:music"></ha-icon></div>`}
+          <div class="row-main" @click=${() => this._playQueueItem(it.id)}>
+            <div class="row-title one">${it.title}</div>
+            <div class="row-sub one">${sub}</div>
+          </div>
+          ${isCurrent
+            ? html`<span class="np">Now playing</span>`
+            : html`<button
+                type="button"
+                class="row-x"
+                title="Remove from queue"
+                @click=${() => this._removeQueueItem(it.id)}
+              >
+                <ha-icon icon="mdi:close"></ha-icon>
+              </button>`}
+        </div>`;
+      })}
+    </div>`;
+  }
+
+  private _renderLyrics(): TemplateResult {
+    if (this._lyrics === undefined) return this._loadingBody();
+    if (this._lyrics === null) return this._emptyBody("mdi:comment-text-outline", "No lyrics found");
+    if (this._lyrics.length === 0) {
+      return html`<div class="lyrics plain">
+        ${(this._lyricsPlain ?? "").split(/\n/).map((l) => html`<div>${l || html`&nbsp;`}</div>`)}
+      </div>`;
+    }
+    const e = this._elapsed() + 0.2;
+    let active = -1;
+    for (const [i, ln] of this._lyrics.entries()) {
+      if (ln.t <= e) active = i;
+      else break;
+    }
+    return html`<div class="lyrics">
+      ${this._lyrics.map(
+        (ln, i) => html`<div class="lrc ${i === active ? "on" : ""}">${ln.text || html`&nbsp;`}</div>`,
+      )}
+    </div>`;
   }
 
   private _renderMessage(res: MusicPlayerResolution): TemplateResult {
@@ -1029,6 +1383,132 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
       .placeholder ha-icon {
         --mdc-icon-size: 40px;
       }
+      .spin {
+        animation: ted-spin 1s linear infinite;
+      }
+      @keyframes ted-spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      /* Tab lists (Media / Queue / Recent) */
+      .list {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        padding: 4px 0;
+      }
+      .row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        width: 100%;
+        border: none;
+        background: none;
+        color: inherit;
+        cursor: pointer;
+        text-align: left;
+        padding: 6px 6px;
+        border-radius: 8px;
+      }
+      .row:hover {
+        background: rgba(127, 127, 127, 0.14);
+      }
+      .row.cur {
+        background: rgba(127, 127, 127, 0.16);
+      }
+      .thumb {
+        width: 44px;
+        height: 44px;
+        border-radius: 6px;
+        object-fit: cover;
+        flex: 0 0 auto;
+        background: rgba(127, 127, 127, 0.25);
+      }
+      .thumb.ph {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .thumb.ph ha-icon {
+        --mdc-icon-size: 22px;
+        opacity: 0.7;
+      }
+      .row-main {
+        flex: 1 1 auto;
+        min-width: 0;
+        cursor: pointer;
+      }
+      .row-title {
+        font-weight: 600;
+      }
+      .row-title.one,
+      .row-sub.one {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .row-title.one {
+        flex: 1 1 auto;
+        min-width: 0;
+      }
+      .row-sub {
+        font-size: 0.82em;
+        opacity: 0.7;
+      }
+      .row-play {
+        --mdc-icon-size: 20px;
+        opacity: 0.7;
+        flex: 0 0 auto;
+      }
+      .np {
+        flex: 0 0 auto;
+        font-size: 0.68em;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--ted-style-accent);
+      }
+      .row-x {
+        flex: 0 0 auto;
+        border: none;
+        background: none;
+        color: inherit;
+        cursor: pointer;
+        opacity: 0.55;
+        display: inline-flex;
+      }
+      .row-x:hover {
+        opacity: 1;
+      }
+      .row-x ha-icon {
+        --mdc-icon-size: 18px;
+      }
+
+      /* Lyrics */
+      .lyrics {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        padding: 12px 6px 40px;
+        text-align: center;
+      }
+      .lrc {
+        opacity: 0.4;
+        font-size: 1.05em;
+        font-weight: 600;
+        transition: opacity 0.2s ease, color 0.2s ease;
+      }
+      .lrc.on {
+        opacity: 1;
+        color: var(--ted-style-accent);
+      }
+      .lyrics.plain {
+        text-align: left;
+        gap: 2px;
+        opacity: 0.85;
+      }
 
       /* Empty / unmatched message */
       .message {
@@ -1082,6 +1562,30 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
 interface HassEntityLike {
   state: string;
   attributes?: Record<string, unknown>;
+}
+
+/** A library media item (Media tab). */
+interface MediaItem {
+  name: string;
+  uri: string;
+  image?: string;
+}
+
+/** A queue entry (Queue / Recent tabs). */
+interface QueueItem {
+  id: string;
+  title: string;
+  artist: string;
+  album: string;
+  image?: string;
+  uri?: string;
+  duration?: number;
+}
+
+/** A single synced lyric line. */
+interface LyricLine {
+  t: number;
+  text: string;
 }
 
 declare global {
