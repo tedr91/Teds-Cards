@@ -85,6 +85,8 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
   private _queueCurrentIdx = 0;
   private _queueKey?: string;
   private _queueLoading = false;
+  /** The queue row whose 3-dots menu is open. */
+  @state() private _queueMenuId?: string;
   /** Lyrics: undefined = loading, null = none, [] = plain-only, [lines] = synced. */
   @state() private _lyrics?: LyricLine[] | null;
   private _lyricsPlain?: string;
@@ -627,15 +629,29 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
     }
   }
 
-  private _removeQueueItem(id: string): void {
+  private _toggleQueueMenu(e: Event, id: string): void {
+    e.stopPropagation();
+    this._queueMenuId = this._queueMenuId === id ? undefined : id;
+  }
+
+  private _closeQueueMenu = (): void => {
+    this._queueMenuId = undefined;
+  };
+
+  private _queueAct(action: "play" | "next" | "up" | "down" | "remove", id: string): void {
     const e = this._entityId();
-    if (e && this.hass && id) {
-      void this.hass.callService("mass_queue", "remove_queue_item", {
-        entity: e,
-        queue_item_id: id,
-      });
-      this._queueKey = undefined;
-    }
+    if (!e || !this.hass || !id) return;
+    const svc = {
+      play: "play_queue_item",
+      next: "move_queue_item_next",
+      up: "move_queue_item_up",
+      down: "move_queue_item_down",
+      remove: "remove_queue_item",
+    }[action];
+    void this.hass.callService("mass_queue", svc, { entity: e, queue_item_id: id });
+    this._queueMenuId = undefined;
+    // Force a queue refresh on the next update so the reorder/removal is reflected.
+    this._queueKey = undefined;
   }
 
   private _pickTab(id: MusicTab): void {
@@ -747,7 +763,6 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
               ? html` <span class="album">(${album})</span>`
               : nothing}
           </div>
-          ${this._renderSqBadge()}
         </div>
 
         <div class="progress">
@@ -916,11 +931,6 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
     </button>`;
   }
 
-  /** Static "SQ" stream-quality badge (display-only). */
-  private _renderSqBadge(): TemplateResult {
-    return html`<span class="sq" title="Stream quality"><span class="sq-dot"></span>SQ</span>`;
-  }
-
   /** The "cast to" target-device chip. Opens a device/grouping flyout unless
    *  `lock_target_device` is on (then it's a static label). */
   private _renderCastChip(): TemplateResult {
@@ -1043,28 +1053,60 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
     return html`<div class="list">
       ${items.map((it, i) => {
         const isCurrent = !recent && i === 0;
+        const label = it.artist ? `${it.artist} - ${it.title}` : it.title;
         const sub = `${it.duration ? fmtTime(it.duration) + " | " : ""}${it.album || it.artist}`;
-        return html`<div class="row ${isCurrent ? "cur" : ""}">
+        return html`<div class="qrow ${isCurrent ? "cur" : ""}">
           ${it.image
             ? html`<img class="thumb" src=${it.image} alt="" />`
             : html`<div class="thumb ph"><ha-icon icon="mdi:music"></ha-icon></div>`}
-          <div class="row-main" @click=${() => this._playQueueItem(it.id)}>
-            <div class="row-title one">${it.title}</div>
-            <div class="row-sub one">${sub}</div>
+          <div class="qmain" @click=${() => this._playQueueItem(it.id)}>
+            <div class="qtitle">${label}</div>
+            <div class="qsub">${sub}</div>
           </div>
           ${isCurrent
-            ? html`<span class="np">Now playing</span>`
-            : html`<button
-                type="button"
-                class="row-x"
-                title="Remove from queue"
-                @click=${() => this._removeQueueItem(it.id)}
-              >
-                <ha-icon icon="mdi:close"></ha-icon>
-              </button>`}
+            ? html`<span class="np-pill">NOW PLAYING</span>
+                <span class="eq ${this._isPlaying() ? "" : "paused"}"><i></i><i></i><i></i></span>`
+            : nothing}
+          <div class="qmenu-wrap">
+            <button
+              type="button"
+              class="row-x"
+              title="Queue options"
+              aria-label="Queue options"
+              @click=${(e: Event) => this._toggleQueueMenu(e, it.id)}
+            >
+              <ha-icon icon="mdi:dots-vertical"></ha-icon>
+            </button>
+            ${this._queueMenuId === it.id ? this._renderQueueMenu(it, isCurrent) : nothing}
+          </div>
         </div>`;
       })}
     </div>`;
+  }
+
+  private _renderQueueMenu(it: QueueItem, isCurrent: boolean): TemplateResult {
+    return html`
+      <div class="qmenu-backdrop" @click=${this._closeQueueMenu}></div>
+      <div class="qmenu" role="menu">
+        ${isCurrent
+          ? nothing
+          : html`<button type="button" class="qmi" @click=${() => this._queueAct("play", it.id)}>
+              <ha-icon icon="mdi:play-circle-outline"></ha-icon>Play now
+            </button>`}
+        <button type="button" class="qmi" @click=${() => this._queueAct("next", it.id)}>
+          <ha-icon icon="mdi:skip-next-outline"></ha-icon>Play next
+        </button>
+        <button type="button" class="qmi" @click=${() => this._queueAct("up", it.id)}>
+          <ha-icon icon="mdi:arrow-up"></ha-icon>Move up
+        </button>
+        <button type="button" class="qmi" @click=${() => this._queueAct("down", it.id)}>
+          <ha-icon icon="mdi:arrow-down"></ha-icon>Move down
+        </button>
+        <button type="button" class="qmi danger" @click=${() => this._queueAct("remove", it.id)}>
+          <ha-icon icon="mdi:delete-outline"></ha-icon>Delete item
+        </button>
+      </div>
+    `;
   }
 
   private _renderLyrics(): TemplateResult {
@@ -1159,6 +1201,28 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
         padding: 18px 20px;
         box-sizing: border-box;
         color: var(--music-fg, var(--ted-style-text));
+        text-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+      }
+      /* Lift all content off the (possibly light) background for legibility. */
+      .content ha-icon {
+        filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5));
+      }
+      .content img {
+        filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.4));
+      }
+      input[type="range"] {
+        filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.35));
+      }
+      /* ...but popover menus have their own solid surfaces — keep them crisp. */
+      .qmenu,
+      .qmenu *,
+      .cast-flyout,
+      .cast-flyout * {
+        text-shadow: none;
+      }
+      .qmenu ha-icon,
+      .cast-flyout ha-icon {
+        filter: none;
       }
       .content.idle .tabs {
         flex: 1 1 auto;
@@ -1226,25 +1290,6 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
       }
       .album {
         opacity: 0.62;
-      }
-      .sq {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        margin-top: 8px;
-        padding: 2px 8px;
-        font-size: 0.72em;
-        font-weight: 600;
-        letter-spacing: 0.04em;
-        border-radius: var(--ted-style-radius-sm);
-        background: rgba(127, 127, 127, 0.28);
-        color: inherit;
-      }
-      .sq-dot {
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        background: var(--ted-style-success, #6ccb5f);
       }
 
       /* Progress */
@@ -1464,7 +1509,8 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
       .tabbody {
         flex: 1 1 0;
         min-height: 0;
-        overflow: auto;
+        overflow-y: auto;
+        overflow-x: hidden;
       }
       .placeholder {
         height: 100%;
@@ -1564,6 +1610,134 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
         text-transform: uppercase;
         letter-spacing: 0.04em;
         color: var(--ted-style-accent);
+      }
+
+      /* Queue / Recent rows */
+      .qrow {
+        position: relative;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+        padding: 6px;
+        border-radius: 8px;
+      }
+      .qrow:hover {
+        background: rgba(127, 127, 127, 0.12);
+      }
+      .qrow.cur {
+        background: rgba(127, 127, 127, 0.16);
+      }
+      .qmain {
+        flex: 1 1 auto;
+        min-width: 0;
+        cursor: pointer;
+      }
+      .qtitle {
+        font-weight: 600;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .qrow.cur .qtitle {
+        color: var(--ted-style-accent);
+      }
+      .qsub {
+        font-size: 0.82em;
+        opacity: 0.7;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .np-pill {
+        flex: 0 0 auto;
+        font-size: 0.62em;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        padding: 3px 8px;
+        border-radius: 999px;
+        background: var(--ted-style-accent);
+        color: var(--ted-style-on-accent);
+      }
+      .eq {
+        flex: 0 0 auto;
+        display: inline-flex;
+        align-items: flex-end;
+        gap: 2px;
+        height: 16px;
+      }
+      .eq i {
+        width: 3px;
+        height: 5px;
+        border-radius: 1px;
+        background: var(--ted-style-accent);
+        animation: ted-eq 0.9s ease-in-out infinite;
+      }
+      .eq i:nth-child(2) {
+        animation-delay: 0.3s;
+      }
+      .eq i:nth-child(3) {
+        animation-delay: 0.15s;
+      }
+      .eq.paused i {
+        animation-play-state: paused;
+      }
+      @keyframes ted-eq {
+        0%,
+        100% {
+          height: 4px;
+        }
+        50% {
+          height: 15px;
+        }
+      }
+      .qmenu-wrap {
+        position: relative;
+        flex: 0 0 auto;
+      }
+      .qmenu-backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 8;
+      }
+      .qmenu {
+        position: absolute;
+        right: 0;
+        top: calc(100% + 4px);
+        z-index: 9;
+        min-width: 180px;
+        padding: 4px;
+        border-radius: 10px;
+        background: var(--ted-style-surface, #2b2b2b);
+        color: var(--ted-style-text, #fff);
+        border: 1px solid var(--ted-style-divider, rgba(255, 255, 255, 0.12));
+        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+      }
+      .qmi {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        width: 100%;
+        border: none;
+        background: none;
+        color: inherit;
+        cursor: pointer;
+        padding: 8px 10px;
+        border-radius: 6px;
+        font-size: 0.9em;
+        text-align: left;
+      }
+      .qmi:hover {
+        background: rgba(127, 127, 127, 0.16);
+      }
+      .qmi.danger {
+        color: var(--ted-style-danger);
+      }
+      .qmi ha-icon {
+        --mdc-icon-size: 18px;
+        opacity: 0.85;
       }
       .row-x {
         flex: 0 0 auto;
