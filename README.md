@@ -939,6 +939,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.278
+
+- **Music card: tab labels restyled.** The Media / Queue / Recent / Lyrics tab labels are now uppercase, with only the active tab bolded.
+
 ### v1.0.277
 
 - **Music card: favorites improvements.** The favorite heart now gives instant feedback and toggles (add via the MA favorite button, remove via mass_queue), and it reflects the real favorited state on every tab. The queue 3-dots menu gained an **Add to / Remove from Favorites** item. Also nudged the volume icon to align with the speaker below it and tightened the progress-to-controls spacing.

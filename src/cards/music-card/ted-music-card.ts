@@ -1981,13 +1981,16 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
         color: inherit;
         cursor: pointer;
         padding: 6px 10px;
-        font-size: 0.95em;
-        font-weight: 600;
+        font-size: 0.9em;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
         opacity: 0.6;
         border-radius: var(--ted-style-radius-sm);
       }
       .tabbtn.sel {
         opacity: 1;
+        font-weight: 700;
         color: var(--ted-style-accent);
       }
       .tabbody {
