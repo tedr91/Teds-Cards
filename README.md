@@ -939,6 +939,11 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.283
+
+- **Shared collapsing tab strip + music tab overflow.** The overflow "collapse tabs into a … menu" logic is now a shared helper used by the Tab card, Settings card, and (new) the Music card — the Music card's Media/Queue/Recent/Lyrics tabs now collapse into a "…" menu when they don't fit.
+- **Music card: event-driven queue refresh on shuffle.** Reshuffling (and toggling shuffle) now refreshes the queue list immediately instead of waiting for the next track, without polling — the queue is keyed on the shuffle state and refetched when Music Assistant reports the change.
+
 ### v1.0.282
 
 - **Music card: fixed rounded corners.** The frosted/blurred background layer is now clipped to the card's actual corner radius again (a regression from the popup un-clipping change in v1.0.281).

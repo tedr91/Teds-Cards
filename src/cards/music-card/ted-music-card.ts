@@ -13,6 +13,7 @@ import {
   type MusicPlayerResolution,
 } from "../../shared/music-player";
 import { tedCardThemeClass, tedStyleTheme } from "../../shared/theme";
+import { computeTabOverflow, positionOverflowPopover } from "../../shared/tab-overflow";
 import { resolveIcon } from "../../shared/icons";
 import { MUSIC_CARD_EDITOR_TYPE, MUSIC_CARD_TYPE } from "./const";
 import type { MusicBackgroundMode, MusicCardConfig, MusicTab } from "./types";
@@ -151,6 +152,8 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
   /** The currently selected right-side tab, and whether the user has picked one. */
   @state() private _tab: MusicTab = "media";
   private _tabTouched = false;
+  /** How many right-side tabs fit in the strip; the rest go into the "…" overflow menu. */
+  @state() private _tabVisibleCount = Number.POSITIVE_INFINITY;
 
   /** Adjusted frost tint "r, g, b" (from the album's average color) + a legible foreground. */
   @state() private _avgColor?: string;
@@ -228,7 +231,10 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
       const s = this._stateObj();
       if (s?.state === "playing") this._tick++;
     }, 1000);
-    this._ro ??= new ResizeObserver(() => this._measureLayout());
+    this._ro ??= new ResizeObserver(() => {
+      this._measureLayout();
+      this._measureTabs();
+    });
     this._ro.observe(this);
     document.addEventListener("pointerdown", this._onDocDown, true);
   }
@@ -318,6 +324,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
     this._orchestrateTabData();
     this._scrollActiveLyric();
     this._measureLayout();
+    this._measureTabs();
     this._positionPopups();
   }
 
@@ -358,6 +365,46 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
         if (up !== this._shuffleMenuUp) this._shuffleMenuUp = up;
       }
     }
+  }
+
+  /** Decide how many right-side tabs fit; the rest spill into the "…" overflow menu.
+   *  Widths are read from the hidden `.tabbar-measure` mirror so it converges stably. */
+  private _measureTabs(): void {
+    if (this._config?.mode === "mini") return;
+    const root = this.renderRoot as ShadowRoot | undefined;
+    const strip = root?.querySelector(".tabbar") as HTMLElement | null;
+    const measure = root?.querySelector(".tabbar-measure") as HTMLElement | null;
+    if (!strip || !measure) return;
+    const available = strip.clientWidth;
+    if (available <= 0) return;
+    const widths = Array.from(measure.children).map((c) => (c as HTMLElement).offsetWidth);
+    if (!widths.length) return;
+    // Music tabs are text-only (no icons), so auto-shrink is off: just fit-or-overflow.
+    const { visibleCount } = computeTabOverflow({
+      fullWidths: widths,
+      iconWidths: widths,
+      available,
+      configMode: "both",
+      iconMode: "icon",
+      autoShrink: false,
+      gap: 6,
+    });
+    if (visibleCount !== this._tabVisibleCount) this._tabVisibleCount = visibleCount;
+  }
+
+  private _onTabOverflowToggle = (ev: Event): void => {
+    if ((ev as Event & { newState?: string }).newState !== "open") return;
+    const pop = ev.currentTarget as HTMLElement;
+    const anchor = (this.renderRoot as ShadowRoot).getElementById("music-tab-overflow-btn");
+    positionOverflowPopover(pop, anchor ?? undefined);
+  };
+
+  private _pickTabFromOverflow(id: MusicTab): void {
+    this._pickTab(id);
+    const pop = (this.renderRoot as ShadowRoot).getElementById("music-tab-overflow-pop") as
+      | (HTMLElement & { hidePopover?: () => void })
+      | null;
+    pop?.hidePopover?.();
   }
 
   // --- Entity resolution -----------------------------------------------------
@@ -640,10 +687,15 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
     const e = this._entityId();
     if (!e || !this.hass) return;
     const hass = this.hass;
+    // MA re-randomizes the upcoming items when shuffle transitions OFF -> ON. Both
+    // service calls resolve only after MA has applied the change, so a single refetch
+    // afterwards reflects the new order. (The queue cache key also includes the shuffle
+    // state, so a normal shuffle toggle refreshes the list the same way, event-driven.)
     void (async () => {
       await hass.callService("media_player", "shuffle_set", { entity_id: e, shuffle: false });
       await hass.callService("media_player", "shuffle_set", { entity_id: e, shuffle: true });
-      this._reconcileQueue();
+      this._queueKey = undefined;
+      void this._ensureQueue();
     })();
   }
 
@@ -927,7 +979,12 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
   private async _ensureQueue(force = false): Promise<void> {
     const entity = this._entityId();
     if (!entity || this._queueLoading) return;
-    const key = `${entity}|${this._attr<string>("media_content_id") ?? ""}`;
+    // Key on the current track AND shuffle state: toggling/reshuffling shuffle reorders
+    // the upcoming items, so the resulting HA state update re-keys and refetches the
+    // list automatically (event-driven, no polling).
+    const key = `${entity}|${this._attr<string>("media_content_id") ?? ""}|${
+      this._attr<boolean>("shuffle") ? "1" : "0"
+    }`;
     if (!force && this._queue && this._queueKey === key) return;
     this._queueLoading = true;
     try {
@@ -1567,25 +1624,77 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
 
   private _renderTabs(): TemplateResult {
     const tabs = this._visibleTabs();
+    const total = tabs.length;
+    const visibleCount = Math.min(this._tabVisibleCount, total);
+    const overflow = visibleCount < total;
+    const activeIdx = Math.max(
+      0,
+      tabs.findIndex((t) => t.id === this._tab),
+    );
+    // Keep the active tab visible: it displaces the last inline slot if it would spill.
+    const visible: number[] = [];
+    for (let i = 0; i < visibleCount; i++) visible.push(i);
+    if (overflow && !visible.includes(activeIdx) && visible.length > 0) {
+      visible[visible.length - 1] = activeIdx;
+    }
+    const visibleSet = new Set(visible);
+    const overflowList: number[] = [];
+    for (let i = 0; i < total; i++) if (!visibleSet.has(i)) overflowList.push(i);
+
     return html`
       <div class="tabbar" role="tablist">
-        ${tabs.map((t) => {
-          const count = this._tabCount(t.id);
-          return html`<button
-            type="button"
-            role="tab"
-            class="tabbtn ${this._tab === t.id ? "sel" : ""}"
-            aria-selected=${this._tab === t.id}
-            @click=${() => this._pickTab(t.id)}
-          >
-            ${t.label}${count !== undefined
-              ? html`<span class="tabcount">${count}</span>`
-              : nothing}
-          </button>`;
-        })}
+        ${visible.map((i) => this._renderTabBtn(tabs[i]))}
+        ${overflow
+          ? html`<button
+              id="music-tab-overflow-btn"
+              type="button"
+              class="tabbtn tab-overflow"
+              popovertarget="music-tab-overflow-pop"
+              title="More tabs"
+              aria-label="More tabs"
+            >
+              <ha-icon icon="mdi:dots-horizontal"></ha-icon>
+            </button>`
+          : nothing}
+        <div class="tabbar-measure" aria-hidden="true">
+          ${tabs.map((t) => this._renderTabBtn(t))}
+        </div>
       </div>
+      ${overflow
+        ? html`<div
+            id="music-tab-overflow-pop"
+            class="tab-overflow-pop"
+            popover
+            @toggle=${this._onTabOverflowToggle}
+          >
+            ${overflowList.map((i) => {
+              const count = this._tabCount(tabs[i].id);
+              return html`<button
+                type="button"
+                class="tab-overflow-item ${tabs[i].id === this._tab ? "active" : ""}"
+                @click=${() => this._pickTabFromOverflow(tabs[i].id)}
+              >
+                <span>${tabs[i].label}</span>
+                ${count !== undefined ? html`<span class="tabcount">${count}</span>` : nothing}
+              </button>`;
+            })}
+          </div>`
+        : nothing}
       <div class="tabbody">${this._renderTabBody()}</div>
     `;
+  }
+
+  private _renderTabBtn(t: { id: MusicTab; label: string }): TemplateResult {
+    const count = this._tabCount(t.id);
+    return html`<button
+      type="button"
+      role="tab"
+      class="tabbtn ${this._tab === t.id ? "sel" : ""}"
+      aria-selected=${this._tab === t.id}
+      @click=${() => this._pickTab(t.id)}
+    >
+      ${t.label}${count !== undefined ? html`<span class="tabcount">${count}</span>` : nothing}
+    </button>`;
   }
 
   /** Item count shown next to the Queue/Recent tabs (undefined = no badge). */
@@ -2277,12 +2386,27 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
 
       /* Tabs */
       .tabbar {
+        position: relative;
         display: flex;
+        flex-wrap: nowrap;
+        min-width: 0;
         gap: 6px;
         border-bottom: 1px solid rgba(127, 127, 127, 0.25);
         padding-bottom: 8px;
       }
+      .tabbar-measure {
+        position: absolute;
+        top: 0;
+        left: 0;
+        display: flex;
+        gap: 6px;
+        visibility: hidden;
+        pointer-events: none;
+        white-space: nowrap;
+      }
       .tabbtn {
+        flex: 0 0 auto;
+        white-space: nowrap;
         border: none;
         background: none;
         color: inherit;
@@ -2294,6 +2418,13 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
         letter-spacing: 0.04em;
         opacity: 0.6;
         border-radius: var(--ted-style-radius-sm);
+      }
+      .tabbtn.tab-overflow {
+        padding: 6px 8px;
+        opacity: 0.7;
+      }
+      .tabbtn.tab-overflow ha-icon {
+        --mdc-icon-size: 20px;
       }
       .tabbtn.sel {
         opacity: 1;
@@ -2314,6 +2445,46 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
       }
       .tabbtn.sel .tabcount {
         opacity: 1;
+      }
+      .tab-overflow-pop {
+        margin: 0;
+        border: 1px solid var(--ted-style-divider, rgba(255, 255, 255, 0.12));
+        border-radius: 10px;
+        padding: 4px;
+        background-color: var(--card-background-color, #1c1c1c);
+        background-image: linear-gradient(
+          var(--ted-style-surface, #2b2b2b),
+          var(--ted-style-surface, #2b2b2b)
+        );
+        color: var(--ted-style-text, #fff);
+        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+        min-width: 160px;
+      }
+      .tab-overflow-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+        border: none;
+        background: none;
+        color: inherit;
+        cursor: pointer;
+        padding: 8px 10px;
+        border-radius: 6px;
+        font-size: 0.85em;
+        text-align: left;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+      .tab-overflow-item:hover {
+        background: rgba(127, 127, 127, 0.16);
+      }
+      .tab-overflow-item.active {
+        color: var(--ted-style-accent);
+        font-weight: 700;
+      }
+      .tab-overflow-item .tabcount {
+        margin-left: auto;
       }
       .tabbody {
         flex: 1 1 0;

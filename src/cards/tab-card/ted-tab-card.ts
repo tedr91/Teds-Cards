@@ -5,6 +5,7 @@ import type { HomeAssistant, LovelaceCard, LovelaceCardConfig, LovelaceCardEdito
 
 import { appearanceStyle, cssColor } from "../../shared/appearance";
 import { brushedOverlay, tedCardThemeClass, tedStyleTheme } from "../../shared/theme";
+import { computeTabOverflow, positionOverflowPopover } from "../../shared/tab-overflow";
 import { registerCustomCard } from "../../shared/register-card";
 import {
   DEFAULT_TAB_ICON,
@@ -358,39 +359,14 @@ export class TedTabCard extends LitElement implements LovelaceCard {
     const available = strip.clientWidth;
     if (available <= 0) return;
 
-    const gap = 4;
-    const overflowBtn = 52; // "…" trigger + gap, reserved when tabs spill into the menu
-    const wFull = Array.from(fullRow.children).map((c) => (c as HTMLElement).offsetWidth);
-    const wIcon = Array.from(iconRow.children).map((c) => (c as HTMLElement).offsetWidth);
-    const sum = (arr: number[]): number => arr.reduce((a, b) => a + b, 0) + Math.max(0, arr.length - 1) * gap;
-
-    const configMode: TabHeaderMode = cfg.tab_header ?? "both";
-    const autoShrink = cfg.auto_shrink !== false;
-
-    let mode: TabHeaderMode;
-    let visibleCount: number;
-    if (sum(wFull) <= available) {
-      mode = configMode;
-      visibleCount = total;
-    } else if (autoShrink && sum(wIcon) <= available) {
-      // Auto-shrink forces icon-only (even for a "name" header) when that lets them all fit.
-      mode = "icon";
-      visibleCount = total;
-    } else {
-      mode = autoShrink ? "icon" : configMode;
-      const widths = mode === "icon" ? wIcon : wFull;
-      const budget = available - overflowBtn;
-      let used = 0;
-      let count = 0;
-      for (let i = 0; i < total; i++) {
-        const add = (count > 0 ? gap : 0) + widths[i];
-        if (used + add > budget) break;
-        used += add;
-        count++;
-      }
-      visibleCount = Math.max(1, count);
-    }
-
+    const { mode, visibleCount } = computeTabOverflow<TabHeaderMode>({
+      fullWidths: Array.from(fullRow.children).map((c) => (c as HTMLElement).offsetWidth),
+      iconWidths: Array.from(iconRow.children).map((c) => (c as HTMLElement).offsetWidth),
+      available,
+      configMode: cfg.tab_header ?? "both",
+      iconMode: "icon",
+      autoShrink: cfg.auto_shrink !== false,
+    });
     if (mode !== this._effectiveMode) this._effectiveMode = mode;
     if (visibleCount !== this._visibleCount) this._visibleCount = visibleCount;
   }
@@ -404,25 +380,7 @@ export class TedTabCard extends LitElement implements LovelaceCard {
 
   /** Anchor the overflow popover under the "…" trigger (flipping above if there's no room). */
   private _positionOverflow(pop: HTMLElement, anchor?: HTMLElement): void {
-    const margin = 8;
-    pop.style.position = "fixed";
-    pop.style.margin = "0";
-    const rect = pop.getBoundingClientRect();
-    const vw = document.documentElement.clientWidth;
-    const vh = document.documentElement.clientHeight;
-    if (!anchor) {
-      pop.style.left = `${Math.round((vw - rect.width) / 2)}px`;
-      pop.style.top = `${Math.round((vh - rect.height) / 2)}px`;
-      return;
-    }
-    const a = anchor.getBoundingClientRect();
-    let left = a.right - rect.width;
-    left = Math.max(margin, Math.min(left, vw - rect.width - margin));
-    const fitsBelow = a.bottom + margin + rect.height <= vh - margin;
-    let top = fitsBelow ? a.bottom + margin : a.top - margin - rect.height;
-    top = Math.max(margin, Math.min(top, vh - rect.height - margin));
-    pop.style.left = `${Math.round(left)}px`;
-    pop.style.top = `${Math.round(top)}px`;
+    positionOverflowPopover(pop, anchor);
   }
 
   private _selectFromOverflow(idx: number): void {
