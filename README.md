@@ -939,6 +939,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.281
+
+- **Music card: queue drag-to-reorder, reshuffle & polish.** The queue's `...` is now a **drag handle** — drag items to reorder them; tapping a row opens its options menu. **Hold or double-tap the shuffle button** for a **Reshuffle queue** option. In **mini** mode the target-device icon is replaced by the volume control. Popups (queue menu, target picker, reshuffle) no longer get clipped by the card edge and flip above/below to whichever side has room. The Queue/Recent tab counts are restyled to be more visible, like the Music Assistant UI.
+
 ### v1.0.280
 
 - **Music card: smarter popups, tab counts & volume memory.** The target-device and queue 3-dots popups now flip above or below their trigger depending on which side has room, so they're never clipped. The **Queue** and **Recent** tabs show an item count (like the Music Assistant UI). Changing the volume now saves it as this device's **Music volume** (and stops the device inheriting the global value).

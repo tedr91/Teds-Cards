@@ -111,6 +111,7 @@ const IC = {
   playlistRemove: { fluent: "text-bullet-list-dismiss-20-filled", mdi: "playlist-remove" },
   playSmall: { fluent: "play-24-filled", mdi: "play" },
   menu: { fluent: "more-vertical-24-filled", mdi: "dots-vertical" },
+  drag: { fluent: "re-order-dots-vertical-24-regular", mdi: "drag-vertical" },
   playOutline: { fluent: "play-circle-24-regular", mdi: "play-circle-outline" },
   nextOutline: { fluent: "next-24-regular", mdi: "skip-next-outline" },
   up: { fluent: "arrow-up-24-filled", mdi: "arrow-up" },
@@ -183,6 +184,12 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
   /** Debounce for persisting this device's "Music volume" setting on slider drags. */
   private _musicVolWriteTimer?: number;
   private _volClickTimer?: number;
+  /** Shuffle button: reshuffle popup open state + hold/double-tap gesture bookkeeping. */
+  @state() private _shuffleMenuOpen = false;
+  @state() private _shuffleMenuUp = false;
+  private _shuffleHoldTimer?: number;
+  private _shuffleHeld = false;
+  private _shuffleClickTimer?: number;
 
   /** Music Assistant config entry id (for get_library), lazily resolved. */
   private _maConfigEntryId?: string;
@@ -200,6 +207,9 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
   @state() private _queueMenuId?: string;
   /** Whether the open queue menu flips upward (set by measurement to avoid clipping). */
   @state() private _queueMenuUp = false;
+  /** Drag-to-reorder: the queue_item_id being dragged, and its original queue index. */
+  @state() private _dragId?: string;
+  private _dragOrigIdx?: number;
   /** Lyrics: undefined = loading, null = none, [] = plain-only, [lines] = synced. */
   @state() private _lyrics?: LyricLine[] | null;
   private _lyricsPlain?: string;
@@ -232,11 +242,14 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
     this._ro?.disconnect();
     this._ro = undefined;
     document.removeEventListener("pointerdown", this._onDocDown, true);
+    window.removeEventListener("pointermove", this._onDragMove, true);
+    window.removeEventListener("pointerup", this._onDragEnd, true);
+    window.removeEventListener("pointercancel", this._onDragEnd, true);
   }
 
   /** Close the cast / volume popups when the user interacts outside them. */
   private _onDocDown = (e: Event): void => {
-    if (!this._castOpen && !this._volOpen) return;
+    if (!this._castOpen && !this._volOpen && !this._shuffleMenuOpen) return;
     const path = e.composedPath();
     if (this._castOpen) {
       const w = this.renderRoot?.querySelector?.(".cast-wrap");
@@ -245,6 +258,10 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
     if (this._volOpen) {
       const w = this.renderRoot?.querySelector?.(".vol-wrap");
       if (w && !path.includes(w)) this._volOpen = false;
+    }
+    if (this._shuffleMenuOpen) {
+      const w = this.renderRoot?.querySelector?.(".shuffle-wrap");
+      if (w && !path.includes(w)) this._shuffleMenuOpen = false;
     }
   };
 
@@ -331,6 +348,14 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
       if (fly && wrap) {
         const up = wantsUp(wrap, fly, 8);
         if (up !== this._castUp) this._castUp = up;
+      }
+    }
+    if (this._shuffleMenuOpen) {
+      const menu = root?.querySelector(".shuffle-menu") as HTMLElement | null;
+      const wrap = menu?.closest(".shuffle-wrap") as HTMLElement | null;
+      if (menu && wrap) {
+        const up = wantsUp(wrap, menu, 4);
+        if (up !== this._shuffleMenuUp) this._shuffleMenuUp = up;
       }
     }
   }
@@ -568,6 +593,58 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
   private _toggleMute(): void {
     const muted = !!this._attr<boolean>("is_volume_muted");
     this._call("volume_mute", { is_volume_muted: !muted });
+  }
+
+  // Shuffle button gestures: tap = toggle shuffle; hold or double-tap = open the
+  // "Reshuffle queue" popup.
+  private _onShufflePointerDown = (): void => {
+    this._shuffleHeld = false;
+    this._shuffleHoldTimer = window.setTimeout(() => {
+      this._shuffleHeld = true;
+      this._shuffleMenuOpen = true;
+    }, 500);
+  };
+
+  private _onShufflePointerUp = (): void => {
+    if (this._shuffleHoldTimer) {
+      clearTimeout(this._shuffleHoldTimer);
+      this._shuffleHoldTimer = undefined;
+    }
+  };
+
+  private _onShuffleClick = (): void => {
+    if (this._shuffleHeld) {
+      this._shuffleHeld = false;
+      return;
+    }
+    if (this._shuffleClickTimer) return; // second click of a double — dblclick handles it
+    this._shuffleClickTimer = window.setTimeout(() => {
+      this._shuffleClickTimer = undefined;
+      this._onShuffle();
+    }, 220);
+  };
+
+  private _onShuffleDblClick = (): void => {
+    if (this._shuffleClickTimer) {
+      clearTimeout(this._shuffleClickTimer);
+      this._shuffleClickTimer = undefined;
+    }
+    this._shuffleMenuOpen = true;
+  };
+
+  /** Reshuffle the queue. MA reshuffles the upcoming items whenever shuffle
+   *  transitions OFF->ON (set_shuffle no-ops on no change), so toggle off then on;
+   *  this always ends with shuffle enabled. */
+  private _reshuffleQueue(): void {
+    this._shuffleMenuOpen = false;
+    const e = this._entityId();
+    if (!e || !this.hass) return;
+    const hass = this.hass;
+    void (async () => {
+      await hass.callService("media_player", "shuffle_set", { entity_id: e, shuffle: false });
+      await hass.callService("media_player", "shuffle_set", { entity_id: e, shuffle: true });
+      this._reconcileQueue();
+    })();
   }
 
   private _onSeek = (e: Event): void => {
@@ -960,14 +1037,83 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
     }
   }
 
-  private _playQueueItem(id: string): void {
-    const e = this._entityId();
-    if (e && this.hass && id) {
-      void this.hass.callService("mass_queue", "play_queue_item", {
-        entity: e,
-        queue_item_id: id,
-      });
+  private _onDragStart(e: PointerEvent, id: string): void {
+    if (!this._queue) return;
+    e.preventDefault();
+    e.stopPropagation();
+    this._queueMenuId = undefined;
+    this._dragId = id;
+    this._dragOrigIdx = this._queue.findIndex((x) => x.id === id);
+    window.addEventListener("pointermove", this._onDragMove, true);
+    window.addEventListener("pointerup", this._onDragEnd, true);
+    window.addEventListener("pointercancel", this._onDragEnd, true);
+    this.requestUpdate();
+  }
+
+  /** Live-reorder the local queue as the pointer moves over the other rows. */
+  private _onDragMove = (e: PointerEvent): void => {
+    const dragId = this._dragId;
+    const q = this._queue;
+    if (!dragId || !q) return;
+    e.preventDefault();
+    const dragged = q.find((x) => x.id === dragId);
+    if (!dragged) return;
+    const root = this.renderRoot as ShadowRoot;
+    const rows = (Array.from(root.querySelectorAll(".qrow")) as HTMLElement[]).filter(
+      (r) => r.dataset.qid && r.dataset.qid !== dragId,
+    );
+    const rest = q.filter((x) => x.id !== dragId);
+    // Insertion point among the remaining items, by pointer Y vs each row midpoint.
+    let insert = rest.length;
+    for (const r of rows) {
+      const rect = r.getBoundingClientRect();
+      if (e.clientY < rect.top + rect.height / 2) {
+        insert = rest.findIndex((x) => x.id === r.dataset.qid);
+        break;
+      }
     }
+    // Never move before/onto the currently-playing track.
+    const curId = q[this._queueCurrentIdx]?.id;
+    const curInRest = curId ? rest.findIndex((x) => x.id === curId) : -1;
+    const minInsert = curInRest >= 0 ? curInRest + 1 : 0;
+    if (insert < minInsert) insert = minInsert;
+    const next = rest.slice();
+    next.splice(insert, 0, dragged);
+    if (next.some((x, i) => x.id !== q[i]?.id)) {
+      this._queue = next;
+      this.requestUpdate();
+    }
+  };
+
+  private _onDragEnd = (): void => {
+    window.removeEventListener("pointermove", this._onDragMove, true);
+    window.removeEventListener("pointerup", this._onDragEnd, true);
+    window.removeEventListener("pointercancel", this._onDragEnd, true);
+    const id = this._dragId;
+    const orig = this._dragOrigIdx;
+    this._dragId = undefined;
+    this._dragOrigIdx = undefined;
+    this.requestUpdate();
+    if (!id || orig === undefined || !this._queue) return;
+    const finalIdx = this._queue.findIndex((x) => x.id === id);
+    if (finalIdx < 0 || finalIdx === orig) return;
+    this._commitReorder(id, finalIdx - orig);
+  };
+
+  /** Apply a net queue move as a run of single-step up/down service calls, then
+   *  reconcile with the server. */
+  private _commitReorder(id: string, delta: number): void {
+    const e = this._entityId();
+    if (!e || !this.hass || delta === 0) return;
+    const hass = this.hass;
+    const svc = delta < 0 ? "move_queue_item_up" : "move_queue_item_down";
+    const steps = Math.abs(delta);
+    void (async () => {
+      for (let k = 0; k < steps; k++) {
+        await hass.callService("mass_queue", svc, { entity: e, queue_item_id: id });
+      }
+      this._reconcileQueue();
+    })();
   }
 
   private _toggleQueueMenu(e: Event, id: string): void {
@@ -982,22 +1128,34 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
   private _queueAct(action: "play" | "next" | "up" | "down" | "remove", id: string): void {
     const e = this._entityId();
     if (!e || !this.hass || !id) return;
+    this._queueMenuId = undefined;
+    if (action === "play") {
+      // "Play now": reposition the item to the next slot (same as Play Next), then
+      // stop the current track and advance to it. Sequence the two calls so the
+      // move has landed before we skip.
+      const hass = this.hass;
+      void (async () => {
+        await hass.callService("mass_queue", "move_queue_item_next", {
+          entity: e,
+          queue_item_id: id,
+        });
+        await hass.callService("media_player", "media_next_track", { entity_id: e });
+      })();
+      this._applyQueueOptimistic("next", id);
+      this._reconcileQueue();
+      return;
+    }
     const svc = {
-      play: "play_queue_item",
       next: "move_queue_item_next",
       up: "move_queue_item_up",
       down: "move_queue_item_down",
       remove: "remove_queue_item",
     }[action];
     void this.hass.callService("mass_queue", svc, { entity: e, queue_item_id: id });
-    this._queueMenuId = undefined;
-    if (action !== "play") {
-      // Update the list immediately for instant feedback, then reconcile with the
-      // server once it has applied the reorder/removal ("play" changes the track,
-      // which refreshes the queue on its own via the cache key).
-      this._applyQueueOptimistic(action, id);
-      this._reconcileQueue();
-    }
+    // Update the list immediately for instant feedback, then reconcile with the
+    // server once it has applied the reorder/removal.
+    this._applyQueueOptimistic(action, id);
+    this._reconcileQueue();
   }
 
   /** Reorder/remove a queue item locally so the change shows instantly. */
@@ -1064,7 +1222,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
     if (this._config?.mode === "mini") {
       return html`
         <ha-card class="ted-card ${themeClass}" style="--music-fg:${fg}">
-          ${this._renderBackground(mode)}${this._renderFrost(mode)}
+          <div class="bg-clip">${this._renderBackground(mode)}${this._renderFrost(mode)}</div>
           <div class="content mini-content">${this._renderMini()}</div>
         </ha-card>
       `;
@@ -1079,7 +1237,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
 
     return html`
       <ha-card class="ted-card ${themeClass}" style="--music-fg:${fg}">
-        ${this._renderBackground(mode)}${this._renderFrost(mode)}
+        <div class="bg-clip">${this._renderBackground(mode)}${this._renderFrost(mode)}</div>
         <div class="content">
           ${this._renderPlayer()}
           <div class="tabs">${this._renderTabs()}</div>
@@ -1175,7 +1333,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
         </div>
 
         <div class="controls">
-          ${this._ctrl(ic(IC.shuffle), "Shuffle", this._onShuffle, shuffle)}
+          ${this._renderShuffleControl(shuffle)}
           ${this._ctrl(ic(IC.previous), "Previous", this._onPrev)}
           ${this._ctrl(
             playing ? ic(IC.pause) : ic(IC.play),
@@ -1250,8 +1408,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
     const playing = this._isPlaying();
     const volLevel = this._attr<number>("volume_level");
     const volPct = typeof volLevel === "number" ? Math.round(volLevel * 100) : 0;
-    const entity = this._entityId();
-    const locked = this._locked();
+    const muted = !!this._attr<boolean>("is_volume_muted");
     return html`
       <div class="mini">
         <div class="mini-art-wrap">
@@ -1264,7 +1421,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
           <div class="mini-artist one">${artist}</div>
         </div>
         <div class="mini-controls">
-          ${this._ctrl(ic(IC.shuffle), "Shuffle", this._onShuffle, shuffle)}
+          ${this._renderShuffleControl(shuffle)}
           ${this._ctrl(ic(IC.previous), "Previous", this._onPrev)}
           ${this._ctrl(
             playing ? ic(IC.pause) : ic(IC.play),
@@ -1282,32 +1439,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
             repeat !== "off",
           )}
         </div>
-        <div class="mini-right">
-          <div class="cast-wrap">
-            <button
-              type="button"
-              class="ctrl ${locked ? "" : ""}"
-              title=${locked ? "Playback target (locked)" : "Change playback target"}
-              aria-label="Playback target"
-              ?disabled=${locked}
-              @click=${this._toggleCast}
-            >
-              <ha-icon icon=${ic(IC.speaker)}></ha-icon>
-            </button>
-            ${this._castOpen ? this._renderCastFlyout(entity) : nothing}
-          </div>
-          <ha-icon class="mini-vol-icon" icon=${ic(IC.volHigh)}></ha-icon>
-          <input
-            class="vol mini-vol"
-            type="range"
-            min="0"
-            max="100"
-            .value=${String(volPct)}
-            @change=${this._onVolume}
-            aria-label="Volume"
-          />
-          <span class="vol-num">${volPct}</span>
-        </div>
+        <div class="mini-right">${this._renderVolumeControl(volPct, muted)}</div>
       </div>
       <input
         class="seek mini-seek"
@@ -1341,6 +1473,37 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
     >
       <ha-icon icon=${icon}></ha-icon>
     </button>`;
+  }
+
+  /** Shuffle control: tap toggles shuffle; hold or double-tap opens a small popup
+   *  with a "Reshuffle queue" action. */
+  private _renderShuffleControl(shuffle: boolean): TemplateResult {
+    return html`<div class="shuffle-wrap">
+      <button
+        type="button"
+        class="ctrl ${shuffle ? "active" : ""}"
+        title="Shuffle"
+        aria-label="Shuffle"
+        @pointerdown=${this._onShufflePointerDown}
+        @pointerup=${this._onShufflePointerUp}
+        @pointercancel=${this._onShufflePointerUp}
+        @click=${this._onShuffleClick}
+        @dblclick=${this._onShuffleDblClick}
+      >
+        <ha-icon icon=${ic(IC.shuffle)}></ha-icon>
+      </button>
+      ${this._shuffleMenuOpen ? this._renderShuffleMenu() : nothing}
+    </div>`;
+  }
+
+  private _renderShuffleMenu(): TemplateResult {
+    return html`
+      <div class="qmenu shuffle-menu ${this._shuffleMenuUp ? "up" : "down"}" role="menu">
+        <button type="button" class="qmi" @click=${() => this._reshuffleQueue()}>
+          <ha-icon icon=${ic(IC.shuffle)}></ha-icon>Reshuffle queue
+        </button>
+      </div>
+    `;
   }
 
   /** The "cast to" target-device chip. Opens a device/grouping flyout unless
@@ -1487,30 +1650,35 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
     return html`<div class="list">
       ${items.map((it, i) => {
         const isCurrent = !recent && i === 0;
-        const label = it.title;
-        const sub = it.artist;
-        return html`<div class="qrow ${isCurrent ? "cur" : ""}">
-          ${it.image
-            ? html`<img class="thumb" src=${it.image} alt="" />`
-            : html`<div class="thumb ph"><ha-icon icon=${ic(IC.music)}></ha-icon></div>`}
-          <div class="qmain" @click=${() => this._playQueueItem(it.id)}>
-            <div class="qtitle">${label}</div>
-            <div class="qsub">${sub}</div>
+        return html`<div
+          class="qrow ${isCurrent ? "cur" : ""} ${this._dragId === it.id ? "dragging" : ""}"
+          data-qid=${it.id}
+        >
+          <div class="qhit tap" @click=${(e: Event) => this._toggleQueueMenu(e, it.id)}>
+            ${it.image
+              ? html`<img class="thumb" src=${it.image} alt="" />`
+              : html`<div class="thumb ph"><ha-icon icon=${ic(IC.music)}></ha-icon></div>`}
+            <div class="qmain">
+              <div class="qtitle">${it.title}</div>
+              <div class="qsub">${it.artist}</div>
+            </div>
           </div>
           ${isCurrent
             ? html`<span class="np-pill">NOW PLAYING</span>
                 <span class="eq ${this._isPlaying() ? "" : "paused"}"><i></i><i></i><i></i></span>`
             : nothing}
           <div class="qmenu-wrap">
-            <button
-              type="button"
-              class="row-x"
-              title="Queue options"
-              aria-label="Queue options"
-              @click=${(e: Event) => this._toggleQueueMenu(e, it.id)}
-            >
-              <ha-icon icon=${ic(IC.menu)}></ha-icon>
-            </button>
+            ${!recent && !isCurrent
+              ? html`<button
+                  type="button"
+                  class="drag-handle"
+                  title="Drag to reorder"
+                  aria-label="Drag to reorder"
+                  @pointerdown=${(e: PointerEvent) => this._onDragStart(e, it.id)}
+                >
+                  <ha-icon icon=${ic(IC.drag)}></ha-icon>
+                </button>`
+              : nothing}
             ${this._queueMenuId === it.id ? this._renderQueueMenu(it, isCurrent) : nothing}
           </div>
         </div>`;
@@ -1528,18 +1696,20 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
         </button>
         ${isCurrent
           ? nothing
-          : html`<button type="button" class="qmi" @click=${() => this._queueAct("play", it.id)}>
-              <ha-icon icon=${ic(IC.playOutline)}></ha-icon>Play now
-            </button>`}
-        <button type="button" class="qmi" @click=${() => this._queueAct("next", it.id)}>
-          <ha-icon icon=${ic(IC.nextOutline)}></ha-icon>Play next
-        </button>
-        <button type="button" class="qmi" @click=${() => this._queueAct("up", it.id)}>
-          <ha-icon icon=${ic(IC.up)}></ha-icon>Move up
-        </button>
-        <button type="button" class="qmi" @click=${() => this._queueAct("down", it.id)}>
-          <ha-icon icon=${ic(IC.down)}></ha-icon>Move down
-        </button>
+          : html`
+              <button type="button" class="qmi" @click=${() => this._queueAct("play", it.id)}>
+                <ha-icon icon=${ic(IC.playOutline)}></ha-icon>Play now
+              </button>
+              <button type="button" class="qmi" @click=${() => this._queueAct("next", it.id)}>
+                <ha-icon icon=${ic(IC.nextOutline)}></ha-icon>Play next
+              </button>
+              <button type="button" class="qmi" @click=${() => this._queueAct("up", it.id)}>
+                <ha-icon icon=${ic(IC.up)}></ha-icon>Move up
+              </button>
+              <button type="button" class="qmi" @click=${() => this._queueAct("down", it.id)}>
+                <ha-icon icon=${ic(IC.down)}></ha-icon>Move down
+              </button>
+            `}
         <button type="button" class="qmi danger" @click=${() => this._queueAct("remove", it.id)}>
           <ha-icon icon=${ic(IC.del)}></ha-icon>Delete item
         </button>
@@ -1601,10 +1771,20 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
       ha-card {
         position: relative;
         height: 100%;
-        overflow: hidden;
+        overflow: visible;
         padding: 0;
         color: var(--ted-style-text);
         container-type: inline-size;
+      }
+
+      /* Clips only the (scaled/blurred) background layers to the card's rounded
+         edge, while letting content — notably popups — overflow the card. */
+      .bg-clip {
+        position: absolute;
+        inset: 0;
+        overflow: hidden;
+        border-radius: inherit;
+        z-index: 0;
       }
 
       /* Background layers */
@@ -2120,12 +2300,15 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
       }
       .tabcount {
         margin-left: 6px;
-        font-size: 0.82em;
-        font-weight: 600;
-        opacity: 0.75;
-        padding: 1px 6px;
+        font-size: 0.8em;
+        font-weight: 700;
+        min-width: 1.25em;
+        padding: 1px 7px;
+        text-align: center;
+        line-height: 1.4;
         border-radius: 999px;
-        background: rgba(127, 127, 127, 0.22);
+        background: rgba(127, 127, 127, 0.5);
+        border: 1px solid rgba(255, 255, 255, 0.14);
       }
       .tabbtn.sel .tabcount {
         opacity: 1;
@@ -2257,10 +2440,23 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
         -webkit-backdrop-filter: blur(8px) saturate(1.3);
         backdrop-filter: blur(8px) saturate(1.3);
       }
+      .qrow.dragging {
+        opacity: 0.55;
+        background: rgba(127, 127, 127, 0.2);
+      }
+      .qhit {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex: 1 1 auto;
+        min-width: 0;
+      }
+      .qhit.tap {
+        cursor: pointer;
+      }
       .qmain {
         flex: 1 1 auto;
         min-width: 0;
-        cursor: pointer;
       }
       .qtitle {
         font-weight: 600;
@@ -2355,6 +2551,17 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
         bottom: calc(100% + 4px);
         top: auto;
       }
+      .shuffle-wrap {
+        position: relative;
+        display: inline-flex;
+      }
+      /* Reshuffle popup reuses .qmenu (opaque surface + up/down flip) but anchors
+         to the left of the shuffle button so it opens rightward into the card. */
+      .shuffle-menu {
+        left: 0;
+        right: auto;
+        min-width: 160px;
+      }
       .qmi {
         display: flex;
         align-items: center;
@@ -2379,20 +2586,24 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
         --mdc-icon-size: 18px;
         opacity: 0.85;
       }
-      .row-x {
+      .drag-handle {
         flex: 0 0 auto;
         border: none;
         background: none;
         color: inherit;
-        cursor: pointer;
+        cursor: grab;
         opacity: 0.55;
         display: inline-flex;
+        touch-action: none;
       }
-      .row-x:hover {
+      .drag-handle:hover {
         opacity: 1;
       }
-      .row-x ha-icon {
-        --mdc-icon-size: 18px;
+      .drag-handle:active {
+        cursor: grabbing;
+      }
+      .drag-handle ha-icon {
+        --mdc-icon-size: 20px;
       }
 
       /* Lyrics */
@@ -2519,13 +2730,6 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
       .mini-controls .ctrl.primary ha-icon {
         --mdc-icon-size: 40px;
       }
-      .mini-vol-icon {
-        --mdc-icon-size: 18px;
-        opacity: 0.85;
-      }
-      .mini-vol {
-        width: 84px;
-      }
       .mini-seek {
         margin-top: 8px;
         height: 3px;
@@ -2533,11 +2737,6 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
       @container (max-width: 620px) {
         .mini-meta {
           flex: 1 1 60px;
-        }
-        .mini-vol,
-        .mini-vol-icon,
-        .mini-right .vol-num {
-          display: none;
         }
       }
     `,
