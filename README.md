@@ -939,6 +939,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.266
+
+- **Music card: player always visible + 50/50 layout.** The now-playing player stays on screen even when nothing is playing (showing a "Nothing playing" state) instead of the tabs filling the card, and the player and tab panes each take half the width. Queue/Recent rows now show the **title** in bold with **Artist - Album** beneath.
+
 ### v1.0.265
 
 - **Music card: queue polish + readability.** The Queue/Recent rows now show "Artist - Title" with a "duration | album" subtitle, the now-playing row gets a blue **NOW PLAYING** pill with animated equalizer bars, and each row's 3-dots menu offers Play now / Play next / Move up / Move down / Delete. Fixed the horizontal scrollbar (rows now truncate cleanly), removed the unused SQ badge, and added drop shadows to all player content so it stays legible over the album-colour gradient.
