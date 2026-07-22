@@ -10,18 +10,16 @@ const SOURCE_OPTIONS = [
   { value: "config", label: "This card (choose below)" },
 ];
 
-const ENGINE_OPTIONS = [
-  { value: "mass", label: "Music Assistant Player Card" },
-  { value: "yamp", label: "Yet Another Media Player" },
+const BACKGROUND_OPTIONS = [
+  { value: "avg_gradient", label: "Album colour gradient" },
+  { value: "blur", label: "Blurred album art" },
+  { value: "ted", label: "Ted's style" },
+  { value: "ha", label: "Home Assistant theme" },
 ];
 
-const SPLIT_OPTIONS = [
-  { value: "100", label: "Player only" },
-  { value: "70", label: "70% player / 30% library" },
-  { value: "60", label: "60% / 40%" },
-  { value: "50", label: "50% / 50%" },
-  { value: "40", label: "40% / 60%" },
-  { value: "30", label: "30% player / 70% library" },
+const THEME_OPTIONS = [
+  { value: "ted-style", label: "Ted's style" },
+  { value: "ha", label: "Home Assistant theme" },
 ];
 
 @customElement(MUSIC_CARD_EDITOR_TYPE)
@@ -36,22 +34,26 @@ export class TedMusicCardEditor extends LitElement implements LovelaceCardEditor
   protected render(): TemplateResult | typeof nothing {
     if (!this.hass || !this._config) return nothing;
     const source: MusicPlayerSource = this._config.player_source ?? "settings";
-    const topData = {
+    const data = {
       player_source: source,
-      engine: this._config.engine ?? "yamp",
-      split: String(this._config.split ?? 100),
+      background_mode: this._config.background_mode ?? "avg_gradient",
+      theme: this._config.theme ?? "ted-style",
       auto_resolve_mass_player: this._config.auto_resolve_mass_player !== false,
-      fill: this._config.fill ?? false,
+      lock_target_device: this._config.lock_target_device ?? false,
+      apply_music_volume: this._config.apply_music_volume !== false,
     };
-    const topSchema = [
+    const schema = [
       { name: "player_source", selector: { select: { mode: "dropdown", options: SOURCE_OPTIONS } } },
       {
         type: "grid",
         name: "",
         column_min_width: "160px",
         schema: [
-          { name: "engine", selector: { select: { mode: "dropdown", options: ENGINE_OPTIONS } } },
-          { name: "split", selector: { select: { mode: "dropdown", options: SPLIT_OPTIONS } } },
+          {
+            name: "background_mode",
+            selector: { select: { mode: "dropdown", options: BACKGROUND_OPTIONS } },
+          },
+          { name: "theme", selector: { select: { mode: "dropdown", options: THEME_OPTIONS } } },
         ],
       },
       {
@@ -60,7 +62,8 @@ export class TedMusicCardEditor extends LitElement implements LovelaceCardEditor
         column_min_width: "160px",
         schema: [
           { name: "auto_resolve_mass_player", selector: { boolean: {} } },
-          { name: "fill", selector: { boolean: {} } },
+          { name: "lock_target_device", selector: { boolean: {} } },
+          { name: "apply_music_volume", selector: { boolean: {} } },
         ],
       },
     ];
@@ -69,8 +72,8 @@ export class TedMusicCardEditor extends LitElement implements LovelaceCardEditor
       <div class="editor">
         <ha-form
           .hass=${this.hass}
-          .data=${topData}
-          .schema=${topSchema}
+          .data=${data}
+          .schema=${schema}
           .computeLabel=${this._computeLabel}
           .computeHelper=${this._computeHelper}
           @value-changed=${this._valueChanged}
@@ -93,36 +96,36 @@ export class TedMusicCardEditor extends LitElement implements LovelaceCardEditor
   }
 
   private _computeHelper = (schema: { name: string }): string | undefined => {
-    if (schema.name === "player_source") {
-      return "\"This device's Settings player\" uses the per-device Music player from Ted's Cards Settings.";
+    switch (schema.name) {
+      case "player_source":
+        return "\"This device's Settings player\" uses the per-device Music player from Ted's Cards Settings.";
+      case "background_mode":
+        return "How the player surface is painted.";
+      case "auto_resolve_mass_player":
+        return "If the player isn't a Music Assistant entity, find its Music Assistant match at runtime.";
+      case "lock_target_device":
+        return "Prevent switching the playback target device from the card (hides the cast picker).";
+      case "apply_music_volume":
+        return "Set this device's Music volume when playback first starts.";
+      default:
+        return undefined;
     }
-    if (schema.name === "engine") {
-      return "Which card renders the player. Yet Another Media Player adds a dedicated library/search/queue pane.";
-    }
-    if (schema.name === "split") {
-      return "Show a library/search/queue pane beside the player. Collapses to player-only on narrow screens.";
-    }
-    if (schema.name === "auto_resolve_mass_player") {
-      return "If the player isn't a Music Assistant entity, find its Music Assistant match at runtime.";
-    }
-    if (schema.name === "fill") {
-      return "Fill the parent container (e.g. a dashboard view area) instead of sizing to content.";
-    }
-    return undefined;
   };
 
   private _computeLabel = (schema: { name: string }): string => {
     switch (schema.name) {
       case "player_source":
         return "Player source";
-      case "engine":
-        return "Player card";
-      case "split":
-        return "Side-by-side split";
+      case "background_mode":
+        return "Background";
+      case "theme":
+        return "Theme";
       case "auto_resolve_mass_player":
         return "Auto-match player";
-      case "fill":
-        return "Fill available space";
+      case "lock_target_device":
+        return "Lock target device";
+      case "apply_music_volume":
+        return "Apply music volume on start";
       default:
         return schema.name;
     }
@@ -130,15 +133,7 @@ export class TedMusicCardEditor extends LitElement implements LovelaceCardEditor
 
   private _valueChanged = (ev: CustomEvent): void => {
     const value = ev.detail.value as Record<string, unknown>;
-    const merged = { ...this._config, ...value } as MusicCardConfig;
-    // `split` comes back from the select as a string; store it as a number (drop 100 = default).
-    const rawSplit = value.split;
-    if (typeof rawSplit === "string") {
-      const n = Number(rawSplit);
-      if (Number.isFinite(n) && n !== 100) merged.split = n;
-      else delete merged.split;
-    }
-    this._commit(merged);
+    this._commit({ ...this._config, ...value } as MusicCardConfig);
   };
 
   private _entityChanged = (ev: CustomEvent): void => {

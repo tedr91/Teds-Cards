@@ -9,6 +9,18 @@ import type { TedStyleTheme } from "../../shared/types";
  */
 export type MusicPlayerSource = "settings" | "config";
 
+/**
+ * Background treatment for the player surface.
+ * - `avg_gradient` (default) — vertical gradient derived from the album art's average colour.
+ * - `blur`                   — heavily blurred, scaled album art.
+ * - `ted`                    — Ted's brushed dark surface.
+ * - `ha`                     — the active Home Assistant theme surface.
+ */
+export type MusicBackgroundMode = "avg_gradient" | "blur" | "ted" | "ha";
+
+/** The tabs shown on the right side of the full player. */
+export type MusicTab = "media" | "queue" | "recent" | "lyrics";
+
 export interface MusicCardConfig extends LovelaceCardConfig {
   type: string;
   /** Explicit media_player entity. Wins over the Settings value; required for `player_source: config`. */
@@ -18,30 +30,11 @@ export interface MusicCardConfig extends LovelaceCardConfig {
   /** When the resolved entity is not a Music Assistant player, try to find its
    *  Music Assistant counterpart at runtime (by device, then by name). Default true. */
   auto_resolve_mass_player?: boolean;
-  /** Which player card renders the resolved Music Assistant entity:
-   *  `yamp` (default) = jianyu-li/yet-another-media-player, `mass` = droans/mass-player-card. */
-  engine?: "mass" | "yamp";
-  /** Extra options merged into the embedded `mass-player-card` config
-   *  (everything except `type`/`entities`). Used when `engine` is `mass`. */
-  mass_config?: Record<string, unknown>;
-  /** Extra options merged into the embedded `yet-another-media-player` config
-   *  (everything except `type`/`entities`). Used when `engine` is `yamp`. */
-  yamp_config?: Record<string, unknown>;
-  /** Side-by-side split: LEFT width percent. One of 100 | 70 | 60 | 50 | 40 | 30.
-   *  100 (default) = single pane. When < 100, renders the player on the LEFT and a
-   *  library/search/queue pane on the RIGHT (both driving the same resolved player). */
-  split?: number;
-  /** Extra options merged into the LEFT (player) pane when `split` < 100 (engine-specific keys). */
-  left_config?: Record<string, unknown>;
-  /** Extra options merged into the RIGHT (library/search/queue) pane when `split` < 100. */
-  right_config?: Record<string, unknown>;
-  /** Show the vertical layout-switcher pill (between the panes) that opens a flyout of
-   *  split choices. Default true when the card fills its area. */
-  layout_switcher?: boolean;
-  /** Stretch the player to fill the dashboard content area (sizes the embedded
-   *  mass-player-card to the content area's height, minus its own tab bar).
-   *  Off (default) sizes the player to its content, centered in the view. */
-  fill?: boolean;
+  /** Background treatment for the player surface. Default `avg_gradient`. */
+  background_mode?: MusicBackgroundMode;
+  /** Lock the media player target device: when true, the "cast to" chip is a static
+   *  label (no device-switching flyout). Default false. */
+  lock_target_device?: boolean;
   /** Set the player to this device's "Music volume" setting when playback first
    *  starts (the leading edge of playing). Default true. */
   apply_music_volume?: boolean;
