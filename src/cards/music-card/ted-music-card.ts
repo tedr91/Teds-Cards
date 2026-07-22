@@ -117,6 +117,14 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
     // ourselves and feed it as card_height when engine:yamp + fill.
     this._resizeObserver ??= new ResizeObserver(() => this._measureFill());
     this._resizeObserver.observe(this);
+    // Reject programmatic autofocus of the embedded search box. On tablets the child
+    // card's search input auto-focuses on load, which opens the on-screen keyboard, which
+    // resizes the layout, which steals+restores focus — an endless keyboard flicker loop.
+    // We note real user gestures and blur any text input that gains focus WITHOUT one.
+    this.addEventListener("pointerdown", this._noteUserGesture, { capture: true });
+    this.addEventListener("touchstart", this._noteUserGesture, { capture: true, passive: true });
+    this.addEventListener("keydown", this._noteUserGesture, { capture: true });
+    this.addEventListener("focusin", this._onFocusIn, { capture: true });
     // Restore the per-view runtime layout choice from the switcher pill.
     try {
       const v = Number(window.localStorage.getItem(this._splitStorageKey()));
@@ -129,7 +137,39 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
   public disconnectedCallback(): void {
     super.disconnectedCallback();
     this._resizeObserver?.disconnect();
+    this.removeEventListener("pointerdown", this._noteUserGesture, { capture: true });
+    this.removeEventListener("touchstart", this._noteUserGesture, { capture: true });
+    this.removeEventListener("keydown", this._noteUserGesture, { capture: true });
+    this.removeEventListener("focusin", this._onFocusIn, { capture: true });
   }
+
+  /** Timestamp (ms) of the last real user gesture within the card, gating autofocus. */
+  private _userGestureTs = 0;
+  private _noteUserGesture = (): void => {
+    this._userGestureTs = Date.now();
+  };
+
+  /** True for a typeable field (text/search input, textarea, or contenteditable). */
+  private _isTextEntry(el: Element | undefined): el is HTMLElement {
+    if (!el) return false;
+    if (el.tagName === "TEXTAREA") return true;
+    if (el.tagName === "INPUT") {
+      const type = (el as HTMLInputElement).type;
+      return !["button", "submit", "reset", "checkbox", "radio", "range", "color", "file", "image", "hidden"].includes(
+        type,
+      );
+    }
+    return (el as HTMLElement).isContentEditable === true;
+  }
+
+  /** Blur a text input that gained focus without a recent user gesture (i.e. the child
+   *  card's programmatic autofocus) to stop the on-screen-keyboard flicker loop. Focus
+   *  that follows a real tap/keypress is left alone so manual searching still works. */
+  private _onFocusIn = (e: FocusEvent): void => {
+    if (Date.now() - this._userGestureTs < 700) return; // user-initiated — allow
+    const target = e.composedPath()[0] as Element | undefined;
+    if (this._isTextEntry(target)) target.blur();
+  };
 
   /** Measure the host (content area) for engine:yamp + fill; updates `_fillHeight`. */
   private _measureFill(): void {

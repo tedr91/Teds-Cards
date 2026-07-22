@@ -939,6 +939,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.259
+
+- **Music card: fixed the on-screen-keyboard flicker loop on tablets.** The embedded search box auto-focused on load, opening the keyboard, which resized the layout and stole/restored focus in an endless loop. The card now rejects programmatic autofocus of text inputs (blurring focus that arrives without a real tap/keypress), so the keyboard stays closed until you actually tap the search field.
+
 ### v1.0.258
 
 - **Schedule view auto-fit actually works now.** The previous fix adjusted the wrong lever: with `compact_height` on, daylight sizes hour rows from the window bottom (behind a docked navbar), so its value always won and our scaling did nothing — leaving the last hour clipped behind the bar. The fit now measures the real grid overflow and drives `height_scale` so it becomes the binding row height, compressing the full day into the visible cell.
