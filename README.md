@@ -939,6 +939,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.264
+
+- **Music card: rebuilt as a native player (no more YAMP/mass wrapper).** `custom:ted-music-card` is now a self-contained, theme-aware Music Assistant player that mirrors the MA now-playing screen: album art with a soft shadow, left-aligned title/artist/album, live progress + seek, tooltipped controls (favorite, shuffle, prev, play/pause, next, repeat, stream-quality badge), volume, and a "cast to" chip with a device/grouping flyout (gated by a **Lock target device** setting). Four background modes — **album-colour gradient** (default), blurred art, Ted's style, and HA theme. On the right, always-on **Media / Queue / Recent / Lyrics** tabs (synced lyrics via LRCLIB); the queue tabs need the `mass_queue` integration and are hidden gracefully without it. A compact **`mode: mini`** one-row layout is also available. The previous wrapper card is preserved as `custom:ted-music-card-old` while you migrate.
+
 ### v1.0.263
 
 - **Music card: reverted the deeper layout-pill shadow.** The heavier drop shadow from v1.0.262 made the resizer pill harder to see, so the grip is back to its original subtle shadow.
