@@ -726,13 +726,17 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
         });
       }
     }
-    // Reconcile the queue's favorite flags after the server processes the change.
-    this._queueKey = undefined;
-    window.setTimeout(() => {
-      this._queueKey = undefined;
-      void this._ensureQueue();
-      this.requestUpdate();
-    }, 1500);
+    // Reflect the new favorite state immediately, then reconcile with the server.
+    if (this._queue) {
+      const i = this._queue.findIndex((x) => x.id === it.id);
+      if (i >= 0) {
+        const next = this._queue.slice();
+        next[i] = { ...next[i], favorite: makeFav };
+        this._queue = next;
+        this.requestUpdate();
+      }
+    }
+    this._reconcileQueue();
   }
 
   private _orchestrateTabData(): void {
@@ -792,11 +796,11 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
     return first?.path ?? first?.url ?? undefined;
   }
 
-  private async _ensureQueue(): Promise<void> {
+  private async _ensureQueue(force = false): Promise<void> {
     const entity = this._entityId();
     if (!entity || this._queueLoading) return;
     const key = `${entity}|${this._attr<string>("media_content_id") ?? ""}`;
-    if (this._queue && this._queueKey === key) return;
+    if (!force && this._queue && this._queueKey === key) return;
     this._queueLoading = true;
     try {
       const resp = (await this._callWithResponse("mass_queue", "get_queue_items", {
@@ -815,6 +819,10 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
         duration: typeof it.duration === "number" ? it.duration : undefined,
         favorite: !!it.favorite,
       }));
+      // Music Assistant briefly reports an empty queue while it applies a
+      // reorder/removal. Don't clobber a good list (or an optimistic edit) with
+      // that transient blank — a later reconcile / track change will refresh it.
+      if (items.length === 0 && (this._queue?.length ?? 0) > 0) return;
       const cur = this._attr<string>("media_content_id");
       let idx = items.findIndex((x) => x.uri && x.uri === cur);
       if (idx < 0) idx = 0;
@@ -822,8 +830,11 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
       this._queueCurrentIdx = idx;
       this._queueKey = key;
     } catch {
-      this._queue = [];
-      this._queueCurrentIdx = 0;
+      // Keep whatever we already have on error rather than blanking the list.
+      if (!this._queue) {
+        this._queue = [];
+        this._queueCurrentIdx = 0;
+      }
       this._queueKey = key;
     } finally {
       this._queueLoading = false;
@@ -929,8 +940,46 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
     }[action];
     void this.hass.callService("mass_queue", svc, { entity: e, queue_item_id: id });
     this._queueMenuId = undefined;
-    // Force a queue refresh on the next update so the reorder/removal is reflected.
-    this._queueKey = undefined;
+    if (action !== "play") {
+      // Update the list immediately for instant feedback, then reconcile with the
+      // server once it has applied the reorder/removal ("play" changes the track,
+      // which refreshes the queue on its own via the cache key).
+      this._applyQueueOptimistic(action, id);
+      this._reconcileQueue();
+    }
+  }
+
+  /** Reorder/remove a queue item locally so the change shows instantly. */
+  private _applyQueueOptimistic(action: "next" | "up" | "down" | "remove", id: string): void {
+    const q = this._queue;
+    if (!q) return;
+    const i = q.findIndex((x) => x.id === id);
+    if (i < 0) return;
+    const curId = q[this._queueCurrentIdx]?.id;
+    const next = q.slice();
+    if (action === "up" && i > 0) {
+      [next[i - 1], next[i]] = [next[i], next[i - 1]];
+    } else if (action === "down" && i < next.length - 1) {
+      [next[i + 1], next[i]] = [next[i], next[i + 1]];
+    } else if (action === "remove") {
+      next.splice(i, 1);
+    } else if (action === "next") {
+      const [item] = next.splice(i, 1);
+      const at = curId ? next.findIndex((x) => x.id === curId) : this._queueCurrentIdx;
+      next.splice((at < 0 ? this._queueCurrentIdx : at) + 1, 0, item);
+    } else {
+      return;
+    }
+    this._queue = next;
+    const newCur = curId ? next.findIndex((x) => x.id === curId) : -1;
+    if (newCur >= 0) this._queueCurrentIdx = newCur;
+    this.requestUpdate();
+  }
+
+  /** Re-fetch the queue a few times after a mutation to sync with the server
+   *  once Music Assistant has finished applying it. */
+  private _reconcileQueue(): void {
+    [700, 1500, 2600].forEach((d) => window.setTimeout(() => void this._ensureQueue(true), d));
   }
 
   private _pickTab(id: MusicTab): void {
