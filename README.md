@@ -939,6 +939,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.262
+
+- **Music card: deeper shadow behind the layout pill.** The split resizer pill's grip now casts a softer, more pronounced drop shadow so it lifts off the panes and reads clearly against any background.
+
 ### v1.0.261
 
 - **Docs: Music card guide rewritten for the current card.** [documentation/music-card.md](documentation/music-card.md) now covers the default YAMP engine (`engine`, `yamp_config`/`mass_config`), the side-by-side split with `left_config`/`right_config`, the draggable layout pill (`layout_switcher`), and the idle image. No functional change.

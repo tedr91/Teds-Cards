@@ -764,7 +764,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
       height: 100%;
       border-radius: 999px;
       background: rgb(from var(--primary-text-color, #ffffff) r g b / 0.35);
-      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
+      box-shadow: 0 2px 10px 2px rgba(0, 0, 0, 0.55);
       transition: background 0.15s ease;
     }
     .split-pill:hover .grip,
