@@ -702,8 +702,8 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
     return html`
       <ha-card class="ted-card ${themeClass}" style="--music-fg:${fg}">
         ${this._renderBackground(mode)}
-        <div class="content ${hasMedia ? "" : "idle"}">
-          ${hasMedia ? this._renderPlayer() : nothing}
+        <div class="content">
+          ${this._renderPlayer()}
           <div class="tabs">${this._renderTabs()}</div>
         </div>
       </ha-card>
@@ -735,7 +735,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
 
   private _renderPlayer(): TemplateResult {
     const art = this._artUrl();
-    const title = this._title() ?? "";
+    const title = this._title() ?? "Nothing playing";
     const artist = this._attr<string>("media_artist") ?? "";
     const album = this._attr<string>("media_album_name") ?? "";
     const showAlbum = album && album !== title;
@@ -1053,8 +1053,8 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
     return html`<div class="list">
       ${items.map((it, i) => {
         const isCurrent = !recent && i === 0;
-        const label = it.artist ? `${it.artist} - ${it.title}` : it.title;
-        const sub = `${it.duration ? fmtTime(it.duration) + " | " : ""}${it.album || it.artist}`;
+        const label = it.title;
+        const sub = [it.artist, it.album].filter(Boolean).join(" - ");
         return html`<div class="qrow ${isCurrent ? "cur" : ""}">
           ${it.image
             ? html`<img class="thumb" src=${it.image} alt="" />`
@@ -1225,10 +1225,10 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
         filter: none;
       }
       .content.idle .tabs {
-        flex: 1 1 auto;
+        flex: 1 1 0;
       }
       .player {
-        flex: 0 0 42%;
+        flex: 1 1 0;
         min-width: 0;
         display: flex;
         flex-direction: column;
