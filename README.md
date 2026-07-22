@@ -939,6 +939,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.280
+
+- **Music card: smarter popups, tab counts & volume memory.** The target-device and queue 3-dots popups now flip above or below their trigger depending on which side has room, so they're never clipped. The **Queue** and **Recent** tabs show an item count (like the Music Assistant UI). Changing the volume now saves it as this device's **Music volume** (and stops the device inheriting the global value).
+
 ### v1.0.279
 
 - **Music card: reliable queue updates + opaque popups.** Queue reorder / remove / play-next now update instantly (optimistic) and reconcile with the server, so the list no longer goes blank or looks unchanged until the next track plays. The target-device popup and queue 3-dots menu now use an opaque surface (fixing see-through controls on translucent themes) and the target popup opens upward instead of into the controls.

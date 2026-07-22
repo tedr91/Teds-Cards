@@ -171,6 +171,8 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
 
   /** Cast/grouping flyout open state. */
   @state() private _castOpen = false;
+  /** Whether the cast flyout opens upward (set by measurement to avoid clipping). */
+  @state() private _castUp = true;
   /** Optimistic favorite state for the current track (instant heart feedback). */
   @state() private _favOptimistic?: boolean;
   private _favOptKey?: string;
@@ -178,6 +180,8 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
   @state() private _volOpen = false;
   private _volHoldTimer?: number;
   private _volHeld = false;
+  /** Debounce for persisting this device's "Music volume" setting on slider drags. */
+  private _musicVolWriteTimer?: number;
   private _volClickTimer?: number;
 
   /** Music Assistant config entry id (for get_library), lazily resolved. */
@@ -194,6 +198,8 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
   private _queueLoading = false;
   /** The queue row whose 3-dots menu is open. */
   @state() private _queueMenuId?: string;
+  /** Whether the open queue menu flips upward (set by measurement to avoid clipping). */
+  @state() private _queueMenuUp = false;
   /** Lyrics: undefined = loading, null = none, [] = plain-only, [lines] = synced. */
   @state() private _lyrics?: LyricLine[] | null;
   private _lyricsPlain?: string;
@@ -295,6 +301,38 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
     this._orchestrateTabData();
     this._scrollActiveLyric();
     this._measureLayout();
+    this._positionPopups();
+  }
+
+  /** Flip the open popups above/below their trigger, whichever side has room, so
+   *  they aren't clipped by the card's `overflow: hidden` edge. */
+  private _positionPopups(): void {
+    const root = this.renderRoot as ShadowRoot | undefined;
+    const card = root?.querySelector("ha-card") as HTMLElement | null;
+    const cardRect = card?.getBoundingClientRect();
+    if (!cardRect) return;
+    const wantsUp = (trigger: HTMLElement, popup: HTMLElement, gap: number): boolean => {
+      const t = trigger.getBoundingClientRect();
+      const below = cardRect.bottom - t.bottom;
+      const above = t.top - cardRect.top;
+      return popup.offsetHeight + gap > below && above > below;
+    };
+    if (this._queueMenuId) {
+      const menu = root?.querySelector(".qmenu") as HTMLElement | null;
+      const wrap = menu?.closest(".qmenu-wrap") as HTMLElement | null;
+      if (menu && wrap) {
+        const up = wantsUp(wrap, menu, 4);
+        if (up !== this._queueMenuUp) this._queueMenuUp = up;
+      }
+    }
+    if (this._castOpen) {
+      const fly = root?.querySelector(".cast-flyout") as HTMLElement | null;
+      const wrap = root?.querySelector(".cast-wrap") as HTMLElement | null;
+      if (fly && wrap) {
+        const up = wantsUp(wrap, fly, 8);
+        if (up !== this._castUp) this._castUp = up;
+      }
+    }
   }
 
   // --- Entity resolution -----------------------------------------------------
@@ -476,7 +514,20 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
   private _onVolume = (e: Event): void => {
     const v = Number((e.target as HTMLInputElement).value);
     this._call("volume_set", { volume_level: Math.max(0, Math.min(1, v / 100)) });
+    this._persistMusicVolume(v);
   };
+
+  /** Remember a user volume change as this device's "Music volume" setting. Writing
+   *  a device-scoped value stops the device inheriting the global value. Debounced
+   *  so dragging the slider doesn't spam the backend. */
+  private _persistMusicVolume(percent: number): void {
+    if (this._config?.apply_music_volume === false) return;
+    const pct = Math.round(Math.max(0, Math.min(100, percent)));
+    window.clearTimeout(this._musicVolWriteTimer);
+    this._musicVolWriteTimer = window.setTimeout(() => {
+      settingsStore.setValue("device", "music_volume", pct);
+    }, 400);
+  }
 
   // Volume button gestures: tap = open slider, hold/double-tap = mute toggle.
   private _onVolPointerDown = (): void => {
@@ -1317,9 +1368,10 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
     const header = html`<div class="cast-header">
       ${current ? this._friendly(current) : "Playback target"}
     </div>`;
+    const dir = this._castUp ? "up" : "down";
     if (!this._supportsGrouping()) {
       return html`
-        <div class="cast-flyout" role="menu">
+        <div class="cast-flyout ${dir}" role="menu">
           ${header}
           <div class="cast-note">This player can't be grouped with other speakers.</div>
         </div>`;
@@ -1327,7 +1379,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
     const members = this._groupMembers();
     const players = this._massPlayerIds();
     return html`
-      <div class="cast-flyout" role="menu">
+      <div class="cast-flyout ${dir}" role="menu">
         ${header}
         ${players.map((id) => {
           const isCurrent = id === current;
@@ -1354,20 +1406,31 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
     const tabs = this._visibleTabs();
     return html`
       <div class="tabbar" role="tablist">
-        ${tabs.map(
-          (t) => html`<button
+        ${tabs.map((t) => {
+          const count = this._tabCount(t.id);
+          return html`<button
             type="button"
             role="tab"
             class="tabbtn ${this._tab === t.id ? "sel" : ""}"
             aria-selected=${this._tab === t.id}
             @click=${() => this._pickTab(t.id)}
           >
-            ${t.label}
-          </button>`,
-        )}
+            ${t.label}${count !== undefined
+              ? html`<span class="tabcount">${count}</span>`
+              : nothing}
+          </button>`;
+        })}
       </div>
       <div class="tabbody">${this._renderTabBody()}</div>
     `;
+  }
+
+  /** Item count shown next to the Queue/Recent tabs (undefined = no badge). */
+  private _tabCount(id: MusicTab): number | undefined {
+    if (!this._queue) return undefined;
+    if (id === "queue") return Math.max(0, this._queue.length - this._queueCurrentIdx);
+    if (id === "recent") return this._queueCurrentIdx;
+    return undefined;
   }
 
   private _renderTabBody(): TemplateResult {
@@ -1458,7 +1521,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
   private _renderQueueMenu(it: QueueItem, isCurrent: boolean): TemplateResult {
     return html`
       <div class="qmenu-backdrop" @click=${this._closeQueueMenu}></div>
-      <div class="qmenu" role="menu">
+      <div class="qmenu ${this._queueMenuUp ? "up" : "down"}" role="menu">
         <button type="button" class="qmi" @click=${() => this._queueFavorite(it, !it.favorite)}>
           <ha-icon icon=${ic(it.favorite ? IC.favoriteOn : IC.favorite)}></ha-icon>
           ${it.favorite ? "Remove from Favorites" : "Add to Favorites"}
@@ -1941,8 +2004,6 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
       }
       .cast-flyout {
         position: absolute;
-        bottom: calc(100% + 8px);
-        top: auto;
         right: 0;
         z-index: 9;
         min-width: 220px;
@@ -1961,6 +2022,14 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
         color: var(--ted-style-text, #fff);
         border: 1px solid var(--ted-style-divider, rgba(255, 255, 255, 0.12));
         box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+      }
+      .cast-flyout.up {
+        bottom: calc(100% + 8px);
+        top: auto;
+      }
+      .cast-flyout.down {
+        top: calc(100% + 8px);
+        bottom: auto;
       }
       .cast-row {
         display: flex;
@@ -2048,6 +2117,18 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
         opacity: 1;
         font-weight: 700;
         color: var(--ted-style-accent);
+      }
+      .tabcount {
+        margin-left: 6px;
+        font-size: 0.82em;
+        font-weight: 600;
+        opacity: 0.75;
+        padding: 1px 6px;
+        border-radius: 999px;
+        background: rgba(127, 127, 127, 0.22);
+      }
+      .tabbtn.sel .tabcount {
+        opacity: 1;
       }
       .tabbody {
         flex: 1 1 0;
@@ -2251,7 +2332,6 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
       .qmenu {
         position: absolute;
         right: 0;
-        top: calc(100% + 4px);
         z-index: 9;
         min-width: 180px;
         padding: 4px;
@@ -2266,6 +2346,14 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
         color: var(--ted-style-text, #fff);
         border: 1px solid var(--ted-style-divider, rgba(255, 255, 255, 0.12));
         box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+      }
+      .qmenu.down {
+        top: calc(100% + 4px);
+        bottom: auto;
+      }
+      .qmenu.up {
+        bottom: calc(100% + 4px);
+        top: auto;
       }
       .qmi {
         display: flex;
