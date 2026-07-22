@@ -212,8 +212,6 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
   private _queueLoading = false;
   /** The queue row whose 3-dots menu is open. */
   @state() private _queueMenuId?: string;
-  /** Whether the open queue menu flips upward (set by measurement to avoid clipping). */
-  @state() private _queueMenuUp = false;
   /** Drag-to-reorder: the queue_item_id being dragged, and its original queue index. */
   @state() private _dragId?: string;
   private _dragOrigIdx?: number;
@@ -331,6 +329,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
     this._measureLayout();
     this._measureTabs();
     this._positionPopups();
+    this._syncQueueMenuPopover();
   }
 
   /** Flip the open popups above/below their trigger, whichever side has room, so
@@ -346,14 +345,6 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
       const above = t.top - cardRect.top;
       return popup.offsetHeight + gap > below && above > below;
     };
-    if (this._queueMenuId) {
-      const menu = root?.querySelector(".qmenu") as HTMLElement | null;
-      const wrap = menu?.closest(".qmenu-wrap") as HTMLElement | null;
-      if (menu && wrap) {
-        const up = wantsUp(wrap, menu, 4);
-        if (up !== this._queueMenuUp) this._queueMenuUp = up;
-      }
-    }
     if (this._castOpen) {
       const fly = root?.querySelector(".cast-flyout") as HTMLElement | null;
       const wrap = root?.querySelector(".cast-wrap") as HTMLElement | null;
@@ -1200,8 +1191,30 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
     this._queueMenuId = this._queueMenuId === id ? undefined : id;
   }
 
-  private _closeQueueMenu = (): void => {
-    this._queueMenuId = undefined;
+  /** Keep the open queue menu shown as a top-layer popover (so it escapes the tab
+   *  body's scroll clipping) and anchored under its row. */
+  private _syncQueueMenuPopover(): void {
+    if (!this._queueMenuId) return;
+    const root = this.renderRoot as ShadowRoot | undefined;
+    const menu = root?.querySelector(".qmenu--pop") as
+      | (HTMLElement & { showPopover?: () => void })
+      | null;
+    if (!menu) return;
+    const anchor = menu.closest(".qmenu-wrap") as HTMLElement | null;
+    if (!menu.matches(":popover-open")) {
+      try {
+        menu.showPopover?.();
+      } catch {
+        /* already open */
+      }
+    }
+    positionOverflowPopover(menu, anchor ?? undefined);
+  }
+
+  private _onQueueMenuToggle = (ev: Event): void => {
+    if ((ev as Event & { newState?: string }).newState === "closed") {
+      this._queueMenuId = undefined;
+    }
   };
 
   private _queueAct(action: "play" | "next" | "up" | "down" | "remove", id: string): void {
@@ -1825,8 +1838,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
 
   private _renderQueueMenu(it: QueueItem, isCurrent: boolean): TemplateResult {
     return html`
-      <div class="qmenu-backdrop" @click=${this._closeQueueMenu}></div>
-      <div class="qmenu ${this._queueMenuUp ? "up" : "down"}" role="menu">
+      <div class="qmenu qmenu--pop" popover="auto" role="menu" @toggle=${this._onQueueMenuToggle}>
         <button type="button" class="qmi" @click=${() => this._queueFavorite(it, !it.favorite)}>
           <ha-icon icon=${ic(it.favorite ? IC.favoriteOn : IC.favorite)}></ha-icon>
           ${it.favorite ? "Remove from Favorites" : "Add to Favorites"}
@@ -1992,7 +2004,8 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
       .vol-flyout * {
         filter: none;
       }
-      .np-pill {
+      .np-pill,
+      .row-loading {
         box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
       }
       .content.idle .tabs {
@@ -2255,8 +2268,9 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
         cursor: pointer;
       }
       /* Seek track: a 1px accent "played" line, centered in the grey bar, filling from
-         the left to the current position (--seek-fill set inline per render). */
-      .seek {
+         the left to the current position (--seek-fill set inline per render). Qualified
+         as input.seek to out-specify the base input[type=range] background. */
+      input.seek {
         background:
           linear-gradient(var(--ted-style-accent), var(--ted-style-accent)) left center /
             var(--seek-fill, 0%) 1px no-repeat,
@@ -2278,13 +2292,14 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
         border-radius: 50%;
         background: currentColor;
       }
-      /* Progress/seek thumb: accent-filled with a thin black outline. */
-      .seek::-webkit-slider-thumb {
+      /* Progress/seek thumb: accent-filled with a thin black outline. Qualified as
+         input.seek to out-specify the base input[type=range] thumb rules. */
+      input.seek::-webkit-slider-thumb {
         background: var(--ted-style-accent);
         border: 1px solid #000;
         box-sizing: border-box;
       }
-      .seek::-moz-range-thumb {
+      input.seek::-moz-range-thumb {
         background: var(--ted-style-accent);
         border: 1px solid #000;
         box-sizing: border-box;
@@ -2453,6 +2468,9 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
       }
       .tabbtn {
         flex: 0 0 auto;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
         white-space: nowrap;
         border: none;
         background: none;
@@ -2479,7 +2497,6 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
         color: var(--ted-style-accent);
       }
       .tabcount {
-        margin-left: 6px;
         font-size: 0.8em;
         font-weight: 700;
         min-width: 1.25em;
@@ -2752,11 +2769,6 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
         position: relative;
         flex: 0 0 auto;
       }
-      .qmenu-backdrop {
-        position: fixed;
-        inset: 0;
-        z-index: 8;
-      }
       .qmenu {
         position: absolute;
         right: 0;
@@ -2782,6 +2794,14 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
       .qmenu.up {
         bottom: calc(100% + 4px);
         top: auto;
+      }
+      /* The queue item menu is a top-layer popover (escapes .tabbody scroll clipping);
+         positionOverflowPopover sets its fixed position inline, so clear base offsets. */
+      .qmenu--pop {
+        right: auto;
+        top: auto;
+        bottom: auto;
+        margin: 0;
       }
       .shuffle-wrap {
         position: relative;

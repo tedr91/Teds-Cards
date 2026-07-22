@@ -939,6 +939,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.286
+
+- **Music card fixes.** The queue item menu now renders as a top-layer popover so it's no longer clipped by the scrolling list. The progress **seek handle** (accent + black outline) and the 1px accent **played** line now actually render — they were being overridden by a more-specific base rule. The Media-tab **loading** badge matches the NOW PLAYING pill exactly, and the Queue/Recent tab count badges are vertically centered with their labels.
+
 ### v1.0.285
 
 - **Music card: progress bar polish.** The seek handle is now the accent color with a thin black outline, and the track shows a 1px accent "played" line filling from the left to the current position (full and mini players).
