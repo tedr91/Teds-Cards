@@ -35,7 +35,7 @@ export interface MusicCardConfig extends LovelaceCardConfig {
   /** When the resolved entity is not a Music Assistant player, try to find its
    *  Music Assistant counterpart at runtime (by device, then by name). Default true. */
   auto_resolve_mass_player?: boolean;
-  /** Background treatment for the player surface. Default `avg_gradient`. */
+  /** Background treatment for the player surface. Default `blur`. */
   background_mode?: MusicBackgroundMode;
   /** Lock the media player target device: when true, the "cast to" chip is a static
    *  label (no device-switching flyout). Default false. */

@@ -672,7 +672,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
 
   protected render(): TemplateResult {
     const themeClass = tedCardThemeClass(this._config?.theme);
-    const mode: MusicBackgroundMode = this._config?.background_mode ?? "avg_gradient";
+    const mode: MusicBackgroundMode = this._config?.background_mode ?? "blur";
     const res = this._resolve();
 
     if (res.state !== "ok") {

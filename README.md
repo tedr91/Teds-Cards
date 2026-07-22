@@ -939,6 +939,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.267
+
+- **Music card: default background is now Blurred album art.** New cards default to the blurred-artwork background instead of the album-colour gradient (still selectable in the editor).
+
 ### v1.0.266
 
 - **Music card: player always visible + 50/50 layout.** The now-playing player stays on screen even when nothing is playing (showing a "Nothing playing" state) instead of the tabs filling the card, and the player and tab panes each take half the width. Queue/Recent rows now show the **title** in bold with **Artist - Album** beneath.
