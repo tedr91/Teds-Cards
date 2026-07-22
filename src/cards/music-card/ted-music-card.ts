@@ -126,6 +126,12 @@ function ic(spec: { mdi: string; fluent?: string }): string {
   return resolveIcon(spec) ?? `mdi:${spec.mdi}`;
 }
 
+/** Parse a Music Assistant URI `<provider>://<mediatype>/<itemid>`. */
+function parseMaUri(uri: string): { mediaType: string; itemId: string } | undefined {
+  const m = uri.match(/^[^:]+:\/\/([^/]+)\/(.+)$/);
+  return m ? { mediaType: m[1], itemId: m[2] } : undefined;
+}
+
 @customElement(MUSIC_CARD_TYPE)
 export class TedMusicCard extends LitElement implements LovelaceCard {
   public static async getConfigElement(): Promise<LovelaceCardEditor> {
@@ -165,6 +171,9 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
 
   /** Cast/grouping flyout open state. */
   @state() private _castOpen = false;
+  /** Optimistic favorite state for the current track (instant heart feedback). */
+  @state() private _favOptimistic?: boolean;
+  private _favOptKey?: string;
   /** Volume slider flyout open state. */
   @state() private _volOpen = false;
   private _volHoldTimer?: number;
@@ -173,6 +182,8 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
 
   /** Music Assistant config entry id (for get_library), lazily resolved. */
   private _maConfigEntryId?: string;
+  /** mass_queue config entry id (for send_command), lazily resolved. */
+  private _massQueueEntryId?: string;
   /** Media tab (playlists). */
   @state() private _playlists?: MediaItem[];
   private _mediaLoading = false;
@@ -541,14 +552,35 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
     return buttons.find((id) => /favorite|favourite|like/.test(id)) ?? buttons[0];
   }
 
-  /** Whether the currently-playing track is favorited (from the loaded queue, if any). */
+  /** Whether the currently-playing track is favorited (optimistic override, else the queue). */
   private _isCurrentFavorite(): boolean {
+    const cur = this._attr<string>("media_content_id");
+    if (this._favOptimistic !== undefined && this._favOptKey === cur) return this._favOptimistic;
     return !!this._queue?.[this._queueCurrentIdx]?.favorite;
   }
 
   private _onFavorite = (): void => {
-    const btn = this._favoriteButtonId();
-    if (btn && this.hass) void this.hass.callService("button", "press", { entity_id: btn });
+    const cur = this._attr<string>("media_content_id");
+    const currentlyFav = this._isCurrentFavorite();
+    const e = this._entityId();
+    if (!e || !this.hass) return;
+    // Optimistic: flip the heart immediately for clear feedback.
+    this._favOptKey = cur;
+    this._favOptimistic = !currentlyFav;
+    if (currentlyFav) {
+      void this.hass.callService("mass_queue", "unfavorite_current_item", { entity: e });
+    } else {
+      const btn = this._favoriteButtonId();
+      if (btn) void this.hass.callService("button", "press", { entity_id: btn });
+    }
+    // Reconcile with the server once it has processed the change.
+    window.setTimeout(() => {
+      this._favOptimistic = undefined;
+      this._favOptKey = undefined;
+      this._queueKey = undefined;
+      void this._ensureQueue();
+      this.requestUpdate();
+    }, 1500);
   };
 
   // --- Cast target / grouping ------------------------------------------------
@@ -651,10 +683,63 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
     return this._maConfigEntryId;
   }
 
+  private async _ensureMassQueueEntry(): Promise<string | undefined> {
+    if (this._massQueueEntryId) return this._massQueueEntryId;
+    const conn = this._conn();
+    if (!conn) return undefined;
+    try {
+      const entries = await conn.sendMessagePromise<{ domain: string; entry_id: string }[]>({
+        type: "config_entries/get",
+      });
+      this._massQueueEntryId = entries.find((e) => e.domain === "mass_queue")?.entry_id;
+    } catch {
+      /* ignore */
+    }
+    return this._massQueueEntryId;
+  }
+
+  /** Add/remove a specific queue item to/from favorites (Music Assistant). */
+  private async _queueFavorite(it: QueueItem, makeFav: boolean): Promise<void> {
+    this._queueMenuId = undefined;
+    const e = this._entityId();
+    if (!e || !this.hass || !it.uri) return;
+    const isCurrent = it.uri === this._attr<string>("media_content_id");
+    if (makeFav) {
+      const cfg = await this._ensureMassQueueEntry();
+      if (cfg) {
+        void this.hass.callService("mass_queue", "send_command", {
+          config_entry_id: cfg,
+          command: "music/favorites/add_item",
+          data: { item: it.uri },
+        });
+      }
+    } else if (isCurrent) {
+      void this.hass.callService("mass_queue", "unfavorite_current_item", { entity: e });
+    } else {
+      const p = parseMaUri(it.uri);
+      const cfg = await this._ensureMassQueueEntry();
+      if (p && cfg) {
+        void this.hass.callService("mass_queue", "send_command", {
+          config_entry_id: cfg,
+          command: "music/favorites/remove_item",
+          data: { media_type: p.mediaType, library_item_id: p.itemId },
+        });
+      }
+    }
+    // Reconcile the queue's favorite flags after the server processes the change.
+    this._queueKey = undefined;
+    window.setTimeout(() => {
+      this._queueKey = undefined;
+      void this._ensureQueue();
+      this.requestUpdate();
+    }, 1500);
+  }
+
   private _orchestrateTabData(): void {
     if (!this.hass || this._config?.mode === "mini") return;
+    // Keep the queue warm (cached by track) so the favorite state is always known.
+    if (this._massQueueAvailable()) void this._ensureQueue();
     if (this._tab === "media") void this._ensureMedia();
-    else if (this._tab === "queue" || this._tab === "recent") void this._ensureQueue();
     else if (this._tab === "lyrics") void this._ensureLyrics();
   }
 
@@ -1325,6 +1410,10 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
     return html`
       <div class="qmenu-backdrop" @click=${this._closeQueueMenu}></div>
       <div class="qmenu" role="menu">
+        <button type="button" class="qmi" @click=${() => this._queueFavorite(it, !it.favorite)}>
+          <ha-icon icon=${ic(it.favorite ? IC.favoriteOn : IC.favorite)}></ha-icon>
+          ${it.favorite ? "Remove from Favorites" : "Add to Favorites"}
+        </button>
         ${isCurrent
           ? nothing
           : html`<button type="button" class="qmi" @click=${() => this._queueAct("play", it.id)}>
@@ -1602,6 +1691,9 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
       .title-row .vol-wrap {
         margin-left: auto;
       }
+      .title-row .vol-wrap .ctrl {
+        padding-right: 2px;
+      }
       .title-row .vol-wrap .ctrl ha-icon {
         --mdc-icon-size: 22px;
       }
@@ -1643,7 +1735,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
         justify-content: space-between;
         gap: 4px;
         width: 100%;
-        margin-top: -4px;
+        margin-top: -10px;
       }
       .ctrl {
         border: none;
