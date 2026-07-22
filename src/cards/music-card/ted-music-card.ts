@@ -1892,7 +1892,8 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
       }
       .cast-flyout {
         position: absolute;
-        top: calc(100% + 8px);
+        bottom: calc(100% + 8px);
+        top: auto;
         right: 0;
         z-index: 9;
         min-width: 220px;
@@ -1901,7 +1902,13 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
         overflow: auto;
         padding: 6px;
         border-radius: 12px;
-        background: var(--ted-style-surface, #2b2b2b);
+        /* Opaque surface: composite the (possibly translucent) theme surface over an
+           opaque card base so the player controls never show through the popup. */
+        background-color: var(--card-background-color, #1c1c1c);
+        background-image: linear-gradient(
+          var(--ted-style-surface, #2b2b2b),
+          var(--ted-style-surface, #2b2b2b)
+        );
         color: var(--ted-style-text, #fff);
         border: 1px solid var(--ted-style-divider, rgba(255, 255, 255, 0.12));
         box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
@@ -2200,7 +2207,13 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
         min-width: 180px;
         padding: 4px;
         border-radius: 10px;
-        background: var(--ted-style-surface, #2b2b2b);
+        /* Opaque surface: composite the (possibly translucent) theme surface over an
+           opaque card base so queue rows never show through the menu. */
+        background-color: var(--card-background-color, #1c1c1c);
+        background-image: linear-gradient(
+          var(--ted-style-surface, #2b2b2b),
+          var(--ted-style-surface, #2b2b2b)
+        );
         color: var(--ted-style-text, #fff);
         border: 1px solid var(--ted-style-divider, rgba(255, 255, 255, 0.12));
         box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
