@@ -13,6 +13,7 @@ import {
   type MusicPlayerResolution,
 } from "../../shared/music-player";
 import { tedCardThemeClass, tedStyleTheme } from "../../shared/theme";
+import { resolveIcon } from "../../shared/icons";
 import { MUSIC_CARD_EDITOR_TYPE, MUSIC_CARD_TYPE } from "./const";
 import type { MusicBackgroundMode, MusicCardConfig, MusicTab } from "./types";
 
@@ -82,6 +83,47 @@ function hslToRgb(h: number, s: number, l: number): { r: number; g: number; b: n
     g: Math.round(hue(h) * 255),
     b: Math.round(hue(h - 1 / 3) * 255),
   };
+}
+
+/** Music-card icons as `{ fluent, mdi }` maps — Fluent is preferred when installed,
+ *  otherwise MDI (the guaranteed core fallback). Resolved via `resolveIcon`. */
+const IC = {
+  music: { fluent: "music-note-2-24-regular", mdi: "music" },
+  favorite: { fluent: "heart-24-regular", mdi: "heart-outline" },
+  favoriteOn: { fluent: "heart-24-filled", mdi: "heart" },
+  shuffle: { fluent: "arrow-shuffle-24-filled", mdi: "shuffle" },
+  previous: { fluent: "previous-24-filled", mdi: "skip-previous" },
+  next: { fluent: "next-24-filled", mdi: "skip-next" },
+  play: { fluent: "play-circle-24-filled", mdi: "play-circle" },
+  pause: { fluent: "pause-circle-24-filled", mdi: "pause-circle" },
+  repeat: { fluent: "arrow-repeat-all-24-filled", mdi: "repeat" },
+  repeatOne: { fluent: "arrow-repeat-all-off-24-filled", mdi: "repeat-once" },
+  volOff: { fluent: "speaker-mute-24-filled", mdi: "volume-off" },
+  volLow: { fluent: "speaker-0-24-filled", mdi: "volume-low" },
+  volMed: { fluent: "speaker-1-24-filled", mdi: "volume-medium" },
+  volHigh: { fluent: "speaker-2-24-filled", mdi: "volume-high" },
+  speaker: { fluent: "speaker-box-24-filled", mdi: "speaker" },
+  cast: { fluent: "cast-24-regular", mdi: "cast-variant" },
+  plus: { fluent: "add-24-filled", mdi: "plus" },
+  minus: { fluent: "subtract-24-filled", mdi: "minus" },
+  loading: { mdi: "loading" },
+  playlist: { fluent: "music-note-2-24-regular", mdi: "playlist-music" },
+  playlistRemove: { fluent: "text-bullet-list-dismiss-20-filled", mdi: "playlist-remove" },
+  playSmall: { fluent: "play-24-filled", mdi: "play" },
+  menu: { fluent: "more-vertical-24-filled", mdi: "dots-vertical" },
+  playOutline: { fluent: "play-circle-24-regular", mdi: "play-circle-outline" },
+  nextOutline: { fluent: "next-24-regular", mdi: "skip-next-outline" },
+  up: { fluent: "arrow-up-24-filled", mdi: "arrow-up" },
+  down: { fluent: "arrow-down-24-filled", mdi: "arrow-down" },
+  del: { fluent: "delete-24-regular", mdi: "delete-outline" },
+  lyricsOff: { fluent: "comment-24-regular", mdi: "comment-text-outline" },
+  musicNoteOff: { fluent: "music-note-off-1-24-regular", mdi: "music-note-off" },
+  musicOff: { fluent: "music-note-off-2-24-regular", mdi: "music-off" },
+} as const;
+
+/** Resolve a music-card icon (Fluent preferred, MDI fallback) to a concrete string. */
+function ic(spec: { mdi: string; fluent?: string }): string {
+  return resolveIcon(spec) ?? `mdi:${spec.mdi}`;
 }
 
 @customElement(MUSIC_CARD_TYPE)
@@ -899,7 +941,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
     const artTpl = html`<div class="art-wrap">
       ${art
         ? html`<img class="art" src=${art} alt="" />`
-        : html`<div class="art art-empty"><ha-icon icon="mdi:music"></ha-icon></div>`}
+        : html`<div class="art art-empty"><ha-icon icon=${ic(IC.music)}></ha-icon></div>`}
     </div>`;
     const detailsTpl = html`<div class="details">
       <div class="title-row">
@@ -912,7 +954,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
           ?disabled=${!favBtn}
           @click=${this._onFavorite}
         >
-          <ha-icon icon=${fav ? "mdi:heart" : "mdi:heart-outline"}></ha-icon>
+          <ha-icon icon=${fav ? ic(IC.favoriteOn) : ic(IC.favorite)}></ha-icon>
         </button>
         ${this._renderVolumeControl(volPct, muted)}
       </div>
@@ -948,19 +990,19 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
         </div>
 
         <div class="controls">
-          ${this._ctrl("mdi:shuffle", "Shuffle", this._onShuffle, shuffle)}
-          ${this._ctrl("mdi:skip-previous", "Previous", this._onPrev)}
+          ${this._ctrl(ic(IC.shuffle), "Shuffle", this._onShuffle, shuffle)}
+          ${this._ctrl(ic(IC.previous), "Previous", this._onPrev)}
           ${this._ctrl(
-            playing ? "mdi:pause-circle" : "mdi:play-circle",
+            playing ? ic(IC.pause) : ic(IC.play),
             playing ? "Pause" : "Play",
             this._onPlayPause,
             false,
             false,
             true,
           )}
-          ${this._ctrl("mdi:skip-next", "Next", this._onNext)}
+          ${this._ctrl(ic(IC.next), "Next", this._onNext)}
           ${this._ctrl(
-            repeat === "one" ? "mdi:repeat-once" : "mdi:repeat",
+            repeat === "one" ? ic(IC.repeatOne) : ic(IC.repeat),
             `Repeat: ${repeat}`,
             this._onRepeat,
             repeat !== "off",
@@ -974,12 +1016,12 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
   private _renderVolumeControl(volPct: number, muted: boolean): TemplateResult {
     const icon =
       muted || volPct === 0
-        ? "mdi:volume-off"
+        ? ic(IC.volOff)
         : volPct < 10
-          ? "mdi:volume-low"
+          ? ic(IC.volLow)
           : volPct < 50
-            ? "mdi:volume-medium"
-            : "mdi:volume-high";
+            ? ic(IC.volMed)
+            : ic(IC.volHigh);
     const tip = muted ? "Volume - Muted" : `Volume - ${volPct}%`;
     return html`<div class="vol-wrap ${this._volOpen ? "open" : ""}">
       <span class="vol-slide">
@@ -1030,26 +1072,26 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
         <div class="mini-art-wrap">
           ${art
             ? html`<img class="mini-art" src=${art} alt="" />`
-            : html`<div class="mini-art ph"><ha-icon icon="mdi:music"></ha-icon></div>`}
+            : html`<div class="mini-art ph"><ha-icon icon=${ic(IC.music)}></ha-icon></div>`}
         </div>
         <div class="mini-meta">
           <div class="mini-title one">${title}</div>
           <div class="mini-artist one">${artist}</div>
         </div>
         <div class="mini-controls">
-          ${this._ctrl("mdi:shuffle", "Shuffle", this._onShuffle, shuffle)}
-          ${this._ctrl("mdi:skip-previous", "Previous", this._onPrev)}
+          ${this._ctrl(ic(IC.shuffle), "Shuffle", this._onShuffle, shuffle)}
+          ${this._ctrl(ic(IC.previous), "Previous", this._onPrev)}
           ${this._ctrl(
-            playing ? "mdi:pause-circle" : "mdi:play-circle",
+            playing ? ic(IC.pause) : ic(IC.play),
             playing ? "Pause" : "Play",
             this._onPlayPause,
             false,
             false,
             true,
           )}
-          ${this._ctrl("mdi:skip-next", "Next", this._onNext)}
+          ${this._ctrl(ic(IC.next), "Next", this._onNext)}
           ${this._ctrl(
-            repeat === "one" ? "mdi:repeat-once" : "mdi:repeat",
+            repeat === "one" ? ic(IC.repeatOne) : ic(IC.repeat),
             `Repeat: ${repeat}`,
             this._onRepeat,
             repeat !== "off",
@@ -1065,11 +1107,11 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
               ?disabled=${locked}
               @click=${this._toggleCast}
             >
-              <ha-icon icon="mdi:cast-variant"></ha-icon>
+              <ha-icon icon=${ic(IC.speaker)}></ha-icon>
             </button>
             ${this._castOpen ? this._renderCastFlyout(entity) : nothing}
           </div>
-          <ha-icon class="mini-vol-icon" icon="mdi:volume-high"></ha-icon>
+          <ha-icon class="mini-vol-icon" icon=${ic(IC.volHigh)}></ha-icon>
           <input
             class="vol mini-vol"
             type="range"
@@ -1131,7 +1173,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
         ?disabled=${locked}
         @click=${this._toggleCast}
       >
-        <ha-icon icon="mdi:cast-variant"></ha-icon><span class="cast-name">${name}</span>
+        <ha-icon icon=${ic(IC.speaker)}></ha-icon><span class="cast-name">${name}</span>
       </button>
       ${this._castOpen ? this._renderCastFlyout(entity) : nothing}
     </div>`;
@@ -1157,7 +1199,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
           const isCurrent = id === current;
           const grouped = members.includes(id);
           return html`<div class="cast-row ${isCurrent ? "cur" : ""}">
-            <ha-icon icon="mdi:speaker"></ha-icon>
+            <ha-icon icon=${ic(IC.speaker)}></ha-icon>
             <span class="cast-name">${this._friendly(id)}</span>
             ${isCurrent
               ? html`<span class="cast-tag">Target</span>`
@@ -1167,7 +1209,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
                   title=${grouped ? "Ungroup" : "Group with target"}
                   @click=${() => (grouped ? this._unjoin(id) : this._join(id))}
                 >
-                  <ha-icon icon=${grouped ? "mdi:minus" : "mdi:plus"}></ha-icon>
+                  <ha-icon icon=${grouped ? ic(IC.minus) : ic(IC.plus)}></ha-icon>
                 </button>`}
           </div>`;
         })}
@@ -1209,7 +1251,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
 
   private _loadingBody(): TemplateResult {
     return html`<div class="placeholder">
-      <ha-icon icon="mdi:loading" class="spin"></ha-icon>
+      <ha-icon icon=${ic(IC.loading)} class="spin"></ha-icon>
     </div>`;
   }
 
@@ -1221,15 +1263,15 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
 
   private _renderMedia(): TemplateResult {
     if (!this._playlists) return this._loadingBody();
-    if (!this._playlists.length) return this._emptyBody("mdi:playlist-remove", "No playlists");
+    if (!this._playlists.length) return this._emptyBody(ic(IC.playlistRemove), "No playlists");
     return html`<div class="list">
       ${this._playlists.map(
         (p) => html`<button type="button" class="row" @click=${() => this._playMedia(p.uri)}>
           ${p.image
             ? html`<img class="thumb" src=${p.image} alt="" />`
-            : html`<div class="thumb ph"><ha-icon icon="mdi:playlist-music"></ha-icon></div>`}
+            : html`<div class="thumb ph"><ha-icon icon=${ic(IC.playlist)}></ha-icon></div>`}
           <span class="row-title one">${p.name}</span>
-          <ha-icon class="row-play" icon="mdi:play"></ha-icon>
+          <ha-icon class="row-play" icon=${ic(IC.playSmall)}></ha-icon>
         </button>`,
       )}
     </div>`;
@@ -1241,7 +1283,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
     const items = recent ? this._queue.slice(0, idx).reverse() : this._queue.slice(idx);
     if (!items.length) {
       return this._emptyBody(
-        "mdi:music-note-off",
+        ic(IC.musicNoteOff),
         recent ? "Nothing played yet" : "Queue is empty",
       );
     }
@@ -1253,7 +1295,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
         return html`<div class="qrow ${isCurrent ? "cur" : ""}">
           ${it.image
             ? html`<img class="thumb" src=${it.image} alt="" />`
-            : html`<div class="thumb ph"><ha-icon icon="mdi:music"></ha-icon></div>`}
+            : html`<div class="thumb ph"><ha-icon icon=${ic(IC.music)}></ha-icon></div>`}
           <div class="qmain" @click=${() => this._playQueueItem(it.id)}>
             <div class="qtitle">${label}</div>
             <div class="qsub">${sub}</div>
@@ -1270,7 +1312,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
               aria-label="Queue options"
               @click=${(e: Event) => this._toggleQueueMenu(e, it.id)}
             >
-              <ha-icon icon="mdi:dots-vertical"></ha-icon>
+              <ha-icon icon=${ic(IC.menu)}></ha-icon>
             </button>
             ${this._queueMenuId === it.id ? this._renderQueueMenu(it, isCurrent) : nothing}
           </div>
@@ -1286,19 +1328,19 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
         ${isCurrent
           ? nothing
           : html`<button type="button" class="qmi" @click=${() => this._queueAct("play", it.id)}>
-              <ha-icon icon="mdi:play-circle-outline"></ha-icon>Play now
+              <ha-icon icon=${ic(IC.playOutline)}></ha-icon>Play now
             </button>`}
         <button type="button" class="qmi" @click=${() => this._queueAct("next", it.id)}>
-          <ha-icon icon="mdi:skip-next-outline"></ha-icon>Play next
+          <ha-icon icon=${ic(IC.nextOutline)}></ha-icon>Play next
         </button>
         <button type="button" class="qmi" @click=${() => this._queueAct("up", it.id)}>
-          <ha-icon icon="mdi:arrow-up"></ha-icon>Move up
+          <ha-icon icon=${ic(IC.up)}></ha-icon>Move up
         </button>
         <button type="button" class="qmi" @click=${() => this._queueAct("down", it.id)}>
-          <ha-icon icon="mdi:arrow-down"></ha-icon>Move down
+          <ha-icon icon=${ic(IC.down)}></ha-icon>Move down
         </button>
         <button type="button" class="qmi danger" @click=${() => this._queueAct("remove", it.id)}>
-          <ha-icon icon="mdi:delete-outline"></ha-icon>Delete item
+          <ha-icon icon=${ic(IC.del)}></ha-icon>Delete item
         </button>
       </div>
     `;
@@ -1306,7 +1348,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
 
   private _renderLyrics(): TemplateResult {
     if (this._lyrics === undefined) return this._loadingBody();
-    if (this._lyrics === null) return this._emptyBody("mdi:comment-text-outline", "No lyrics found");
+    if (this._lyrics === null) return this._emptyBody(ic(IC.lyricsOff), "No lyrics found");
     if (this._lyrics.length === 0) {
       return html`<div class="lyrics plain">
         ${(this._lyricsPlain ?? "").split(/\n/).map((l) => html`<div>${l || html`&nbsp;`}</div>`)}
@@ -1338,7 +1380,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
     const settingsPath = this._config?.settings_path ?? "[root]/settings?tab=sounds&scope=device";
     return html`
       <div class="message">
-        <ha-icon icon="mdi:music-off"></ha-icon>
+        <ha-icon icon=${ic(IC.musicOff)}></ha-icon>
         <div class="message-title">${title}</div>
         <div class="message-text">${message}</div>
         <button type="button" class="message-btn" @click=${() => this._navigate(settingsPath)}>
@@ -1401,7 +1443,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
          Clock-Weather card: a drop shadow whose opacity scales with the text
          lightness (relative-color syntax), so it fades out for dark text. */
       .title,
-      .sub,
+      .sub-text,
       .times,
       .tabbtn,
       .qtitle,
@@ -1410,6 +1452,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
       .row-sub,
       .lrc,
       .vol-num,
+      .cast-name,
       .placeholder,
       .mini-title,
       .mini-artist,
@@ -1420,8 +1463,6 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
       }
       /* Badges: shadow the PILL itself, not the text/icon inside it. Popover menus
          and flyouts have their own solid surfaces, so keep their content crisp. */
-      .cast,
-      .cast *,
       .np-pill,
       .qmenu,
       .qmenu *,
@@ -1431,7 +1472,6 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
       .vol-flyout * {
         filter: none;
       }
-      .cast,
       .np-pill {
         box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
       }
@@ -1721,12 +1761,11 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
       .cast {
         display: inline-flex;
         align-items: center;
-        padding: 5px 7px;
+        padding: 4px 2px;
         border: none;
         cursor: pointer;
         color: inherit;
-        border-radius: var(--ted-style-pill);
-        background: rgba(127, 127, 127, 0.22);
+        background: none;
         font-size: 0.85em;
         max-width: 100%;
       }

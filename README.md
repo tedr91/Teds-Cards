@@ -939,6 +939,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.276
+
+- **Music card: Fluent-first icons + target-device tweaks.** All icons now use the automatic icon-set fallback (Fluent when installed, MDI otherwise), matching the rest of Ted's Cards. The "target device" badge uses a speaker icon with no background, revealing the device name on hover/tap. Also fixed the target-device popup that could render behind the control buttons.
+
 ### v1.0.275
 
 - **Music card: polish pass.** The theme now defaults to the Home Assistant theme. The frost tint smartly adjusts its lightness from the album's average color (lifting dark averages, deepening light ones) so it always looks rich and legible. The volume control now expands its slider inline on hover/tap (like the cast badge). Fixed the target-device popup appearing behind the controls, and it now dismisses when you interact anywhere outside it.
