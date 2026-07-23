@@ -93,6 +93,24 @@ export async function listBuiltinBackgrounds(hass: HassLike): Promise<BuiltinBac
   }
 }
 
+/** A bundled alert sound offered in the settings sound picker. */
+export interface BundledSound {
+  file: string;
+  url: string;
+  name: string;
+  category: string;
+}
+
+/** The built-in alert sounds served by the backend (empty on failure). */
+export async function listSounds(hass: HassLike): Promise<BundledSound[]> {
+  try {
+    const res = await hass.callWS?.<{ sounds: BundledSound[] }>({ type: `${DOMAIN}/list_sounds` });
+    return res?.sounds ?? [];
+  } catch {
+    return [];
+  }
+}
+
 /** Upload an image to HA's image store; returns a stable `/api/image/serve/…`
  *  URL that never expires and needs no resolving. */
 export async function uploadImage(hass: HassLike, file: File): Promise<string | null> {

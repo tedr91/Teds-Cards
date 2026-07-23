@@ -35,7 +35,7 @@ import {
   type BackgroundFieldsCtx,
 } from "../../shared/background";
 import { NIGHTMODE_KEYS, resolveBrightnessEntity } from "../../shared/night-mode";
-import { getMediaFolder, isMediaSourceUri, pickMedia, resolveMediaSource, uploadImage, uploadToMediaFolder } from "../../shared/media";
+import { getMediaFolder, isMediaSourceUri, pickMedia, resolveMediaSource, uploadImage, uploadToMediaFolder, listSounds, type BundledSound } from "../../shared/media";
 import { backgroundEngine } from "../background-card/background-engine";
 import {
   applyCalendarOptionChange,
@@ -241,6 +241,14 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
   private _bgThumbs = new Map<string, string>();
   /** media-source URI of the backend's "Ted Dash System" wallpaper folder (or null). */
   @state() private _mediaFolder: string | null = null;
+  /** Bundled alert sounds offered in the sound-picker dropdowns. */
+  @state() private _sounds: BundledSound[] = [];
+  /** Sound fields the user switched to "Custom…" (so we show the URL/browse row). */
+  @state() private _soundCustom = new Set<string>();
+  /** The sound field key currently previewing (for the play/stop icon), or none. */
+  @state() private _soundPlaying?: string;
+  /** Shared audio element used to preview sounds. */
+  private _soundAudio?: HTMLAudioElement;
   /** Watches the host width so the section tab strip can re-measure its overflow. */
   private _sectionResizeObserver?: ResizeObserver;
   /** The `.section-strip` element currently observed for width changes. */
@@ -273,6 +281,8 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     this._unsubBgDiag ??= backgroundEngine.subscribeDiagnostic(() => this.requestUpdate());
     // Discover the dedicated wallpaper folder for uploads + the media pickers.
     if (this.hass) void getMediaFolder(this.hass).then((f) => (this._mediaFolder = f));
+    // Load the bundled alert sounds for the sound-picker dropdowns.
+    if (this.hass && !this._sounds.length) void listSounds(this.hass).then((s) => (this._sounds = s));
     // Follow the shared UI scope when this card is driven by an external toggle.
     if (
       this._config?.scope === "shared" ||
@@ -293,6 +303,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
 
   public disconnectedCallback(): void {
     super.disconnectedCallback();
+    this._stopSoundPreview();
     this._unsubScope?.();
     this._unsubScope = undefined;
     this._unsubBgDiag?.();
@@ -318,6 +329,12 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     if (this.hass && this._mediaFolder === null) {
       void getMediaFolder(this.hass).then((f) => {
         if (f) this._mediaFolder = f;
+      });
+    }
+    // Load the bundled sounds once hass is available (may be unset at connect).
+    if (this.hass && !this._sounds.length) {
+      void listSounds(this.hass).then((s) => {
+        if (s.length) this._sounds = s;
       });
     }
     // Also watch the strip itself: its width (the real "available" space) can change
@@ -710,17 +727,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
         ></ha-entity-picker>`;
       }
       case "media":
-        return html`<input
-          class="txt"
-          type="text"
-          .value=${typeof value === "string" && value && value !== DEFAULT_SOUND ? value : ""}
-          placeholder=${this._resolvedDefaultSound(field.key)}
-          ?disabled=${disabled}
-          @change=${(e: Event) => {
-            const v = (e.target as HTMLInputElement).value.trim();
-            onChange(v === "" ? DEFAULT_SOUND : v);
-          }}
-        />`;
+        return this._renderSoundPicker(field, value, disabled, onChange);
       case "text":
       default:
         return html`<input
@@ -743,6 +750,119 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     const general = settingsStore.effective().notification_sound;
     if (typeof general === "string" && general && general !== DEFAULT_SOUND) return general;
     return bundled("notification");
+  }
+
+  /** Sound field: a dropdown of bundled sounds (+ Default / Custom), a preview
+   *  play button, and a Browse/URL row when Custom is chosen. */
+  private _renderSoundPicker(
+    field: SettingField,
+    value: SettingsValue,
+    disabled: boolean,
+    onChange: (v: SettingsValue) => void,
+  ): TemplateResult {
+    const cur = typeof value === "string" ? value : "";
+    const isDefault = !cur || cur === DEFAULT_SOUND;
+    const bundled = this._sounds.find((s) => s.url === cur);
+    const isCustom = (!isDefault && !bundled) || this._soundCustom.has(field.key);
+    const selectValue = isCustom ? "__custom__" : isDefault ? "" : bundled?.url ?? "";
+
+    const cats: string[] = [];
+    for (const s of this._sounds) if (!cats.includes(s.category)) cats.push(s.category);
+
+    const onSelect = (e: Event): void => {
+      const v = (e.target as HTMLSelectElement).value;
+      if (v === "__custom__") {
+        this._soundCustom = new Set(this._soundCustom).add(field.key);
+        // Preserve an existing custom URL; a bundled/default pick starts blank.
+        if (isDefault || bundled) onChange(DEFAULT_SOUND);
+        return;
+      }
+      const next = new Set(this._soundCustom);
+      next.delete(field.key);
+      this._soundCustom = next;
+      onChange(v === "" ? DEFAULT_SOUND : v);
+    };
+
+    const playing = this._soundPlaying === field.key;
+    return html`
+      <div class="sound-field">
+        <div class="sound-row">
+          <select class="sel sound-select" .value=${selectValue} ?disabled=${disabled} @change=${onSelect}>
+            <option value="" ?selected=${selectValue === ""}>Default</option>
+            ${cats.map(
+              (c) => html`<optgroup label=${c}>
+                ${this._sounds
+                  .filter((s) => s.category === c)
+                  .map((s) => html`<option value=${s.url} ?selected=${s.url === selectValue}>${s.name}</option>`)}
+              </optgroup>`,
+            )}
+            <option value="__custom__" ?selected=${isCustom}>Custom…</option>
+          </select>
+          <button
+            class="sound-play"
+            title=${playing ? "Stop" : "Preview"}
+            ?disabled=${disabled}
+            @click=${() => (playing ? this._stopSoundPreview() : void this._previewSound(field, cur))}
+          >
+            <ha-icon icon=${playing ? "mdi:stop" : "mdi:play"}></ha-icon>
+          </button>
+        </div>
+        ${isCustom
+          ? html`<div class="sound-custom">
+              <input
+                class="txt"
+                type="text"
+                .value=${isDefault || bundled ? "" : cur}
+                placeholder="media-source://… or https://…"
+                ?disabled=${disabled}
+                @change=${(e: Event) => {
+                  const v = (e.target as HTMLInputElement).value.trim();
+                  onChange(v === "" ? DEFAULT_SOUND : v);
+                }}
+              />
+              <button class="sound-browse" ?disabled=${disabled} @click=${() => void this._browseSound(onChange)}>
+                Browse…
+              </button>
+            </div>`
+          : nothing}
+      </div>
+    `;
+  }
+
+  /** Open HA's media browser to pick a custom sound file (audio). */
+  private async _browseSound(onChange: (v: SettingsValue) => void): Promise<void> {
+    if (!this.hass) return;
+    const uri = await pickMedia(this, this.hass, { accept: ["audio/*"] });
+    if (uri) onChange(uri);
+  }
+
+  /** Preview a sound in-browser: resolves media-source URIs, plays a bundled/URL
+   *  sound directly, and falls back to the field's default when unset. */
+  private async _previewSound(field: SettingField, value: string): Promise<void> {
+    if (!this.hass) return;
+    this._stopSoundPreview();
+    let url: string | null = !value || value === DEFAULT_SOUND ? this._resolvedDefaultSound(field.key) : value;
+    if (isMediaSourceUri(url)) url = await resolveMediaSource(this.hass, url);
+    if (!url) return;
+    const audio = (this._soundAudio ??= new Audio());
+    audio.onended = () => (this._soundPlaying = undefined);
+    audio.onerror = () => (this._soundPlaying = undefined);
+    audio.src = url;
+    this._soundPlaying = field.key;
+    try {
+      await audio.play();
+    } catch {
+      this._soundPlaying = undefined;
+    }
+  }
+
+  /** Stop any in-progress sound preview. */
+  private _stopSoundPreview(): void {
+    if (this._soundAudio) {
+      this._soundAudio.pause();
+      this._soundAudio.currentTime = 0;
+    }
+    this._soundPlaying = undefined;
   }
 
   /** Render a group's fields: un-subsectioned fields inline, then a collapsible panel
@@ -2858,6 +2978,61 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
       select.sel:disabled {
         opacity: 0.5;
         cursor: default;
+      }
+      /* Sound picker: dropdown + preview button, with an optional custom URL row. */
+      .sound-field {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        align-items: flex-end;
+      }
+      .sound-row {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+      select.sound-select {
+        max-width: 46vw;
+      }
+      .sound-play {
+        flex: 0 0 auto;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        border: 1px solid var(--ted-style-divider);
+        background: var(--ted-style-surface-2);
+        color: inherit;
+        cursor: pointer;
+        --mdc-icon-size: 18px;
+      }
+      .sound-play:hover:not(:disabled) {
+        background: var(--ted-style-surface-3, var(--ted-style-surface-2));
+      }
+      .sound-play:disabled {
+        opacity: 0.5;
+        cursor: default;
+      }
+      .sound-custom {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .sound-browse {
+        font: inherit;
+        font-size: 0.85em;
+        padding: 5px 10px;
+        border-radius: 8px;
+        border: 1px solid var(--ted-style-divider);
+        background: var(--ted-style-surface-2);
+        color: inherit;
+        cursor: pointer;
+        white-space: nowrap;
+      }
+      .sound-browse:hover:not(:disabled) {
+        background: var(--ted-style-surface-3, var(--ted-style-surface-2));
       }
       /* Entity pickers: widen the field so its dropdown (which matches the field
          width) can show full entity names instead of clipping them. */

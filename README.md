@@ -940,6 +940,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.301
+
+- **Much better sound selection in Settings.** Alert-sound fields (notifications, alarms, timers, announcements) are now a **dropdown of the bundled sounds** grouped by type, with a **▶ preview button** to hear a sound before choosing it, plus a **Custom / Browse…** option that opens Home Assistant's media browser for your own file (or a pasted URL). No more typing raw sound paths. Requires Ted's Cards Backend v1.0.75+ for the bundled-sound list (older backends still allow Default + Custom).
+
 ### v1.0.300
 
 - **Fixed duplicate Dismiss button on timer & alarm alerts.** Timer/alarm completion toasts were showing **two** Dismiss buttons; they now show **Snooze** + a single **Dismiss**. Pairs with Ted's Cards Backend v1.0.74+.

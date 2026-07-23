@@ -39,7 +39,7 @@ export const DEFAULT_PHOTO_HEIGHT = 132;
  * (immutable + CDN-cached). Bump the tag if more photos are added later.
  */
 export const PHOTO_CDN_BASE =
-  "https://cdn.jsdelivr.net/gh/tedr91/Teds-Cards@v1.0.300/images/room-header-photos/";
+  "https://cdn.jsdelivr.net/gh/tedr91/Teds-Cards@v1.0.301/images/room-header-photos/";
 
 /** Curated bundled photos: dropdown key → source filename. */
 export const BUNDLED_PHOTOS: Record<string, string> = {
