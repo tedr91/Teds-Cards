@@ -13,7 +13,7 @@ import { NotificationToastController } from "../../shared/notifications";
 import { SettingsController, settingsStore } from "../../shared/settings";
 import { listAreas } from "../../shared/device-area";
 import { resolveDeviceId } from "../../shared/device-id";
-import type { AnnounceMessage } from "../../shared/settings-schema";
+import type { AnnounceMessage, SettingsValue } from "../../shared/settings-schema";
 import "../../shared/ted-icon-button";
 import {
   ANNOUNCEMENTS_SENSOR,
@@ -62,11 +62,18 @@ export class TedAnnounceCard extends LitElement implements LovelaceCard {
   /** Title/icon carried from a selected preset (used for the notification). */
   @state() private _presetLabel = "";
   @state() private _presetIcon = "";
-  /** Selected target area ids and device ids (both empty = house-wide). */
+  /** True when the user chose "Custom…" and is typing their own message. */
+  @state() private _customMode = false;
+  /** Selected target area ids and device ids (both empty = Everyone/house-wide). */
   @state() private _targetAreas: string[] = [];
   @state() private _targetDevices: string[] = [];
   /** Play once (default) vs repeat the alert sound until dismissed/timeout. */
   @state() private _persistent = false;
+  /** Which dropdown is open (message / targets), or none. */
+  @state() private _openMenu: "message" | "targets" | null = null;
+  /** Briefly true right after sending, to show "Sent ✓" on the button. */
+  @state() private _justSent = false;
+  private _sentTimer?: number;
 
   public constructor() {
     super();
@@ -74,6 +81,26 @@ export class TedAnnounceCard extends LitElement implements LovelaceCard {
     new SettingsController(this, () => this.hass);
     new NotificationToastController(this, () => ({ hass: this.hass }));
   }
+
+  public connectedCallback(): void {
+    super.connectedCallback();
+    document.addEventListener("pointerdown", this._onDocPointerDown, true);
+  }
+
+  public disconnectedCallback(): void {
+    super.disconnectedCallback();
+    document.removeEventListener("pointerdown", this._onDocPointerDown, true);
+    if (this._sentTimer) window.clearTimeout(this._sentTimer);
+  }
+
+  /** Close an open dropdown when the user taps outside of any picker. */
+  private _onDocPointerDown = (ev: Event): void => {
+    if (!this._openMenu) return;
+    const inMenu = ev
+      .composedPath()
+      .some((n) => n instanceof HTMLElement && n.classList?.contains("picker-wrap"));
+    if (!inMenu) this._openMenu = null;
+  };
 
   public setConfig(config: AnnounceCardConfig): void {
     if (!config) throw new Error("Invalid configuration");
@@ -115,28 +142,89 @@ export class TedAnnounceCard extends LitElement implements LovelaceCard {
     return entry.name?.trim() || id.replace(/^bm:|^id:/, "");
   }
 
+  // --- helpers -----------------------------------------------------------
+  private _registry(): Record<string, { name?: string; area?: string; last_seen?: string }> {
+    return settingsStore.registry();
+  }
+
+  private _online(entry: { last_seen?: string }): boolean {
+    const t = entry.last_seen ? Date.parse(entry.last_seen) : NaN;
+    return Number.isFinite(t) && Date.now() - t < 15 * 60 * 1000;
+  }
+
+  private _isAdmin(): boolean {
+    return !!this.hass?.user?.is_admin;
+  }
+
+  /** "Kitchen", "Kitchen +2", or "Everyone" for a set of area/device targets. */
+  private _summaryOf(areas: string[], devices: string[]): string {
+    const reg = this._registry();
+    const names = [
+      ...areas.map((a) => this._areaName(a)),
+      ...devices.map((d) => this._deviceName(d, reg[d] ?? {})),
+    ];
+    if (!names.length) return "Everyone";
+    if (names.length <= 2) return names.join(", ");
+    return `${names.slice(0, 2).join(", ")} +${names.length - 2}`;
+  }
+
+  /** The label shown on the "Say" picker. */
+  private _messageSummary(): string {
+    if (this._presetId) return this._presetLabel || this._message || "Message";
+    const t = this._message.trim();
+    if (this._customMode) return t || "Custom message…";
+    return t || "Choose a message…";
+  }
+
+  /** Relative time like "just now" / "5m ago" / "2h ago" / "yesterday". */
+  private _relTime(iso?: string): string {
+    if (!iso) return "";
+    const t = Date.parse(iso);
+    if (!Number.isFinite(t)) return "";
+    const s = Math.max(0, (Date.now() - t) / 1000);
+    if (s < 45) return "just now";
+    if (s < 3600) return `${Math.round(s / 60)}m ago`;
+    if (s < 86400) return `${Math.round(s / 3600)}h ago`;
+    if (s < 172800) return "yesterday";
+    return new Date(t).toLocaleDateString();
+  }
+
   // --- composer interactions ---------------------------------------------
-  private _selectPreset(m: AnnounceMessage): void {
-    if (this._presetId === m.id) {
-      // Toggle off → back to a blank custom message.
-      this._presetId = null;
-      this._message = "";
-      this._presetLabel = "";
-      this._presetIcon = "";
-      return;
-    }
+  private _toggleMenu(which: "message" | "targets"): void {
+    this._openMenu = this._openMenu === which ? null : which;
+  }
+
+  private _pickPreset(m: AnnounceMessage): void {
     this._presetId = m.id;
     this._message = m.text ?? "";
     this._presetLabel = m.label ?? "";
     this._presetIcon = m.icon ?? "";
+    this._customMode = false;
+    this._openMenu = null;
   }
 
-  private _onMessageInput(ev: Event): void {
-    this._message = (ev.target as HTMLTextAreaElement).value;
-    // Editing the text turns it into a custom message.
+  private _pickCustom(): void {
     this._presetId = null;
     this._presetLabel = "";
     this._presetIcon = "";
+    this._customMode = true;
+    this._openMenu = null;
+    this.updateComplete.then(() => {
+      (this.renderRoot.querySelector(".custom-input") as HTMLTextAreaElement | null)?.focus();
+    });
+  }
+
+  private _onCustomInput(ev: Event): void {
+    this._message = (ev.target as HTMLTextAreaElement).value;
+    this._presetId = null;
+    this._presetLabel = "";
+    this._presetIcon = "";
+  }
+
+  private _pickEveryone(): void {
+    this._targetAreas = [];
+    this._targetDevices = [];
+    this._openMenu = null;
   }
 
   private _toggleArea(id: string): void {
@@ -151,21 +239,28 @@ export class TedAnnounceCard extends LitElement implements LovelaceCard {
       : [...this._targetDevices, id];
   }
 
+  private _flashSent(): void {
+    this._justSent = true;
+    if (this._sentTimer) window.clearTimeout(this._sentTimer);
+    this._sentTimer = window.setTimeout(() => (this._justSent = false), 1800);
+  }
+
   private _send(): void {
     const message = this._message.trim();
     if (!message || !this.hass) return;
-    const persistent = this._persistent;
     const data: Record<string, unknown> = {
       message,
       title: this._presetLabel || "Announcement",
       areas: this._targetAreas,
       devices: this._targetDevices,
-      persistent,
+      persistent: this._persistent,
       timeout: this._timeoutDefault(),
       source_device: resolveDeviceId(),
     };
     if (this._presetIcon) data.icon = this._presetIcon;
     this.hass.callService(ANNOUNCE_DOMAIN, "announce", data);
+    this._openMenu = null;
+    this._flashSent();
   }
 
   // --- recent interactions -----------------------------------------------
@@ -182,6 +277,7 @@ export class TedAnnounceCard extends LitElement implements LovelaceCard {
     };
     if (r.icon) data.icon = r.icon;
     this.hass.callService(ANNOUNCE_DOMAIN, "announce", data);
+    this._flashSent();
   }
 
   private _loadRecent(r: RecentAnnouncement): void {
@@ -189,6 +285,7 @@ export class TedAnnounceCard extends LitElement implements LovelaceCard {
     this._presetId = null;
     this._presetLabel = r.title && r.title !== "Announcement" ? r.title : "";
     this._presetIcon = r.icon ?? "";
+    this._customMode = !this._presetLabel;
     this._targetAreas = [...(r.areas ?? [])];
     this._targetDevices = [...(r.devices ?? [])];
     this._persistent = !!r.persistent;
@@ -202,6 +299,21 @@ export class TedAnnounceCard extends LitElement implements LovelaceCard {
       destructive: true,
     });
     if (ok) this.hass?.callService(ANNOUNCE_DOMAIN, "remove_announcement", { id: r.id });
+  }
+
+  /** Save a recent announcement as a reusable predefined message (admin only). */
+  private _saveAsPreset(r: RecentAnnouncement): void {
+    if (!this._isAdmin()) return;
+    const text = (r.message ?? "").trim();
+    if (!text) return;
+    const raw = settingsStore.effective().announce_messages;
+    const list = Array.isArray(raw) ? (raw as unknown as AnnounceMessage[]) : [];
+    if (list.some((m) => (m.text ?? "").trim() === text)) return; // already saved
+    const id =
+      typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `msg-${Date.now().toString(36)}`;
+    const label = ((r.title && r.title !== "Announcement" ? r.title : text) || "").slice(0, 40);
+    const msg: AnnounceMessage = { id, label, text, ...(r.icon ? { icon: r.icon } : {}) };
+    settingsStore.setValue("global", "announce_messages", [...list, msg] as unknown as SettingsValue);
   }
 
   private _openSettings(): void {
@@ -272,132 +384,203 @@ export class TedAnnounceCard extends LitElement implements LovelaceCard {
   }
 
   private _renderBody(): TemplateResult {
+    const hasRecent = this._recent.length > 0;
     return html`
-      <div class="body">
-        ${this._renderMessage()} ${this._renderTargets()} ${this._renderWhen()}
-        <div class="send-row">
-          <button class="send-btn" ?disabled=${!this._message.trim()} @click=${this._send}>
-            <ha-icon icon="mdi:send"></ha-icon> Announce
-          </button>
-        </div>
-        ${this._renderRecent()}
+      <div class="d-layout ${hasRecent ? "has-recent" : ""}">
+        <div class="compose">${this._renderForm()}</div>
+        ${hasRecent
+          ? html`
+              <div class="recent-side">
+                <div class="sec-label">Recent</div>
+                ${this._renderRecentList()}
+              </div>
+              <div class="recent-below">
+                <details class="rec-details">
+                  <summary>
+                    <ha-icon class="chev" icon="mdi:chevron-down"></ha-icon>
+                    Recent<span class="rec-count">${this._recent.length}</span>
+                  </summary>
+                  ${this._renderRecentList()}
+                </details>
+              </div>
+            `
+          : nothing}
       </div>
     `;
   }
 
-  private _renderMessage(): TemplateResult {
+  private _renderForm(): TemplateResult {
+    const armed = !!this._message.trim();
+    const msgPlaceholder = !this._presetId && !this._message.trim();
+    const summary = this._summaryOf(this._targetAreas, this._targetDevices);
+    return html`
+      <div class="panel form">
+        <div class="frow">
+          <span class="flabel">Say</span>
+          <div class="picker-wrap">
+            <button
+              class="picker ${this._openMenu === "message" ? "open" : ""} ${msgPlaceholder ? "placeholder" : ""}"
+              @click=${() => this._toggleMenu("message")}
+            >
+              <span class="picker-text">${this._messageSummary()}</span>
+              <ha-icon icon="mdi:chevron-down"></ha-icon>
+            </button>
+            ${this._openMenu === "message" ? this._renderMessageMenu() : nothing}
+          </div>
+        </div>
+
+        ${this._customMode
+          ? html`<textarea
+              class="custom-input"
+              rows="2"
+              placeholder="Type a custom announcement…"
+              .value=${this._message}
+              @input=${this._onCustomInput}
+            ></textarea>`
+          : nothing}
+
+        <div class="frow">
+          <span class="flabel">To</span>
+          <div class="picker-wrap">
+            <button
+              class="picker ${this._openMenu === "targets" ? "open" : ""}"
+              @click=${() => this._toggleMenu("targets")}
+            >
+              <span class="picker-text">${summary}</span>
+              <ha-icon icon="mdi:chevron-down"></ha-icon>
+            </button>
+            ${this._openMenu === "targets" ? this._renderTargetMenu() : nothing}
+          </div>
+        </div>
+
+        <div class="frow">
+          <span class="flabel">Mode</span>
+          <div class="seg">
+            <button class="segbtn ${this._persistent ? "" : "on"}" @click=${() => (this._persistent = false)}>
+              Play once
+            </button>
+            <button class="segbtn ${this._persistent ? "on" : ""}" @click=${() => (this._persistent = true)}>
+              Until dismissed
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <button class="send-btn ${this._justSent ? "sent" : ""}" ?disabled=${!armed} @click=${this._send}>
+        ${this._justSent
+          ? html`<ha-icon icon="mdi:check-circle"></ha-icon> Sent`
+          : html`<ha-icon icon="mdi:send"></ha-icon> Announce to ${summary}`}
+      </button>
+    `;
+  }
+
+  private _renderMessageMenu(): TemplateResult {
     const presets = this._presets();
     return html`
-      <section class="sec">
-        <div class="sec-title">Message</div>
+      <div class="menu" @click=${(e: Event) => e.stopPropagation()}>
         ${presets.length
-          ? html`<div class="chips">
-              ${presets.map(
-                (m) => html`<button
-                  class="chip ${this._presetId === m.id ? "on" : ""}"
-                  @click=${() => this._selectPreset(m)}
-                >
-                  <ha-icon .icon=${m.icon || "mdi:bullhorn"}></ha-icon>${m.label || m.text}
-                </button>`,
-              )}
-            </div>`
-          : html`<div class="hint">
-              No predefined messages yet.
-              <button class="link-inline" @click=${this._openSettings}>Add some in Settings</button>.
+          ? presets.map(
+              (m) => html`<button
+                class="menu-item ${this._presetId === m.id ? "on" : ""}"
+                @click=${() => this._pickPreset(m)}
+              >
+                <ha-icon .icon=${m.icon || "mdi:bullhorn"}></ha-icon>
+                <span class="mi-text">
+                  <span class="mi-label">${m.label || m.text}</span>
+                  ${m.label ? html`<span class="mi-sub">${m.text}</span>` : nothing}
+                </span>
+              </button>`,
+            )
+          : html`<div class="menu-empty">
+              No saved messages.${this._isAdmin()
+                ? html` <button class="link-inline" @click=${this._openSettings}>Add some</button>.`
+                : nothing}
             </div>`}
-        <textarea
-          class="msg-input"
-          rows="2"
-          placeholder="Type a custom announcement…"
-          .value=${this._message}
-          @input=${this._onMessageInput}
-        ></textarea>
-      </section>
+        <div class="menu-sep"></div>
+        <button class="menu-item ${this._customMode ? "on" : ""}" @click=${this._pickCustom}>
+          <ha-icon icon="mdi:pencil-outline"></ha-icon><span class="mi-label">Custom message…</span>
+        </button>
+      </div>
     `;
   }
 
-  private _renderTargets(): TemplateResult {
+  private _renderTargetMenu(): TemplateResult {
     const areas = listAreas(this.hass);
-    const devices = Object.entries(settingsStore.registry());
-    const houseWide = !this._targetAreas.length && !this._targetDevices.length;
+    const reg = this._registry();
+    const devices = Object.entries(reg);
+    const everyone = !this._targetAreas.length && !this._targetDevices.length;
     return html`
-      <section class="sec">
-        <div class="sec-title">
-          Send to
-          ${houseWide ? html`<span class="sec-note">All devices (house-wide)</span>` : nothing}
-        </div>
-        ${areas.length
-          ? html`<div class="chips">
-              ${areas.map(
-                (a) => html`<button
-                  class="chip ${this._targetAreas.includes(a.id) ? "on" : ""}"
-                  @click=${() => this._toggleArea(a.id)}
-                >
-                  <ha-icon icon="mdi:map-marker-outline"></ha-icon>${a.name}
-                </button>`,
-              )}
-            </div>`
-          : nothing}
+      <div class="menu" @click=${(e: Event) => e.stopPropagation()}>
+        <button class="menu-item ${everyone ? "on" : ""}" @click=${this._pickEveryone}>
+          <ha-icon icon="mdi:account-group-outline"></ha-icon>
+          <span class="mi-label">Everyone</span>
+          ${everyone ? html`<ha-icon class="mi-check" icon="mdi:check"></ha-icon>` : nothing}
+        </button>
+        ${areas.length ? html`<div class="menu-sec">Rooms</div>` : nothing}
+        ${areas.map(
+          (a) => html`<button
+            class="menu-item ${this._targetAreas.includes(a.id) ? "on" : ""}"
+            @click=${() => this._toggleArea(a.id)}
+          >
+            <ha-icon icon="mdi:map-marker-outline"></ha-icon>
+            <span class="mi-label">${a.name}</span>
+            ${this._targetAreas.includes(a.id) ? html`<ha-icon class="mi-check" icon="mdi:check"></ha-icon>` : nothing}
+          </button>`,
+        )}
+        <div class="menu-sec">Devices</div>
         ${devices.length
-          ? html`<div class="chips">
-              ${devices.map(
-                ([id, entry]) => html`<button
-                  class="chip ${this._targetDevices.includes(id) ? "on" : ""}"
-                  @click=${() => this._toggleDevice(id)}
-                >
-                  <ha-icon icon="mdi:tablet-dashboard"></ha-icon>${this._deviceName(id, entry)}
-                </button>`,
-              )}
-            </div>`
-          : html`<div class="hint">No Ted's Dashboard devices have registered yet.</div>`}
-      </section>
+          ? devices.map(([id, entry]) => {
+              const online = this._online(entry);
+              return html`<button
+                class="menu-item ${this._targetDevices.includes(id) ? "on" : ""} ${online ? "" : "offline"}"
+                @click=${() => this._toggleDevice(id)}
+              >
+                <span class="dot ${online ? "on" : ""}"></span>
+                <span class="mi-label">${this._deviceName(id, entry)}${online ? "" : " · offline"}</span>
+                ${this._targetDevices.includes(id)
+                  ? html`<ha-icon class="mi-check" icon="mdi:check"></ha-icon>`
+                  : nothing}
+              </button>`;
+            })
+          : html`<div class="menu-empty">No devices have registered yet.</div>`}
+      </div>
     `;
   }
 
-  private _renderWhen(): TemplateResult {
+  private _renderRecentList(): TemplateResult {
     return html`
-      <section class="sec">
-        <div class="sec-title">Repeat alert sound</div>
-        <div class="seg">
-          <button class="segbtn ${this._persistent ? "" : "on"}" @click=${() => (this._persistent = false)}>
-            Play once
-          </button>
-          <button class="segbtn ${this._persistent ? "on" : ""}" @click=${() => (this._persistent = true)}>
-            Until dismissed
-          </button>
-        </div>
-      </section>
-    `;
-  }
-
-  private _renderRecent(): TemplateResult | typeof nothing {
-    const recent = this._recent;
-    if (!recent.length) return nothing;
-    return html`
-      <section class="sec">
-        <div class="sec-title">Recent</div>
-        <div class="recent-list">
-          ${repeat(
-            recent,
-            (r) => r.id,
-            (r) => this._renderRecentRow(r),
-          )}
-        </div>
-      </section>
+      <div class="recent-list">
+        ${repeat(
+          this._recent,
+          (r) => r.id,
+          (r) => this._renderRecentRow(r),
+        )}
+      </div>
     `;
   }
 
   private _renderRecentRow(r: RecentAnnouncement): TemplateResult {
-    const scope = this._targetSummary(r);
+    const scope = this._summaryOf(r.areas ?? [], r.devices ?? []);
+    const sender =
+      r.source_device_name || (r.source_device ? this._registry()[r.source_device]?.name : "") || "";
+    const bits = [scope, this._relTime(r.last_sent), sender ? `from ${sender}` : ""].filter(Boolean);
     return html`
       <div class="recent-row">
         <button class="recent-main" title="Load into composer" @click=${() => this._loadRecent(r)}>
           <ha-icon class="recent-ico" .icon=${r.icon || "mdi:bullhorn"}></ha-icon>
           <span class="recent-text">
             <span class="recent-label">${r.title && r.title !== "Announcement" ? r.title : r.message}</span>
-            <span class="recent-sub">${scope}${r.persistent ? " · until dismissed" : ""}</span>
+            <span class="recent-sub">${bits.join(" · ")}${r.persistent ? " · until dismissed" : ""}</span>
           </span>
         </button>
+        ${this._isAdmin()
+          ? html`<ted-icon-button
+              class="recent-act"
+              icon="mdi:star-outline"
+              label="Save as message"
+              @click=${() => this._saveAsPreset(r)}
+            ></ted-icon-button>`
+          : nothing}
         <ted-icon-button
           class="recent-act"
           icon="mdi:send"
@@ -412,17 +595,6 @@ export class TedAnnounceCard extends LitElement implements LovelaceCard {
         ></ted-icon-button>
       </div>
     `;
-  }
-
-  /** Short "to Kitchen, +1" style target summary for a recent row. */
-  private _targetSummary(r: RecentAnnouncement): string {
-    const names = [
-      ...(r.areas ?? []).map((a) => this._areaName(a)),
-      ...(r.devices ?? []).map((d) => this._deviceName(d, settingsStore.registry()[d] ?? {})),
-    ];
-    if (!names.length) return "All devices";
-    if (names.length <= 2) return names.join(", ");
-    return `${names.slice(0, 2).join(", ")} +${names.length - 2}`;
   }
 
   static styles = [
@@ -472,89 +644,90 @@ export class TedAnnounceCard extends LitElement implements LovelaceCard {
         padding: 8px 16px 16px;
         color: var(--ted-style-muted);
       }
-      .body {
-        display: flex;
-        flex-direction: column;
-        gap: 14px;
+
+      /* Option D layout: compose + adaptive Recent (side rail wide / collapsed narrow). */
+      .d-layout {
+        display: grid;
+        grid-template-columns: 1fr;
         flex: 1 1 auto;
         min-height: 0;
-        overflow-y: auto;
-        padding: 6px 16px 4px;
       }
-      .sec {
+      .compose {
+        padding: 8px 16px 14px;
         display: flex;
         flex-direction: column;
-        gap: 8px;
+        gap: 12px;
+        min-width: 0;
       }
-      .sec-title {
+      .recent-side {
+        display: none;
+      }
+      .recent-below {
+        grid-column: 1 / -1;
+        border-top: 1px solid var(--ted-style-divider);
+        padding: 2px 12px 8px;
+      }
+
+      .panel.form {
         display: flex;
-        align-items: baseline;
-        gap: 8px;
-        font-weight: 600;
-        font-size: 0.82rem;
-        letter-spacing: 0.03em;
-        text-transform: uppercase;
-        color: var(--ted-style-muted);
+        flex-direction: column;
+        gap: 12px;
+        padding: 12px 14px;
+        border-radius: 13px;
+        border: 1px solid var(--ted-style-divider);
+        background: color-mix(in srgb, var(--ted-style-text) 4%, transparent);
       }
-      .sec-note {
-        text-transform: none;
-        letter-spacing: 0;
-        font-weight: 400;
-        font-size: 0.8rem;
-        color: var(--ted-style-muted);
-      }
-      .hint {
-        font-size: 0.85rem;
-        color: var(--ted-style-muted);
-      }
-      .link-inline {
-        display: inline;
-        padding: 0;
-        border: none;
-        background: none;
-        font: inherit;
-        color: var(--ted-style-accent, var(--primary-color));
-        text-decoration: underline;
-        cursor: pointer;
-      }
-      .chips {
+      .frow {
         display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-      }
-      .chip {
-        display: inline-flex;
         align-items: center;
-        gap: 6px;
-        max-width: 100%;
-        padding: 7px 12px;
-        border-radius: 999px;
+        gap: 10px;
+      }
+      .flabel {
+        width: 46px;
+        flex: none;
+        font-size: 0.82rem;
+        color: var(--ted-style-muted);
+      }
+      .picker-wrap {
+        position: relative;
+        flex: 1 1 auto;
+        min-width: 0;
+      }
+      .picker {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 9px 12px;
+        border-radius: 10px;
+        cursor: pointer;
         border: 1px solid var(--ted-style-divider);
         background: color-mix(in srgb, var(--ted-style-text) 6%, transparent);
         color: var(--ted-style-text);
         font: inherit;
-        font-size: 0.9rem;
-        cursor: pointer;
-        white-space: nowrap;
+        font-size: 0.95rem;
+        text-align: left;
+      }
+      .picker:hover,
+      .picker.open {
+        border-color: var(--ted-style-accent, var(--primary-color));
+      }
+      .picker .picker-text {
+        flex: 1 1 auto;
+        min-width: 0;
         overflow: hidden;
         text-overflow: ellipsis;
+        white-space: nowrap;
       }
-      .chip ha-icon {
-        --mdc-icon-size: 18px;
-        flex: none;
+      .picker.placeholder .picker-text {
         color: var(--ted-style-muted);
       }
-      .chip:hover {
-        border-color: var(--ted-style-accent, var(--primary-color));
+      .picker ha-icon {
+        flex: none;
+        --mdc-icon-size: 20px;
+        color: var(--ted-style-muted);
       }
-      .chip.on {
-        border-color: var(--ted-style-accent, var(--primary-color));
-        background: color-mix(in srgb, var(--ted-style-accent, var(--primary-color)) 22%, transparent);
-      }
-      .chip.on ha-icon {
-        color: var(--ted-style-accent, var(--primary-color));
-      }
-      .msg-input {
+      .custom-input {
         width: 100%;
         box-sizing: border-box;
         resize: vertical;
@@ -567,21 +740,131 @@ export class TedAnnounceCard extends LitElement implements LovelaceCard {
         font: inherit;
         font-size: 0.95rem;
       }
-      .msg-input:focus {
+      .custom-input:focus {
         outline: none;
         border-color: var(--ted-style-accent, var(--primary-color));
       }
+
+      /* dropdown menus */
+      .menu {
+        position: absolute;
+        top: calc(100% + 4px);
+        left: 0;
+        right: 0;
+        z-index: 30;
+        max-height: 320px;
+        overflow-y: auto;
+        padding: 6px;
+        border-radius: 12px;
+        border: 1px solid var(--ted-style-divider);
+        background: var(--ted-style-surface, var(--ha-card-background, #fff));
+        backdrop-filter: var(--ha-card-backdrop-filter);
+        -webkit-backdrop-filter: var(--ha-card-backdrop-filter);
+        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
+      }
+      .menu-item {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 9px 10px;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        background: none;
+        color: var(--ted-style-text);
+        font: inherit;
+        font-size: 0.92rem;
+        text-align: left;
+      }
+      .menu-item:hover {
+        background: color-mix(in srgb, var(--ted-style-text) 8%, transparent);
+      }
+      .menu-item.on {
+        background: color-mix(in srgb, var(--ted-style-accent, var(--primary-color)) 18%, transparent);
+      }
+      .menu-item ha-icon {
+        flex: none;
+        --mdc-icon-size: 20px;
+        color: var(--ted-style-muted);
+      }
+      .menu-item.offline {
+        opacity: 0.5;
+      }
+      .mi-text {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        flex: 1 1 auto;
+      }
+      .mi-label {
+        flex: 1 1 auto;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .mi-sub {
+        font-size: 0.76rem;
+        color: var(--ted-style-muted);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .mi-check {
+        color: var(--ted-style-accent, var(--primary-color));
+      }
+      .menu-sec {
+        font-size: 0.7rem;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        color: var(--ted-style-muted);
+        padding: 8px 10px 4px;
+      }
+      .menu-sep {
+        height: 1px;
+        margin: 4px 6px;
+        background: var(--ted-style-divider);
+      }
+      .menu-empty {
+        padding: 10px;
+        font-size: 0.85rem;
+        color: var(--ted-style-muted);
+      }
+      .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        flex: none;
+        margin: 0 6px;
+        background: var(--ted-style-muted);
+      }
+      .dot.on {
+        background: #3ea55e;
+      }
+      .link-inline {
+        display: inline;
+        padding: 0;
+        border: none;
+        background: none;
+        font: inherit;
+        color: var(--ted-style-accent, var(--primary-color));
+        text-decoration: underline;
+        cursor: pointer;
+      }
+
+      /* mode segmented */
       .seg {
         display: inline-flex;
-        gap: 4px;
+        gap: 3px;
         padding: 3px;
         border-radius: 10px;
         border: 1px solid var(--ted-style-divider);
-        align-self: flex-start;
       }
       .segbtn {
         padding: 6px 14px;
-        border-radius: 8px;
+        border-radius: 7px;
         border: none;
         background: none;
         color: var(--ted-style-muted);
@@ -590,39 +873,26 @@ export class TedAnnounceCard extends LitElement implements LovelaceCard {
         cursor: pointer;
       }
       .segbtn.on {
-        background: color-mix(in srgb, var(--ted-style-accent, var(--primary-color)) 24%, transparent);
+        background: color-mix(in srgb, var(--ted-style-accent, var(--primary-color)) 22%, transparent);
         color: var(--ted-style-text);
       }
-      .toggle-row {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        font-size: 0.9rem;
-        color: var(--ted-style-text);
-        cursor: pointer;
-      }
-      .toggle-row input {
-        width: 18px;
-        height: 18px;
-        accent-color: var(--ted-style-accent, var(--primary-color));
-      }
-      .send-row {
-        display: flex;
-        justify-content: flex-end;
-      }
+
+      /* send */
       .send-btn {
         display: inline-flex;
         align-items: center;
+        justify-content: center;
         gap: 8px;
-        padding: 10px 20px;
-        border-radius: 10px;
+        width: 100%;
+        padding: 12px 20px;
+        border-radius: 11px;
         border: none;
+        cursor: pointer;
         background: var(--ted-style-accent, var(--primary-color));
         color: #fff;
         font: inherit;
-        font-weight: 600;
-        font-size: 0.95rem;
-        cursor: pointer;
+        font-weight: 650;
+        font-size: 0.98rem;
       }
       .send-btn ha-icon {
         --mdc-icon-size: 20px;
@@ -631,10 +901,23 @@ export class TedAnnounceCard extends LitElement implements LovelaceCard {
         opacity: 0.4;
         cursor: default;
       }
+      .send-btn.sent {
+        background: #3ea55e;
+      }
+
+      /* recent */
+      .sec-label {
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--ted-style-muted);
+      }
       .recent-list {
         display: flex;
         flex-direction: column;
         gap: 2px;
+        margin-top: 6px;
       }
       .recent-row {
         display: flex;
@@ -642,6 +925,9 @@ export class TedAnnounceCard extends LitElement implements LovelaceCard {
         gap: 4px;
         border-top: 1px solid var(--ted-style-divider);
         padding: 4px 0;
+      }
+      .recent-row:first-child {
+        border-top: none;
       }
       .recent-main {
         display: flex;
@@ -687,6 +973,56 @@ export class TedAnnounceCard extends LitElement implements LovelaceCard {
       .recent-act {
         --ted-ib-color: var(--ted-style-muted);
         flex: none;
+      }
+
+      /* collapsible Recent (narrow screens) */
+      .rec-details summary {
+        list-style: none;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 6px;
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--ted-style-muted);
+      }
+      .rec-details summary::-webkit-details-marker {
+        display: none;
+      }
+      .rec-details summary .chev {
+        --mdc-icon-size: 18px;
+        transition: transform 0.18s ease;
+      }
+      .rec-details[open] summary .chev {
+        transform: rotate(180deg);
+      }
+      .rec-count {
+        margin-left: 4px;
+        font-size: 0.7rem;
+        font-weight: 700;
+        color: var(--ted-style-muted);
+        background: color-mix(in srgb, var(--ted-style-text) 8%, transparent);
+        border-radius: 999px;
+        padding: 1px 8px;
+      }
+
+      /* wide enough -> Recent becomes a side rail */
+      @container (min-width: 720px) {
+        .d-layout.has-recent {
+          grid-template-columns: 1.6fr 1fr;
+        }
+        .d-layout.has-recent .recent-side {
+          display: block;
+          overflow-y: auto;
+          padding: 12px 16px;
+          border-left: 1px solid var(--ted-style-divider);
+        }
+        .d-layout.has-recent .recent-below {
+          display: none;
+        }
       }
     `,
   ];

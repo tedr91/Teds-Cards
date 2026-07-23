@@ -46,4 +46,7 @@ export interface RecentAnnouncement {
   persistent?: boolean;
   timeout?: number | null;
   last_sent?: string;
+  /** The device that sent it (id + resolved name), for the "from X" line. */
+  source_device?: string;
+  source_device_name?: string;
 }
