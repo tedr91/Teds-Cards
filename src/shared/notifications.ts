@@ -173,7 +173,7 @@ export class NotificationToastController implements ReactiveController {
       if (enabled) {
         out.push({ label: `Snooze (${minutes}min)`, primary: true, handler: () => this._snooze(hass, n, minutes) });
       }
-      out.push({ label: "Dismiss", handler: () => hass?.callService?.("teds_cards_backend", "mark_read", { id: n.id }) });
+      // No explicit Dismiss here: the message box always renders its own Dismiss.
       actions = out;
     } else {
       actions = (Array.isArray(n.actions) ? n.actions : []).map((a) => ({

@@ -940,6 +940,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.300
+
+- **Fixed duplicate Dismiss button on timer & alarm alerts.** Timer/alarm completion toasts were showing **two** Dismiss buttons; they now show **Snooze** + a single **Dismiss**. Pairs with Ted's Cards Backend v1.0.74+.
+
 ### v1.0.299
 
 - **Announcements can speak a preface + the title.** A new **Spoken preface** setting (Settings → Announce → Voice, default “Incoming announcement”, blank for none) is spoken first, and a predefined message's **title is now read aloud** before its message. The full spoken order is: chime → preface → title → short pause → message → chime. Requires Ted's Cards Backend v1.0.73+.
