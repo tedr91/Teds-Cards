@@ -940,6 +940,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.287
+
+- **New Announce card + view.** A new `custom:ted-announce-card` lets you broadcast a spoken (text-to-speech) announcement to your Ted's Dashboard devices: pick target **rooms and/or individual devices** (or leave it house-wide), choose a **predefined message** or type a **custom** one, and send it as a **Play once** or **Until dismissed** announcement (with an optional repeating alert chime). A **Recent** list lets you re-send, load, or remove past announcements. Manage the predefined message list and voice/volume defaults in the new **Settings → Announce** tab. Announcement toasts appear **large and centered** on the targeted screens. Requires Ted's Cards Backend v1.0.63+.
+
 ### v1.0.286
 
 - **Music card fixes.** The queue item menu now renders as a top-layer popover so it's no longer clipped by the scrolling list. The progress **seek handle** (accent + black outline) and the 1px accent **played** line now actually render — they were being overridden by a more-specific base rule. The Media-tab **loading** badge matches the NOW PLAYING pill exactly, and the Queue/Recent tab count badges are vertically centered with their labels.
