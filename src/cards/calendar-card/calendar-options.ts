@@ -500,7 +500,7 @@ export function renderHiddenEvents(
       <details style=${chip}>
         <summary style=${summary}>
           <ha-icon
-            icon="mdi:hide-outline"
+            icon="mdi:eye-off-outline"
             style="flex:none;color:var(--primary-text-color);--mdc-icon-size:20px;"
           ></ha-icon>
           <span style="flex:1 1 auto;font-size:0.95rem;font-weight:700;color:var(--primary-text-color);">

@@ -999,6 +999,24 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
     .calendar.fill .week-compact-container .week-day-column {
       min-height: 0 !important;
     }
+    /* HA (non-Ted's-Style) dark mode gives the week day name/number its own dark chip
+       (#3b434d). It's invisible on the normal dark column but becomes an ugly box once our
+       "emphasize weekdays" overlay lightens the weekend columns. daylight's own
+       custom-background mode already clears it (which is why Ted's Style looks fine), so
+       replicate that for plain dark mode on the emphasized (day-styled) weekend columns. */
+    .calendar .calendar-container.dark-mode .week-day-column.day-style-has-background:not(.today) .week-day-name,
+    .calendar .calendar-container.dark-mode .week-day-column.day-style-has-background:not(.today) .week-day-date,
+    .calendar
+      .calendar-container.dark-mode
+      .week-standard-day-column.day-style-has-background:not(.today)
+      .week-standard-day-name,
+    .calendar
+      .calendar-container.dark-mode
+      .week-standard-day-column.day-style-has-background:not(.today)
+      .week-standard-day-date {
+      background: transparent !important;
+      border-color: transparent !important;
+    }
     .loading {
       height: 100%;
       min-height: 120px;

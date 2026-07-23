@@ -940,6 +940,11 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.293
+
+- Fixed the emphasized **weekend** columns showing an ugly dark box behind the day name/number in **dark mode** with the HA theme (Ted's Style was unaffected).
+- Fixed the missing **Hidden Events** section icon (the requested `mdi:hide-outline` isn't a real MDI icon; now uses `mdi:eye-off-outline`).
+
 ### v1.0.292
 
 - **Hidden Events section restyled to match the Calendars list**: an `mdi:hide-outline` icon and bold heading, and each rule row is now drag-to-reorder with a grip → name → chevron → delete layout.
