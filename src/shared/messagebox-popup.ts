@@ -210,7 +210,7 @@ export class TedMessagePopupLayer extends LitElement {
     .mb-box.prominent {
       font-size: clamp(16px, 2.6vw, 48px);
       gap: 0.55em;
-      align-items: center;
+      align-items: flex-start;
       padding: 0.9em 1em;
       border-radius: 0.55em;
       border-left-width: 0.18em;
@@ -259,7 +259,7 @@ export class TedMessagePopupLayer extends LitElement {
       display: flex;
       flex-wrap: wrap;
       gap: 6px;
-      margin-top: 4px;
+      margin-top: 12px;
     }
     .mb-abtn {
       appearance: none;
