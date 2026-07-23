@@ -33,12 +33,16 @@ export interface MessagePopupOptions {
   actions?: ToastAction[];
   /** Auto-dismiss after this many ms (default 10000). 0 = stay until dismissed. */
   duration?: number;
+  /** Countdown-bar length in ms, when it should differ from `duration` (e.g. an
+   *  announcement whose box is closed by the backend but still shows a timeout bar).
+   *  Falls back to `duration` when unset. */
+  barDuration?: number;
   /** De-dupe key: a second call with the same key while one is showing is ignored. */
   key?: string;
   /** Render this toast large and centered on screen (for announcements). */
   prominent?: boolean;
-  /** Called when the user manually dismisses the toast (the ✕ button) — NOT on
-   *  auto-timeout or action-button dismissal. */
+  /** Called when the user manually dismisses the toast (the Dismiss button) — NOT
+   *  on auto-timeout or action-button dismissal. */
   onDismiss?: () => void;
 }
 
@@ -89,6 +93,7 @@ export class TedMessagePopupLayer extends LitElement {
         : nothing}
       ${prominent.length
         ? html`<div class="region center">
+            <div class="scrim"></div>
             <div class="stack big">${prominent.map((m) => this._renderBox(m))}</div>
           </div>`
         : nothing}
@@ -104,29 +109,23 @@ export class TedMessagePopupLayer extends LitElement {
           <div class="mb-message">
             ${m.emphasis ? html`<b class="mb-em">${m.emphasis}</b> ` : nothing}${m.message}
           </div>
-          ${m.actions?.length
-            ? html`<div class="mb-actions">
-                ${m.actions.map(
-                  (a) => html`<button
-                    class="mb-abtn ${a.primary ? "primary" : ""}"
-                    @click=${() => {
-                      a.handler();
-                      this._dismiss(m.id);
-                    }}
-                  >
-                    ${a.label}
-                  </button>`,
-                )}
-              </div>`
-            : nothing}
+          <div class="mb-actions">
+            ${m.actions?.map(
+              (a) => html`<button
+                class="mb-abtn ${a.primary ? "primary" : ""}"
+                @click=${() => {
+                  a.handler();
+                  this._dismiss(m.id);
+                }}
+              >
+                ${a.label}
+              </button>`,
+            ) ?? nothing}
+            <button class="mb-abtn" @click=${() => this._dismiss(m.id, true)}>Dismiss</button>
+          </div>
         </div>
-        <button class="mb-close" aria-label="Dismiss" @click=${() => this._dismiss(m.id, true)}>
-          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-            <path d="M19 6.4 17.6 5 12 10.6 6.4 5 5 6.4 10.6 12 5 17.6 6.4 19 12 13.4 17.6 19 19 17.6 13.4 12z" />
-          </svg>
-        </button>
-        ${m.duration && m.duration > 0
-          ? html`<div class="mb-bar" style="animation-duration:${m.duration}ms"></div>`
+        ${(m.barDuration ?? m.duration) && (m.barDuration ?? m.duration)! > 0
+          ? html`<div class="mb-bar" style="animation-duration:${m.barDuration ?? m.duration}ms"></div>`
           : nothing}
       </div>
     `;
@@ -152,10 +151,24 @@ export class TedMessagePopupLayer extends LitElement {
       right: 0;
       bottom: calc(var(--ted-navbar-bottom-reserve, 0px) + 50px);
     }
-    /* Prominent (announcement) toasts: centered on screen. */
+    /* Prominent (announcement) toasts: centered on screen, over a full-screen
+       blur scrim that dims + frosts the dashboard behind the box. */
     .region.center {
       inset: 0;
       align-items: center;
+    }
+    .scrim {
+      position: fixed;
+      inset: 0;
+      pointer-events: auto;
+      background: rgba(0, 0, 0, 0.32);
+      backdrop-filter: blur(16px) saturate(1.1);
+      -webkit-backdrop-filter: blur(16px) saturate(1.1);
+      animation: mb-scrim-in 0.24s ease-out both;
+    }
+    .region.center .stack.big {
+      position: relative;
+      z-index: 1;
     }
     .stack {
       display: flex;
@@ -219,15 +232,6 @@ export class TedMessagePopupLayer extends LitElement {
     .mb-box.prominent .mb-icon {
       --mdc-icon-size: 1.5em;
     }
-    .mb-box.prominent .mb-close {
-      width: 1.7em;
-      height: 1.7em;
-      border-radius: 0.35em;
-    }
-    .mb-box.prominent .mb-close svg {
-      width: 0.9em;
-      height: 0.9em;
-    }
     .mb-icon {
       flex: 0 0 auto;
       --mdc-icon-size: 24px;
@@ -281,26 +285,6 @@ export class TedMessagePopupLayer extends LitElement {
       background: var(--mb-accent);
       border-color: var(--mb-accent);
     }
-    .mb-close {
-      flex: 0 0 auto;
-      width: 30px;
-      height: 30px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      border-radius: 8px;
-      border: 1px solid var(--divider-color, rgba(255, 255, 255, 0.22));
-      background: rgba(127, 127, 127, 0.14);
-      color: inherit;
-      cursor: pointer;
-    }
-    .mb-close:hover {
-      background: rgba(127, 127, 127, 0.26);
-    }
-    .mb-close svg {
-      width: 16px;
-      height: 16px;
-    }
     .mb-bar {
       position: absolute;
       left: 0;
@@ -322,6 +306,14 @@ export class TedMessagePopupLayer extends LitElement {
       to {
         opacity: 1;
         transform: translateY(0);
+      }
+    }
+    @keyframes mb-scrim-in {
+      from {
+        opacity: 0;
+      }
+      to {
+        opacity: 1;
       }
     }
     @keyframes mb-count {

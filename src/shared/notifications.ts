@@ -128,6 +128,7 @@ export class NotificationToastController implements ReactiveController {
     if (enabled === false) return;
     const actions: ToastAction[] = this._buildActions(hass, n);
     const announcement = !!n.announce_targets;
+    const timeoutMs = typeof n.timeout === "number" && n.timeout > 0 ? n.timeout * 1000 : 0;
     showMessageBox({
       key: `notif-${n.id}`,
       severity: n.severity ?? "info",
@@ -138,12 +139,10 @@ export class NotificationToastController implements ReactiveController {
       prominent: announcement,
       // Announcement boxes never auto-close locally: the backend dismisses them (at
       // its timeout or on a user dismiss) so the on-screen message and the repeating
-      // alert sound always end together. Other notifications use their own timeout.
-      duration: announcement
-        ? 0
-        : typeof n.timeout === "number" && n.timeout > 0
-          ? n.timeout * 1000
-          : 8000,
+      // alert sound always end together. They still show a countdown bar for the
+      // timeout. Other notifications use their own timeout to auto-close.
+      duration: announcement ? 0 : timeoutMs || 8000,
+      barDuration: announcement ? timeoutMs : undefined,
       // Manually dismissing the toast marks the notification read (auto-timeout does not).
       onDismiss: () => hass?.callService?.("teds_cards_backend", "mark_read", { id: n.id }),
     });

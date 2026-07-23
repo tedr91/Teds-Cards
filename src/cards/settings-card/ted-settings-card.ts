@@ -907,27 +907,30 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
           ${messages.map(
             (m, i) => html`
               <div class="ann-row">
-                <ha-textfield
-                  class="ann-icon"
+                <input
+                  class="ann-input ann-icon"
+                  type="text"
                   .value=${m.icon ?? ""}
                   placeholder="mdi:bullhorn"
                   ?disabled=${!admin}
                   @change=${(e: Event) => this._updateAnnounceMessage(i, "icon", e)}
-                ></ha-textfield>
-                <ha-textfield
-                  class="ann-label"
+                />
+                <input
+                  class="ann-input ann-label"
+                  type="text"
                   .value=${m.label ?? ""}
                   placeholder="Label"
                   ?disabled=${!admin}
                   @change=${(e: Event) => this._updateAnnounceMessage(i, "label", e)}
-                ></ha-textfield>
-                <ha-textfield
-                  class="ann-text"
+                />
+                <input
+                  class="ann-input ann-text"
+                  type="text"
                   .value=${m.text ?? ""}
                   placeholder="Spoken message"
                   ?disabled=${!admin}
                   @change=${(e: Event) => this._updateAnnounceMessage(i, "text", e)}
-                ></ha-textfield>
+                />
                 <button
                   class="ovr"
                   title="Remove message"
@@ -3117,8 +3120,25 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
         align-items: center;
         gap: 8px;
       }
-      .ann-row ha-textfield {
-        --text-field-padding: 6px 10px;
+      .ann-input {
+        box-sizing: border-box;
+        font: inherit;
+        font-size: 0.9rem;
+        padding: 8px 10px;
+        border-radius: 8px;
+        border: 1px solid var(--ted-style-divider);
+        background: color-mix(in srgb, var(--ted-style-text) 6%, transparent);
+        color: var(--ted-style-text);
+        outline: none;
+      }
+      .ann-input::placeholder {
+        color: var(--ted-style-muted);
+      }
+      .ann-input:focus {
+        border-color: var(--ted-style-accent, var(--primary-color));
+      }
+      .ann-input:disabled {
+        opacity: 0.5;
       }
       .ann-icon {
         flex: 0 0 130px;

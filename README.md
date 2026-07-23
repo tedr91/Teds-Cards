@@ -940,6 +940,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.298
+
+- **Announcements: full-screen frosted backdrop + clearer dismiss.** An incoming announcement now dims and blurs the whole dashboard behind it so it stands out, and the message box always shows a **Dismiss** action button instead of the small top-right **✕**. The timeout countdown bar is restored, and the **Add predefined message** editor in Settings now accepts input reliably.
+
 ### v1.0.297
 
 - **Announce view redesign.** The Announce card is now a compact, frosted composer that matches the rest of the dashboard: pick a message and target from **dropdowns** (*Say… / To… / Mode…*) instead of long chip lists. Targeting has an explicit **Everyone** option and groups **Rooms** and **Devices**, with **offline devices dimmed**. The send button summarizes the target (“Announce to Kitchen +2”) and flashes **Sent ✓**. **Recent** now shows the time and sending device, can be **saved as a predefined message** (★, admins), and repositions itself — a side rail on wide screens, a collapsible section on narrow ones. Requires Ted's Cards Backend v1.0.69+.
