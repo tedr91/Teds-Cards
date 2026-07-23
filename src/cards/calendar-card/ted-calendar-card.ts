@@ -956,6 +956,18 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
       max-height: 100% !important;
       overflow-y: auto !important;
     }
+    /* daylight v4.9.1 changed the Week (week-compact) compact_height grid to size rows to
+       content and pack them to the top (grid-auto-rows: max-content; align-content: start),
+       which leaves an empty gap below the day columns in our fixed-height fill layout.
+       Restore full-height columns by stretching the single row to fill the cell (matching
+       how Month view already fills), and drop the 200px per-column floor. */
+    .calendar.fill .week-compact-container {
+      grid-auto-rows: minmax(0, 1fr) !important;
+      align-content: stretch !important;
+    }
+    .calendar.fill .week-compact-container .week-day-column {
+      min-height: 0 !important;
+    }
     .loading {
       height: 100%;
       min-height: 120px;

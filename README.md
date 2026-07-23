@@ -940,6 +940,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.288
+
+- **Calendar Week view: fixed an empty gap below the day columns** introduced by daylight-calendar-card v4.9.1, which changed the Week (compact) grid to size rows to content and pack them to the top. In fill layouts the day columns now stretch to fill the card height again (matching Month and Schedule).
+
 ### v1.0.287
 
 - **New Announce card + view.** A new `custom:ted-announce-card` lets you broadcast a spoken (text-to-speech) announcement to your Ted's Dashboard devices: pick target **rooms and/or individual devices** (or leave it house-wide), choose a **predefined message** or type a **custom** one, and send it as a **Play once** or **Until dismissed** announcement (with an optional repeating alert chime). A **Recent** list lets you re-send, load, or remove past announcements. Manage the predefined message list and voice/volume defaults in the new **Settings → Announce** tab. Announcement toasts appear **large and centered** on the targeted screens. Requires Ted's Cards Backend v1.0.63+.
