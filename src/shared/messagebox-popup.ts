@@ -35,6 +35,8 @@ export interface MessagePopupOptions {
   duration?: number;
   /** De-dupe key: a second call with the same key while one is showing is ignored. */
   key?: string;
+  /** Render this toast large and centered on screen (for announcements). */
+  prominent?: boolean;
   /** Called when the user manually dismisses the toast (the ✕ button) — NOT on
    *  auto-timeout or action-button dismissal. */
   onDismiss?: () => void;
@@ -77,44 +79,55 @@ export class TedMessagePopupLayer extends LitElement {
 
   protected render(): TemplateResult | typeof nothing {
     if (!this._msgs.length) return nothing;
+    const prominent = this._msgs.filter((m) => m.prominent);
+    const normal = this._msgs.filter((m) => !m.prominent);
     return html`
-      <div class="stack">
-        ${this._msgs.map(
-          (m) => html`
-            <div class="mb-box mb-sev-${m.severity ?? "info"}" role="status">
-              <ha-icon class="mb-icon" .icon=${m.icon ?? SEVERITY_ICON[m.severity ?? "info"]}></ha-icon>
-              <div class="mb-content">
-                ${m.title ? html`<div class="mb-title">${m.title}</div>` : nothing}
-                <div class="mb-message">
-                  ${m.emphasis ? html`<b class="mb-em">${m.emphasis}</b> ` : nothing}${m.message}
-                </div>
-                ${m.actions?.length
-                  ? html`<div class="mb-actions">
-                      ${m.actions.map(
-                        (a) => html`<button
-                          class="mb-abtn ${a.primary ? "primary" : ""}"
-                          @click=${() => {
-                            a.handler();
-                            this._dismiss(m.id);
-                          }}
-                        >
-                          ${a.label}
-                        </button>`,
-                      )}
-                    </div>`
-                  : nothing}
-              </div>
-              <button class="mb-close" aria-label="Dismiss" @click=${() => this._dismiss(m.id, true)}>
-                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                  <path d="M19 6.4 17.6 5 12 10.6 6.4 5 5 6.4 10.6 12 5 17.6 6.4 19 12 13.4 17.6 19 19 17.6 13.4 12z" />
-                </svg>
-              </button>
-              ${m.duration && m.duration > 0
-                ? html`<div class="mb-bar" style="animation-duration:${m.duration}ms"></div>`
-                : nothing}
-            </div>
-          `,
-        )}
+      ${normal.length
+        ? html`<div class="region bottom">
+            <div class="stack">${normal.map((m) => this._renderBox(m))}</div>
+          </div>`
+        : nothing}
+      ${prominent.length
+        ? html`<div class="region center">
+            <div class="stack big">${prominent.map((m) => this._renderBox(m))}</div>
+          </div>`
+        : nothing}
+    `;
+  }
+
+  private _renderBox(m: ActiveMessage): TemplateResult {
+    return html`
+      <div class="mb-box mb-sev-${m.severity ?? "info"} ${m.prominent ? "prominent" : ""}" role="status">
+        <ha-icon class="mb-icon" .icon=${m.icon ?? SEVERITY_ICON[m.severity ?? "info"]}></ha-icon>
+        <div class="mb-content">
+          ${m.title ? html`<div class="mb-title">${m.title}</div>` : nothing}
+          <div class="mb-message">
+            ${m.emphasis ? html`<b class="mb-em">${m.emphasis}</b> ` : nothing}${m.message}
+          </div>
+          ${m.actions?.length
+            ? html`<div class="mb-actions">
+                ${m.actions.map(
+                  (a) => html`<button
+                    class="mb-abtn ${a.primary ? "primary" : ""}"
+                    @click=${() => {
+                      a.handler();
+                      this._dismiss(m.id);
+                    }}
+                  >
+                    ${a.label}
+                  </button>`,
+                )}
+              </div>`
+            : nothing}
+        </div>
+        <button class="mb-close" aria-label="Dismiss" @click=${() => this._dismiss(m.id, true)}>
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M19 6.4 17.6 5 12 10.6 6.4 5 5 6.4 10.6 12 5 17.6 6.4 19 12 13.4 17.6 19 19 17.6 13.4 12z" />
+          </svg>
+        </button>
+        ${m.duration && m.duration > 0
+          ? html`<div class="mb-bar" style="animation-duration:${m.duration}ms"></div>`
+          : nothing}
       </div>
     `;
   }
@@ -122,16 +135,27 @@ export class TedMessagePopupLayer extends LitElement {
   static styles = css`
     :host {
       position: fixed;
-      left: 0;
-      right: 0;
-      /* Sit above a bottom navbar's reserved strip, plus a fixed 50px lift so toasts
-         always clear the bar area a little more (auto-hide or not). */
-      bottom: calc(var(--ted-navbar-bottom-reserve, 0px) + 50px);
+      inset: 0;
       z-index: 10000;
-      display: flex;
-      justify-content: center;
       pointer-events: none;
       font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, sans-serif;
+    }
+    .region {
+      position: absolute;
+      display: flex;
+      justify-content: center;
+    }
+    /* Normal toasts: bottom-centre, above a bottom navbar's reserved strip plus a
+       fixed 50px lift so they always clear the bar area a little more. */
+    .region.bottom {
+      left: 0;
+      right: 0;
+      bottom: calc(var(--ted-navbar-bottom-reserve, 0px) + 50px);
+    }
+    /* Prominent (announcement) toasts: centered on screen. */
+    .region.center {
+      inset: 0;
+      align-items: center;
     }
     .stack {
       display: flex;
@@ -139,6 +163,9 @@ export class TedMessagePopupLayer extends LitElement {
       gap: 10px;
       padding: 16px;
       width: min(440px, 96vw);
+    }
+    .stack.big {
+      width: min(760px, 94vw);
     }
     .mb-box {
       --mb-accent: #4cc2ff;
@@ -176,6 +203,30 @@ export class TedMessagePopupLayer extends LitElement {
     }
     .mb-sev-tip {
       --mb-accent: #9b6cff;
+    }
+    /* Prominent announcement toast: scale everything up to ~3x as the screen allows.
+       Inner text/actions already use em, so scaling the box font-size scales them;
+       the px-based metrics are overridden to em here so they scale too. */
+    .mb-box.prominent {
+      font-size: clamp(16px, 2.6vw, 48px);
+      gap: 0.55em;
+      align-items: center;
+      padding: 0.9em 1em;
+      border-radius: 0.55em;
+      border-left-width: 0.18em;
+      box-shadow: 0 0.6em 2em rgba(0, 0, 0, 0.5);
+    }
+    .mb-box.prominent .mb-icon {
+      --mdc-icon-size: 1.5em;
+    }
+    .mb-box.prominent .mb-close {
+      width: 1.7em;
+      height: 1.7em;
+      border-radius: 0.35em;
+    }
+    .mb-box.prominent .mb-close svg {
+      width: 0.9em;
+      height: 0.9em;
     }
     .mb-icon {
       flex: 0 0 auto;

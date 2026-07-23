@@ -27,6 +27,7 @@ picker, where most have a visual editor).
 | [Timer](./timer-card.md) | `custom:ted-timer-card` | Start/view/cancel countdown timers (needs the backend). |
 | [MessageBox](./messagebox-card.md) | `custom:ted-messagebox-card` | A dismissible message banner (no backend). |
 | [Notification](./notification-card.md) | `custom:ted-notification-card` | Backend-driven notification list + toasts. |
+| [Announce](./announce-card.md) | `custom:ted-announce-card` | Broadcast spoken announcements to devices/areas (needs the backend). |
 
 See also the [Notification System](./notification-system.md) overview for how the
 backend-driven alerts (notifications, alarms, timers) fit together.
@@ -42,7 +43,7 @@ backend-driven alerts (notifications, alarms, timers) fit together.
 
 These cards need the **Ted's Cards Backend** integration
 (`teds_cards_backend`) installed: **Settings**, **Alarm**, **Timer**,
-**Notification** (and any card using per-device settings, e.g. Camera's
+**Notification**, **Announce** (and any card using per-device settings, e.g. Camera's
 `cameras_source: settings`, or the **Music** card's default `player_source: settings`).
 The others work standalone.
 

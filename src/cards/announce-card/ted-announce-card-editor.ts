@@ -1,0 +1,155 @@
+import { LitElement, html, nothing, type TemplateResult } from "lit";
+import { customElement, property, state } from "lit/decorators.js";
+import { type HomeAssistant, type LovelaceCardEditor, fireEvent } from "custom-card-helpers";
+
+import { transparencyBlurSchema } from "../../shared/appearance";
+import { ANNOUNCE_CARD_EDITOR_TYPE } from "./const";
+import type { AnnounceCardConfig } from "./types";
+
+// mdi:palette — Appearance section
+const APPEARANCE_ICON_PATH =
+  "M17.5,12A1.5,1.5 0 0,1 16,10.5A1.5,1.5 0 0,1 17.5,9A1.5,1.5 0 0,1 19,10.5A1.5,1.5 0 0,1 17.5,12M14.5,8A1.5,1.5 0 0,1 13,6.5A1.5,1.5 0 0,1 14.5,5A1.5,1.5 0 0,1 16,6.5A1.5,1.5 0 0,1 14.5,8M9.5,8A1.5,1.5 0 0,1 8,6.5A1.5,1.5 0 0,1 9.5,5A1.5,1.5 0 0,1 11,6.5A1.5,1.5 0 0,1 9.5,8M6.5,12A1.5,1.5 0 0,1 5,10.5A1.5,1.5 0 0,1 6.5,9A1.5,1.5 0 0,1 8,10.5A1.5,1.5 0 0,1 6.5,12M12,3A9,9 0 0,0 3,12A9,9 0 0,0 12,21A1.5,1.5 0 0,0 13.5,19.5C13.5,19.11 13.35,18.76 13.11,18.5C12.88,18.23 12.73,17.88 12.73,17.5A1.5,1.5 0 0,1 14.23,16H16A5,5 0 0,0 21,11C21,6.58 16.97,3 12,3Z";
+// mdi:page-layout-header — Header section
+const HEADER_ICON_PATH =
+  "M21,5V19H3V5H21M21,3H3A2,2 0 0,0 1,5V19A2,2 0 0,0 3,21H21A2,2 0 0,0 23,19V5A2,2 0 0,0 21,3M5,7H19V9H5V7Z";
+
+@customElement(ANNOUNCE_CARD_EDITOR_TYPE)
+export class TedAnnounceCardEditor extends LitElement implements LovelaceCardEditor {
+  @property({ attribute: false }) public hass?: HomeAssistant;
+  @state() private _config?: AnnounceCardConfig;
+
+  public setConfig(config: AnnounceCardConfig): void {
+    this._config = config;
+  }
+
+  private _defaults(): Partial<AnnounceCardConfig> {
+    return {
+      theme: "ha",
+      brushed: false,
+      shadow: true,
+      transparency: undefined,
+      blur: undefined,
+      background: undefined,
+      scale: 100,
+      show_header_icon: true,
+      show_header_name: true,
+      header_divider: false,
+    };
+  }
+
+  protected render(): TemplateResult | typeof nothing {
+    if (!this.hass || !this._config) return nothing;
+    const data = { ...this._defaults(), ...this._config };
+    return html`
+      <ha-form
+        .hass=${this.hass}
+        .data=${data}
+        .schema=${this._schema()}
+        .computeLabel=${this._computeLabel}
+        @value-changed=${this._valueChanged}
+      ></ha-form>
+    `;
+  }
+
+  private _schema() {
+    return [
+      { name: "title", selector: { text: { placeholder: "Announce" } } },
+      {
+        name: "",
+        type: "expandable",
+        title: "Appearance (general)",
+        iconPath: APPEARANCE_ICON_PATH,
+        flatten: true,
+        schema: [
+          {
+            name: "theme",
+            selector: {
+              select: {
+                mode: "dropdown",
+                options: [
+                  { value: "ted-style", label: "Ted's Style" },
+                  { value: "ha", label: "Home Assistant theme (default)" },
+                ],
+              },
+            },
+          },
+          { name: "background", selector: { ui_color: {} } },
+          { name: "brushed", selector: { boolean: {} } },
+          { name: "shadow", selector: { boolean: {} } },
+          transparencyBlurSchema(this._config?.transparency),
+          {
+            name: "scale",
+            selector: { number: { min: 50, max: 200, step: 5, mode: "box", unit_of_measurement: "%" } },
+          },
+        ],
+      },
+      {
+        name: "",
+        type: "expandable",
+        title: "Header",
+        iconPath: HEADER_ICON_PATH,
+        flatten: true,
+        schema: [
+          {
+            type: "grid",
+            name: "",
+            column_min_width: "100px",
+            schema: [
+              { name: "show_header_icon", selector: { boolean: {} } },
+              {
+                name: "header_icon_size",
+                disabled: this._config?.show_header_icon === false,
+                selector: { number: { min: 10, max: 400, step: 5, mode: "box", unit_of_measurement: "%" } },
+              },
+            ],
+          },
+          {
+            type: "grid",
+            name: "",
+            column_min_width: "100px",
+            schema: [
+              { name: "show_header_name", selector: { boolean: {} } },
+              {
+                name: "header_name_size",
+                disabled: this._config?.show_header_name === false,
+                selector: { number: { min: 10, max: 400, step: 5, mode: "box", unit_of_measurement: "%" } },
+              },
+            ],
+          },
+          { name: "header_divider", selector: { boolean: {} } },
+        ],
+      },
+      { name: "settings_path", selector: { text: { placeholder: "[root]/settings?tab=announce" } } },
+    ];
+  }
+
+  private _computeLabel = (schema: { name: string }): string => {
+    const labels: Record<string, string> = {
+      title: "Title",
+      theme: "Theme",
+      background: "Background color",
+      brushed: "Brushed overlay",
+      shadow: "Card shadow",
+      scale: "Scale",
+      show_header_icon: "Show header icon",
+      header_icon_size: "Header icon size",
+      show_header_name: "Show header title",
+      header_name_size: "Header title size",
+      header_divider: "Header divider",
+      settings_path: "Settings link (message list)",
+    };
+    return labels[schema.name] ?? schema.name;
+  };
+
+  private _valueChanged(ev: CustomEvent): void {
+    if (!this._config) return;
+    const next = { ...(ev.detail.value as AnnounceCardConfig) };
+    const defaults = this._defaults();
+    // Strip values equal to defaults / empty so the stored config stays minimal.
+    for (const [key, dflt] of Object.entries(defaults)) {
+      if (next[key] === dflt || next[key] === undefined || next[key] === "") delete next[key];
+    }
+    this._config = next;
+    fireEvent(this, "config-changed", { config: next });
+  }
+}

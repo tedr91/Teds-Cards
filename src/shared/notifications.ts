@@ -2,6 +2,8 @@ import type { ReactiveController, ReactiveControllerHost } from "lit";
 
 import { showMessageBox, dismissMessageBox, type MessagePopupSeverity, type ToastAction } from "./messagebox-popup";
 import { settingsStore, effectiveSnooze } from "./settings";
+import { resolveDeviceId } from "./device-id";
+import { resolveDeviceArea } from "./device-area";
 
 /** An action button attached to a notification. */
 export interface NotifAction {
@@ -32,6 +34,9 @@ export interface TedNotification {
   timeout?: number | null;
   source?: string;
   actions?: NotifAction[];
+  /** Present on "announcement" notifications: scopes the prominent toast to the
+   *  selected areas/devices (both empty = house-wide, shown everywhere). */
+  announce_targets?: { areas?: string[]; devices?: string[] };
   /** Client-resolved snooze: the device renders/acts using its own effective settings. */
   snooze?: { kind: "timer" | "alarm"; name: string; area?: string | null };
   /** Set by the backend when a notification is dismissed/read elsewhere: close the toast here. */
@@ -107,13 +112,20 @@ export class NotificationToastController implements ReactiveController {
       return;
     }
     const { area, enabled, hass, onNotify } = this.opts();
-    // Area-scoped card: show notifications for this area AND house-wide (area-less) ones.
-    if (area && n.area && n.area !== area) return;
+    // Announcements carry their own target scope (areas/devices); everything else
+    // uses the card's area filter.
+    if (n.announce_targets) {
+      if (!this._announcementTargetsMe(hass, n.announce_targets)) return;
+    } else if (area && n.area && n.area !== area) {
+      // Area-scoped card: show notifications for this area AND house-wide ones.
+      return;
+    }
     // Do Not Disturb (this device's effective setting): suppress toasts entirely.
     if (settingsStore.effective().do_not_disturb === true) return;
     onNotify?.();
     if (enabled === false) return;
     const actions: ToastAction[] = this._buildActions(hass, n);
+    const announcement = !!n.announce_targets;
     showMessageBox({
       key: `notif-${n.id}`,
       severity: n.severity ?? "info",
@@ -121,10 +133,25 @@ export class NotificationToastController implements ReactiveController {
       message: n.message,
       icon: n.icon,
       actions,
-      duration: typeof n.timeout === "number" && n.timeout > 0 ? n.timeout * 1000 : 8000,
+      prominent: announcement,
+      duration: typeof n.timeout === "number" && n.timeout > 0 ? n.timeout * 1000 : announcement ? 0 : 8000,
       // Manually dismissing the toast marks the notification read (auto-timeout does not).
       onDismiss: () => hass?.callService?.("teds_cards_backend", "mark_read", { id: n.id }),
     });
+  }
+
+  /** True when an announcement's target scope includes this device (by id or area),
+   *  or when it's house-wide (no areas/devices selected). */
+  private _announcementTargetsMe(
+    hass: HassLike | undefined,
+    targets: { areas?: string[]; devices?: string[] },
+  ): boolean {
+    const areas = targets.areas ?? [];
+    const devices = targets.devices ?? [];
+    if (!areas.length && !devices.length) return true; // house-wide
+    if (devices.includes(resolveDeviceId())) return true;
+    const myArea = resolveDeviceArea(hass as never).area;
+    return !!myArea && areas.includes(myArea);
   }
 
   /** Toast action buttons: synthesized Snooze/Dismiss for completion notifications

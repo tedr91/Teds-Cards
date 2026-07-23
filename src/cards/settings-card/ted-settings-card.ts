@@ -23,6 +23,7 @@ import {
   fieldsByGroup,
   SETTINGS_DEFAULTS,
   SETTINGS_GROUP_ICONS,
+  type AnnounceMessage,
   type SettingField,
   type SettingsValue,
 } from "../../shared/settings-schema";
@@ -778,6 +779,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
 
   private _renderGlobalRow(field: SettingField): TemplateResult {
     if (field.kind === "entity-list") return this._renderCamerasGlobal(field);
+    if (field.kind === "announce-messages") return this._renderAnnounceMessages("global");
     if (field.kind === "background") return this._renderBackground(field, "global");
     if (field.kind === "nightmode") return this._renderNightMode(field, "global");
     if (field.kind === "launcher") return this._renderLauncher("global");
@@ -813,6 +815,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
 
   private _renderDeviceRow(field: SettingField): TemplateResult {
     if (field.kind === "entity-list") return this._renderCamerasDevice(field);
+    if (field.kind === "announce-messages") return this._renderAnnounceMessages("device");
     if (field.kind === "background") return this._renderBackground(field, "device");
     if (field.kind === "nightmode") return this._renderNightMode(field, "device");
     if (field.kind === "launcher") return this._renderLauncher("device");
@@ -837,6 +840,105 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
           >
             <ha-icon .icon=${overriding ? "mdi:link-off" : "mdi:link-variant"}></ha-icon>
           </button>
+        </div>
+      </div>
+    `;
+  }
+
+  // --- Announce: predefined message list (global; managed on the Global tab) ---
+  private _announceMessages(): AnnounceMessage[] {
+    const v = this._globalValue("announce_messages");
+    return Array.isArray(v) ? (v as unknown as AnnounceMessage[]) : [];
+  }
+
+  private _commitAnnounceMessages(list: AnnounceMessage[]): void {
+    // Strip empty icons; drop rows with neither a label nor spoken text.
+    const clean = list
+      .map((m) => ({ id: m.id, label: (m.label || "").trim(), text: (m.text || "").trim(), ...(m.icon?.trim() ? { icon: m.icon.trim() } : {}) }))
+      .filter((m) => m.label || m.text);
+    this._setGlobal("announce_messages", clean as unknown as SettingsValue);
+  }
+
+  private _updateAnnounceMessage(index: number, key: keyof AnnounceMessage, ev: Event): void {
+    const value = (ev.target as HTMLInputElement).value;
+    const list = this._announceMessages().map((m) => ({ ...m }));
+    if (!list[index]) return;
+    (list[index][key] as string) = value;
+    this._commitAnnounceMessages(list);
+  }
+
+  private _addAnnounceMessage(): void {
+    if (!this._isAdmin()) return;
+    const id =
+      typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `msg-${Date.now().toString(36)}`;
+    this._commitAnnounceMessages([...this._announceMessages(), { id, label: "", text: "", icon: "" }]);
+  }
+
+  private _removeAnnounceMessage(index: number): void {
+    const list = this._announceMessages().filter((_, i) => i !== index);
+    this._commitAnnounceMessages(list);
+  }
+
+  private _renderAnnounceMessages(scope: "global" | "device"): TemplateResult {
+    if (scope === "device") {
+      return html`
+        <div class="row">
+          <div class="row-label">
+            <span>Predefined messages</span>
+            <span class="help">Managed globally — edit them on the “Global” tab.</span>
+          </div>
+        </div>
+      `;
+    }
+    const admin = this._isAdmin();
+    const messages = this._announceMessages();
+    return html`
+      <div class="row col">
+        <div class="row-label">
+          <span>Predefined messages</span>
+          <span class="help">Ready-made announcements shown in the Announce view.</span>
+        </div>
+        <div class="ann-list">
+          ${messages.map(
+            (m, i) => html`
+              <div class="ann-row">
+                <ha-textfield
+                  class="ann-icon"
+                  .value=${m.icon ?? ""}
+                  placeholder="mdi:bullhorn"
+                  ?disabled=${!admin}
+                  @change=${(e: Event) => this._updateAnnounceMessage(i, "icon", e)}
+                ></ha-textfield>
+                <ha-textfield
+                  class="ann-label"
+                  .value=${m.label ?? ""}
+                  placeholder="Label"
+                  ?disabled=${!admin}
+                  @change=${(e: Event) => this._updateAnnounceMessage(i, "label", e)}
+                ></ha-textfield>
+                <ha-textfield
+                  class="ann-text"
+                  .value=${m.text ?? ""}
+                  placeholder="Spoken message"
+                  ?disabled=${!admin}
+                  @change=${(e: Event) => this._updateAnnounceMessage(i, "text", e)}
+                ></ha-textfield>
+                <button
+                  class="ovr"
+                  title="Remove message"
+                  ?disabled=${!admin}
+                  @click=${() => this._removeAnnounceMessage(i)}
+                >
+                  <ha-icon icon="mdi:delete"></ha-icon>
+                </button>
+              </div>
+            `,
+          )}
+          ${admin
+            ? html`<button class="ann-add" @click=${() => this._addAnnounceMessage()}>
+                <ha-icon icon="mdi:plus"></ha-icon> Add message
+              </button>`
+            : nothing}
         </div>
       </div>
     `;
@@ -2977,6 +3079,57 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
       }
       .cam-add {
         max-width: 260px;
+      }
+      /* Announce: predefined message editor. */
+      .row.col {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .ann-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        width: 100%;
+        margin-top: 6px;
+      }
+      .ann-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .ann-row ha-textfield {
+        --text-field-padding: 6px 10px;
+      }
+      .ann-icon {
+        flex: 0 0 130px;
+        width: 130px;
+      }
+      .ann-label {
+        flex: 0 0 160px;
+        width: 160px;
+      }
+      .ann-text {
+        flex: 1 1 auto;
+        min-width: 0;
+      }
+      .ann-add {
+        align-self: flex-start;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        border-radius: 8px;
+        border: 1px dashed color-mix(in srgb, var(--ted-style-divider) 80%, transparent);
+        background: none;
+        color: var(--ted-style-text);
+        cursor: pointer;
+      }
+      .ann-add:hover {
+        border-color: var(--ted-style-accent, var(--primary-color));
+        color: var(--ted-style-accent, var(--primary-color));
+      }
+      .ann-add ha-icon {
+        --mdc-icon-size: 18px;
       }
       .add-list-btn {
         align-self: flex-start;

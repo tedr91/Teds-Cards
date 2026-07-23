@@ -13,6 +13,14 @@ export type SettingsValue =
   | null;
 export type SettingsMap = Record<string, SettingsValue>;
 
+/** A predefined announcement in the global `announce_messages` list. */
+export interface AnnounceMessage {
+  id: string;
+  label: string;
+  text: string;
+  icon?: string;
+}
+
 /** How a setting is edited / rendered in the Settings card. */
 export type SettingKind =
   | "boolean"
@@ -23,6 +31,7 @@ export type SettingKind =
   | "media"
   | "select"
   | "entity-list"
+  | "announce-messages"
   | "background"
   | "nightmode"
   | "launcher";
@@ -60,6 +69,7 @@ export const SETTINGS_GROUPS = [
   "Navbar",
   "Sounds",
   "Alarms/Timers",
+  "Announce",
   "Calendars",
   "Cameras",
   "Thermostats"
@@ -73,6 +83,7 @@ export const SETTINGS_GROUP_ICONS: Record<string, { fluent: string; mdi: string 
   Navbar: { fluent: "fluent:panel-bottom-20-filled", mdi: "mdi:dock-bottom" },
   Sounds: { fluent: "fluent:speaker-2-24-regular", mdi: "mdi:volume-high" },
   "Alarms/Timers": { fluent: "fluent:clock-alarm-24-regular", mdi: "mdi:alarm" },
+  Announce: { fluent: "fluent:megaphone-loud-24-regular", mdi: "mdi:bullhorn" },
   Cameras: { fluent: "fluent:video-24-regular", mdi: "mdi:cctv" },
   Thermostats: { fluent: "fluent:temperature-24-regular", mdi: "mdi:thermometer" },
   Calendars: { fluent: "fluent:calendar-ltr-24-regular", mdi: "mdi:calendar" },
@@ -84,8 +95,7 @@ export const SETTINGS_DEFAULTS: SettingsMap = {
   timer_snooze_minutes: 1,
   timer_alert_sound: "default",
   timer_alert_volume: 60,
-  timer_alert_repeat: true,
-  alarm_snooze_enabled: true,
+  timer_alert_repeat: true,  alarm_snooze_enabled: true,
   alarm_snooze_minutes: 9,
   alarm_alert_sound: "default",
   alarm_alert_volume: 70,
@@ -97,6 +107,12 @@ export const SETTINGS_DEFAULTS: SettingsMap = {
   notification_sound_warning: "default",
   notification_sound_danger: "default",
   notification_sound_tip: "default",
+  announce_messages: [],
+  announce_tts_engine: null,
+  announce_sound: "default",
+  announce_volume: 80,
+  announce_repeat_default: true,
+  announce_timeout_default: 30,
   music_player: null,
   music_volume: 5,
   system_sound_player: null,
@@ -195,6 +211,13 @@ export const SETTINGS_FIELDS: SettingField[] = [
   { key: "timer_alert_repeat", label: "Repeat alert", group: "Alarms/Timers", subsection: "Timers", kind: "boolean", help: "Loop the sound until dismissed (or the notification times out)." },
   { key: "timer_snooze_enabled", label: "Enable snoozing", group: "Alarms/Timers", subsection: "Timers", kind: "boolean" },
   { key: "timer_snooze_minutes", label: "Snooze duration", group: "Alarms/Timers", subsection: "Timers", kind: "number", min: 1, max: 60, unit: "min" },
+  // Announce
+  { key: "announce_messages", label: "Predefined messages", group: "Announce", kind: "announce-messages", help: "The global list of ready-made announcements shown in the Announce view." },
+  { key: "announce_tts_engine", label: "Voice (TTS engine)", group: "Announce", subsection: "Voice", kind: "entity", entityDomain: "tts", help: "Text-to-speech engine used to speak announcements. Leave empty to use Home Assistant's default." },
+  { key: "announce_volume", label: "Announcement volume", group: "Announce", subsection: "Voice", kind: "percent" },
+  { key: "announce_sound", label: "Alert chime", group: "Announce", subsection: "Voice", kind: "media", help: "Sound looped after the spoken message on persistent announcements." },
+  { key: "announce_repeat_default", label: "Repeat chime by default", group: "Announce", subsection: "Defaults", kind: "boolean", help: "Default for the \"repeat alert sound\" toggle on persistent announcements." },
+  { key: "announce_timeout_default", label: "One-shot timeout", group: "Announce", subsection: "Defaults", kind: "number", min: 0, max: 600, unit: "s", help: "How long a non-persistent announcement toast stays before auto-dismissing." },
   // Cameras
   {
     key: "cameras_layout",
