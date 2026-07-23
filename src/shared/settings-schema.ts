@@ -109,6 +109,7 @@ export const SETTINGS_DEFAULTS: SettingsMap = {
   notification_sound_tip: "default",
   announce_messages: [],
   announce_tts_engine: null,
+  announce_intro_phrase: "Incoming announcement",
   announce_sound: "default",
   announce_volume: 80,
   announce_timeout_default: 30,
@@ -213,6 +214,7 @@ export const SETTINGS_FIELDS: SettingField[] = [
   // Announce
   { key: "announce_messages", label: "Predefined messages", group: "Announce", kind: "announce-messages", help: "The global list of ready-made announcements shown in the Announce view." },
   { key: "announce_tts_engine", label: "Voice (TTS engine)", group: "Announce", subsection: "Voice", kind: "entity", entityDomain: "tts", help: "Text-to-speech engine used to speak announcements. Leave empty to use Home Assistant's default." },
+  { key: "announce_intro_phrase", label: "Spoken preface", group: "Announce", subsection: "Voice", kind: "text", help: "Spoken before the announcement's title and message (e.g. \"Incoming announcement\"). Leave blank for none." },
   { key: "announce_volume", label: "Announcement volume", group: "Announce", subsection: "Voice", kind: "percent" },
   { key: "announce_sound", label: "Alert chime", group: "Announce", subsection: "Voice", kind: "media", help: "Sound played with the announcement (and looped, for \"Until dismissed\" ones)." },
   { key: "announce_timeout_default", label: "Announcement timeout", group: "Announce", subsection: "Voice", kind: "number", min: 0, max: 600, unit: "s", help: "How long an announcement stays on screen — and keeps repeating its alert sound — before auto-dismissing. 0 = until dismissed." },
