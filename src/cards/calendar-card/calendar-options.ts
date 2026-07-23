@@ -474,6 +474,11 @@ export function renderHiddenEvents(
     "border:1px solid var(--divider-color,rgba(120,120,120,0.22));border-radius:6px;padding:8px;outline:none;";
   const setRule = (idx: number, patch: Partial<HiddenEventRule>): void =>
     onChange(rules.map((r, j) => (j === idx ? { ...r, ...patch } : r)));
+  const move = (from: number, to: number): void => {
+    const n = [...rules];
+    n.splice(to, 0, n.splice(from, 1)[0]);
+    onChange(n);
+  };
   const summaryLabel = (r: HiddenEventRule): string => {
     const v = (r.value ?? "").trim();
     return v ? `${HIDDEN_EVENT_LABELS[r.type] ?? "Title"} contains “${v}”` : "New hidden-events rule";
@@ -494,7 +499,11 @@ export function renderHiddenEvents(
     <div class="ted-hidden-events" style="margin:8px 0 2px;">
       <details style=${chip}>
         <summary style=${summary}>
-          <span style="flex:1 1 auto;font-size:0.82rem;font-weight:600;color:var(--secondary-text-color);">
+          <ha-icon
+            icon="mdi:hide-outline"
+            style="flex:none;color:var(--primary-text-color);--mdc-icon-size:20px;"
+          ></ha-icon>
+          <span style="flex:1 1 auto;font-size:0.95rem;font-weight:700;color:var(--primary-text-color);">
             Hidden Events
           </span>
           <ha-icon-button
@@ -510,52 +519,70 @@ export function renderHiddenEvents(
         </summary>
         <div style="display:flex;flex-direction:column;gap:6px;padding:0 10px 10px;">
           ${rules.length
-            ? rules.map(
-                (r, idx) => html`<details style=${chip}>
-                  <summary style=${summary}>
-                    <span style="flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:0.85rem;">
-                      ${summaryLabel(r)}
-                    </span>
-                    <ha-icon-button
-                      label="Delete rule"
-                      .path=${"M9,3V4H4V6H5V19A2,2 0 0,0 7,21H17A2,2 0 0,0 19,19V6H20V4H15V3H9M7,6H17V19H7V6M9,8V17H11V8H9M13,8V17H15V8H13Z"}
-                      @click=${(e: Event) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        onChange(rules.filter((_, j) => j !== idx));
-                      }}
-                    ></ha-icon-button>
-                    <ha-icon class="chev" icon="mdi:chevron-down" style="--mdc-icon-size:22px;"></ha-icon>
-                  </summary>
-                  <div style="display:flex;flex-direction:column;gap:8px;padding:0 10px 10px;">
-                    <label style="display:flex;flex-direction:column;gap:4px;font-size:0.78rem;color:var(--secondary-text-color);">
-                      Type
-                      <select
-                        style=${field}
-                        .value=${r.type ?? "title"}
-                        @change=${(e: Event) =>
-                          setRule(idx, { type: (e.target as HTMLSelectElement).value as HiddenEventField })}
-                      >
-                        ${HIDDEN_EVENT_TYPE_OPTIONS.map(
-                          (o) => html`<option value=${o.value} ?selected=${(r.type ?? "title") === o.value}>
-                            ${o.label}
-                          </option>`,
-                        )}
-                      </select>
-                    </label>
-                    <label style="display:flex;flex-direction:column;gap:4px;font-size:0.78rem;color:var(--secondary-text-color);">
-                      Contains
-                      <input
-                        style=${field}
-                        type="text"
-                        placeholder="Text to match"
-                        .value=${r.value ?? ""}
-                        @input=${(e: Event) => setRule(idx, { value: (e.target as HTMLInputElement).value })}
-                      />
-                    </label>
-                  </div>
-                </details>`,
-              )
+            ? html`<ha-sortable
+                handle-selector=".he-grip"
+                @item-moved=${(e: CustomEvent) => {
+                  const { oldIndex, newIndex } = e.detail as { oldIndex: number; newIndex: number };
+                  move(oldIndex, newIndex);
+                }}
+              >
+                <div style="display:flex;flex-direction:column;gap:6px;">
+                  ${rules.map(
+                    (r, idx) => html`<details style=${chip}>
+                      <summary style=${summary}>
+                        <div
+                          class="he-grip"
+                          style="display:flex;cursor:grab;color:var(--secondary-text-color);touch-action:none;"
+                          title="Drag to reorder"
+                          @click=${(e: Event) => e.stopPropagation()}
+                        >
+                          <ha-icon icon="mdi:drag"></ha-icon>
+                        </div>
+                        <span style="flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:0.85rem;">
+                          ${summaryLabel(r)}
+                        </span>
+                        <ha-icon class="chev" icon="mdi:chevron-down" style="--mdc-icon-size:22px;"></ha-icon>
+                        <ha-icon-button
+                          label="Delete rule"
+                          .path=${"M9,3V4H4V6H5V19A2,2 0 0,0 7,21H17A2,2 0 0,0 19,19V6H20V4H15V3H9M7,6H17V19H7V6M9,8V17H11V8H9M13,8V17H15V8H13Z"}
+                          @click=${(e: Event) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            onChange(rules.filter((_, j) => j !== idx));
+                          }}
+                        ></ha-icon-button>
+                      </summary>
+                      <div style="display:flex;flex-direction:column;gap:8px;padding:0 10px 10px;">
+                        <label style="display:flex;flex-direction:column;gap:4px;font-size:0.78rem;color:var(--secondary-text-color);">
+                          Type
+                          <select
+                            style=${field}
+                            .value=${r.type ?? "title"}
+                            @change=${(e: Event) =>
+                              setRule(idx, { type: (e.target as HTMLSelectElement).value as HiddenEventField })}
+                          >
+                            ${HIDDEN_EVENT_TYPE_OPTIONS.map(
+                              (o) => html`<option value=${o.value} ?selected=${(r.type ?? "title") === o.value}>
+                                ${o.label}
+                              </option>`,
+                            )}
+                          </select>
+                        </label>
+                        <label style="display:flex;flex-direction:column;gap:4px;font-size:0.78rem;color:var(--secondary-text-color);">
+                          Contains
+                          <input
+                            style=${field}
+                            type="text"
+                            placeholder="Text to match"
+                            .value=${r.value ?? ""}
+                            @input=${(e: Event) => setRule(idx, { value: (e.target as HTMLInputElement).value })}
+                          />
+                        </label>
+                      </div>
+                    </details>`,
+                  )}
+                </div>
+              </ha-sortable>`
             : html`<div style="font-size:0.8rem;color:var(--secondary-text-color);padding:2px 2px 4px;">
                 No hidden-events rules. Use “+” to add one.
               </div>`}

@@ -940,6 +940,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.292
+
+- **Hidden Events section restyled to match the Calendars list**: an `mdi:hide-outline` icon and bold heading, and each rule row is now drag-to-reorder with a grip → name → chevron → delete layout.
+
 ### v1.0.291
 
 - **Calendars: hide events per calendar.** Each calendar now has a collapsible **Hidden Events** section (card editor and Settings → Calendars). Add one or more rules — each matches a **Title**, **Description**, or **Location** substring — and any matching event on that calendar is hidden. Rules OR-combine, and for a virtual group they apply across all its linked calendars.
