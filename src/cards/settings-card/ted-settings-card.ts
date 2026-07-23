@@ -173,6 +173,9 @@ const NIGHT_ENTITY_SCHEMA = [
   { name: "night_brightness_entity", selector: { entity: { domain: ["light", "number", "input_number"] } } },
 ];
 
+/** ha-form schema for a predefined-announcement icon (HA's searchable icon picker). */
+const ANNOUNCE_ICON_SCHEMA = [{ name: "icon", selector: { icon: {} } }];
+
 const NIGHT_LABELS: Record<string, string> = {
   night_enabled: "Enabled",
   night_start: "Night start time",
@@ -992,6 +995,15 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     this._commitAnnounceMessages(list);
   }
 
+  /** Commit an icon chosen via the ha-form icon picker (value-changed → detail.value.icon). */
+  private _updateAnnounceIcon(index: number, ev: CustomEvent): void {
+    const icon = (ev.detail?.value as { icon?: string } | undefined)?.icon ?? "";
+    const list = this._announceMessages().map((m) => ({ ...m }));
+    if (!list[index] || (list[index].icon ?? "") === icon) return;
+    list[index].icon = icon;
+    this._commitAnnounceMessages(list);
+  }
+
   private _addAnnounceMessage(): void {
     if (!this._isAdmin()) return;
     const id =
@@ -1027,14 +1039,15 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
           ${messages.map(
             (m, i) => html`
               <div class="ann-row">
-                <input
-                  class="ann-input ann-icon"
-                  type="text"
-                  .value=${m.icon ?? ""}
-                  placeholder="mdi:bullhorn"
-                  ?disabled=${!admin}
-                  @change=${(e: Event) => this._updateAnnounceMessage(i, "icon", e)}
-                />
+                <ha-form
+                  class="ann-iconform"
+                  .hass=${this.hass}
+                  .data=${{ icon: m.icon ?? "" }}
+                  .schema=${ANNOUNCE_ICON_SCHEMA}
+                  .computeLabel=${() => ""}
+                  .disabled=${!admin}
+                  @value-changed=${(e: CustomEvent) => this._updateAnnounceIcon(i, e)}
+                ></ha-form>
                 <input
                   class="ann-input ann-label"
                   type="text"
@@ -3315,9 +3328,13 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
       .ann-input:disabled {
         opacity: 0.5;
       }
-      .ann-icon {
-        flex: 0 0 130px;
-        width: 130px;
+      .ann-iconform {
+        flex: 0 0 190px;
+        width: 190px;
+        --ha-form-padding: 0;
+      }
+      .ann-iconform ha-icon-picker {
+        display: block;
       }
       .ann-label {
         flex: 0 0 160px;

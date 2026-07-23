@@ -125,7 +125,10 @@ export class TedAnnounceCard extends LitElement implements LovelaceCard {
 
   private get _recent(): RecentAnnouncement[] {
     const v = this.hass?.states[ANNOUNCEMENTS_SENSOR]?.attributes.recent;
-    return Array.isArray(v) ? (v as RecentAnnouncement[]) : [];
+    const list = Array.isArray(v) ? (v as RecentAnnouncement[]) : [];
+    // Recent is PER-DEVICE: only show announcements sent from THIS device.
+    const me = resolveDeviceId();
+    return me ? list.filter((r) => r.source_device === me) : [];
   }
 
   private _timeoutDefault(): number {
@@ -454,13 +457,13 @@ export class TedAnnounceCard extends LitElement implements LovelaceCard {
         </div>
 
         <div class="frow">
-          <span class="flabel">Mode</span>
+          <span class="flabel">Repeat alert sound</span>
           <div class="seg">
             <button class="segbtn ${this._persistent ? "" : "on"}" @click=${() => (this._persistent = false)}>
-              Play once
+              Off
             </button>
             <button class="segbtn ${this._persistent ? "on" : ""}" @click=${() => (this._persistent = true)}>
-              Until dismissed
+              On
             </button>
           </div>
         </div>
