@@ -853,10 +853,14 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
   }
 
   private _commitAnnounceMessages(list: AnnounceMessage[]): void {
-    // Strip empty icons; drop rows with neither a label nor spoken text.
-    const clean = list
-      .map((m) => ({ id: m.id, label: (m.label || "").trim(), text: (m.text || "").trim(), ...(m.icon?.trim() ? { icon: m.icon.trim() } : {}) }))
-      .filter((m) => m.label || m.text);
+    // Keep every row (including a freshly-added blank one so it renders for editing);
+    // trim the text and drop an empty icon. Empty rows are removed via the delete button.
+    const clean = list.map((m) => ({
+      id: m.id,
+      label: (m.label || "").trim(),
+      text: (m.text || "").trim(),
+      ...(m.icon?.trim() ? { icon: m.icon.trim() } : {}),
+    }));
     this._setGlobal("announce_messages", clean as unknown as SettingsValue);
   }
 

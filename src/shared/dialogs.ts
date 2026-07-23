@@ -108,6 +108,123 @@ export function showConfirmation(_element: HTMLElement, params: ConfirmationPara
   });
 }
 
+/** Params accepted by the text-prompt dialog. */
+export interface PromptParams {
+  title?: string;
+  text?: string;
+  placeholder?: string;
+  initial?: string;
+  confirmText?: string;
+  dismissText?: string;
+  /** Use a multi-line textarea instead of a single-line input. */
+  multiline?: boolean;
+}
+
+/**
+ * Show a single/multi-line text prompt and resolve to the entered string, or
+ * `null` if cancelled. Self-contained overlay (same rationale as
+ * `showConfirmation`) so it works on kiosk dashboards that never lazy-loaded
+ * HA's dialog components. Enter submits (Ctrl/Cmd+Enter in multiline); Esc/backdrop cancels.
+ */
+export function showPrompt(_element: HTMLElement, params: PromptParams): Promise<string | null> {
+  return new Promise((resolve) => {
+    const {
+      title = "",
+      text = "",
+      placeholder = "",
+      initial = "",
+      confirmText = "Send",
+      dismissText = "Cancel",
+      multiline = true,
+    } = params;
+
+    const layer = document.createElement("div");
+    layer.setAttribute("role", "dialog");
+    layer.setAttribute("aria-modal", "true");
+    layer.style.cssText =
+      "position:fixed;inset:0;z-index:100000;display:flex;align-items:center;" +
+      "justify-content:center;padding:16px;background:rgba(0,0,0,.45);";
+
+    const sheet = document.createElement("div");
+    sheet.style.cssText =
+      "width:min(420px,100%);box-sizing:border-box;overflow:hidden;" +
+      "background:var(--ha-card-background,var(--card-background-color,#fff));" +
+      "backdrop-filter:var(--ha-dialog-surface-backdrop-filter,var(--ha-card-backdrop-filter));" +
+      "-webkit-backdrop-filter:var(--ha-dialog-surface-backdrop-filter,var(--ha-card-backdrop-filter));" +
+      "color:var(--primary-text-color,#111);" +
+      "border:1px solid var(--divider-color,rgba(120,120,120,.22));" +
+      "border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,.4);";
+
+    if (title) {
+      const titleEl = document.createElement("div");
+      titleEl.textContent = title;
+      titleEl.style.cssText = "font-size:1.15rem;font-weight:600;padding:20px 20px 4px;";
+      sheet.append(titleEl);
+    }
+    if (text) {
+      const textEl = document.createElement("div");
+      textEl.textContent = text;
+      textEl.style.cssText = "padding:8px 20px 0;color:var(--secondary-text-color,#555);";
+      sheet.append(textEl);
+    }
+
+    const field = document.createElement(multiline ? "textarea" : "input") as
+      | HTMLInputElement
+      | HTMLTextAreaElement;
+    field.value = initial;
+    field.placeholder = placeholder;
+    if (multiline) (field as HTMLTextAreaElement).rows = 3;
+    field.style.cssText =
+      "display:block;box-sizing:border-box;width:calc(100% - 40px);margin:12px 20px 4px;" +
+      "font:inherit;font-size:0.95rem;padding:10px 12px;border-radius:8px;resize:vertical;" +
+      "color:var(--primary-text-color,#111);" +
+      "background:var(--secondary-background-color,rgba(0,0,0,.04));" +
+      "border:1px solid var(--divider-color,rgba(120,120,120,.22));outline:none;";
+    sheet.append(field);
+
+    const actions = document.createElement("div");
+    actions.style.cssText = "display:flex;justify-content:flex-end;gap:8px;padding:14px 20px 18px;";
+
+    const btnBase =
+      "font:inherit;font-weight:600;cursor:pointer;border-radius:8px;padding:9px 16px;border:none;";
+    const cancelBtn = document.createElement("button");
+    cancelBtn.textContent = dismissText;
+    cancelBtn.style.cssText = btnBase + "background:transparent;color:var(--primary-text-color,#111);";
+    const okBtn = document.createElement("button");
+    okBtn.textContent = confirmText;
+    okBtn.style.cssText = btnBase + "color:#fff;background:var(--primary-color,#2196f3);";
+
+    const submit = () => close(field.value.trim() || null);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        close(null);
+      } else if (e.key === "Enter" && (!multiline || e.ctrlKey || e.metaKey)) {
+        e.stopPropagation();
+        submit();
+      }
+    };
+    const close = (result: string | null) => {
+      window.removeEventListener("keydown", onKey, true);
+      layer.remove();
+      resolve(result);
+    };
+
+    layer.addEventListener("click", (e) => {
+      if (e.target === layer) close(null);
+    });
+    cancelBtn.addEventListener("click", () => close(null));
+    okBtn.addEventListener("click", submit);
+    window.addEventListener("keydown", onKey, true);
+
+    actions.append(cancelBtn, okBtn);
+    sheet.append(actions);
+    layer.append(sheet);
+    document.body.append(layer);
+    field.focus();
+  });
+}
+
 /**
  * Styles for a self-contained modal overlay (`.ted-modal` > `.ted-sheet`).
  * Used instead of `ha-dialog`, which is lazy-loaded and often undefined when a

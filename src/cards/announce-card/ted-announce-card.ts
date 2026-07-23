@@ -12,6 +12,7 @@ import { showConfirmation } from "../../shared/dialogs";
 import { NotificationToastController } from "../../shared/notifications";
 import { SettingsController, settingsStore } from "../../shared/settings";
 import { listAreas } from "../../shared/device-area";
+import { resolveDeviceId } from "../../shared/device-id";
 import type { AnnounceMessage } from "../../shared/settings-schema";
 import "../../shared/ted-icon-button";
 import {
@@ -91,7 +92,10 @@ export class TedAnnounceCard extends LitElement implements LovelaceCard {
 
   private _presets(): AnnounceMessage[] {
     const v = settingsStore.effective().announce_messages;
-    return Array.isArray(v) ? (v as unknown as AnnounceMessage[]) : [];
+    const list = Array.isArray(v) ? (v as unknown as AnnounceMessage[]) : [];
+    // Only ready-to-send presets (those with spoken text); blank draft rows in
+    // Settings are skipped so they don't show as empty chips.
+    return list.filter((m) => (m.text || "").trim());
   }
 
   private get _recent(): RecentAnnouncement[] {
@@ -167,6 +171,7 @@ export class TedAnnounceCard extends LitElement implements LovelaceCard {
       persistent,
       repeat_sound: persistent && this._repeat(),
       timeout: this._timeoutDefault(),
+      source_device: resolveDeviceId(),
     };
     if (this._presetIcon) data.icon = this._presetIcon;
     this.hass.callService(ANNOUNCE_DOMAIN, "announce", data);
@@ -183,6 +188,7 @@ export class TedAnnounceCard extends LitElement implements LovelaceCard {
       persistent: !!r.persistent,
       repeat_sound: !!r.persistent && !!r.repeat_sound,
       timeout: this._timeoutDefault(),
+      source_device: resolveDeviceId(),
     };
     if (r.icon) data.icon = r.icon;
     this.hass.callService(ANNOUNCE_DOMAIN, "announce", data);

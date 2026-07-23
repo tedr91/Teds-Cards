@@ -4,6 +4,7 @@ import { showMessageBox, dismissMessageBox, type MessagePopupSeverity, type Toas
 import { settingsStore, effectiveSnooze } from "./settings";
 import { resolveDeviceId } from "./device-id";
 import { resolveDeviceArea } from "./device-area";
+import { showPrompt } from "./dialogs";
 
 /** An action button attached to a notification. */
 export interface NotifAction {
@@ -35,8 +36,9 @@ export interface TedNotification {
   source?: string;
   actions?: NotifAction[];
   /** Present on "announcement" notifications: scopes the prominent toast to the
-   *  selected areas/devices (both empty = house-wide, shown everywhere). */
-  announce_targets?: { areas?: string[]; devices?: string[] };
+   *  selected areas/devices (both empty = house-wide, shown everywhere). Also carries
+   *  the sending device so recipients can Reply straight back to it. */
+  announce_targets?: { areas?: string[]; devices?: string[]; source_device?: string; source_device_name?: string };
   /** Client-resolved snooze: the device renders/acts using its own effective settings. */
   snooze?: { kind: "timer" | "alarm"; name: string; area?: string | null };
   /** Set by the backend when a notification is dismissed/read elsewhere: close the toast here. */
@@ -155,8 +157,10 @@ export class NotificationToastController implements ReactiveController {
   }
 
   /** Toast action buttons: synthesized Snooze/Dismiss for completion notifications
-   *  (resolved from THIS device's effective settings), else the configured actions. */
+   *  (resolved from THIS device's effective settings), else the configured actions.
+   *  Announcements from another device also get a Reply button back to the sender. */
   private _buildActions(hass: HassLike | undefined, n: TedNotification): ToastAction[] {
+    let actions: ToastAction[];
     if (n.snooze) {
       const { enabled, minutes } = effectiveSnooze(n.snooze.kind);
       const out: ToastAction[] = [];
@@ -164,13 +168,43 @@ export class NotificationToastController implements ReactiveController {
         out.push({ label: `Snooze (${minutes}min)`, primary: true, handler: () => this._snooze(hass, n, minutes) });
       }
       out.push({ label: "Dismiss", handler: () => hass?.callService?.("teds_cards_backend", "mark_read", { id: n.id }) });
-      return out;
+      actions = out;
+    } else {
+      actions = (Array.isArray(n.actions) ? n.actions : []).map((a) => ({
+        label: a.label ?? "OK",
+        primary: a.variant === "primary",
+        handler: () => this._runAction(hass, n, a),
+      }));
     }
-    return (Array.isArray(n.actions) ? n.actions : []).map((a) => ({
-      label: a.label ?? "OK",
-      primary: a.variant === "primary",
-      handler: () => this._runAction(hass, n, a),
-    }));
+    // Reply back to the sender of an announcement (never on the sender's own copy).
+    const src = n.announce_targets?.source_device;
+    if (src && src !== resolveDeviceId()) {
+      actions = [{ label: "Reply", primary: true, handler: () => void this._reply(hass, n) }, ...actions];
+    }
+    return actions;
+  }
+
+  /** Prompt for a reply and send it straight back to the announcement's sender. */
+  private async _reply(hass: HassLike | undefined, n: TedNotification): Promise<void> {
+    const targets = n.announce_targets;
+    const src = targets?.source_device;
+    if (!src) return;
+    const senderName = targets?.source_device_name || settingsStore.registry()[src]?.name || "the sender";
+    const text = await showPrompt(document.body, {
+      title: `Reply to ${senderName}`,
+      placeholder: "Type your reply\u2026",
+      confirmText: "Send",
+    });
+    if (!text) return;
+    const myId = resolveDeviceId();
+    const myName = settingsStore.registry()[myId]?.name;
+    hass?.callService?.("teds_cards_backend", "announce", {
+      message: text,
+      title: myName ? `Reply from ${myName}` : "Reply",
+      devices: [src],
+      source_device: myId,
+      persistent: false,
+    });
   }
 
   /** Start a snooze timer (keeping the original name + room) and mark the item read. */

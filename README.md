@@ -940,6 +940,11 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.294
+
+- **Announce: reply to a sender.** An incoming announcement now shows a **Reply** button (alongside Dismiss) when it came from another device. Tapping it prompts for a message and sends it straight back to the sender — who receives it with its own Reply button, so you can go back and forth. Announcements now carry the sending device to make this work. Requires Ted's Cards Backend v1.0.64+.
+- **Announce settings fix.** The **+ Add message** button on the Settings → Announce tab now works — it was silently discarding the new blank row before it could render.
+
 ### v1.0.293
 
 - Fixed the emphasized **weekend** columns showing an ugly dark box behind the day name/number in **dark mode** with the HA theme (Ted's Style was unaffected).
