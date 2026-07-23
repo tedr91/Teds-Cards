@@ -408,16 +408,19 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
           entry.color = color;
           colors[id] = color;
         }
-        entry.icon = it.icon || null;
         // Person/badge for the group id (daylight ignores person on virtuals today, but
         // it's harmless and future-proof). The group's options come from this anchor row.
         const person = it.person ?? matchPerson(this.hass?.states, String(nm));
         const source = it.icon_source ?? (person ? "person" : "icon");
+        // Default the badge icon to the anchor calendar's own entity icon when none is
+        // set, so an "Icon" badge shows that glyph instead of daylight's name-initial.
+        const groupIcon = it.icon || this.hass?.states[it.entity]?.attributes?.icon || null;
+        entry.icon = groupIcon;
         if (source === "person" && person) {
           persons[id] = person;
           delete badgeIcons[id];
-        } else if (it.icon) {
-          badgeIcons[id] = it.icon;
+        } else if (groupIcon) {
+          badgeIcons[id] = groupIcon;
         }
         // Read-only / hide-times apply to every member of the group.
         for (const m of groupEntities) {
@@ -447,7 +450,11 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
         delete badgeIcons[it.entity];
       } else {
         delete persons[it.entity];
-        if (it.icon) badgeIcons[it.entity] = it.icon;
+        // Default to the calendar entity's own icon when none is explicitly chosen, so an
+        // "Icon" badge shows that glyph rather than daylight's fallback name-initial.
+        const icon = it.icon || this.hass?.states[it.entity]?.attributes?.icon;
+        if (icon) badgeIcons[it.entity] = icon;
+        else delete badgeIcons[it.entity];
       }
       applyReadonly(it.entity, it.readonly);
       applyHideTimes(it.entity, it.hide_times);

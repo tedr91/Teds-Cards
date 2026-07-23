@@ -940,6 +940,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.289
+
+- **Calendar badges: an "Icon" badge with no icon set now uses the calendar entity's own icon** instead of falling back to the first letter of the calendar name. Applies to normal calendars and virtual group anchors.
+
 ### v1.0.288
 
 - **Calendar Week view: fixed an empty gap below the day columns** introduced by daylight-calendar-card v4.9.1, which changed the Week (compact) grid to size rows to content and pack them to the top. In fill layouts the day columns now stretch to fill the card height again (matching Month and Schedule).
