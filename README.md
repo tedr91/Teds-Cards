@@ -940,6 +940,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.297
+
+- **Announce view redesign.** The Announce card is now a compact, frosted composer that matches the rest of the dashboard: pick a message and target from **dropdowns** (*Say… / To… / Mode…*) instead of long chip lists. Targeting has an explicit **Everyone** option and groups **Rooms** and **Devices**, with **offline devices dimmed**. The send button summarizes the target (“Announce to Kitchen +2”) and flashes **Sent ✓**. **Recent** now shows the time and sending device, can be **saved as a predefined message** (★, admins), and repositions itself — a side rail on wide screens, a collapsible section on narrow ones. Requires Ted's Cards Backend v1.0.69+.
+
 ### v1.0.296
 
 - **Announce: simpler repeat model.** The composer's mode picker is now **Repeat alert sound: Play once / Until dismissed** (the separate "repeat" toggle is gone). A "Play once" announcement plays through once; an "Until dismissed" one keeps repeating its alert chime. The on-screen message now stays until it's dismissed **or** the timeout elapses, and the repeating sound stops at exactly the same moment the message closes (whether you dismissed it or it timed out). The Settings **"Announcement timeout"** now governs both the message and the sound (0 = until dismissed). Requires Ted's Cards Backend v1.0.68+.
