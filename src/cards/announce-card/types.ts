@@ -44,7 +44,6 @@ export interface RecentAnnouncement {
   areas?: string[];
   devices?: string[];
   persistent?: boolean;
-  repeat_sound?: boolean;
   timeout?: number | null;
   last_sent?: string;
 }

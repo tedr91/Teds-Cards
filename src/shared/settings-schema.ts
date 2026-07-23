@@ -111,7 +111,6 @@ export const SETTINGS_DEFAULTS: SettingsMap = {
   announce_tts_engine: null,
   announce_sound: "default",
   announce_volume: 80,
-  announce_repeat_default: true,
   announce_timeout_default: 30,
   music_player: null,
   music_volume: 5,
@@ -215,9 +214,8 @@ export const SETTINGS_FIELDS: SettingField[] = [
   { key: "announce_messages", label: "Predefined messages", group: "Announce", kind: "announce-messages", help: "The global list of ready-made announcements shown in the Announce view." },
   { key: "announce_tts_engine", label: "Voice (TTS engine)", group: "Announce", subsection: "Voice", kind: "entity", entityDomain: "tts", help: "Text-to-speech engine used to speak announcements. Leave empty to use Home Assistant's default." },
   { key: "announce_volume", label: "Announcement volume", group: "Announce", subsection: "Voice", kind: "percent" },
-  { key: "announce_sound", label: "Alert chime", group: "Announce", subsection: "Voice", kind: "media", help: "Sound looped after the spoken message on persistent announcements." },
-  { key: "announce_repeat_default", label: "Repeat chime by default", group: "Announce", subsection: "Defaults", kind: "boolean", help: "Default for the \"repeat alert sound\" toggle on persistent announcements." },
-  { key: "announce_timeout_default", label: "One-shot timeout", group: "Announce", subsection: "Defaults", kind: "number", min: 0, max: 600, unit: "s", help: "How long a non-persistent announcement toast stays before auto-dismissing." },
+  { key: "announce_sound", label: "Alert chime", group: "Announce", subsection: "Voice", kind: "media", help: "Sound played with the announcement (and looped, for \"Until dismissed\" ones)." },
+  { key: "announce_timeout_default", label: "Announcement timeout", group: "Announce", subsection: "Voice", kind: "number", min: 0, max: 600, unit: "s", help: "How long an announcement stays on screen — and keeps repeating its alert sound — before auto-dismissing. 0 = until dismissed." },
   // Cameras
   {
     key: "cameras_layout",

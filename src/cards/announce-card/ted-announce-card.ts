@@ -65,10 +65,8 @@ export class TedAnnounceCard extends LitElement implements LovelaceCard {
   /** Selected target area ids and device ids (both empty = house-wide). */
   @state() private _targetAreas: string[] = [];
   @state() private _targetDevices: string[] = [];
-  /** Persist until dismissed (vs one-shot with a timeout). */
+  /** Play once (default) vs repeat the alert sound until dismissed/timeout. */
   @state() private _persistent = false;
-  /** Repeat the alert chime after speech (persistent only); null = use the default. */
-  @state() private _repeatSound: boolean | null = null;
 
   public constructor() {
     super();
@@ -101,12 +99,6 @@ export class TedAnnounceCard extends LitElement implements LovelaceCard {
   private get _recent(): RecentAnnouncement[] {
     const v = this.hass?.states[ANNOUNCEMENTS_SENSOR]?.attributes.recent;
     return Array.isArray(v) ? (v as RecentAnnouncement[]) : [];
-  }
-
-  /** Effective "repeat the chime" value (state override, else the global default). */
-  private _repeat(): boolean {
-    if (this._repeatSound !== null) return this._repeatSound;
-    return settingsStore.effective().announce_repeat_default !== false;
   }
 
   private _timeoutDefault(): number {
@@ -169,7 +161,6 @@ export class TedAnnounceCard extends LitElement implements LovelaceCard {
       areas: this._targetAreas,
       devices: this._targetDevices,
       persistent,
-      repeat_sound: persistent && this._repeat(),
       timeout: this._timeoutDefault(),
       source_device: resolveDeviceId(),
     };
@@ -186,7 +177,6 @@ export class TedAnnounceCard extends LitElement implements LovelaceCard {
       areas: r.areas ?? [],
       devices: r.devices ?? [],
       persistent: !!r.persistent,
-      repeat_sound: !!r.persistent && !!r.repeat_sound,
       timeout: this._timeoutDefault(),
       source_device: resolveDeviceId(),
     };
@@ -202,7 +192,6 @@ export class TedAnnounceCard extends LitElement implements LovelaceCard {
     this._targetAreas = [...(r.areas ?? [])];
     this._targetDevices = [...(r.devices ?? [])];
     this._persistent = !!r.persistent;
-    this._repeatSound = !!r.repeat_sound;
   }
 
   private async _removeRecent(r: RecentAnnouncement): Promise<void> {
@@ -368,7 +357,7 @@ export class TedAnnounceCard extends LitElement implements LovelaceCard {
   private _renderWhen(): TemplateResult {
     return html`
       <section class="sec">
-        <div class="sec-title">When</div>
+        <div class="sec-title">Repeat alert sound</div>
         <div class="seg">
           <button class="segbtn ${this._persistent ? "" : "on"}" @click=${() => (this._persistent = false)}>
             Play once
@@ -377,16 +366,6 @@ export class TedAnnounceCard extends LitElement implements LovelaceCard {
             Until dismissed
           </button>
         </div>
-        ${this._persistent
-          ? html`<label class="toggle-row">
-              <input
-                type="checkbox"
-                .checked=${this._repeat()}
-                @change=${(e: Event) => (this._repeatSound = (e.target as HTMLInputElement).checked)}
-              />
-              <span>Repeat an alert sound after the announcement</span>
-            </label>`
-          : nothing}
       </section>
     `;
   }

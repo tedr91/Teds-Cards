@@ -136,7 +136,14 @@ export class NotificationToastController implements ReactiveController {
       icon: n.icon,
       actions,
       prominent: announcement,
-      duration: typeof n.timeout === "number" && n.timeout > 0 ? n.timeout * 1000 : announcement ? 0 : 8000,
+      // Announcement boxes never auto-close locally: the backend dismisses them (at
+      // its timeout or on a user dismiss) so the on-screen message and the repeating
+      // alert sound always end together. Other notifications use their own timeout.
+      duration: announcement
+        ? 0
+        : typeof n.timeout === "number" && n.timeout > 0
+          ? n.timeout * 1000
+          : 8000,
       // Manually dismissing the toast marks the notification read (auto-timeout does not).
       onDismiss: () => hass?.callService?.("teds_cards_backend", "mark_read", { id: n.id }),
     });
