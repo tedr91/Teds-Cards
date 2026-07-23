@@ -940,6 +940,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.290
+
+- **Calendar badges: non-MDI icons are now converted to a similar MDI icon.** Since daylight-calendar-card only renders MDI icons, a selected (or entity-provided) non-MDI icon like `cbi:amazon-logo` is best-effort mapped by keyword to a matching `mdi:*` glyph; anything unmatched falls back to `mdi:calendar-month-outline`.
+
 ### v1.0.289
 
 - **Calendar badges: an "Icon" badge with no icon set now uses the calendar entity's own icon** instead of falling back to the first letter of the calendar name. Applies to normal calendars and virtual group anchors.

@@ -22,6 +22,7 @@ import {
   DAYLIGHT_CARD_TYPE,
   DEFAULT_CALENDAR_VIEW,
   matchPerson,
+  mdiIconFor,
 } from "./const";
 import type { CalendarCardConfig, CalendarItemConfig } from "./types";
 
@@ -413,8 +414,9 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
         const person = it.person ?? matchPerson(this.hass?.states, String(nm));
         const source = it.icon_source ?? (person ? "person" : "icon");
         // Default the badge icon to the anchor calendar's own entity icon when none is
-        // set, so an "Icon" badge shows that glyph instead of daylight's name-initial.
-        const groupIcon = it.icon || this.hass?.states[it.entity]?.attributes?.icon || null;
+        // set, coerced to MDI (daylight only renders MDI) so an "Icon" badge shows a real
+        // glyph instead of daylight's name-initial.
+        const groupIcon = mdiIconFor(it.icon || this.hass?.states[it.entity]?.attributes?.icon);
         entry.icon = groupIcon;
         if (source === "person" && person) {
           persons[id] = person;
@@ -450,11 +452,9 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
         delete badgeIcons[it.entity];
       } else {
         delete persons[it.entity];
-        // Default to the calendar entity's own icon when none is explicitly chosen, so an
-        // "Icon" badge shows that glyph rather than daylight's fallback name-initial.
-        const icon = it.icon || this.hass?.states[it.entity]?.attributes?.icon;
-        if (icon) badgeIcons[it.entity] = icon;
-        else delete badgeIcons[it.entity];
+        // Default to the calendar entity's own icon when none is explicitly chosen, coerced
+        // to MDI (daylight only renders MDI), so an "Icon" badge always shows a real glyph.
+        badgeIcons[it.entity] = mdiIconFor(it.icon || this.hass?.states[it.entity]?.attributes?.icon);
       }
       applyReadonly(it.entity, it.readonly);
       applyHideTimes(it.entity, it.hide_times);
