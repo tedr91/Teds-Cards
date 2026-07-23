@@ -351,6 +351,24 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
     const hideBadges = Array.isArray(base.hide_badge_calendars)
       ? [...(base.hide_badge_calendars as string[])]
       : [];
+    // Hide-event rules → daylight `event_styles`. Each entry hides events on a calendar
+    // (or group's entities) whose title/description/location contains a configured string.
+    const eventStyles: Record<string, unknown>[] = Array.isArray(base.event_styles)
+      ? [...(base.event_styles as Record<string, unknown>[])]
+      : [];
+    const addHideRule = (groupEntities: string[], it: CalendarItemConfig): void => {
+      const conds = (it.hidden_events ?? [])
+        .filter((r) => (r?.value ?? "").trim())
+        .map((r) => {
+          const field = r.type === "description" || r.type === "location" ? r.type : "title";
+          return { [field]: `contains:${r.value.trim()}` };
+        });
+      if (!conds.length || !groupEntities.length) return;
+      eventStyles.push({
+        match: { all: [{ any: groupEntities.map((e) => ({ calendar: e })) }, { any: conds }] },
+        style: "hide",
+      });
+    };
 
     // Virtual groups: which entities are members subsumed by an anchor's group.
     const items = this._items();
@@ -430,6 +448,7 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
           applyHideTimes(m, it.hide_times);
         }
         applyHideBadge(id, it.show_badge);
+        addHideRule(groupEntities, it);
         virtualCalendars.push(entry);
         for (const m of members) if (!groupMembers.includes(m)) groupMembers.push(m);
         continue;
@@ -459,6 +478,7 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
       applyReadonly(it.entity, it.readonly);
       applyHideTimes(it.entity, it.hide_times);
       applyHideBadge(it.entity, it.show_badge);
+      addHideRule([it.entity], it);
     }
 
     // --- Appearance ---
@@ -509,6 +529,10 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
     // Auto-fit the Schedule grid: apply the measured height_scale (only when it shrank
     // below 1). An explicit `calendar_config.height_scale` wins (spreads in last).
     if (this._heightScale < 0.999) appearance.height_scale = this._heightScale;
+
+    // Hide-event rules (per-calendar "Hidden Events"). Omit the key entirely when empty so
+    // an explicit `calendar_config.event_styles` can still take over.
+    if (eventStyles.length) appearance.event_styles = eventStyles;
 
     // Ensure every virtual group's member entities are fetched by daylight.
     const allEntities = [...entities];

@@ -9,6 +9,7 @@ import {
   calendarOptionsData,
   calendarOptionsSchema,
   calendarVirtualToggleSchema,
+  renderHiddenEvents,
   renderVirtualLinkModal,
   renderVirtualMembers,
   reorderVirtualGroups,
@@ -19,6 +20,7 @@ import type {
   CalendarCardConfig,
   CalendarItemConfig,
   CalendarSource,
+  HiddenEventRule,
 } from "./types";
 
 // mdi:calendar — Calendars section header
@@ -336,6 +338,7 @@ export class TedCalendarCardEditor extends LitElement implements LovelaceCardEdi
                   )
                 : nothing}
               ${form(optSchema)}
+              ${renderHiddenEvents(item.hidden_events ?? [], (next) => this._hiddenChanged(idx, next))}
             </div>`
           : nothing}
       </div>
@@ -489,6 +492,14 @@ export class TedCalendarCardEditor extends LitElement implements LovelaceCardEdi
     items[idx] = { ...cur, virtual_members: members.length ? members : undefined };
     this._openRows = new Set();
     this._commitItems(reorderVirtualGroups(items));
+  }
+
+  /** A calendar's hidden-events rules changed. */
+  private _hiddenChanged(idx: number, rules: HiddenEventRule[]): void {
+    const items = this._items();
+    const cur = items[idx] ?? { entity: "" };
+    items[idx] = { ...cur, hidden_events: rules.length ? rules : undefined };
+    this._commitItems(items);
   }
 
   private _openLink(idx: number): void {

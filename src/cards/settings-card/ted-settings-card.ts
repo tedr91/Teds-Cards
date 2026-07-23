@@ -44,6 +44,7 @@ import {
   calendarOptionsData,
   calendarOptionsSchema,
   calendarVirtualToggleSchema,
+  renderHiddenEvents,
   renderVirtualLinkModal,
   renderVirtualMembers,
   reorderVirtualGroupIds,
@@ -51,7 +52,7 @@ import {
   virtualJoinCandidates,
 } from "../calendar-card/calendar-options";
 import { matchPerson } from "../calendar-card/const";
-import type { CalendarItemConfig } from "../calendar-card/types";
+import type { CalendarItemConfig, HiddenEventRule } from "../calendar-card/types";
 import { BUTTON_CARD_TYPE } from "../button-card/const";
 import type { NavButtonSize } from "../navbar-card/types";
 import {
@@ -1186,6 +1187,10 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
           )
         : nothing}
       ${form(calendarOptionsSchema(this.hass, item))}
+      ${renderHiddenEvents(
+        Array.isArray(item.hidden_events) ? item.hidden_events : [],
+        (next) => this._calendarHiddenChanged(id, next),
+      )}
     `;
   }
 
@@ -1242,6 +1247,17 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     const items = ids.map((e) => ({ entity: e, ...(map[e] ?? {}) }) as CalendarItemConfig);
     const reordered = reorderVirtualGroupIds(ids, items);
     if (reordered.some((v, i) => v !== ids[i])) this._setGlobal("calendars_list", reordered);
+  }
+
+  /** A calendar's hidden-events rules changed — persist into `calendar_options`. */
+  private _calendarHiddenChanged(id: string, rules: HiddenEventRule[]): void {
+    const map = this._calendarOptionsMap();
+    const opt = { ...(map[id] ?? {}) };
+    if (rules.length) opt.hidden_events = rules;
+    else delete opt.hidden_events;
+    if (Object.keys(opt).length) map[id] = opt;
+    else delete map[id];
+    this._setGlobal("calendar_options", map);
   }
 
   private _calendarOptionChanged(id: string, ev: CustomEvent): void {

@@ -13,6 +13,18 @@ export type CalendarSource = "settings" | "config";
 /** How a calendar's badge is chosen: its person's avatar, or a static icon. */
 export type CalendarIconSource = "person" | "icon";
 
+/** Which event field a "hidden events" rule matches against. */
+export type HiddenEventField = "title" | "description" | "location";
+
+/** One "hide events" rule: hide events on this calendar whose `type` field contains
+ *  `value`. Multiple rules on a calendar are OR-combined (any match hides the event). */
+export interface HiddenEventRule {
+  /** The event field to match. Defaults to `title`. */
+  type: HiddenEventField;
+  /** The (case-insensitive) substring to match against `type`. */
+  value: string;
+}
+
 /** A single calendar within the card, with optional per-calendar overrides. */
 export interface CalendarItemConfig {
   /** A `calendar.*` entity. */
@@ -44,6 +56,8 @@ export interface CalendarItemConfig {
   icon_source?: CalendarIconSource;
   /** Event color (hex, e.g. `#43a1ce`). */
   color?: string;
+  /** Rules that hide matching events on this calendar (OR-combined). */
+  hidden_events?: HiddenEventRule[];
 }
 
 export interface CalendarCardConfig extends LovelaceCardConfig {

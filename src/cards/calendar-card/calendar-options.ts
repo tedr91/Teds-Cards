@@ -8,7 +8,7 @@ import { html, type TemplateResult } from "lit";
 import type { HomeAssistant } from "custom-card-helpers";
 
 import { matchPerson } from "./const";
-import type { CalendarIconSource, CalendarItemConfig } from "./types";
+import type { CalendarIconSource, CalendarItemConfig, HiddenEventField, HiddenEventRule } from "./types";
 
 /** Badge source options — icon glyph vs. the linked person's avatar. */
 export const CALENDAR_ICON_SOURCE_OPTIONS = [
@@ -440,3 +440,128 @@ export function renderVirtualLinkModal(
     </div>
   `;
 }
+
+// --- Hidden events ---------------------------------------------------------
+
+/** The event field a hide rule can match against (shown in the type dropdown). */
+export const HIDDEN_EVENT_TYPE_OPTIONS: { value: HiddenEventField; label: string }[] = [
+  { value: "title", label: "Title" },
+  { value: "description", label: "Description" },
+  { value: "location", label: "Location" },
+];
+
+const HIDDEN_EVENT_LABELS: Record<HiddenEventField, string> = {
+  title: "Title",
+  description: "Description",
+  location: "Location",
+};
+
+/** A collapsible "Hidden Events" section: a header with a "+" (add) and chevron, and a
+ *  collapsible entry per rule (type dropdown + match string + delete). Rules OR-combine.
+ *  Self-contained + inline-styled (uses native `<details>` so the host needs no expand
+ *  state), so it works inside the card editor or Settings. */
+export function renderHiddenEvents(
+  rules: HiddenEventRule[],
+  onChange: (next: HiddenEventRule[]) => void,
+): TemplateResult {
+  const chip =
+    "border:1px solid var(--divider-color,rgba(120,120,120,0.22));border-radius:8px;" +
+    "background:var(--secondary-background-color,rgba(0,0,0,0.04));overflow:hidden;";
+  const summary =
+    "display:flex;align-items:center;gap:8px;padding:8px 10px;cursor:pointer;list-style:none;user-select:none;";
+  const field =
+    "font:inherit;color:var(--primary-text-color,#111);background:var(--card-background-color,#fff);" +
+    "border:1px solid var(--divider-color,rgba(120,120,120,0.22));border-radius:6px;padding:8px;outline:none;";
+  const setRule = (idx: number, patch: Partial<HiddenEventRule>): void =>
+    onChange(rules.map((r, j) => (j === idx ? { ...r, ...patch } : r)));
+  const summaryLabel = (r: HiddenEventRule): string => {
+    const v = (r.value ?? "").trim();
+    return v ? `${HIDDEN_EVENT_LABELS[r.type] ?? "Title"} contains “${v}”` : "New hidden-events rule";
+  };
+  return html`
+    <style>
+      .ted-hidden-events summary::-webkit-details-marker {
+        display: none;
+      }
+      .ted-hidden-events .chev {
+        transition: transform 0.15s ease;
+        color: var(--secondary-text-color);
+      }
+      .ted-hidden-events details[open] > summary .chev {
+        transform: rotate(180deg);
+      }
+    </style>
+    <div class="ted-hidden-events" style="margin:8px 0 2px;">
+      <details style=${chip}>
+        <summary style=${summary}>
+          <span style="flex:1 1 auto;font-size:0.82rem;font-weight:600;color:var(--secondary-text-color);">
+            Hidden Events
+          </span>
+          <ha-icon-button
+            label="Add hidden-events rule"
+            .path=${"M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z"}
+            @click=${(e: Event) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onChange([...rules, { type: "title", value: "" }]);
+            }}
+          ></ha-icon-button>
+          <ha-icon class="chev" icon="mdi:chevron-down" style="--mdc-icon-size:22px;"></ha-icon>
+        </summary>
+        <div style="display:flex;flex-direction:column;gap:6px;padding:0 10px 10px;">
+          ${rules.length
+            ? rules.map(
+                (r, idx) => html`<details style=${chip}>
+                  <summary style=${summary}>
+                    <span style="flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:0.85rem;">
+                      ${summaryLabel(r)}
+                    </span>
+                    <ha-icon-button
+                      label="Delete rule"
+                      .path=${"M9,3V4H4V6H5V19A2,2 0 0,0 7,21H17A2,2 0 0,0 19,19V6H20V4H15V3H9M7,6H17V19H7V6M9,8V17H11V8H9M13,8V17H15V8H13Z"}
+                      @click=${(e: Event) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        onChange(rules.filter((_, j) => j !== idx));
+                      }}
+                    ></ha-icon-button>
+                    <ha-icon class="chev" icon="mdi:chevron-down" style="--mdc-icon-size:22px;"></ha-icon>
+                  </summary>
+                  <div style="display:flex;flex-direction:column;gap:8px;padding:0 10px 10px;">
+                    <label style="display:flex;flex-direction:column;gap:4px;font-size:0.78rem;color:var(--secondary-text-color);">
+                      Type
+                      <select
+                        style=${field}
+                        .value=${r.type ?? "title"}
+                        @change=${(e: Event) =>
+                          setRule(idx, { type: (e.target as HTMLSelectElement).value as HiddenEventField })}
+                      >
+                        ${HIDDEN_EVENT_TYPE_OPTIONS.map(
+                          (o) => html`<option value=${o.value} ?selected=${(r.type ?? "title") === o.value}>
+                            ${o.label}
+                          </option>`,
+                        )}
+                      </select>
+                    </label>
+                    <label style="display:flex;flex-direction:column;gap:4px;font-size:0.78rem;color:var(--secondary-text-color);">
+                      Contains
+                      <input
+                        style=${field}
+                        type="text"
+                        placeholder="Text to match"
+                        .value=${r.value ?? ""}
+                        @input=${(e: Event) => setRule(idx, { value: (e.target as HTMLInputElement).value })}
+                      />
+                    </label>
+                  </div>
+                </details>`,
+              )
+            : html`<div style="font-size:0.8rem;color:var(--secondary-text-color);padding:2px 2px 4px;">
+                No hidden-events rules. Use “+” to add one.
+              </div>`}
+        </div>
+      </details>
+    </div>
+  `;
+}
+

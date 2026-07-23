@@ -940,6 +940,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.291
+
+- **Calendars: hide events per calendar.** Each calendar now has a collapsible **Hidden Events** section (card editor and Settings → Calendars). Add one or more rules — each matches a **Title**, **Description**, or **Location** substring — and any matching event on that calendar is hidden. Rules OR-combine, and for a virtual group they apply across all its linked calendars.
+
 ### v1.0.290
 
 - **Calendar badges: non-MDI icons are now converted to a similar MDI icon.** Since daylight-calendar-card only renders MDI icons, a selected (or entity-provided) non-MDI icon like `cbi:amazon-logo` is best-effort mapped by keyword to a matching `mdi:*` glyph; anything unmatched falls back to `mdi:calendar-month-outline`.
