@@ -9,7 +9,7 @@ import { appearanceStyle, cssColor } from "../../shared/appearance";
 import { brushedOverlay, tedCardThemeClass, tedStyleTheme } from "../../shared/theme";
 import { registerCustomCard } from "../../shared/register-card";
 import { NotificationToastController, type TedNotification } from "../../shared/notifications";
-import { resolveDeviceArea } from "../../shared/device-area";
+import { notificationInScope, resolveDeviceArea } from "../../shared/device-area";
 import { effectiveSnooze } from "../../shared/settings";
 import "../../shared/ted-icon-button";
 import {
@@ -96,7 +96,7 @@ export class TedNotificationCard extends LitElement implements LovelaceCard {
   private get _all(): TedNotification[] {
     const list = (this.hass?.states[NOTIFICATIONS_SENSOR]?.attributes.notifications as TedNotification[]) ?? [];
     const area = this._effectiveArea();
-    const filtered = area ? list.filter((n) => !n.area || n.area === area) : list;
+    const filtered = list.filter((n) => notificationInScope(this.hass, n, area));
     const max = typeof this._config?.max_items === "number" ? this._config.max_items : 50;
     return filtered.slice(0, max);
   }
@@ -110,7 +110,7 @@ export class TedNotificationCard extends LitElement implements LovelaceCard {
   private _scoped(): TedNotification[] {
     const list = (this.hass?.states[NOTIFICATIONS_SENSOR]?.attributes.notifications as TedNotification[]) ?? [];
     const area = this._effectiveArea();
-    return area ? list.filter((n) => !n.area || n.area === area) : list;
+    return list.filter((n) => notificationInScope(this.hass, n, area));
   }
 
   private _areaName(id?: string): string | undefined {

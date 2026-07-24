@@ -3,7 +3,7 @@ import type { ReactiveController, ReactiveControllerHost } from "lit";
 import { showMessageBox, dismissMessageBox, type MessagePopupSeverity, type ToastAction } from "./messagebox-popup";
 import { settingsStore, effectiveSnooze } from "./settings";
 import { resolveDeviceId } from "./device-id";
-import { resolveDeviceArea } from "./device-area";
+import { announcementTargetsDevice } from "./device-area";
 import { showPrompt } from "./dialogs";
 
 /** An action button attached to a notification. */
@@ -154,12 +154,7 @@ export class NotificationToastController implements ReactiveController {
     hass: HassLike | undefined,
     targets: { areas?: string[]; devices?: string[] },
   ): boolean {
-    const areas = targets.areas ?? [];
-    const devices = targets.devices ?? [];
-    if (!areas.length && !devices.length) return true; // house-wide
-    if (devices.includes(resolveDeviceId())) return true;
-    const myArea = resolveDeviceArea(hass as never).area;
-    return !!myArea && areas.includes(myArea);
+    return announcementTargetsDevice(hass as never, targets);
   }
 
   /** Toast action buttons: synthesized Snooze/Dismiss for completion notifications

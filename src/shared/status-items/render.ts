@@ -9,7 +9,7 @@ import { styleMap } from "lit/directives/style-map.js";
 import type { HomeAssistant } from "custom-card-helpers";
 
 import { STATUS_ITEM_DEFAULT_ICON, DEFAULT_SPACER_SIZE } from "./const";
-import { resolveDeviceArea } from "../device-area";
+import { notificationInScope, resolveDeviceArea } from "../device-area";
 import { settingsStore, resolveDashboardPath } from "../settings";
 import { runTedAction, hasTedAction } from "../actions";
 import { formatDate, formatTime } from "./datetime";
@@ -559,10 +559,10 @@ function renderNotificationsItem(
   index: number,
 ): TemplateResult | typeof nothing {
   const all = (ctx.hass.states["sensor.teds_notifications"]?.attributes?.notifications ?? []) as NotifRow[];
-  // Scope to this device's area (config override → browser_mod →
-  // localStorage), showing that area's notifications plus house-wide (area-less) ones.
+  // Scope to this device: its area (config override → browser_mod → localStorage) plus
+  // house-wide (area-less) ones — and announcements only where they were targeted.
   const area = resolveDeviceArea(ctx.hass, item.area).area;
-  const items = area ? all.filter((n) => !n.area || n.area === area) : all;
+  const items = all.filter((n) => notificationInScope(ctx.hass, n, area));
   if (item.hide_when_empty !== false && items.length === 0) return nothing;
   const unread = items.filter((n) => !n.read).length;
   const icon = item.icon ?? (unread > 0 ? "mdi:bell-badge" : STATUS_ITEM_DEFAULT_ICON.notifications);

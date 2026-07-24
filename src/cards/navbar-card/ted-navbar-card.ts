@@ -14,7 +14,7 @@ import { appearanceStyle, cssColor } from "../../shared/appearance";
 import { isVisible } from "../../shared/conditions";
 import { registerCustomCard } from "../../shared/register-card";
 import { NotificationToastController } from "../../shared/notifications";
-import { resolveDeviceArea } from "../../shared/device-area";
+import { type AnnounceTargets, notificationInScope, resolveDeviceArea } from "../../shared/device-area";
 import { SettingsController, settingsStore } from "../../shared/settings";
 import { navigationSignal } from "../../shared/navigation-signal";
 import type { SettingsValue } from "../../shared/settings-schema";
@@ -320,9 +320,9 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
     const all = this.hass.states["sensor.teds_notifications"]?.attributes?.notifications;
     if (!Array.isArray(all)) return 0;
     const area = resolveDeviceArea(this.hass, undefined).area;
-    const list = area
-      ? (all as { read?: boolean; area?: string | null }[]).filter((n) => !n.area || n.area === area)
-      : (all as { read?: boolean }[]);
+    const list = (all as { read?: boolean; area?: string | null; announce_targets?: AnnounceTargets }[]).filter(
+      (n) => notificationInScope(this.hass, n, area),
+    );
     return list.filter((n) => !n.read).length;
   }
 

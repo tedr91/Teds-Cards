@@ -10,6 +10,8 @@
  */
 import type { HomeAssistant } from "custom-card-helpers";
 
+import { resolveDeviceId } from "./device-id";
+
 /** localStorage key holding a manually-chosen area for this device. */
 export const LOCAL_AREA_KEY = "ted_device_area";
 
@@ -102,6 +104,42 @@ export function resolveDeviceArea(hass: HomeAssistant | undefined, configArea?: 
   const ls = localArea();
   if (ls) return { area: ls, source: "local" };
   return { area: undefined, source: "none" };
+}
+
+/** Announce-target scope carried on "announcement" notifications. */
+export interface AnnounceTargets {
+  areas?: string[];
+  devices?: string[];
+  source_device?: string;
+  source_device_name?: string;
+}
+
+/** Whether an announcement (by its `announce_targets`) is aimed at THIS device:
+ *  house-wide (no areas/devices), this device's id in `devices`, or this device's
+ *  resolved area in `areas`. */
+export function announcementTargetsDevice(
+  hass: HomeAssistant | undefined,
+  targets: AnnounceTargets | undefined,
+): boolean {
+  const areas = targets?.areas ?? [];
+  const devices = targets?.devices ?? [];
+  if (!areas.length && !devices.length) return true; // house-wide
+  if (devices.includes(resolveDeviceId())) return true;
+  const myArea = resolveDeviceArea(hass).area;
+  return !!myArea && areas.includes(myArea);
+}
+
+/** Whether a backend notification belongs on THIS device. Announcements use their
+ *  `announce_targets` scope (so a device-targeted announcement doesn't leak to every
+ *  device as if it were house-wide); everything else uses area scoping — this
+ *  device's `deviceArea` plus house-wide (area-less) notifications. */
+export function notificationInScope(
+  hass: HomeAssistant | undefined,
+  n: { area?: string | null; announce_targets?: AnnounceTargets },
+  deviceArea: string | undefined,
+): boolean {
+  if (n.announce_targets) return announcementTargetsDevice(hass, n.announce_targets);
+  return deviceArea ? !n.area || n.area === deviceArea : true;
 }
 
 /** All areas as {id, name}, sorted by name — for the "set device area" banner picker. */
