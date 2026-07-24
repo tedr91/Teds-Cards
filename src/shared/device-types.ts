@@ -10,6 +10,7 @@
  */
 
 import { FULLSCREEN_STATES_KEY } from "../cards/fullscreen-card/const";
+import { SETTINGS_DEFAULTS } from "./settings-schema";
 import { settingsStore } from "./settings";
 
 /** The set of device profiles. `undefined` = no profile applied. */
@@ -130,3 +131,36 @@ export function suggestDeviceType(): DeviceType | null {
   if (match("(orientation: portrait) and (min-width: 601px)")) return "tablet-portrait";
   return null;
 }
+
+/** Strip a root-relative dashboard path (`[root]/home-x`) down to its view path (`home-x`). */
+function stripRoot(value: string): string {
+  return value.replace(/^\[root\]\/?/, "");
+}
+
+/** Each device type's matching home-view path (e.g. `nightstand` → `home-nightstand`). */
+export const DEVICE_TYPE_HOME_PATHS: Record<DeviceType, string> = {
+  nightstand: stripRoot(DEVICE_TYPE_PRESETS.nightstand.home_dashboard),
+  "tablet-landscape": stripRoot(DEVICE_TYPE_PRESETS["tablet-landscape"].home_dashboard),
+  "tablet-portrait": stripRoot(DEVICE_TYPE_PRESETS["tablet-portrait"].home_dashboard),
+  handheld: stripRoot(DEVICE_TYPE_PRESETS.handheld.home_dashboard),
+};
+
+/** The Welcome view's path (the default `home_dashboard`), e.g. `home-welcome`. */
+export const WELCOME_HOME_PATH = stripRoot(String(SETTINGS_DEFAULTS.home_dashboard ?? ""));
+
+/**
+ * Whether a launcher view should be HIDDEN for the current device type:
+ * - the Welcome view shows only on un-typed devices (hidden once a type is set);
+ * - a device-type home view is hidden on a typed device unless it matches that type;
+ * - every other view is always shown.
+ */
+export function launcherHomeHiddenForType(
+  path: string,
+  deviceType: DeviceType | null,
+): boolean {
+  if (path === WELCOME_HOME_PATH) return deviceType !== null;
+  const isTypeHome = Object.values(DEVICE_TYPE_HOME_PATHS).includes(path);
+  if (isTypeHome && deviceType) return path !== DEVICE_TYPE_HOME_PATHS[deviceType];
+  return false;
+}
+

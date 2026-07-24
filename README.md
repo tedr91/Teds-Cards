@@ -940,6 +940,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.318
+
+- **Launcher shows the right Home view per device type.** Once a device has a **Device type** set, the navbar's Home launcher only offers that device's matching home view (the non-matching home layouts are hidden). The **Welcome** view now appears only on devices that haven't been given a type yet.
+
 ### v1.0.317
 
 - **Navbar keeps the centered buttons off the edges.** When deciding how many navbar buttons fit before collapsing the rest into the "more" chevron, the bar now reserves a half-bar of space at each end of the Center section. On tighter screens this collapses one button sooner so the centered group no longer runs flush to the bar's ends.

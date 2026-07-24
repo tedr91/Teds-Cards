@@ -53,6 +53,7 @@ import {
   readLovelaceViews,
   resolveLauncherViews,
 } from "../../shared/launcher";
+import { asDeviceType, launcherHomeHiddenForType } from "../../shared/device-types";
 import type { NavAlign, NavButtonConfig, NavItem, NavMenuItem, NavSection, NavZone, NavbarAlignment, NavbarCardConfig } from "./types";
 
 interface CardHelpers {
@@ -838,7 +839,11 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
     const discovered = readLovelaceViews();
     if (!discovered.length) return (this._launcherCache = []);
     const paths = effectiveLauncherPaths(this._launcherList(), discovered);
-    const views = resolveLauncherViews(paths, discovered);
+    // Device-type home-view filtering: the Welcome view shows only on un-typed devices,
+    // and a typed device only shows the home view matching its type (others hidden).
+    const deviceType = asDeviceType(settingsStore.effective().device_type);
+    const visiblePaths = paths.filter((p) => !launcherHomeHiddenForType(p, deviceType));
+    const views = resolveLauncherViews(visiblePaths, discovered);
     const buttonColorRaw = this._settingOverride("launcher_button_color");
     const highlightColorRaw = this._settingOverride("launcher_highlight_color");
     const eff = settingsStore.effective();
