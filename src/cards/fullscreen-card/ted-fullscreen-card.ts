@@ -101,11 +101,14 @@ export class TedFullscreenCard extends LitElement implements LovelaceCard {
   }
 
   public getCardSize(): number {
-    return 4;
+    return 5;
   }
 
   public getGridOptions(): GridOptions {
-    return { columns: 12, rows: "auto", min_columns: 6 };
+    // Default to a real, fixed height (5 rows) so housed cards with no intrinsic
+    // height (e.g. a Map) get a sensible size out of the box. Users can switch to
+    // auto height in the Layout tab; the min-height floor keeps auto usable too.
+    return { columns: 12, rows: 5, min_columns: 6, min_rows: 3 };
   }
 
   public connectedCallback(): void {
@@ -363,6 +366,9 @@ export class TedFullscreenCard extends LitElement implements LovelaceCard {
       .fs-normal {
         position: relative;
         height: 100%;
+        /* Floor so auto-height (Sections) never collapses to ~0 when the housed card
+           has no intrinsic height (e.g. a Map). Fixed-height cells override this. */
+        min-height: 150px;
       }
 
       .fs-root.fill .fs-normal {

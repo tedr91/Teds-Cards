@@ -940,6 +940,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.310
+
+- **Fullscreen Card — sensible default height.** In a Sections view the card now defaults to a fixed 5-rows-high size (was auto height, which collapsed for housed cards with no intrinsic height like a Map), and a min-height floor keeps **auto height** usable too.
+
 ### v1.0.309
 
 - **Fullscreen Card — appearance + hide the toggle.** Added a **Show expand/collapse button** option (on by default) to hide the corner icon, and an **Appearance (general)** section (theme, background, transparency, blur, brushed, shadow, scale) consistent with the other Ted's cards — set a background/transparency/blur/brushed to give the housed card its own frosted surface.
