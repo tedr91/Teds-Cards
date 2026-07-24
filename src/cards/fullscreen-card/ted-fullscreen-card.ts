@@ -13,6 +13,7 @@ import { SettingsController, settingsStore } from "../../shared/settings";
 import { resolveIcon } from "../../shared/icons";
 import { appearanceStyle, cssColor } from "../../shared/appearance";
 import { brushedOverlay, tedCardThemeClass, tedStyleTheme } from "../../shared/theme";
+import { findHuiRoot } from "../background-card/background-dom";
 import {
   EXPAND_ICON,
   FULLSCREEN_CARD_DESCRIPTION,
@@ -114,12 +115,14 @@ export class TedFullscreenCard extends LitElement implements LovelaceCard {
   public connectedCallback(): void {
     super.connectedCallback();
     window.addEventListener("keydown", this._onKeyDown);
+    window.addEventListener("resize", this._onResize, { passive: true });
     void this._loadHelpers();
   }
 
   public disconnectedCallback(): void {
     super.disconnectedCallback();
     window.removeEventListener("keydown", this._onKeyDown);
+    window.removeEventListener("resize", this._onResize);
   }
 
   /** Escape restores a maximized card to normal. */
@@ -130,6 +133,11 @@ export class TedFullscreenCard extends LitElement implements LovelaceCard {
     }
   };
 
+  /** Re-measure the content-area insets while maximized (HA sidebar/header may change). */
+  private _onResize = (): void => {
+    if (this._maximized && !this._config?.true_fullscreen) this.requestUpdate();
+  };
+
   protected willUpdate(changed: PropertyValues): void {
     if (changed.has("_config")) this._buildChild();
     if (changed.has("hass")) this._propagateHass();
@@ -137,6 +145,22 @@ export class TedFullscreenCard extends LitElement implements LovelaceCard {
 
   protected updated(): void {
     this._resolveInitialState();
+    this._syncTrueFullscreen();
+  }
+
+  /** For `true_fullscreen`, put the overlay in the browser top layer (over everything). */
+  private _syncTrueFullscreen(): void {
+    if (!this._config?.true_fullscreen) return;
+    const el = (this.renderRoot as ShadowRoot).getElementById(OVERLAY_ID) as
+      | (HTMLElement & { showPopover?: () => void })
+      | null;
+    if (el && this._maximized && !el.matches(":popover-open")) {
+      try {
+        el.showPopover?.();
+      } catch {
+        /* not supported */
+      }
+    }
   }
 
   private async _loadHelpers(): Promise<void> {
@@ -204,28 +228,59 @@ export class TedFullscreenCard extends LitElement implements LovelaceCard {
 
   // ── Overlay sizing ───────────────────────────────────────────────────────
 
-  /** Inline sizing for the overlay. Empty (CSS-driven) unless the backend is on. */
+  /** Inline sizing for the overlay. */
   private _overlayStyle(): Record<string, string> {
-    if (!this._config?.backend_integration) return {};
-    const eff = settingsStore.effective();
-    const pos = String(eff.navbar_position ?? "bottom");
-    const size = Number(eff.navbar_size ?? 48);
-    const float = eff.navbar_float === true;
-    const autoHide = eff.navbar_auto_hide === true;
-    // When auto-hide is on the bar collapses to a slim pill, so we can size fully
-    // under it; otherwise reserve the bar thickness (+ a float margin) on its edge.
-    const bar = autoHide ? "0px" : `${size + (float && (pos === "bottom" || pos === "top") ? 16 : 0)}px`;
+    const cfg = this._config;
     const safe = (edge: string): string => `env(safe-area-inset-${edge})`;
-    const style: Record<string, string> = {
-      top: pos === "top" ? bar : `max(${safe("top")}, var(--ted-navbar-header-reserve, 0px))`,
-      bottom: pos === "bottom" ? bar : safe("bottom"),
-      left: pos === "left" ? bar : safe("left"),
-      right: pos === "right" ? bar : safe("right"),
-    };
+
+    // True full screen: cover the whole viewport (over the navbar + HA chrome); only
+    // respect device notches.
+    if (cfg?.true_fullscreen) {
+      return { top: safe("top"), bottom: safe("bottom"), left: safe("left"), right: safe("right") };
+    }
+
+    // Default: stay within the content area. Reserve the Ted navbar edge…
+    let top = `max(${safe("top")}, var(--ted-navbar-header-reserve, 0px))`;
+    let bottom = `max(${safe("bottom")}, var(--ted-navbar-bottom-reserve, 0px))`;
+    let left = safe("left");
+    let right = safe("right");
+
+    if (cfg?.backend_integration) {
+      const eff = settingsStore.effective();
+      const pos = String(eff.navbar_position ?? "bottom");
+      const size = Number(eff.navbar_size ?? 48);
+      const float = eff.navbar_float === true;
+      const autoHide = eff.navbar_auto_hide === true;
+      // Auto-hide collapses to a slim pill → we can size fully under it; otherwise
+      // reserve the bar thickness (+ a float margin) on its edge.
+      const bar = autoHide ? "0px" : `${size + (float && (pos === "bottom" || pos === "top") ? 16 : 0)}px`;
+      if (pos === "top") top = bar;
+      else if (pos === "bottom") bottom = bar;
+      else if (pos === "left") left = bar;
+      else if (pos === "right") right = bar;
+    }
+
+    // …and the Home Assistant header + sidebar, so the overlay never slides under them.
+    const root = findHuiRoot();
+    if (root) {
+      const rect = root.getBoundingClientRect();
+      const header = root.shadowRoot?.querySelector<HTMLElement>(".header");
+      const headerH = header ? Math.round(header.getBoundingClientRect().height) : 0;
+      const contentTop = Math.max(0, Math.round(rect.top) + headerH);
+      const sidebarLeft = Math.max(0, Math.round(rect.left));
+      const sidebarRight = Math.max(0, Math.round(window.innerWidth - rect.right));
+      if (contentTop > 0) top = `max(${top}, ${contentTop}px)`;
+      if (sidebarLeft > 0) left = `max(${left}, ${sidebarLeft}px)`;
+      if (sidebarRight > 0) right = `max(${right}, ${sidebarRight}px)`;
+    }
+
+    const style: Record<string, string> = { top, bottom, left, right };
     // Cap the overlay to this device's known screen size (a guard; usually a no-op).
-    const reg = settingsStore.registry()[settingsStore.deviceId];
-    if (reg?.client_width) style["max-width"] = `${reg.client_width}px`;
-    if (reg?.client_height) style["max-height"] = `${reg.client_height}px`;
+    if (cfg?.backend_integration) {
+      const reg = settingsStore.registry()[settingsStore.deviceId];
+      if (reg?.client_width) style["max-width"] = `${reg.client_width}px`;
+      if (reg?.client_height) style["max-height"] = `${reg.client_height}px`;
+    }
     return style;
   }
 
@@ -305,7 +360,8 @@ export class TedFullscreenCard extends LitElement implements LovelaceCard {
         ${maximized
           ? html`<div
               id=${OVERLAY_ID}
-              class="fs-overlay ${tedCardThemeClass(theme)}"
+              class="fs-overlay ${tedCardThemeClass(theme)}${cfg.true_fullscreen ? " true-fs" : ""}"
+              popover=${cfg.true_fullscreen ? "manual" : nothing}
               style=${styleMap({ ...this._overlayStyle(), ...(surface ? surfaceStyle : {}) })}
             >
               ${child ? html`<div class="fs-child">${child}</div>` : nothing}

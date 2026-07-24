@@ -11,6 +11,13 @@ export interface FullscreenCardConfig extends LovelaceCardConfig {
   theme?: TedStyleTheme;
   /** Show the corner expand/collapse button. Default `true`. */
   show_toggle?: boolean;
+  /**
+   * When maximized, cover the ENTIRE screen using the browser's top layer — over the
+   * Ted's navbar and the Home Assistant header/sidebar too. Default `false`, which keeps
+   * the overlay within the visible content area (below the navbar; clear of the HA
+   * header + sidebar).
+   */
+  true_fullscreen?: boolean;
   /** Start maximized when there is no saved state. Default `false`. */
   start_maximized?: boolean;
   /** Fill the grid cell in the normal (non-maximized) state. Default `false`. */

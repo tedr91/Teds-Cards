@@ -45,6 +45,7 @@ card:
 | `card` | card config | | The single Lovelace card this container houses. |
 | `theme` | `ha` \| `ted-style` | `ha` | Surface theme for the wrapper. |
 | `show_toggle` | boolean | true | Show the corner expand/collapse button. |
+| `true_fullscreen` | boolean | false | When maximized, cover the **entire** screen (over the navbar and the HA header/sidebar) using the browser's top layer. Default keeps the overlay within the visible content area — below the navbar and clear of the HA header + sidebar. |
 | `start_maximized` | boolean | false | Start full-screen when there is no saved state. |
 | `fill` | boolean | false | Fill the grid cell in the normal (non-maximized) state. |
 | `expand_icon` | string | `fluent:arrow-maximize-20-regular` | Override the "expand" corner icon. |

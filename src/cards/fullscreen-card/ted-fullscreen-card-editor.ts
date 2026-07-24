@@ -148,6 +148,7 @@ export class TedFullscreenCardEditor extends LitElement implements LovelaceCardE
     if (config.shadow !== false) delete config.shadow;
     if (config.scale === 100 || config.scale == null) delete config.scale;
     if (config.show_toggle !== false) delete config.show_toggle;
+    if (config.true_fullscreen !== true) delete config.true_fullscreen;
     if (config.start_maximized !== true) delete config.start_maximized;
     if (config.fill !== true) delete config.fill;
     for (const key of ["transparency", "blur"] as const) {
@@ -178,6 +179,7 @@ export class TedFullscreenCardEditor extends LitElement implements LovelaceCardE
       blur: cfg.blur,
       scale: cfg.scale ?? 100,
       show_toggle: cfg.show_toggle !== false,
+      true_fullscreen: cfg.true_fullscreen === true,
       start_maximized: cfg.start_maximized === true,
       fill: cfg.fill === true,
       expand_icon: cfg.expand_icon ?? "",
@@ -312,6 +314,7 @@ export class TedFullscreenCardEditor extends LitElement implements LovelaceCardE
           { name: "fill", selector: { boolean: {} } },
         ],
       },
+      { name: "true_fullscreen", selector: { boolean: {} } },
       {
         type: "grid",
         name: "",
@@ -354,6 +357,8 @@ export class TedFullscreenCardEditor extends LitElement implements LovelaceCardE
         return "Card scale";
       case "show_toggle":
         return "Show expand/collapse button";
+      case "true_fullscreen":
+        return "True full screen (cover navbar + HA bars)";
       case "start_maximized":
         return "Start maximized";
       case "fill":
@@ -374,6 +379,8 @@ export class TedFullscreenCardEditor extends LitElement implements LovelaceCardE
   /** Helper text conveying code-level defaults for fields that can't show a placeholder. */
   private _computeHelper = (schema: { name: string }): string | undefined => {
     switch (schema.name) {
+      case "true_fullscreen":
+        return "Covers everything — the navbar and Home Assistant's header/sidebar too.";
       case "expand_icon":
         return "Defaults to the maximize icon.";
       case "minimize_icon":

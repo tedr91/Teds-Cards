@@ -940,6 +940,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.313
+
+- **Fullscreen Card — "True full screen" option.** New `true_fullscreen` toggle: on, the maximized card covers the **entire** screen (over the navbar and Home Assistant's header/sidebar) via the browser's top layer. Off (default), the overlay now also stays clear of the **HA header and sidebar**, not just the navbar.
+
 ### v1.0.312
 
 - **Fullscreen Card — navbar stays on top.** The full-screen overlay no longer covers the Ted's navbar: the auto-hide pill / tap-surface and the expanded bar now sit above the maximized content and stay interactive (the overlay is a layer just below the navbar rather than the browser's top layer). Escape also restores a maximized card.
