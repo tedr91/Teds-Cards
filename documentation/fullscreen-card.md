@@ -48,8 +48,8 @@ card:
 | `fill` | boolean | false | Fill the grid cell in the normal (non-maximized) state. |
 | `expand_icon` | string | `fluent:arrow-maximize-20-regular` | Override the "expand" corner icon. |
 | `minimize_icon` | string | `fluent:arrow-minimize-20-regular` | Override the "minimize/restore" corner icon. |
-| `backend_integration` | boolean | false | Opt in to the Ted's Cards backend (save state + smarter sizing — see below). |
-| `state_key` | string | | Identifies this card when saving its maximized state. Required for the state to persist. |
+| `backend_integration` | boolean | false | **YAML-only.** Opt in to the Ted's Cards backend (save state + smarter sizing — see below). |
+| `state_key` | string | | **YAML-only.** Identifies this card when saving its maximized state. Required for the state to persist. |
 | `empty_title`, `empty_message` | string | | Text shown when no `card` is configured. |
 
 > Any Lovelace card works inside it — not just Ted's Cards. The card is created on

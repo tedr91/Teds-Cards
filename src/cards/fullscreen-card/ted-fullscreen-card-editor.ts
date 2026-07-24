@@ -104,8 +104,7 @@ export class TedFullscreenCardEditor extends LitElement implements LovelaceCardE
     if (config.theme === "ha" || !config.theme) delete config.theme;
     if (config.start_maximized !== true) delete config.start_maximized;
     if (config.fill !== true) delete config.fill;
-    if (config.backend_integration !== true) delete config.backend_integration;
-    for (const key of ["expand_icon", "minimize_icon", "state_key", "empty_title", "empty_message"] as const) {
+    for (const key of ["expand_icon", "minimize_icon", "empty_title", "empty_message"] as const) {
       const v = config[key];
       if (v === undefined || v === null || v === "") delete config[key];
     }
@@ -126,22 +125,26 @@ export class TedFullscreenCardEditor extends LitElement implements LovelaceCardE
       fill: cfg.fill === true,
       expand_icon: cfg.expand_icon ?? "",
       minimize_icon: cfg.minimize_icon ?? "",
-      backend_integration: cfg.backend_integration === true,
-      state_key: cfg.state_key ?? "",
       empty_title: cfg.empty_title ?? "",
       empty_message: cfg.empty_message ?? "",
     };
     return html`
-      <ha-form
-        .hass=${this.hass}
-        .data=${optionsData}
-        .schema=${this._optionsSchema(cfg.backend_integration === true)}
-        .computeLabel=${this._computeLabel}
-        @value-changed=${this._onOptionsChanged}
-      ></ha-form>
-
-      <div class="card-label">Card</div>
+      <div class="hint">
+        This card houses a single card and adds a corner icon to toggle it full-screen. Pick the card
+        to house below.
+      </div>
       ${this._renderCard(cfg)}
+
+      <ha-expansion-panel outlined class="options">
+        <span slot="header">Full-screen options</span>
+        <ha-form
+          .hass=${this.hass}
+          .data=${optionsData}
+          .schema=${this._optionsSchema()}
+          .computeLabel=${this._computeLabel}
+          @value-changed=${this._onOptionsChanged}
+        ></ha-form>
+      </ha-expansion-panel>
     `;
   }
 
@@ -169,7 +172,7 @@ export class TedFullscreenCardEditor extends LitElement implements LovelaceCardE
     `;
   }
 
-  private _optionsSchema(backend: boolean) {
+  private _optionsSchema() {
     return [
       {
         type: "grid",
@@ -201,8 +204,6 @@ export class TedFullscreenCardEditor extends LitElement implements LovelaceCardE
           { name: "minimize_icon", selector: { icon: {} } },
         ],
       },
-      { name: "backend_integration", selector: { boolean: {} } },
-      ...(backend ? [{ name: "state_key", selector: { text: {} } }] : []),
       {
         type: "grid",
         name: "",
@@ -227,10 +228,6 @@ export class TedFullscreenCardEditor extends LitElement implements LovelaceCardE
         return "Expand icon";
       case "minimize_icon":
         return "Minimize icon";
-      case "backend_integration":
-        return "Backend integration (save state + smart sizing)";
-      case "state_key":
-        return "Saved-state key (required to persist)";
       case "empty_title":
         return "Empty title";
       case "empty_message":
@@ -244,9 +241,8 @@ export class TedFullscreenCardEditor extends LitElement implements LovelaceCardE
     :host {
       display: block;
     }
-    .card-label {
-      font-weight: 600;
-      margin: 16px 0 8px;
+    .options {
+      margin-top: 16px;
     }
     .hint {
       color: var(--secondary-text-color);

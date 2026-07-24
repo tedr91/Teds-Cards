@@ -63,9 +63,7 @@ export class TedFullscreenCard extends LitElement implements LovelaceCard {
   }
 
   public static getStubConfig(): Omit<FullscreenCardConfig, "type"> {
-    return {
-      card: { type: "markdown", content: "Put any card here." } as LovelaceCardConfig,
-    };
+    return {};
   }
 
   @property({ attribute: false }) public hass?: HomeAssistant;
