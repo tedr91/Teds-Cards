@@ -11,7 +11,8 @@ import type {
 import { registerCustomCard } from "../../shared/register-card";
 import { SettingsController, settingsStore } from "../../shared/settings";
 import { resolveIcon } from "../../shared/icons";
-import { tedCardThemeClass, tedStyleTheme } from "../../shared/theme";
+import { appearanceStyle, cssColor } from "../../shared/appearance";
+import { brushedOverlay, tedCardThemeClass, tedStyleTheme } from "../../shared/theme";
 import {
   EXPAND_ICON,
   FULLSCREEN_CARD_DESCRIPTION,
@@ -261,6 +262,19 @@ export class TedFullscreenCard extends LitElement implements LovelaceCard {
     return this._config?.minimize_icon ?? resolveIcon(MINIMIZE_ICON) ?? "mdi:arrow-collapse";
   }
 
+  /** True when the card should paint its own frosted surface behind the child. */
+  private _appearanceConfigured(): boolean {
+    const c = this._config;
+    if (!c) return false;
+    return c.background !== undefined || c.transparency !== undefined || c.blur !== undefined || c.brushed === true;
+  }
+
+  private _surfaceStyle(): Record<string, string> {
+    const c = this._config;
+    if (!c) return {};
+    return appearanceStyle({ background: cssColor(c.background), transparency: c.transparency, blur: c.blur });
+  }
+
   /** The corner toggle button. `maximized` selects the icon + label. */
   private _renderToggle(maximized: boolean): TemplateResult {
     return html`<button
@@ -290,23 +304,36 @@ export class TedFullscreenCard extends LitElement implements LovelaceCard {
     const theme = cfg.theme === "ted-style" ? "ted-style" : "ha";
     const child = this._child?.el;
     const maximized = this._maximized;
+    const showToggle = cfg.show_toggle !== false;
+    const surface = this._appearanceConfigured();
+    const surfaceStyle = this._surfaceStyle();
+    const shadow = cfg.shadow !== false;
+    const brushed = cfg.brushed === true;
+
+    const rootStyle: Record<string, string> = {};
+    if (typeof cfg.scale === "number" && cfg.scale !== 100) rootStyle.zoom = String(cfg.scale / 100);
 
     return html`
-      <div class="fs-root ${tedCardThemeClass(theme)}${cfg.fill ? " fill" : ""}">
+      <div class="fs-root ${tedCardThemeClass(theme)}${cfg.fill ? " fill" : ""}" style=${styleMap(rootStyle)}>
         <div class="fs-normal">
+          ${surface && !maximized
+            ? html`<div class="fs-surface ${shadow ? "" : "no-shadow"}" style=${styleMap(surfaceStyle)}>
+                ${brushed ? brushedOverlay : nothing}
+              </div>`
+            : nothing}
           ${child && !maximized ? html`<div class="fs-child">${child}</div>` : nothing}
           ${!child ? this._renderEmpty() : nothing}
-          ${child && !maximized ? this._renderToggle(false) : nothing}
+          ${child && !maximized && showToggle ? this._renderToggle(false) : nothing}
         </div>
         <div
           id=${OVERLAY_ID}
           class="fs-overlay ${tedCardThemeClass(theme)}"
           popover="manual"
-          style=${styleMap(this._overlayStyle())}
+          style=${styleMap({ ...this._overlayStyle(), ...(surface ? surfaceStyle : {}) })}
           @beforetoggle=${this._onOverlayToggle}
         >
           ${child && maximized ? html`<div class="fs-child">${child}</div>` : nothing}
-          ${child && maximized ? this._renderToggle(true) : nothing}
+          ${child && maximized && showToggle ? this._renderToggle(true) : nothing}
         </div>
       </div>
     `;
@@ -342,7 +369,33 @@ export class TedFullscreenCard extends LitElement implements LovelaceCard {
         min-height: 100%;
       }
 
+      /* Optional frosted surface, painted as an isolated layer behind the child (never
+         an ancestor of it — a backdrop-filter ancestor would trap the child's fixed
+         dialogs). Only shown when an appearance option is configured. */
+      .fs-surface {
+        position: absolute;
+        inset: 0;
+        z-index: 0;
+        pointer-events: none;
+        overflow: hidden;
+        border: 1px solid var(--ted-style-divider, var(--divider-color));
+        border-radius: var(--ted-style-radius, 12px);
+        background: color-mix(
+          in srgb,
+          var(--ted-style-surface, var(--ha-card-background, #fff)) var(--ted-card-bg-alpha, 100%),
+          transparent
+        );
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+        -webkit-backdrop-filter: var(--ha-card-backdrop-filter, none);
+        backdrop-filter: var(--ha-card-backdrop-filter, none);
+      }
+      .fs-surface.no-shadow {
+        box-shadow: none;
+      }
+
       .fs-child {
+        position: relative;
+        z-index: 1;
         height: 100%;
       }
 

@@ -9,6 +9,8 @@ export interface FullscreenCardConfig extends LovelaceCardConfig {
   card?: LovelaceCardConfig;
   /** Surface theme for the wrapper. Default `ha`. */
   theme?: TedStyleTheme;
+  /** Show the corner expand/collapse button. Default `true`. */
+  show_toggle?: boolean;
   /** Start maximized when there is no saved state. Default `false`. */
   start_maximized?: boolean;
   /** Fill the grid cell in the normal (non-maximized) state. Default `false`. */
@@ -17,6 +19,22 @@ export interface FullscreenCardConfig extends LovelaceCardConfig {
   expand_icon?: string;
   /** Override the "minimize/restore" corner icon. */
   minimize_icon?: string;
+
+  // Appearance (shared with the other Ted's cards). When any of background /
+  // transparency / blur / brushed is set, the card paints its own frosted surface
+  // behind the housed card (otherwise it stays a transparent passthrough).
+  /** Surface background color (ui_color: hex, rgb, or a theme color name). */
+  background?: string;
+  /** Surface transparency 0–100 (%). Empty = no override. */
+  transparency?: number;
+  /** Surface backdrop blur 0–100 (%). Empty = no override. */
+  blur?: number;
+  /** Brushed-metal overlay on the surface. Default `false`. */
+  brushed?: boolean;
+  /** Subtle drop shadow on the surface. Default `true` (only visible with a surface). */
+  shadow?: boolean;
+  /** Zoom the card content (percent). Default `100`. */
+  scale?: number;
   /**
    * Opt in to the Ted's Cards backend. When enabled the card can persist its
    * maximized state (per `state_key`) and size the overlay more intelligently

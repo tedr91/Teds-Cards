@@ -8,6 +8,7 @@ import {
   fireEvent,
 } from "custom-card-helpers";
 
+import { transparencyBlurSchema } from "../../shared/appearance";
 import { FULLSCREEN_CARD_EDITOR_TYPE } from "./const";
 import type { FullscreenCardConfig } from "./types";
 
@@ -143,9 +144,17 @@ export class TedFullscreenCardEditor extends LitElement implements LovelaceCardE
     const value = ev.detail.value as Partial<FullscreenCardConfig>;
     const config: FullscreenCardConfig = { ...this._config!, ...value };
     if (config.theme === "ha" || !config.theme) delete config.theme;
+    if (config.brushed !== true) delete config.brushed;
+    if (config.shadow !== false) delete config.shadow;
+    if (config.scale === 100 || config.scale == null) delete config.scale;
+    if (config.show_toggle !== false) delete config.show_toggle;
     if (config.start_maximized !== true) delete config.start_maximized;
     if (config.fill !== true) delete config.fill;
-    for (const key of ["expand_icon", "minimize_icon", "empty_title", "empty_message"] as const) {
+    for (const key of ["transparency", "blur"] as const) {
+      const v = config[key];
+      if (v === undefined || v === null) delete config[key];
+    }
+    for (const key of ["background", "expand_icon", "minimize_icon", "empty_title", "empty_message"] as const) {
       const v = config[key];
       if (v === undefined || v === null || v === "") delete config[key];
     }
@@ -162,6 +171,13 @@ export class TedFullscreenCardEditor extends LitElement implements LovelaceCardE
     const cfg = this._config;
     const optionsData = {
       theme: cfg.theme ?? "ha",
+      background: cfg.background,
+      brushed: cfg.brushed ?? false,
+      shadow: cfg.shadow !== false,
+      transparency: cfg.transparency,
+      blur: cfg.blur,
+      scale: cfg.scale ?? 100,
+      show_toggle: cfg.show_toggle !== false,
       start_maximized: cfg.start_maximized === true,
       fill: cfg.fill === true,
       expand_icon: cfg.expand_icon ?? "",
@@ -175,6 +191,17 @@ export class TedFullscreenCardEditor extends LitElement implements LovelaceCardE
         to house below.
       </div>
       ${this._renderCardHeader(cfg)}
+
+      <ha-expansion-panel outlined class="options">
+        <span slot="header">Appearance (general)</span>
+        <ha-form
+          .hass=${this.hass}
+          .data=${optionsData}
+          .schema=${this._appearanceSchema(cfg)}
+          .computeLabel=${this._computeLabel}
+          @value-changed=${this._onOptionsChanged}
+        ></ha-form>
+      </ha-expansion-panel>
 
       <ha-expansion-panel outlined class="options">
         <span slot="header">Full-screen options</span>
@@ -240,6 +267,38 @@ export class TedFullscreenCardEditor extends LitElement implements LovelaceCardE
     `;
   }
 
+  private _appearanceSchema(cfg: FullscreenCardConfig) {
+    return [
+      {
+        name: "theme",
+        selector: {
+          select: {
+            mode: "dropdown",
+            options: [
+              { value: "ted-style", label: "Ted's Style" },
+              { value: "ha", label: "Home Assistant theme (default)" },
+            ],
+          },
+        },
+      },
+      { name: "background", selector: { ui_color: {} } },
+      {
+        type: "grid",
+        name: "",
+        column_min_width: "120px",
+        schema: [
+          { name: "brushed", selector: { boolean: {} } },
+          { name: "shadow", selector: { boolean: {} } },
+        ],
+      },
+      transparencyBlurSchema(cfg.transparency),
+      {
+        name: "scale",
+        selector: { number: { min: 50, max: 200, step: 5, mode: "box", unit_of_measurement: "%" } },
+      },
+    ];
+  }
+
   private _optionsSchema() {
     return [
       {
@@ -247,18 +306,7 @@ export class TedFullscreenCardEditor extends LitElement implements LovelaceCardE
         name: "",
         column_min_width: "120px",
         schema: [
-          {
-            name: "theme",
-            selector: {
-              select: {
-                mode: "dropdown",
-                options: [
-                  { value: "ted-style", label: "Ted's Style" },
-                  { value: "ha", label: "Home Assistant theme (default)" },
-                ],
-              },
-            },
-          },
+          { name: "show_toggle", selector: { boolean: {} } },
           { name: "start_maximized", selector: { boolean: {} } },
           { name: "fill", selector: { boolean: {} } },
         ],
@@ -288,6 +336,20 @@ export class TedFullscreenCardEditor extends LitElement implements LovelaceCardE
     switch (schema.name) {
       case "theme":
         return "Visual styling";
+      case "background":
+        return "Background color";
+      case "brushed":
+        return "Brushed effect";
+      case "shadow":
+        return "Subtle shadow for improved contrast";
+      case "transparency":
+        return "Transparency";
+      case "blur":
+        return "Background blur";
+      case "scale":
+        return "Card scale";
+      case "show_toggle":
+        return "Show expand/collapse button";
       case "start_maximized":
         return "Start maximized";
       case "fill":

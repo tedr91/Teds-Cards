@@ -44,10 +44,12 @@ card:
 | --- | --- | --- | --- |
 | `card` | card config | | The single Lovelace card this container houses. |
 | `theme` | `ha` \| `ted-style` | `ha` | Surface theme for the wrapper. |
+| `show_toggle` | boolean | true | Show the corner expand/collapse button. |
 | `start_maximized` | boolean | false | Start full-screen when there is no saved state. |
 | `fill` | boolean | false | Fill the grid cell in the normal (non-maximized) state. |
 | `expand_icon` | string | `fluent:arrow-maximize-20-regular` | Override the "expand" corner icon. |
 | `minimize_icon` | string | `fluent:arrow-minimize-20-regular` | Override the "minimize/restore" corner icon. |
+| `background`, `transparency`, `blur`, `brushed`, `shadow`, `scale` | | | Appearance (general) — see [Appearance & theming](./README.md#appearance--theming-shared). When any of `background` / `transparency` / `blur` / `brushed` is set, the card paints its own frosted surface behind the housed card (otherwise it stays a transparent passthrough). |
 | `backend_integration` | boolean | false | **YAML-only.** Opt in to the Ted's Cards backend (save state + smarter sizing — see below). |
 | `state_key` | string | | **YAML-only.** Identifies this card when saving its maximized state. Required for the state to persist. |
 | `empty_title`, `empty_message` | string | | Text shown when no `card` is configured. |

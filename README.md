@@ -940,6 +940,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.309
+
+- **Fullscreen Card — appearance + hide the toggle.** Added a **Show expand/collapse button** option (on by default) to hide the corner icon, and an **Appearance (general)** section (theme, background, transparency, blur, brushed, shadow, scale) consistent with the other Ted's cards — set a background/transparency/blur/brushed to give the housed card its own frosted surface.
+
 ### v1.0.308
 
 - **Fullscreen Card editor — picking a card fixed.** The native **card picker** now loads reliably for the empty / Change-card state, and the type-in fallback no longer applies your text after the first keystroke — you type the full card type (e.g. `custom:ted-music-card`) and click **Add**.
