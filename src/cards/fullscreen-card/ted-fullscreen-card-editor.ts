@@ -33,11 +33,34 @@ export class TedFullscreenCardEditor extends LitElement implements LovelaceCardE
 
   public connectedCallback(): void {
     super.connectedCallback();
-    if (!this._pickerReady && typeof customElements !== "undefined") {
-      customElements.whenDefined("hui-card-picker").then(() => {
-        this._pickerReady = true;
-        this.requestUpdate();
-      });
+    void this._ensurePicker();
+  }
+
+  /**
+   * The native `hui-card-picker` is a lazy-loaded HA element that isn't registered
+   * until something (e.g. the "Add card" dialog) has pulled its chunk in. Nudge HA to
+   * load the card-editor infrastructure, then re-check so the picker can render inline
+   * instead of the plain type-in fallback.
+   */
+  private async _ensurePicker(): Promise<void> {
+    if (this._pickerReady || typeof customElements === "undefined") return;
+    try {
+      const loader = (window as unknown as {
+        loadCardHelpers?: () => Promise<{ createCardElement?: (c: Record<string, unknown>) => HTMLElement }>;
+      }).loadCardHelpers;
+      const helpers = await loader?.();
+      const el = helpers?.createCardElement?.({ type: "entities", entities: [] });
+      const ctor = el?.constructor as { getConfigElement?: () => Promise<unknown> } | undefined;
+      await ctor?.getConfigElement?.();
+    } catch {
+      /* best-effort */
+    }
+    try {
+      await customElements.whenDefined("hui-card-picker");
+      this._pickerReady = true;
+      this.requestUpdate();
+    } catch {
+      /* stays on the type-in fallback */
     }
   }
 
@@ -142,7 +165,7 @@ export class TedFullscreenCardEditor extends LitElement implements LovelaceCardE
         This card houses a single card and adds a corner icon to toggle it full-screen. Pick the card
         to house below.
       </div>
-      ${this._renderCard(cfg)}
+      ${this._renderCardHeader(cfg)}
 
       <ha-expansion-panel outlined class="options">
         <span slot="header">Full-screen options</span>
@@ -154,10 +177,17 @@ export class TedFullscreenCardEditor extends LitElement implements LovelaceCardE
           @value-changed=${this._onOptionsChanged}
         ></ha-form>
       </ha-expansion-panel>
+
+      ${cfg.card
+        ? html`<div class="child-editor">
+            ${this._cardEditor ?? html`<div class="hint">Loading editor…</div>`}
+          </div>`
+        : nothing}
     `;
   }
 
-  private _renderCard(cfg: FullscreenCardConfig): TemplateResult {
+  /** The housed-card row: a toolbar when a card is set, otherwise the picker / type-in. */
+  private _renderCardHeader(cfg: FullscreenCardConfig): TemplateResult {
     if (cfg.card) {
       return html`
         <div class="card-toolbar">
@@ -167,7 +197,6 @@ export class TedFullscreenCardEditor extends LitElement implements LovelaceCardE
             Change card
           </button>
         </div>
-        ${this._cardEditor ?? html`<div class="hint">Loading editor…</div>`}
       `;
     }
     if (this._pickerReady) {
@@ -260,6 +289,9 @@ export class TedFullscreenCardEditor extends LitElement implements LovelaceCardE
       display: block;
     }
     .options {
+      margin-top: 16px;
+    }
+    .child-editor {
       margin-top: 16px;
     }
     .card-toolbar {
