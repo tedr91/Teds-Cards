@@ -19,6 +19,8 @@ export class TedFullscreenCardEditor extends LitElement implements LovelaceCardE
   /** Passed down by HA's card editor host; forwarded to the embedded native editor. */
   @property({ attribute: false }) public lovelace?: LovelaceConfig;
   @state() private _config?: FullscreenCardConfig;
+  /** Buffered text for the type-in fallback (committed only on "Add"). */
+  @state() private _typedType = "";
 
   /** The native `hui-card-element-editor` for the housed card. */
   private _cardEditor?: AnyHtmlElement;
@@ -49,7 +51,9 @@ export class TedFullscreenCardEditor extends LitElement implements LovelaceCardE
         loadCardHelpers?: () => Promise<{ createCardElement?: (c: Record<string, unknown>) => HTMLElement }>;
       }).loadCardHelpers;
       const helpers = await loader?.();
-      const el = helpers?.createCardElement?.({ type: "entities", entities: [] });
+      // A stack card's editor (`hui-stack-card-editor`) is what imports `hui-card-picker`,
+      // so loading it registers the picker for our inline use.
+      const el = helpers?.createCardElement?.({ type: "vertical-stack", cards: [] });
       const ctor = el?.constructor as { getConfigElement?: () => Promise<unknown> } | undefined;
       await ctor?.getConfigElement?.();
     } catch {
@@ -115,10 +119,15 @@ export class TedFullscreenCardEditor extends LitElement implements LovelaceCardE
 
   private _onManualType(ev: CustomEvent): void {
     ev.stopPropagation();
-    const type = (ev.detail.value?.card_type as string | undefined)?.trim();
-    if (!type) return;
-    this._commit({ ...this._config!, card: { type } as LovelaceCardConfig });
+    this._typedType = (ev.detail.value?.card_type as string | undefined) ?? "";
   }
+
+  private _addManual = (): void => {
+    const type = this._typedType.trim();
+    if (!type) return;
+    this._typedType = "";
+    this._commit({ ...this._config!, card: { type } as LovelaceCardConfig });
+  };
 
   /** Drop the housed card so the picker reappears (swap to a different card). */
   private _changeCard = (): void => {
@@ -206,16 +215,28 @@ export class TedFullscreenCardEditor extends LitElement implements LovelaceCardE
         @config-changed=${(ev: CustomEvent) => this._onCardPicked(ev)}
       ></hui-card-picker>`;
     }
-    // Fallback until the native picker is available: type a card type to start.
+    // Fallback until the native picker is available: type a card type, then click Add.
     return html`
-      <div class="hint">Enter a card type to add (e.g. <code>custom:ted-music-card</code>):</div>
-      <ha-form
-        .hass=${this.hass}
-        .data=${{ card_type: "" }}
-        .schema=${[{ name: "card_type", selector: { text: {} } }]}
-        .computeLabel=${() => "Card type"}
-        @value-changed=${(ev: CustomEvent) => this._onManualType(ev)}
-      ></ha-form>
+      <div class="hint">Enter a card type (e.g. <code>custom:ted-music-card</code>), then click Add:</div>
+      <div class="manual-row">
+        <ha-form
+          class="manual-form"
+          .hass=${this.hass}
+          .data=${{ card_type: this._typedType }}
+          .schema=${[{ name: "card_type", selector: { text: {} } }]}
+          .computeLabel=${() => "Card type"}
+          @value-changed=${(ev: CustomEvent) => this._onManualType(ev)}
+        ></ha-form>
+        <button
+          type="button"
+          class="change-btn"
+          ?disabled=${!this._typedType.trim()}
+          @click=${this._addManual}
+        >
+          <ha-icon .icon=${"mdi:plus"}></ha-icon>
+          Add
+        </button>
+      </div>
     `;
   }
 
@@ -324,10 +345,22 @@ export class TedFullscreenCardEditor extends LitElement implements LovelaceCardE
     .change-btn:hover {
       background: color-mix(in srgb, var(--primary-color) 12%, transparent);
     }
+    .change-btn[disabled] {
+      opacity: 0.5;
+      cursor: default;
+    }
     .change-btn ha-icon {
       --mdc-icon-size: 16px;
       width: 16px;
       height: 16px;
+    }
+    .manual-row {
+      display: flex;
+      align-items: flex-end;
+      gap: 8px;
+    }
+    .manual-form {
+      flex: 1;
     }
     .hint {
       color: var(--secondary-text-color);
