@@ -940,6 +940,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.306
+
+- **Fullscreen Card — swap the housed card from the editor.** The visual editor now has a **Change card** button above the housed card's editor, so you can swap the card it holds (e.g. Calendar → Music) without touching YAML — it clears the current card and brings back the card picker.
+
 ### v1.0.305
 
 - **Fullscreen Card polish.** The expand/minimize corner icon is now smaller (about half the size), and the MDI fallback icons are `arrow-expand` / `arrow-collapse` (the Fluent icons are still used when that pack is installed).

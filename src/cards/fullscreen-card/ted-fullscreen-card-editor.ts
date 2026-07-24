@@ -97,6 +97,15 @@ export class TedFullscreenCardEditor extends LitElement implements LovelaceCardE
     this._commit({ ...this._config!, card: { type } as LovelaceCardConfig });
   }
 
+  /** Drop the housed card so the picker reappears (swap to a different card). */
+  private _changeCard = (): void => {
+    const next = { ...this._config! };
+    delete next.card;
+    this._cardEditor = undefined;
+    this._editorJson = undefined;
+    this._commit(next);
+  };
+
   private _onOptionsChanged = (ev: CustomEvent): void => {
     ev.stopPropagation();
     const value = ev.detail.value as Partial<FullscreenCardConfig>;
@@ -150,7 +159,16 @@ export class TedFullscreenCardEditor extends LitElement implements LovelaceCardE
 
   private _renderCard(cfg: FullscreenCardConfig): TemplateResult {
     if (cfg.card) {
-      return html`${this._cardEditor ?? html`<div class="hint">Loading editor…</div>`}`;
+      return html`
+        <div class="card-toolbar">
+          <span class="card-type">Housed card: <code>${cfg.card.type}</code></span>
+          <button type="button" class="change-btn" @click=${this._changeCard}>
+            <ha-icon .icon=${"mdi:swap-horizontal"}></ha-icon>
+            Change card
+          </button>
+        </div>
+        ${this._cardEditor ?? html`<div class="hint">Loading editor…</div>`}
+      `;
     }
     if (this._pickerReady) {
       return html`<hui-card-picker
@@ -243,6 +261,41 @@ export class TedFullscreenCardEditor extends LitElement implements LovelaceCardE
     }
     .options {
       margin-top: 16px;
+    }
+    .card-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .card-type {
+      color: var(--secondary-text-color);
+      font-size: 0.9em;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .change-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      flex: 0 0 auto;
+      padding: 4px 10px;
+      border: 1px solid var(--divider-color);
+      border-radius: 16px;
+      background: transparent;
+      color: var(--primary-color);
+      cursor: pointer;
+      font-size: 0.9em;
+    }
+    .change-btn:hover {
+      background: color-mix(in srgb, var(--primary-color) 12%, transparent);
+    }
+    .change-btn ha-icon {
+      --mdc-icon-size: 16px;
+      width: 16px;
+      height: 16px;
     }
     .hint {
       color: var(--secondary-text-color);
