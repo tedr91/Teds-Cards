@@ -940,6 +940,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.317
+
+- **Navbar keeps the centered buttons off the edges.** When deciding how many navbar buttons fit before collapsing the rest into the "more" chevron, the bar now reserves a half-bar of space at each end of the Center section. On tighter screens this collapses one button sooner so the centered group no longer runs flush to the bar's ends.
+
 ### v1.0.316
 
 - **Device Type profiles.** Settings → General now has a per-device **Device type** ({Nightstand, Tablet — Landscape, Tablet — Portrait, Handheld}). Picking one applies a coherent preset in a single step — the home view, navbar position/auto-hide/size/float, and the default fullscreen state — all scoped to that device. A one-tap **"Detected: … — apply"** suggestion is offered based on the screen's size and orientation, and the Welcome view's home-layout tips now set up the whole profile (not just the home view). You can still fine-tune any individual setting afterward.

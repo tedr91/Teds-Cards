@@ -956,9 +956,14 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
     // Total space the sections consume along the bar (they can't overlap without colliding).
     const occupied = natural.map((n, i) => ({ n, i })).filter((s) => s.n > 0);
     const total = occupied.reduce((sum, s, k) => sum + s.n + (k > 0 ? gap : 0), 0);
-    if (total <= cardInner) return; // everything fits
+    // Reserve a half-bar of breathing room on each side of the Center section (index 2)
+    // so the centered buttons never run flush to the bar's ends — this collapses one item
+    // into the chevron sooner. Only applied when the Center section actually has items.
+    const centerReserve = natural[2] > 0 ? this._thickness() : 0;
+    const avail = cardInner - centerReserve;
+    if (total <= avail) return; // everything fits
 
-    let reclaim = total - cardInner;
+    let reclaim = total - avail;
     // Collapse highest-priority sections first (ties by index); skip non-collapsible ones.
     const order = occupied
       .map((s) => s.i)
