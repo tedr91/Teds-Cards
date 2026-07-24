@@ -940,6 +940,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.316
+
+- **Device Type profiles.** Settings → General now has a per-device **Device type** ({Nightstand, Tablet — Landscape, Tablet — Portrait, Handheld}). Picking one applies a coherent preset in a single step — the home view, navbar position/auto-hide/size/float, and the default fullscreen state — all scoped to that device. A one-tap **"Detected: … — apply"** suggestion is offered based on the screen's size and orientation, and the Welcome view's home-layout tips now set up the whole profile (not just the home view). You can still fine-tune any individual setting afterward.
+
 ### v1.0.315
 
 - **Announcements only notify the devices they target.** A device-targeted announcement no longer shows up in the notification bell/list on *every* device — it's now scoped to the targeted device(s)/area(s) everywhere (bell, notification card, and the auto-hide navbar unread glow), matching the on-screen toast.
