@@ -940,6 +940,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.314
+
+- **Announce header tweak.** The Settings (cog) button now sits just to the right of the “Announce” title and is a little smaller, instead of floating in the top-right corner.
+
 ### v1.0.313
 
 - **Fullscreen Card — "True full screen" option.** New `true_fullscreen` toggle: on, the maximized card covers the **entire** screen (over the navbar and Home Assistant's header/sidebar) via the browser's top layer. Off (default), the overlay now also stays clear of the **HA header and sidebar**, not just the navbar.

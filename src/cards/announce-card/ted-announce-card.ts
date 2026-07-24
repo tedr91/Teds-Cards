@@ -639,8 +639,9 @@ export class TedAnnounceCard extends LitElement implements LovelaceCard {
         --mdc-icon-size: 22px;
       }
       .cog-hdr {
-        margin-left: auto;
         --ted-ib-color: var(--ted-style-muted);
+        --ted-ib-size: 26px;
+        --ted-ib-icon: 18px;
         flex: none;
       }
       .warn {
