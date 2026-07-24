@@ -940,6 +940,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.312
+
+- **Fullscreen Card — navbar stays on top.** The full-screen overlay no longer covers the Ted's navbar: the auto-hide pill / tap-surface and the expanded bar now sit above the maximized content and stay interactive (the overlay is a layer just below the navbar rather than the browser's top layer). Escape also restores a maximized card.
+
 ### v1.0.311
 
 - **Fullscreen Card editor — defaults shown.** The Empty title / Empty message fields now show their default text as muted placeholders, and the Expand / Minimize icon fields show helper text noting their defaults.

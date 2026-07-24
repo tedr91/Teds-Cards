@@ -113,14 +113,22 @@ export class TedFullscreenCard extends LitElement implements LovelaceCard {
 
   public connectedCallback(): void {
     super.connectedCallback();
+    window.addEventListener("keydown", this._onKeyDown);
     void this._loadHelpers();
   }
 
   public disconnectedCallback(): void {
     super.disconnectedCallback();
-    // Return the overlay to the closed state so a re-mount starts clean.
-    this._closeOverlay();
+    window.removeEventListener("keydown", this._onKeyDown);
   }
+
+  /** Escape restores a maximized card to normal. */
+  private _onKeyDown = (ev: KeyboardEvent): void => {
+    if (ev.key === "Escape" && this._maximized) {
+      this._maximized = false;
+      this._persist(false);
+    }
+  };
 
   protected willUpdate(changed: PropertyValues): void {
     if (changed.has("_config")) this._buildChild();
@@ -129,7 +137,6 @@ export class TedFullscreenCard extends LitElement implements LovelaceCard {
 
   protected updated(): void {
     this._resolveInitialState();
-    this._syncOverlay();
   }
 
   private async _loadHelpers(): Promise<void> {
@@ -195,40 +202,7 @@ export class TedFullscreenCard extends LitElement implements LovelaceCard {
     this._persist(this._maximized);
   };
 
-  // ── Overlay (top-layer popover) ──────────────────────────────────────────
-
-  private _overlayEl(): (HTMLElement & { showPopover?: () => void; hidePopover?: () => void }) | null {
-    return (this.renderRoot as ShadowRoot).getElementById(OVERLAY_ID) as
-      | (HTMLElement & { showPopover?: () => void; hidePopover?: () => void })
-      | null;
-  }
-
-  /** Open/close the popover to match `_maximized`. */
-  private _syncOverlay(): void {
-    const el = this._overlayEl();
-    if (!el) return;
-    const open = el.matches(":popover-open");
-    if (this._maximized && !open) {
-      try {
-        el.showPopover?.();
-      } catch {
-        /* already open / not supported */
-      }
-    } else if (!this._maximized && open) {
-      this._closeOverlay();
-    }
-  }
-
-  private _closeOverlay(): void {
-    const el = this._overlayEl();
-    if (el && el.matches(":popover-open")) {
-      try {
-        el.hidePopover?.();
-      } catch {
-        /* not open */
-      }
-    }
-  }
+  // ── Overlay sizing ───────────────────────────────────────────────────────
 
   /** Inline sizing for the overlay. Empty (CSS-driven) unless the backend is on. */
   private _overlayStyle(): Record<string, string> {
@@ -328,28 +302,19 @@ export class TedFullscreenCard extends LitElement implements LovelaceCard {
           ${!child ? this._renderEmpty() : nothing}
           ${child && !maximized && showToggle ? this._renderToggle(false) : nothing}
         </div>
-        <div
-          id=${OVERLAY_ID}
-          class="fs-overlay ${tedCardThemeClass(theme)}"
-          popover="manual"
-          style=${styleMap({ ...this._overlayStyle(), ...(surface ? surfaceStyle : {}) })}
-          @beforetoggle=${this._onOverlayToggle}
-        >
-          ${child && maximized ? html`<div class="fs-child">${child}</div>` : nothing}
-          ${child && maximized && showToggle ? this._renderToggle(true) : nothing}
-        </div>
+        ${maximized
+          ? html`<div
+              id=${OVERLAY_ID}
+              class="fs-overlay ${tedCardThemeClass(theme)}"
+              style=${styleMap({ ...this._overlayStyle(), ...(surface ? surfaceStyle : {}) })}
+            >
+              ${child ? html`<div class="fs-child">${child}</div>` : nothing}
+              ${child && showToggle ? this._renderToggle(true) : nothing}
+            </div>`
+          : nothing}
       </div>
     `;
   }
-
-  /** Keep `_maximized` in sync if the popover closes by any other means (e.g. Esc). */
-  private _onOverlayToggle = (ev: Event): void => {
-    const newState = (ev as Event & { newState?: string }).newState;
-    if (newState === "closed" && this._maximized) {
-      this._maximized = false;
-      this._persist(false);
-    }
-  };
 
   static styles = [
     tedStyleTheme,
@@ -439,11 +404,14 @@ export class TedFullscreenCard extends LitElement implements LovelaceCard {
         height: 14px;
       }
 
-      /* The full-screen overlay lives in the top layer (popover) so it escapes any
-         transformed / clipped ancestor (grid-layout). Insets default to the content
-         area (navbar reserve + safe areas); the backend path overrides via inline style. */
+      /* The full-screen overlay is a plain fixed layer (NOT the browser top layer) so
+         it sits BELOW the Ted's navbar (position:fixed, z-index:5) — the navbar pill /
+         tap-surface and the expanded bar stay above it and interactive. Insets default
+         to the content area (navbar reserve + safe areas); the backend path overrides
+         via inline style. */
       .fs-overlay {
         position: fixed;
+        z-index: 4;
         margin: 0;
         padding: 0;
         border: none;
@@ -457,12 +425,6 @@ export class TedFullscreenCard extends LitElement implements LovelaceCard {
         height: auto;
         max-width: none;
         max-height: none;
-      }
-      .fs-overlay:popover-open {
-        display: block;
-      }
-      .fs-overlay::backdrop {
-        background: rgba(0, 0, 0, 0.55);
       }
       .fs-overlay .fs-child {
         width: 100%;
