@@ -35,6 +35,13 @@ import {
   type BackgroundFieldsCtx,
 } from "../../shared/background";
 import { NIGHTMODE_KEYS, resolveBrightnessEntity } from "../../shared/night-mode";
+import {
+  applyDeviceType,
+  asDeviceType,
+  deviceTypeLabel,
+  DEVICE_TYPE_OPTIONS,
+  suggestDeviceType,
+} from "../../shared/device-types";
 import { getMediaFolder, isMediaSourceUri, pickMedia, resolveMediaSource, uploadImage, uploadToMediaFolder, listSounds, type BundledSound } from "../../shared/media";
 import { backgroundEngine } from "../background-card/background-engine";
 import {
@@ -909,6 +916,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     if (field.kind === "background") return this._renderBackground(field, "global");
     if (field.kind === "nightmode") return this._renderNightMode(field, "global");
     if (field.kind === "launcher") return this._renderLauncher("global");
+    if (field.kind === "device-type") return this._renderDeviceType("global");
     // Device-only fields (e.g. the media player) have no sensible global value.
     if (field.deviceOnly) {
       return html`
@@ -945,6 +953,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     if (field.kind === "background") return this._renderBackground(field, "device");
     if (field.kind === "nightmode") return this._renderNightMode(field, "device");
     if (field.kind === "launcher") return this._renderLauncher("device");
+    if (field.kind === "device-type") return this._renderDeviceType("device");
     const overriding = this._deviceOverriding(field.key);
     return html`
       <div class="row">
@@ -966,6 +975,55 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
           >
             <ha-icon .icon=${overriding ? "mdi:link-off" : "mdi:link-variant"}></ha-icon>
           </button>
+        </div>
+      </div>
+    `;
+  }
+
+  // --- Device type: per-device profile that cascades a preset of settings -----
+  private _renderDeviceType(scope: "global" | "device"): TemplateResult {
+    if (scope === "global") {
+      return html`
+        <div class="row">
+          <div class="row-label">
+            <span>Device type</span>
+            <span class="help">Set on the “This device” tab — each device picks its own type.</span>
+          </div>
+        </div>
+      `;
+    }
+    const current = asDeviceType(settingsStore.deviceSettings().device_type) ?? "";
+    const suggested = suggestDeviceType();
+    const showSuggest = suggested !== null && suggested !== current;
+    return html`
+      <div class="row">
+        <div class="row-label">
+          <span>Device type</span>
+          <span class="help">
+            Applies a coherent home view, navbar layout, and fullscreen default for this device.
+          </span>
+          ${showSuggest
+            ? html`<button
+                class="link-btn"
+                @click=${() => applyDeviceType(settingsStore, suggested)}
+              >
+                Detected: ${deviceTypeLabel(suggested)} — apply
+              </button>`
+            : nothing}
+        </div>
+        <div class="row-control">
+          <select
+            class="sel"
+            .value=${current}
+            @change=${(e: Event) => {
+              const v = (e.target as HTMLSelectElement).value;
+              applyDeviceType(settingsStore, asDeviceType(v));
+            }}
+          >
+            ${DEVICE_TYPE_OPTIONS.map(
+              (o) => html`<option value=${o.value} ?selected=${current === o.value}>${o.label}</option>`,
+            )}
+          </select>
         </div>
       </div>
     `;
@@ -2980,6 +3038,18 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
       .help {
         font-size: 0.78rem;
         color: var(--ted-style-muted);
+      }
+      .link-btn {
+        align-self: flex-start;
+        margin-top: 4px;
+        padding: 0;
+        border: none;
+        background: none;
+        font: inherit;
+        font-size: 0.78rem;
+        color: var(--ted-style-accent, var(--primary-color));
+        text-decoration: underline;
+        cursor: pointer;
       }
       .link-inline {
         display: inline;

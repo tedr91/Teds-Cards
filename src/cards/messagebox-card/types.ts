@@ -17,6 +17,7 @@ export type MessageBoxActionKind =
   | "perform-action"
   | "call-service"
   | "set-setting"
+  | "set-device-type"
   | "more-info"
   | "none";
 
@@ -39,6 +40,9 @@ export interface MessageBoxAction {
   scope?: "global" | "device";
   setting?: string;
   value?: string | number | boolean | null;
+  // set-device-type — applies a device-type preset (cascades navbar/home/fullscreen
+  //   device settings), then navigates if navigation_path is set.
+  device_type?: string;
   // more-info
   entity?: string;
 }

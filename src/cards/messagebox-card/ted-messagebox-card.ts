@@ -12,6 +12,7 @@ import { registerCustomCard } from "../../shared/register-card";
 import { tedCardThemeClass, tedStyleTheme } from "../../shared/theme";
 import { isVisible } from "../../shared/conditions";
 import { settingsStore } from "../../shared/settings";
+import { applyDeviceType, asDeviceType } from "../../shared/device-types";
 import {
   DISMISS_STORAGE_PREFIX,
   MESSAGEBOX_CARD_DESCRIPTION,
@@ -140,6 +141,14 @@ export class TedMessageBoxCard extends LitElement implements LovelaceCard {
           settingsStore.setHass(this.hass as never);
           settingsStore.setValue(a.scope === "global" ? "global" : "device", a.setting, a.value ?? null);
         }
+        if (a.navigation_path) {
+          window.history.pushState(null, "", a.navigation_path);
+          window.dispatchEvent(new CustomEvent("location-changed", { bubbles: true, composed: true }));
+        }
+        break;
+      case "set-device-type":
+        settingsStore.setHass(this.hass as never);
+        applyDeviceType(settingsStore, asDeviceType(a.device_type));
         if (a.navigation_path) {
           window.history.pushState(null, "", a.navigation_path);
           window.dispatchEvent(new CustomEvent("location-changed", { bubbles: true, composed: true }));

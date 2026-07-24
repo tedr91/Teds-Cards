@@ -207,7 +207,15 @@ export class TedFullscreenCard extends LitElement implements LovelaceCard {
     if (!settingsStore.hasLoaded()) return;
     const key = this._config.state_key;
     const saved = key ? this._stateMap()[key] : undefined;
-    this._maximized = typeof saved === "boolean" ? saved : this._config.start_maximized === true;
+    // Precedence: this card's saved per-key state → the device-type's fullscreen
+    // default → the card's own `start_maximized` config.
+    if (typeof saved === "boolean") {
+      this._maximized = saved;
+    } else if (typeof settingsStore.deviceSettings().fullscreen_default === "boolean") {
+      this._maximized = settingsStore.deviceSettings().fullscreen_default === true;
+    } else {
+      this._maximized = this._config.start_maximized === true;
+    }
     this._stateResolved = true;
   }
 

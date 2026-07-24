@@ -34,7 +34,8 @@ export type SettingKind =
   | "announce-messages"
   | "background"
   | "nightmode"
-  | "launcher";
+  | "launcher"
+  | "device-type";
 
 export interface SettingField {
   key: string;
@@ -157,6 +158,12 @@ export const SETTINGS_DEFAULTS: SettingsMap = {
   // Internal (no Settings field): per-device saved maximized state of Fullscreen
   // cards, keyed by each card's `state_key`. Shape: { [state_key]: boolean }.
   fullscreen_states: {},
+  // Per-device profile ({undefined|nightstand|tablet-landscape|tablet-portrait|handheld}).
+  // Picking one cascades a preset of navbar/home/fullscreen device settings.
+  device_type: null,
+  // Internal (no Settings field): default maximized state for content Fullscreen
+  // cards on this device, seeded by the device type. Whitelisted for writes.
+  fullscreen_default: false,
   background_mode: "slideshow",
   background_scroll: false,
   background_size: "fill",
@@ -295,6 +302,7 @@ export const SETTINGS_FIELDS: SettingField[] = [
   { key: "navbar_size", label: "Size", group: "Navbar", kind: "number", min: 32, max: 96, unit: "px", help: "Bar thickness in pixels (buttons/items size from this)." },
   { key: "launcher", label: "Launcher Buttons", group: "Navbar", kind: "launcher", help: "Auto-discovered buttons that navigate to this dashboard's views. Shown on navbars with backend_integration." },
   // General
+  { key: "device_type", label: "Device type", group: "General", kind: "device-type", deviceOnly: true, help: "A profile for this device that seeds a coherent home view, navbar layout, and fullscreen default in one step." },
   { key: "weather_entity", label: "Weather entity", group: "General", kind: "entity", entityDomain: "weather", help: "Default weather entity used by Ted's weather/clock cards that opt in via `backend_integration: true`." },
   {
     key: "icon_set",
