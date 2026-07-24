@@ -940,6 +940,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.311
+
+- **Fullscreen Card editor — defaults shown.** The Empty title / Empty message fields now show their default text as muted placeholders, and the Expand / Minimize icon fields show helper text noting their defaults.
+
 ### v1.0.310
 
 - **Fullscreen Card — sensible default height.** In a Sections view the card now defaults to a fixed 5-rows-high size (was auto height, which collapsed for housed cards with no intrinsic height like a Map), and a min-height floor keeps **auto height** usable too.

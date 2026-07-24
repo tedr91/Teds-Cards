@@ -210,6 +210,7 @@ export class TedFullscreenCardEditor extends LitElement implements LovelaceCardE
           .data=${optionsData}
           .schema=${this._optionsSchema()}
           .computeLabel=${this._computeLabel}
+          .computeHelper=${this._computeHelper}
           @value-changed=${this._onOptionsChanged}
         ></ha-form>
       </ha-expansion-panel>
@@ -325,8 +326,11 @@ export class TedFullscreenCardEditor extends LitElement implements LovelaceCardE
         name: "",
         column_min_width: "120px",
         schema: [
-          { name: "empty_title", selector: { text: {} } },
-          { name: "empty_message", selector: { text: {} } },
+          { name: "empty_title", selector: { text: { placeholder: "No card configured" } } },
+          {
+            name: "empty_message",
+            selector: { text: { placeholder: "Add a card to this Fullscreen card." } },
+          },
         ],
       },
     ];
@@ -364,6 +368,18 @@ export class TedFullscreenCardEditor extends LitElement implements LovelaceCardE
         return "Empty message";
       default:
         return schema.name;
+    }
+  };
+
+  /** Helper text conveying code-level defaults for fields that can't show a placeholder. */
+  private _computeHelper = (schema: { name: string }): string | undefined => {
+    switch (schema.name) {
+      case "expand_icon":
+        return "Defaults to the maximize icon.";
+      case "minimize_icon":
+        return "Defaults to the minimize icon.";
+      default:
+        return undefined;
     }
   };
 
