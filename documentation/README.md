@@ -20,6 +20,7 @@ picker, where most have a visual editor).
 | [Room](./room-card.md) | `custom:ted-room-card` | Room dashboard: status strip + sections of light/cover/button cards. |
 | [Navbar](./navbar-card.md) | `custom:ted-navbar-card` | A navigation bar pinned to a screen edge. |
 | [Tab](./tab-card.md) | `custom:ted-tab-card` | A tabbed container holding any cards, one per tab. |
+| [Fullscreen](./fullscreen-card.md) | `custom:ted-fullscreen-card` | Houses one card and toggles it between a normal card and full screen. |
 | [Spacer](./spacer-card.md) | `custom:ted-spacer-card` | A transparent, fixed-size spacer (for Room Card layouts). |
 | [Status](./status-card.md) | `custom:ted-status-card` | At-a-glance dependency / backend / browser status. |
 | [Settings](./settings-card.md) | `custom:ted-settings-card` | Global + per-device settings (needs the backend). |

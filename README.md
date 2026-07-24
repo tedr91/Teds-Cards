@@ -940,6 +940,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.303
+
+- **New — Fullscreen Card.** A new **Ted's Fullscreen Card** (`custom:ted-fullscreen-card`) that houses a single card (Music, Camera, Calendar, …) and toggles it between a normal card and **full screen** with a small circular icon in the top-right corner — *expand* to fill the screen, *minimize* to restore. The full-screen overlay clears the navbar, header and device safe-areas. Opt in to `backend_integration` (with a `state_key`) to **remember** the normal/maximized state across reloads and size the overlay more intelligently around the navbar (including sizing under an auto-hiding bar). Configured with a full visual editor. Requires Ted's Cards Backend v1.0.77+ for saved state.
+
 ### v1.0.302
 
 - **Announce refinements.** Predefined-message icons are now chosen with a **searchable icon picker** (with preview) instead of typing `mdi:…`. The **Recent** list is now **per-device** — each device only shows the announcements it sent. And the composer's **Mode** control is now **Repeat alert sound** (Off by default / On). Requires Ted's Cards Backend v1.0.76+.

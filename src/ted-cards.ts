@@ -27,6 +27,7 @@ import "./cards/timer-card/ted-timer-card";
 import "./cards/notification-card/ted-notification-card";
 import "./cards/announce-card/ted-announce-card";
 import "./cards/tab-card/ted-tab-card";
+import "./cards/fullscreen-card/ted-fullscreen-card";
 import "./cards/settings-card/ted-settings-card";
 import "./cards/background-card/ted-background-card";
 // Client-side status panel — intentionally NOT in the "Add card" picker (no

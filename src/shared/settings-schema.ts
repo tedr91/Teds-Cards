@@ -154,6 +154,9 @@ export const SETTINGS_DEFAULTS: SettingsMap = {
   night_dark_mode: true,
   night_brightness_entity: null,
   night_day_snapshot: null,
+  // Internal (no Settings field): per-device saved maximized state of Fullscreen
+  // cards, keyed by each card's `state_key`. Shape: { [state_key]: boolean }.
+  fullscreen_states: {},
   background_mode: "slideshow",
   background_scroll: false,
   background_size: "fill",
