@@ -227,6 +227,8 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
   private _editing = new Set<string>();
   /** Which calendars have their per-calendar Options disclosure open (by entity id). */
   @state() private _calOptOpen = new Set<string>();
+  /** Which predefined announcements have their options disclosure open (by message id). */
+  @state() private _annOptOpen = new Set<string>();
   /** Which launcher buttons have their options disclosure open (by view path). */
   @state() private _launcherOptOpen = new Set<string>();
   /** Embedded (controlled) Button Card editors for launcher options, by view path. */
@@ -1008,12 +1010,30 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     if (!this._isAdmin()) return;
     const id =
       typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `msg-${Date.now().toString(36)}`;
+    // Open the new row's options so it can be filled in immediately.
+    this._annOptOpen = new Set(this._annOptOpen).add(id);
     this._commitAnnounceMessages([...this._announceMessages(), { id, label: "", text: "", icon: "" }]);
   }
 
   private _removeAnnounceMessage(index: number): void {
     const list = this._announceMessages().filter((_, i) => i !== index);
     this._commitAnnounceMessages(list);
+  }
+
+  /** Reorder predefined messages (drag handle in the list). */
+  private _moveAnnounceMessage(from: number, to: number): void {
+    const list = this._announceMessages().map((m) => ({ ...m }));
+    if (from < 0 || from >= list.length || to < 0 || to >= list.length) return;
+    list.splice(to, 0, list.splice(from, 1)[0]);
+    this._commitAnnounceMessages(list);
+  }
+
+  /** Toggle a predefined message's options disclosure. */
+  private _toggleAnnOpt(id: string): void {
+    const next = new Set(this._annOptOpen);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    this._annOptOpen = next;
   }
 
   private _renderAnnounceMessages(scope: "global" | "device"): TemplateResult {
@@ -1029,57 +1049,84 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     }
     const admin = this._isAdmin();
     const messages = this._announceMessages();
+    const ids = messages.map((m) => m.id);
+    const byId = (id: string): AnnounceMessage | undefined => messages.find((m) => m.id === id);
     return html`
-      <div class="row col">
-        <div class="row-label">
-          <span>Predefined messages</span>
-          <span class="help">Ready-made announcements shown in the Announce view.</span>
+      <div class="cam-row">
+        <div class="cam-head">
+          <div class="row-label">
+            <span>Predefined messages</span>
+            <span class="help">Ready-made announcements shown in the Announce view.</span>
+          </div>
         </div>
-        <div class="ann-list">
-          ${messages.map(
-            (m, i) => html`
-              <div class="ann-row">
-                <ha-form
-                  class="ann-iconform"
-                  .hass=${this.hass}
-                  .data=${{ icon: m.icon ?? "" }}
-                  .schema=${ANNOUNCE_ICON_SCHEMA}
-                  .computeLabel=${() => ""}
-                  .disabled=${!admin}
-                  @value-changed=${(e: CustomEvent) => this._updateAnnounceIcon(i, e)}
-                ></ha-form>
-                <input
-                  class="ann-input ann-label"
-                  type="text"
-                  .value=${m.label ?? ""}
-                  placeholder="Label"
-                  ?disabled=${!admin}
-                  @change=${(e: Event) => this._updateAnnounceMessage(i, "label", e)}
-                />
-                <input
-                  class="ann-input ann-text"
-                  type="text"
-                  .value=${m.text ?? ""}
-                  placeholder="Spoken message"
-                  ?disabled=${!admin}
-                  @change=${(e: Event) => this._updateAnnounceMessage(i, "text", e)}
-                />
-                <button
-                  class="ovr"
-                  title="Remove message"
-                  ?disabled=${!admin}
-                  @click=${() => this._removeAnnounceMessage(i)}
-                >
-                  <ha-icon icon="mdi:delete"></ha-icon>
-                </button>
-              </div>
-            `,
-          )}
-          ${admin
-            ? html`<button class="ann-add" @click=${() => this._addAnnounceMessage()}>
-                <ha-icon icon="mdi:plus"></ha-icon> Add message
-              </button>`
-            : nothing}
+        ${ids.length
+          ? this._renderCameraChips(
+              ids,
+              "mdi:bullhorn",
+              (idx) => this._removeAnnounceMessage(idx),
+              (from, to) => this._moveAnnounceMessage(from, to),
+              !admin,
+              {
+                isOpen: (id) => this._annOptOpen.has(id),
+                toggle: (id) => this._toggleAnnOpt(id),
+                body: (id) => this._renderAnnounceMessageBody(id),
+                icon: (id) => byId(id)?.icon || "mdi:bullhorn",
+                name: (id) =>
+                  (byId(id)?.label || "").trim() || (byId(id)?.text || "").trim() || "Untitled message",
+              },
+            )
+          : html`<div class="help">No predefined messages yet — add one below.</div>`}
+        ${admin
+          ? html`<button class="cam-btn add-list-btn" @click=${() => this._addAnnounceMessage()}>
+              <ha-icon icon="mdi:plus"></ha-icon><span>Add a message</span>
+            </button>`
+          : nothing}
+      </div>
+    `;
+  }
+
+  /** The collapsible editor body for one predefined announcement (icon/label/text). */
+  private _renderAnnounceMessageBody(id: string): TemplateResult {
+    const messages = this._announceMessages();
+    const i = messages.findIndex((m) => m.id === id);
+    const m = messages[i];
+    if (!m) return html`${nothing}`;
+    const admin = this._isAdmin();
+    return html`
+      <div class="ann-fields">
+        <div class="ann-field">
+          <span class="ann-field-label">Icon</span>
+          <ha-form
+            class="ann-iconform"
+            .hass=${this.hass}
+            .data=${{ icon: m.icon ?? "" }}
+            .schema=${ANNOUNCE_ICON_SCHEMA}
+            .computeLabel=${() => ""}
+            .disabled=${!admin}
+            @value-changed=${(e: CustomEvent) => this._updateAnnounceIcon(i, e)}
+          ></ha-form>
+        </div>
+        <div class="ann-field">
+          <span class="ann-field-label">Label</span>
+          <input
+            class="ann-input"
+            type="text"
+            .value=${m.label ?? ""}
+            placeholder="Short label (e.g. Dinner)"
+            ?disabled=${!admin}
+            @change=${(e: Event) => this._updateAnnounceMessage(i, "label", e)}
+          />
+        </div>
+        <div class="ann-field">
+          <span class="ann-field-label">Spoken message</span>
+          <textarea
+            class="ann-input ann-textarea"
+            rows="2"
+            placeholder="What gets announced…"
+            ?disabled=${!admin}
+            @change=${(e: Event) => this._updateAnnounceMessage(i, "text", e)}
+            .value=${m.text ?? ""}
+          ></textarea>
         </div>
       </div>
     `;
@@ -3296,17 +3343,32 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
         flex-direction: column;
         align-items: stretch;
       }
-      .ann-list {
+      .ann-fields {
         display: flex;
         flex-direction: column;
-        gap: 8px;
-        width: 100%;
-        margin-top: 6px;
+        gap: 10px;
       }
-      .ann-row {
+      .ann-field {
         display: flex;
-        align-items: center;
-        gap: 8px;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .ann-field-label {
+        font-size: 0.8rem;
+        color: var(--ted-style-muted);
+      }
+      .ann-field .ann-input {
+        width: 100%;
+      }
+      .ann-field .ann-iconform {
+        flex: none;
+        width: 100%;
+        max-width: 340px;
+      }
+      .ann-textarea {
+        resize: vertical;
+        min-height: 44px;
+        line-height: 1.35;
       }
       .ann-input {
         box-sizing: border-box;
@@ -3329,39 +3391,10 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
         opacity: 0.5;
       }
       .ann-iconform {
-        flex: 0 0 190px;
-        width: 190px;
         --ha-form-padding: 0;
       }
       .ann-iconform ha-icon-picker {
         display: block;
-      }
-      .ann-label {
-        flex: 0 0 160px;
-        width: 160px;
-      }
-      .ann-text {
-        flex: 1 1 auto;
-        min-width: 0;
-      }
-      .ann-add {
-        align-self: flex-start;
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        padding: 6px 12px;
-        border-radius: 8px;
-        border: 1px dashed color-mix(in srgb, var(--ted-style-divider) 80%, transparent);
-        background: none;
-        color: var(--ted-style-text);
-        cursor: pointer;
-      }
-      .ann-add:hover {
-        border-color: var(--ted-style-accent, var(--primary-color));
-        color: var(--ted-style-accent, var(--primary-color));
-      }
-      .ann-add ha-icon {
-        --mdc-icon-size: 18px;
       }
       .add-list-btn {
         align-self: flex-start;

@@ -940,6 +940,15 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.315
+
+- **Announcements only notify the devices they target.** A device-targeted announcement no longer shows up in the notification bell/list on *every* device — it's now scoped to the targeted device(s)/area(s) everywhere (bell, notification card, and the auto-hide navbar unread glow), matching the on-screen toast.
+- **Predefined-messages editor matches the Calendars list.** Settings → Announce → Predefined messages is now a tidy, **reorderable** list: each message is a single row (icon + label) with a drag handle, a chevron to expand its **icon / label / spoken message** options, and a delete button — plus an "Add a message" button.
+
+### v1.0.314
+
+- **Announce header tweak.** The Settings (cog) button now sits just to the right of the "Announce" title and is a little smaller, instead of floating in the top-right corner.
+
 ### v1.0.313
 
 - **Fullscreen Card — "True full screen" option.** New `true_fullscreen` toggle: on, the maximized card covers the **entire** screen (over the navbar and Home Assistant's header/sidebar) via the browser's top layer. Off (default), the overlay now also stays clear of the **HA header and sidebar**, not just the navbar.
