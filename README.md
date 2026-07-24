@@ -940,6 +940,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.308
+
+- **Fullscreen Card editor — picking a card fixed.** The native **card picker** now loads reliably for the empty / Change-card state, and the type-in fallback no longer applies your text after the first keystroke — you type the full card type (e.g. `custom:ted-music-card`) and click **Add**.
+
 ### v1.0.307
 
 - **Fullscreen Card editor tidy-up.** The **Full-screen options** now sit directly below the housed card's row (above the card's own editor), and choosing / changing the housed card is more likely to show the native **card picker** instead of a plain type-in box (the picker is lazy-loaded by Home Assistant, so it's nudged to load).
