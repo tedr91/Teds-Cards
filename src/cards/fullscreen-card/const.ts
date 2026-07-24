@@ -7,10 +7,10 @@ export const FULLSCREEN_CARD_DESCRIPTION =
   "A container that houses a single card (Music, Camera, Calendar, …) and toggles between a normal card and a full-screen overlay via a corner icon.";
 
 /** Expand ("maximize") corner icon — Fluent preferred, MDI fallback. */
-export const EXPAND_ICON = { fluent: "arrow-maximize-20-regular", mdi: "fullscreen" };
+export const EXPAND_ICON = { fluent: "arrow-maximize-20-regular", mdi: "arrow-expand" };
 
 /** Minimize ("restore") corner icon — Fluent preferred, MDI fallback. */
-export const MINIMIZE_ICON = { fluent: "arrow-minimize-20-regular", mdi: "fullscreen-exit" };
+export const MINIMIZE_ICON = { fluent: "arrow-minimize-20-regular", mdi: "arrow-collapse" };
 
 /**
  * Per-device settings key holding the saved normal/maximized state of every

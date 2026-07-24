@@ -254,11 +254,11 @@ export class TedFullscreenCard extends LitElement implements LovelaceCard {
   // ── Render ───────────────────────────────────────────────────────────────
 
   private _expandIcon(): string {
-    return this._config?.expand_icon ?? resolveIcon(EXPAND_ICON) ?? "mdi:fullscreen";
+    return this._config?.expand_icon ?? resolveIcon(EXPAND_ICON) ?? "mdi:arrow-expand";
   }
 
   private _minimizeIcon(): string {
-    return this._config?.minimize_icon ?? resolveIcon(MINIMIZE_ICON) ?? "mdi:fullscreen-exit";
+    return this._config?.minimize_icon ?? resolveIcon(MINIMIZE_ICON) ?? "mdi:arrow-collapse";
   }
 
   /** The corner toggle button. `maximized` selects the icon + label. */
@@ -355,8 +355,8 @@ export class TedFullscreenCard extends LitElement implements LovelaceCard {
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        width: 34px;
-        height: 34px;
+        width: 18px;
+        height: 18px;
         padding: 0;
         border: none;
         border-radius: 50%;
@@ -375,9 +375,9 @@ export class TedFullscreenCard extends LitElement implements LovelaceCard {
         transform: scale(0.94);
       }
       .fs-toggle ha-icon {
-        --mdc-icon-size: 20px;
-        width: 20px;
-        height: 20px;
+        --mdc-icon-size: 14px;
+        width: 14px;
+        height: 14px;
       }
 
       /* The full-screen overlay lives in the top layer (popover) so it escapes any

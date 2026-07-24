@@ -940,6 +940,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.305
+
+- **Fullscreen Card polish.** The expand/minimize corner icon is now smaller (about half the size), and the MDI fallback icons are `arrow-expand` / `arrow-collapse` (the Fluent icons are still used when that pack is installed).
+
 ### v1.0.304
 
 - **Fullscreen Card editor is now card-first.** The Ted's Fullscreen Card editor opens straight to the **card picker** (like the stack cards) so you pick the card to house first, with the card's own options tucked into a collapsible **Full-screen options** panel below. The `backend_integration` and `state_key` options are now **YAML-only** (matching the other cards).
