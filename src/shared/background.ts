@@ -15,7 +15,7 @@ import type { SettingsValue } from "./settings-schema";
 export type BackgroundMode = "solid" | "image" | "slideshow" | "theme";
 export type BackgroundSize = "original" | "fill" | "fit";
 export type BackgroundRepeat = "tile" | "no-repeat";
-export type BackgroundAlbum = "builtin" | "folder" | "bing_pod";
+export type BackgroundAlbum = "builtin" | "folder" | "bing_pod" | "favorites";
 export type BackgroundTypePref = "match" | "all" | "light" | "dark";
 export type BackgroundAlign =
   | "top-left"
@@ -87,6 +87,7 @@ export const BACKGROUND_ALBUM_OPTIONS: { value: BackgroundAlbum; label: string }
   { value: "builtin", label: "Built-in" },
   { value: "folder", label: "Select media folder" },
   { value: "bing_pod", label: "Bing Photo of the Day" },
+  { value: "favorites", label: "Favorites" },
 ];
 
 export const BACKGROUND_TYPE_PREF_OPTIONS: { value: BackgroundTypePref; label: string }[] = [
@@ -493,9 +494,10 @@ function bgSlideshow(ctx: BackgroundFieldsCtx): TemplateResult {
   const folder = String(ctx.get("background_folder") ?? ctx.mediaFolder ?? "");
   const cycle = Number(ctx.get("background_cycle_minutes") ?? 30);
   const bingCache = Number(ctx.get("background_bing_cache_size") ?? 100);
-  // "Bing Photo of the Day" needs the backend (its feed isn't CORS-accessible).
+  // "Bing Photo of the Day" and "Favorites" need the backend (Bing's feed isn't
+  // CORS-accessible; Favorites are served + listed by the integration).
   const albumOptions = BACKGROUND_ALBUM_OPTIONS.filter(
-    (o) => o.value !== "bing_pod" || ctx.backendAvailable,
+    (o) => (o.value !== "bing_pod" && o.value !== "favorites") || ctx.backendAvailable,
   );
   return html`
     ${bgField("Album source", bgSelect(ctx, "background_album", albumOptions))}

@@ -508,6 +508,17 @@ class BackgroundEngine {
       } catch {
         candidates = [];
       }
+    } else if (s.background_album === "favorites") {
+      // Favorited photos: served + listed by the backend (isolated from Built-in).
+      if (!this.backendInt || !this.hass?.callWS) return [];
+      try {
+        const r = await this.hass.callWS<{ photos?: string[] }>({
+          type: "teds_cards_backend/list_favorites",
+        });
+        candidates = (r?.photos ?? []).filter((u): u is string => typeof u === "string");
+      } catch {
+        candidates = [];
+      }
     } else {
       // Built-ins: served locally by the backend when integrated, else from the CDN
       // (so card-only users without the integration still get the bundled wallpapers).

@@ -29,6 +29,7 @@ export type SettingKind =
   | "text"
   | "entity"
   | "media"
+  | "folder"
   | "select"
   | "entity-list"
   | "announce-messages"
@@ -73,7 +74,8 @@ export const SETTINGS_GROUPS = [
   "Announce",
   "Calendars",
   "Cameras",
-  "Thermostats"
+  "Thermostats",
+  "Photos"
 ] as const;
 
 /** Per-category tab icons — a Fluent icon (used when the `fluent` iconset is installed)
@@ -88,6 +90,7 @@ export const SETTINGS_GROUP_ICONS: Record<string, { fluent: string; mdi: string 
   Cameras: { fluent: "fluent:video-24-regular", mdi: "mdi:cctv" },
   Thermostats: { fluent: "fluent:temperature-24-regular", mdi: "mdi:thermometer" },
   Calendars: { fluent: "fluent:calendar-ltr-24-regular", mdi: "mdi:calendar" },
+  Photos: { fluent: "fluent:image-24-regular", mdi: "mdi:image-multiple" },
 };
 
 /** Default values — must match the backend `SETTINGS_DEFAULTS`. */
@@ -182,6 +185,13 @@ export const SETTINGS_DEFAULTS: SettingsMap = {
   background_enhance_readability: true,
   background_readability_strength: 45,
   background_brightness: 75,
+  // Photos (Ted's Photo Viewer card + Photos view)
+  photos_folder: null,
+  photos_auto_open_last: true,
+  // Internal (no Settings field): per-device ref of the last opened photo.
+  photos_last_viewed: null,
+  photos_slideshow_transition: "crossfade",
+  photos_slideshow_crossfade_seconds: 2,
   dashboard_root: "ted-dashboard",
   home_dashboard: "[root]/home-welcome",
   alarms_dashboard: "[root]/alarms-timers?tab=alarms",
@@ -258,6 +268,21 @@ export const SETTINGS_FIELDS: SettingField[] = [
     help: "How this device arranges its thermostats on the Climate view.",
   },
   { key: "climate_list", label: "Thermostats", group: "Thermostats", kind: "entity-list", entityDomain: "climate", help: "Global lists the available thermostats; each device curates its own subset." },
+  // Photos
+  { key: "photos_folder", label: "Album folder", group: "Photos", kind: "folder", help: "Media folder of photos shown on the Photos view. Ted's Photo Viewer card reads this when backend_integration is on." },
+  { key: "photos_auto_open_last", label: "Re-open last photo", group: "Photos", kind: "boolean", help: "When the Photos view loads, re-open the photo this device last viewed (otherwise it opens empty)." },
+  {
+    key: "photos_slideshow_transition",
+    label: "Slideshow transition",
+    group: "Photos",
+    kind: "select",
+    options: [
+      { value: "crossfade", label: "Crossfade" },
+      { value: "none", label: "None" },
+    ],
+    help: "How photos change during an auto-slideshow.",
+  },
+  { key: "photos_slideshow_crossfade_seconds", label: "Crossfade duration", group: "Photos", kind: "number", min: 0, max: 10, step: 0.5, unit: "s", help: "Length of the crossfade between photos." },
   // Calendars
   { key: "calendar_name", label: "Name", group: "Calendars", kind: "text", help: "Title shown at the top of the calendar. Leave empty for no title." },
   {

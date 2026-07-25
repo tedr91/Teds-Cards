@@ -30,6 +30,7 @@ import "./cards/tab-card/ted-tab-card";
 import "./cards/fullscreen-card/ted-fullscreen-card";
 import "./cards/settings-card/ted-settings-card";
 import "./cards/background-card/ted-background-card";
+import "./cards/photo-viewer-card/ted-photo-viewer-card";
 // Client-side status panel — intentionally NOT in the "Add card" picker (no
 // registerCustomCard call); used by reference in YAML (custom:ted-status-card).
 import "./cards/status-card/ted-status-card";

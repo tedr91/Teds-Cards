@@ -740,6 +740,27 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
       }
       case "media":
         return this._renderSoundPicker(field, value, disabled, onChange);
+      case "folder": {
+        const cur = typeof value === "string" ? value : "";
+        return html`<div class="rootpath">
+          <input
+            class="txt"
+            type="text"
+            .value=${cur}
+            ?disabled=${disabled}
+            placeholder="Media folder…"
+            @change=${(e: Event) =>
+              onChange((e.target as HTMLInputElement).value.trim() || null)}
+          />
+          <button
+            class="link-btn"
+            ?disabled=${disabled}
+            @click=${() => void this._pickFolderInto(onChange)}
+          >
+            Choose…
+          </button>
+        </div>`;
+      }
       case "text":
       default:
         return html`<input
@@ -1843,6 +1864,13 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     if (!this.hass) return;
     const uri = await pickMedia(this, this.hass, { accept: ["image/*"], startFolder: this._mediaFolder ?? undefined });
     if (uri && uri.includes("/")) this._setBg("background_folder", scope, uri.replace(/\/[^/]*$/, ""));
+  }
+
+  /** Generic media-folder picker for a `folder` setting field. */
+  private async _pickFolderInto(onChange: (v: SettingsValue) => void): Promise<void> {
+    if (!this.hass) return;
+    const uri = await pickMedia(this, this.hass, { accept: ["image/*"], startFolder: this._mediaFolder ?? undefined });
+    if (uri && uri.includes("/")) onChange(uri.replace(/\/[^/]*$/, ""));
   }
 
   /** Clear the HA-wide Bing "Photo of the Day" cache (admin only). */
