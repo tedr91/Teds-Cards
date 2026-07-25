@@ -527,7 +527,15 @@ export class TedPhotoViewerCard extends LitElement implements LovelaceCard {
       @click=${() => this._toggleControls()}
     >
       ${this._fadeUrl
-        ? html`<img class="pv-img base" style="object-fit:${fit}" src=${this._fadeUrl} alt="" />`
+        ? keyed(
+            this._fadeUrl,
+            html`<img
+              class="pv-img base"
+              style="object-fit:${fit};--pv-fade:${fadeSec}s"
+              src=${this._fadeUrl}
+              alt=""
+            />`,
+          )
         : nothing}
       ${this._displayUrl
         ? keyed(
@@ -682,6 +690,15 @@ export class TedPhotoViewerCard extends LitElement implements LovelaceCard {
       }
       .pv-img.base {
         z-index: 0;
+        animation: pv-fade-out var(--pv-fade, 2s) ease both;
+      }
+      @keyframes pv-fade-out {
+        from {
+          opacity: 1;
+        }
+        to {
+          opacity: 0;
+        }
       }
       .pv-img.top {
         z-index: 1;

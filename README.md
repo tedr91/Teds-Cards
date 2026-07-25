@@ -941,6 +941,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.326
+
+- **Photo Viewer card: smoother crossfade.** The outgoing photo now fades out over the same duration as the incoming one fades in, so when the next photo is smaller its uncovered edges dissolve smoothly instead of snapping off at the end of the transition.
+
 ### v1.0.325
 
 - **Photo Viewer card: crossfade actually works now; controls moved to bottom-right.** The slideshow/navigation crossfade was popping instead of fading (a render-timing bug); it now fades smoothly via a keyframe animation. The on-image controls (favorite / set-as-background / slideshow / close) moved to the **bottom-right** so they don't collide with a Fullscreen card's expand/collapse toggle.
