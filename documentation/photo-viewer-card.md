@@ -106,6 +106,10 @@ In **album** mode (2+ photos) you also get:
   with a **crossfade** (or instantly), per **Settings → Photos → Slideshow transition**
   and **Crossfade duration**.
 
+**Touch gestures** (on a touchscreen): swipe **right** for the next photo and **left**
+for the previous (album mode), and swipe **up** / **down** to switch the image fit
+between **Fill** and **Contain**.
+
 ---
 
 ## Settings (Settings → Photos)

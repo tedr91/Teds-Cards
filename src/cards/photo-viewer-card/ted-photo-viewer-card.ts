@@ -64,6 +64,8 @@ const SLIDE_DURATIONS: { label: string; sec: number }[] = [
   { label: "30 minutes", sec: 1800 },
 ];
 const DEFAULT_SLIDE_SEC = 300;
+/** Minimum pointer travel (px) to count as a swipe rather than a tap. */
+const SWIPE_MIN_PX = 45;
 
 @customElement(PHOTO_VIEWER_CARD_TYPE)
 export class TedPhotoViewerCard extends LitElement implements LovelaceCard {
@@ -92,6 +94,7 @@ export class TedPhotoViewerCard extends LitElement implements LovelaceCard {
   @state() private _fading = false;
   @state() private _slideshow = false;
   @state() private _durationPickerOpen = false;
+  @state() private _fitOverride: "cover" | "contain" | null = null;
 
   private _albumSig: string | null = null;
   private _albumLoaded = false;
@@ -103,6 +106,8 @@ export class TedPhotoViewerCard extends LitElement implements LovelaceCard {
   private _slideDurationSec = DEFAULT_SLIDE_SEC;
   private _slideTimer?: number;
   private _urlCache = new Map<string, string>();
+  private _swipeStart: { x: number; y: number } | null = null;
+  private _suppressClick = false;
 
   public constructor() {
     super();
@@ -138,6 +143,7 @@ export class TedPhotoViewerCard extends LitElement implements LovelaceCard {
     this._displayUrl = null;
     this._fadeUrl = null;
     this._fading = false;
+    this._fitOverride = null;
   }
 
   public getCardSize(): number {
@@ -348,6 +354,55 @@ export class TedPhotoViewerCard extends LitElement implements LovelaceCard {
     this._durationPickerOpen = false;
   }
 
+  /** Effective image fit: a runtime swipe override wins over the config. */
+  private _effectiveFit(): "cover" | "contain" {
+    if (this._fitOverride) return this._fitOverride;
+    return this._config?.fit === "cover" ? "cover" : "contain";
+  }
+
+  // --- Swipe gestures (native pointer events; HA has no gesture API) ----------
+
+  private _onStageDown = (e: PointerEvent): void => {
+    if (!e.isPrimary) {
+      this._swipeStart = null;
+      return;
+    }
+    this._swipeStart = { x: e.clientX, y: e.clientY };
+  };
+
+  private _onStageUp = (e: PointerEvent): void => {
+    const s = this._swipeStart;
+    this._swipeStart = null;
+    if (!s) return;
+    const dx = e.clientX - s.x;
+    const dy = e.clientY - s.y;
+    const adx = Math.abs(dx);
+    const ady = Math.abs(dy);
+    if (Math.max(adx, ady) < SWIPE_MIN_PX) return;
+    // A real swipe happened: suppress the tap-to-toggle click that follows.
+    this._suppressClick = true;
+    window.setTimeout(() => {
+      this._suppressClick = false;
+    }, 350);
+    if (adx > ady) {
+      // Horizontal: swipe right -> next, swipe left -> previous (album only).
+      if (this._config?.source === "album" && this._albumRefs.length > 1) {
+        this._advance(dx > 0 ? 1 : -1, true);
+      }
+    } else {
+      // Vertical: swipe up -> Fill (cover), swipe down -> Contain.
+      this._fitOverride = dy < 0 ? "cover" : "contain";
+    }
+  };
+
+  private _onStageClick = (): void => {
+    if (this._suppressClick) {
+      this._suppressClick = false;
+      return;
+    }
+    this._toggleControls();
+  };
+
   // --- Album navigation + slideshow -----------------------------------------
 
   private _transitionMode(): string {
@@ -510,7 +565,7 @@ export class TedPhotoViewerCard extends LitElement implements LovelaceCard {
 
   private _renderPhoto(): TemplateResult {
     const cfg = this._config;
-    const fit = cfg?.fit === "cover" ? "cover" : "contain";
+    const fit = this._effectiveFit();
     const album = cfg?.source === "album";
     const canNav = album && this._albumRefs.length > 1;
     const fadeSec = this._crossfadeSec();
@@ -526,7 +581,9 @@ export class TedPhotoViewerCard extends LitElement implements LovelaceCard {
     return html`<div
       class="pv-stage${this._controlsShown ? " shown" : ""}"
       style=${styleMap(stageStyle)}
-      @click=${() => this._toggleControls()}
+      @pointerdown=${this._onStageDown}
+      @pointerup=${this._onStageUp}
+      @click=${this._onStageClick}
     >
       ${this._fadeUrl
         ? keyed(
@@ -679,6 +736,7 @@ export class TedPhotoViewerCard extends LitElement implements LovelaceCard {
         align-items: center;
         justify-content: center;
         background: #000;
+        touch-action: none;
       }
       .pv-img {
         position: absolute;

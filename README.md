@@ -941,6 +941,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.330
+
+- **Photo Viewer card: touch swipe gestures.** On a touchscreen, swipe **right/left** to go to the next/previous photo (album mode), and swipe **up/down** to switch the image fit between **Fill** and **Contain**.
+
 ### v1.0.329
 
 - **Photo Viewer card: removed the Close button + Escape handling.** The on-image **X** close button is gone, and the card no longer intercepts the **Escape** key — so Escape now cleanly exits a wrapping Fullscreen card instead of doing both at once. The prev/next arrow-pills are also slightly slimmer and fainter at rest.
