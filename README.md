@@ -942,6 +942,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.334
+
+- **Assist-Response card restyled to the MessageBox look.** The Assist-Response card now renders a frosted, translucent box with a colored left accent stripe and a leading icon + title + message (matching the MessageBox card), for both the `ted-style` and `ha` themes. New `icon`, `accent`, and `shadow` options; `transparency`/`blur` now behave like the MessageBox.
+
 ### v1.0.333
 
 - **New Assist-Response card + view.** A new `custom:ted-assist-response-card` displays a title + message (and optional background image) pushed by a voice intent or automation — the visual counterpart to a spoken Assist answer (like View Assist's "Info" view). Call the backend's `teds_cards_backend.assist_response` service with the answer text targeting areas/devices; the targeted screens switch to the Assist-Response view and show it, filtered per device (device/area/house-wide) and restored from `sensor.teds_assist_responses` after a reload. The content stays until it's replaced. The `info_dashboard` navigation setting was renamed to `assist_response_dashboard`. Requires the Ted's Cards Backend integration.
