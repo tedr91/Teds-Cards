@@ -654,6 +654,29 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
 
   // --- rendering ------------------------------------------------------------
 
+  /** Options for a root-relative dashboard-path picker: the dashboard's own (non-subview)
+   *  views, plus any known tabbed destinations (e.g. `alarms-timers?tab=alarms`) derived
+   *  from the built-in defaults so those show as friendly entries too. */
+  private _rootRelativeOptions(): { value: string; label: string }[] {
+    const views = readLovelaceViews().filter((v) => !v.subview);
+    const titleByPath = new Map(views.map((v) => [v.path, v.title || v.path]));
+    const opts = views.map((v) => ({ value: v.path, label: v.title || v.path }));
+    const seen = new Set(opts.map((o) => o.value));
+    for (const [key, def] of Object.entries(SETTINGS_DEFAULTS)) {
+      if (key === "dashboard_root" || !key.endsWith("_dashboard")) continue;
+      if (typeof def !== "string") continue;
+      const seg = def.replace(/^\[root\]\/?/, "");
+      const m = seg.match(/^([^?#]+)\?tab=([^&#]+)$/);
+      if (!m || seen.has(seg)) continue;
+      const [, vpath, tab] = m;
+      const title = titleByPath.get(vpath) ?? vpath;
+      const tabLabel = tab.charAt(0).toUpperCase() + tab.slice(1);
+      opts.push({ value: seg, label: `${title} — ${tabLabel} tab` });
+      seen.add(seg);
+    }
+    return opts;
+  }
+
   private _renderControl(
     field: SettingField,
     value: SettingsValue,
@@ -661,6 +684,8 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     onChange: (v: SettingsValue) => void,
   ): TemplateResult {
     // Root-relative dashboard path: fixed `<root>/` prefix, stored as `[root]/<seg>`.
+    // Rendered as a searchable dropdown of the dashboard's own views (plus known tabbed
+    // destinations), while still accepting a typed value for custom paths / query strings.
     if (field.rootRelative) {
       const root = String(settingsStore.effective().dashboard_root ?? "");
       const raw = typeof value === "string" ? value : "";
@@ -669,18 +694,29 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
         : raw.startsWith("[root]")
           ? raw.slice(6)
           : raw;
+      const selector = {
+        select: {
+          mode: "dropdown",
+          custom_value: true,
+          sort: false,
+          options: this._rootRelativeOptions(),
+        },
+      };
       return html`<div class="rootpath">
         <span class="rootprefix" title="Dashboard root">${root}/</span>
-        <input
-          class="txt"
-          type="text"
+        <ha-selector
+          class="rootsel"
+          .hass=${this.hass}
+          .selector=${selector}
           .value=${rel}
-          ?disabled=${disabled}
-          @change=${(e: Event) => {
-            const seg = (e.target as HTMLInputElement).value.trim().replace(/^\/+/, "");
+          .disabled=${disabled}
+          @value-changed=${(e: CustomEvent) => {
+            const seg = String(e.detail?.value ?? "")
+              .trim()
+              .replace(/^\/+/, "");
             onChange(`[root]/${seg}`);
           }}
-        />
+        ></ha-selector>
       </div>`;
     }
     switch (field.kind) {
@@ -3223,6 +3259,10 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
         max-width: none;
         min-width: 0;
         flex: 1 1 auto;
+      }
+      .rootpath ha-selector.rootsel {
+        flex: 1 1 auto;
+        min-width: 12ch;
       }
       .pct {
         display: inline-flex;

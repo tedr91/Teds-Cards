@@ -942,6 +942,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.337
+
+- **Navigation settings: pick a view instead of typing a path.** In Settings → Navigation, the dashboard-view fields (Home, Alarms, Timers, Weather, Calendar, etc.) are now a searchable dropdown of your dashboard's actual views (shown by title), including the known tabbed destinations (e.g. "Alarms & Timers — Alarms tab"). You can still type a custom path with a query string, and the values stay root-portable.
+
 ### v1.0.336
 
 - **Assist-Response inline images + layout polish.** A response's `image` now renders **inline** (View Assist "infopic" style) instead of as a full backdrop, and the card auto-picks the arrangement from the device's dimensions — **image beside the text in landscape, above it in portrait**. The `background_image` option remains the static backdrop. Also refined the card layout: the icon keeps its own top-aligned column, the content is top-aligned, and the title is now UPPERCASE and never smaller than the message.
