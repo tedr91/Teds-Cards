@@ -1,5 +1,6 @@
 import { LitElement, css, html, nothing, type TemplateResult } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
+import { keyed } from "lit/directives/keyed.js";
 import { styleMap } from "lit/directives/style-map.js";
 import {
   type HomeAssistant,
@@ -89,7 +90,6 @@ export class TedPhotoViewerCard extends LitElement implements LovelaceCard {
   @state() private _controlsShown = false;
   @state() private _fadeUrl: string | null = null;
   @state() private _fading = false;
-  @state() private _topShown = true;
   @state() private _slideshow = false;
   @state() private _durationPickerOpen = false;
 
@@ -310,12 +310,6 @@ export class TedPhotoViewerCard extends LitElement implements LovelaceCard {
       this._fadeUrl = prevUrl;
       this._displayUrl = url;
       this._fading = true;
-      this._topShown = false;
-      this.requestUpdate();
-      await this.updateComplete;
-      requestAnimationFrame(() => {
-        this._topShown = true;
-      });
       const fadeGen = ++this._fadeGen;
       window.setTimeout(
         () => {
@@ -323,13 +317,12 @@ export class TedPhotoViewerCard extends LitElement implements LovelaceCard {
           this._fadeUrl = null;
           this._fading = false;
         },
-        this._crossfadeSec() * 1000 + 80,
+        this._crossfadeSec() * 1000 + 120,
       );
     } else {
       this._displayUrl = url;
       this._fadeUrl = null;
       this._fading = false;
-      this._topShown = true;
     }
     if (this._backendIntegration()) settingsStore.setValue("device", "photos_last_viewed", ref);
   }
@@ -528,9 +521,7 @@ export class TedPhotoViewerCard extends LitElement implements LovelaceCard {
     const album = this._config?.source === "album";
     const canNav = album && this._albumRefs.length > 1;
     const fadeSec = this._crossfadeSec();
-    const topClass = `pv-img top${this._fading ? " fading" : ""}${
-      this._fading && this._topShown ? " shown" : ""
-    }`;
+    const topClass = `pv-img top${this._fading ? " xf" : ""}`;
     return html`<div
       class="pv-stage${this._controlsShown ? " shown" : ""}"
       @click=${() => this._toggleControls()}
@@ -539,12 +530,15 @@ export class TedPhotoViewerCard extends LitElement implements LovelaceCard {
         ? html`<img class="pv-img base" style="object-fit:${fit}" src=${this._fadeUrl} alt="" />`
         : nothing}
       ${this._displayUrl
-        ? html`<img
-            class=${topClass}
-            style="object-fit:${fit};--pv-fade:${fadeSec}s"
-            src=${this._displayUrl}
-            alt=""
-          />`
+        ? keyed(
+            this._displayUrl,
+            html`<img
+              class=${topClass}
+              style="object-fit:${fit};--pv-fade:${fadeSec}s"
+              src=${this._displayUrl}
+              alt=""
+            />`,
+          )
         : html`<div class="pv-loading"><ha-icon icon="mdi:loading" class="spin"></ha-icon></div>`}
       ${canNav
         ? html`<button
@@ -693,12 +687,16 @@ export class TedPhotoViewerCard extends LitElement implements LovelaceCard {
         z-index: 1;
         opacity: 1;
       }
-      .pv-img.top.fading {
-        opacity: 0;
-        transition: opacity var(--pv-fade, 2s) ease;
+      .pv-img.top.xf {
+        animation: pv-fade-in var(--pv-fade, 2s) ease both;
       }
-      .pv-img.top.fading.shown {
-        opacity: 1;
+      @keyframes pv-fade-in {
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
       }
       .pv-pill {
         position: absolute;

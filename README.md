@@ -941,6 +941,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.325
+
+- **Photo Viewer card: crossfade actually works now; controls moved to bottom-right.** The slideshow/navigation crossfade was popping instead of fading (a render-timing bug); it now fades smoothly via a keyframe animation. The on-image controls (favorite / set-as-background / slideshow / close) moved to the **bottom-right** so they don't collide with a Fullscreen card's expand/collapse toggle.
+
 ### v1.0.324
 
 - **Photo Viewer card: album navigation + slideshow (Phase 2).** In folder-album mode you can now page through photos with the faint **prev/next arrow-pills** or the **←/→ keys** (wrapping around the ends), and run an **auto-slideshow** — the play button opens a duration popup (10s / 30s / 1m / 5m / 15m / 30m / custom). Photos change with a **crossfade** (or instantly), controlled by **Settings → Photos → Slideshow transition** and **Crossfade duration**.
