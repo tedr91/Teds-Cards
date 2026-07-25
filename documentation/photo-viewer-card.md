@@ -3,9 +3,10 @@
 `type: custom:ted-photo-viewer-card`
 
 Displays a **single photo** or a **folder album** of photos. When a photo is open you
-can **Favorite** it, **Set it as your dashboard wallpaper**, and **Close** it. It's the
-card behind the content-only **Photos view**, but it also works as a normal 12×5 tile
-embedded anywhere.
+can **Favorite** it, **Set it as your dashboard wallpaper**, and **Close** it. In album
+mode you can page through photos (arrow-pills or the ←/→ keys) and run an auto-slideshow
+with a crossfade. It's the card behind the content-only **Photos view**, but it also
+works as a normal 12×5 tile embedded anywhere.
 
 By default a photo opens contained (letterboxed) on a black stage; tap the image (or
 hover) to reveal the action buttons in the top-right corner.
@@ -96,6 +97,15 @@ specific album photo (matched by filename or position), e.g.
 - **Set as background** — stores the photo on the backend (deduped), switches this
   device's wallpaper to **Single Image**, and selects it.
 - **Close** — returns the viewer to its empty state (your last-viewed photo is kept).
+
+In **album** mode (2+ photos) you also get:
+
+- **Previous / Next** — the faint arrow-pills on each edge, or the **←/→** keys, page
+  through the album (wrapping around the ends).
+- **Slideshow** — the play button opens a duration popup (10s / 30s / 1m / 5m / 15m /
+  30m / custom); the viewer then auto-advances until you press it again. Photos change
+  with a **crossfade** (or instantly), per **Settings → Photos → Slideshow transition**
+  and **Crossfade duration**.
 
 Press **Escape** to close the open photo.
 

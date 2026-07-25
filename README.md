@@ -36,7 +36,7 @@ After spending months attempting to find an "on/off/brightness" switch that I li
 | Alarm Card | `custom:ted-alarm-card` | Add, view, and enable/disable alarms (requires the Ted's Cards Backend integration). |
 | Timer Card | `custom:ted-timer-card` | Start, view, and cancel countdown timers (requires the Ted's Cards Backend integration). |
 | Announce Card | `custom:ted-announce-card` | Broadcast spoken (TTS) announcements to devices/areas, with predefined messages and recents (requires the Ted's Cards Backend integration). |
-| Photo Viewer Card | `custom:ted-photo-viewer-card` | View a single photo or a folder album — favorite it, set it as your wallpaper, and (soon) run a slideshow (favorite/set-as-wallpaper require the Ted's Cards Backend integration). |
+| Photo Viewer Card | `custom:ted-photo-viewer-card` | View a single photo or a folder album — page through it (arrows/keys), run a crossfade slideshow, favorite it, and set it as your wallpaper (favorite/set-as-wallpaper require the Ted's Cards Backend integration). |
 
 ---
 
@@ -940,6 +940,10 @@ options as the Alarm card apply.
 
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
+
+### v1.0.324
+
+- **Photo Viewer card: album navigation + slideshow (Phase 2).** In folder-album mode you can now page through photos with the faint **prev/next arrow-pills** or the **←/→ keys** (wrapping around the ends), and run an **auto-slideshow** — the play button opens a duration popup (10s / 30s / 1m / 5m / 15m / 30m / custom). Photos change with a **crossfade** (or instantly), controlled by **Settings → Photos → Slideshow transition** and **Crossfade duration**.
 
 ### v1.0.323
 

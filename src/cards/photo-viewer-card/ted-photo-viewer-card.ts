@@ -14,6 +14,7 @@ import { resolveIcon } from "../../shared/icons";
 import { SettingsController, settingsStore } from "../../shared/settings";
 import { applyBgImage } from "../../shared/background";
 import { isMediaSourceUri, listFolderImages, resolveMediaSource } from "../../shared/media";
+import { showPrompt } from "../../shared/dialogs";
 import {
   PHOTO_VIEWER_CARD_DESCRIPTION,
   PHOTO_VIEWER_CARD_EDITOR_TYPE,
@@ -39,6 +40,10 @@ const IC = {
   close: { fluent: "dismiss-24-filled", mdi: "close" },
   settings: { fluent: "settings-24-regular", mdi: "cog-outline" },
   open: { fluent: "image-search-24-regular", mdi: "image-search-outline" },
+  prev: { fluent: "chevron-left-24-filled", mdi: "chevron-left" },
+  next: { fluent: "chevron-right-24-filled", mdi: "chevron-right" },
+  slideshow: { fluent: "play-24-filled", mdi: "play" },
+  stop: { fluent: "pause-24-filled", mdi: "pause" },
 } as const;
 
 /** Resolve a photo-viewer icon (Fluent preferred, MDI fallback) to a string. */
@@ -47,6 +52,17 @@ function ic(spec: { mdi: string; fluent?: string }): string {
 }
 
 const TOAST_MS = 2200;
+
+/** Auto-slideshow interval choices shown in the duration popup. */
+const SLIDE_DURATIONS: { label: string; sec: number }[] = [
+  { label: "10 seconds", sec: 10 },
+  { label: "30 seconds", sec: 30 },
+  { label: "1 minute", sec: 60 },
+  { label: "5 minutes", sec: 300 },
+  { label: "15 minutes", sec: 900 },
+  { label: "30 minutes", sec: 1800 },
+];
+const DEFAULT_SLIDE_SEC = 300;
 
 @customElement(PHOTO_VIEWER_CARD_TYPE)
 export class TedPhotoViewerCard extends LitElement implements LovelaceCard {
@@ -71,6 +87,11 @@ export class TedPhotoViewerCard extends LitElement implements LovelaceCard {
   @state() private _favorited = false;
   @state() private _toast: string | null = null;
   @state() private _controlsShown = false;
+  @state() private _fadeUrl: string | null = null;
+  @state() private _fading = false;
+  @state() private _topShown = true;
+  @state() private _slideshow = false;
+  @state() private _durationPickerOpen = false;
 
   private _albumSig: string | null = null;
   private _albumLoaded = false;
@@ -78,6 +99,10 @@ export class TedPhotoViewerCard extends LitElement implements LovelaceCard {
   private _autoOpenTried = false;
   private _resolveGen = 0;
   private _toastTimer?: number;
+  private _fadeGen = 0;
+  private _slideDurationSec = DEFAULT_SLIDE_SEC;
+  private _slideTimer?: number;
+  private _urlCache = new Map<string, string>();
 
   public constructor() {
     super();
@@ -97,6 +122,7 @@ export class TedPhotoViewerCard extends LitElement implements LovelaceCard {
     window.removeEventListener("location-changed", this._onLocationChanged);
     window.removeEventListener("popstate", this._onLocationChanged);
     document.removeEventListener("keydown", this._onKeyDown);
+    this._stopSlideshow();
     if (this._toastTimer) window.clearTimeout(this._toastTimer);
   }
 
@@ -104,11 +130,14 @@ export class TedPhotoViewerCard extends LitElement implements LovelaceCard {
     if (!config) throw new Error("Invalid configuration");
     this._config = { ...config };
     // Re-resolve the album + re-run the auto-open decision on config change.
+    this._stopSlideshow();
     this._albumSig = null;
     this._albumLoaded = false;
     this._autoOpenTried = false;
     this._openedRef = null;
     this._displayUrl = null;
+    this._fadeUrl = null;
+    this._fading = false;
   }
 
   public getCardSize(): number {
@@ -159,6 +188,7 @@ export class TedPhotoViewerCard extends LitElement implements LovelaceCard {
     if (gen !== this._albumGen) return;
     this._albumRefs = uris;
     this._albumLoaded = true;
+    void this._prewarm();
     this.requestUpdate();
   }
 
@@ -235,7 +265,21 @@ export class TedPhotoViewerCard extends LitElement implements LovelaceCard {
   };
 
   private _onKeyDown = (e: KeyboardEvent): void => {
-    if (e.key === "Escape" && this._openedRef) this._close();
+    if (!this._openedRef) return;
+    const tag = (document.activeElement?.tagName ?? "").toLowerCase();
+    if (tag === "input" || tag === "textarea") return;
+    if (e.key === "Escape") {
+      this._close();
+      return;
+    }
+    if (this._config?.source !== "album" || this._albumRefs.length < 2) return;
+    if (e.key === "ArrowRight") {
+      e.preventDefault();
+      this._advance(1, true);
+    } else if (e.key === "ArrowLeft") {
+      e.preventDefault();
+      this._advance(-1, true);
+    }
   };
 
   // --- Open / close ----------------------------------------------------------
@@ -249,31 +293,144 @@ export class TedPhotoViewerCard extends LitElement implements LovelaceCard {
   }
 
   private async _openRef(ref: string): Promise<void> {
+    const prevUrl = this._displayUrl;
     this._openedRef = ref;
-    this._displayUrl = null;
     this._favorited = false;
     const gen = ++this._resolveGen;
     const url = await this._resolveRef(ref);
     if (gen !== this._resolveGen) return;
-    this._displayUrl = url;
+
+    const crossfade =
+      this._config?.source === "album" &&
+      this._transitionMode() === "crossfade" &&
+      !!prevUrl &&
+      !!url &&
+      url !== prevUrl;
+    if (crossfade) {
+      this._fadeUrl = prevUrl;
+      this._displayUrl = url;
+      this._fading = true;
+      this._topShown = false;
+      this.requestUpdate();
+      await this.updateComplete;
+      requestAnimationFrame(() => {
+        this._topShown = true;
+      });
+      const fadeGen = ++this._fadeGen;
+      window.setTimeout(
+        () => {
+          if (fadeGen !== this._fadeGen) return;
+          this._fadeUrl = null;
+          this._fading = false;
+        },
+        this._crossfadeSec() * 1000 + 80,
+      );
+    } else {
+      this._displayUrl = url;
+      this._fadeUrl = null;
+      this._fading = false;
+      this._topShown = true;
+    }
     if (this._backendIntegration()) settingsStore.setValue("device", "photos_last_viewed", ref);
   }
 
   private async _resolveRef(ref: string): Promise<string | null> {
+    const cached = this._urlCache.get(ref);
+    if (cached) return cached;
+    let url: string | null = ref;
     if (isMediaSourceUri(ref)) {
-      return this.hass ? await resolveMediaSource(this.hass, ref) : null;
+      url = this.hass ? await resolveMediaSource(this.hass, ref) : null;
     }
-    return ref;
+    if (url) this._urlCache.set(ref, url);
+    return url;
+  }
+
+  /** Pre-resolve every album ref so navigation + slideshow are instant. */
+  private async _prewarm(): Promise<void> {
+    const gen = this._albumGen;
+    for (const ref of this._albumRefs) {
+      if (gen !== this._albumGen) return;
+      if (!this._urlCache.has(ref)) await this._resolveRef(ref);
+    }
   }
 
   private _close(): void {
+    this._stopSlideshow();
     this._openedRef = null;
     this._displayUrl = null;
+    this._fadeUrl = null;
+    this._fading = false;
     this._controlsShown = false;
   }
 
   private _toggleControls(): void {
     this._controlsShown = !this._controlsShown;
+    this._durationPickerOpen = false;
+  }
+
+  // --- Album navigation + slideshow -----------------------------------------
+
+  private _transitionMode(): string {
+    return settingsStore.effective().photos_slideshow_transition === "none" ? "none" : "crossfade";
+  }
+
+  private _crossfadeSec(): number {
+    const v = Number(settingsStore.effective().photos_slideshow_crossfade_seconds);
+    return Number.isFinite(v) && v >= 0 ? v : 2;
+  }
+
+  private _advance(delta: number, manual = true): void {
+    const refs = this._albumRefs;
+    if (refs.length === 0) return;
+    const cur = this._openedRef ? refs.indexOf(this._openedRef) : -1;
+    const idx = (cur + delta + refs.length) % refs.length;
+    void this._openRef(refs[idx]);
+    if (manual && this._slideshow) this._restartSlideTimer();
+  }
+
+  private _toggleSlideshow(): void {
+    if (this._slideshow) {
+      this._stopSlideshow();
+      return;
+    }
+    this._durationPickerOpen = !this._durationPickerOpen;
+  }
+
+  private _startSlideshow(sec: number): void {
+    this._slideDurationSec = sec;
+    this._slideshow = true;
+    this._durationPickerOpen = false;
+    this._restartSlideTimer();
+  }
+
+  private _restartSlideTimer(): void {
+    if (this._slideTimer) window.clearInterval(this._slideTimer);
+    this._slideTimer = window.setInterval(
+      () => this._advance(1, false),
+      Math.max(1, this._slideDurationSec) * 1000,
+    );
+  }
+
+  private _stopSlideshow(): void {
+    this._slideshow = false;
+    this._durationPickerOpen = false;
+    if (this._slideTimer) {
+      window.clearInterval(this._slideTimer);
+      this._slideTimer = undefined;
+    }
+  }
+
+  private async _customDuration(): Promise<void> {
+    const raw = await showPrompt(this, {
+      title: "Custom slideshow interval",
+      text: "How many seconds between photos?",
+      placeholder: "e.g. 120",
+      confirmText: "Start",
+      multiline: false,
+    });
+    if (raw == null) return;
+    const sec = Math.round(Number(raw.trim()));
+    if (Number.isFinite(sec) && sec >= 1) this._startSlideshow(sec);
   }
 
   // --- Actions ---------------------------------------------------------------
@@ -368,13 +525,49 @@ export class TedPhotoViewerCard extends LitElement implements LovelaceCard {
 
   private _renderPhoto(): TemplateResult {
     const fit = this._config?.fit === "cover" ? "cover" : "contain";
+    const album = this._config?.source === "album";
+    const canNav = album && this._albumRefs.length > 1;
+    const fadeSec = this._crossfadeSec();
+    const topClass = `pv-img top${this._fading ? " fading" : ""}${
+      this._fading && this._topShown ? " shown" : ""
+    }`;
     return html`<div
       class="pv-stage${this._controlsShown ? " shown" : ""}"
       @click=${() => this._toggleControls()}
     >
+      ${this._fadeUrl
+        ? html`<img class="pv-img base" style="object-fit:${fit}" src=${this._fadeUrl} alt="" />`
+        : nothing}
       ${this._displayUrl
-        ? html`<img class="pv-img" style="object-fit:${fit}" src=${this._displayUrl} alt="" />`
+        ? html`<img
+            class=${topClass}
+            style="object-fit:${fit};--pv-fade:${fadeSec}s"
+            src=${this._displayUrl}
+            alt=""
+          />`
         : html`<div class="pv-loading"><ha-icon icon="mdi:loading" class="spin"></ha-icon></div>`}
+      ${canNav
+        ? html`<button
+              class="pv-pill left"
+              title="Previous"
+              @click=${(e: Event) => {
+                e.stopPropagation();
+                this._advance(-1, true);
+              }}
+            >
+              <ha-icon icon=${ic(IC.prev)}></ha-icon>
+            </button>
+            <button
+              class="pv-pill right"
+              title="Next"
+              @click=${(e: Event) => {
+                e.stopPropagation();
+                this._advance(1, true);
+              }}
+            >
+              <ha-icon icon=${ic(IC.next)}></ha-icon>
+            </button>`
+        : nothing}
       <div class="pv-controls" @click=${(e: Event) => e.stopPropagation()}>
         ${this._backendIntegration()
           ? html`<button
@@ -392,10 +585,32 @@ export class TedPhotoViewerCard extends LitElement implements LovelaceCard {
                 <ha-icon icon=${ic(IC.wallpaper)}></ha-icon>
               </button>`
           : nothing}
+        ${album
+          ? html`<button
+              class="pv-btn"
+              title=${this._slideshow ? "Stop slideshow" : "Slideshow"}
+              @click=${() => this._toggleSlideshow()}
+            >
+              <ha-icon icon=${ic(this._slideshow ? IC.stop : IC.slideshow)}></ha-icon>
+            </button>`
+          : nothing}
         <button class="pv-btn" title="Close" @click=${() => this._close()}>
           <ha-icon icon=${ic(IC.close)}></ha-icon>
         </button>
+        ${this._durationPickerOpen ? this._renderDurationMenu() : nothing}
       </div>
+    </div>`;
+  }
+
+  private _renderDurationMenu(): TemplateResult {
+    return html`<div class="pv-menu" @click=${(e: Event) => e.stopPropagation()}>
+      <div class="pv-menu-title">Slideshow every…</div>
+      ${SLIDE_DURATIONS.map(
+        (d) => html`<button class="pv-menu-item" @click=${() => this._startSlideshow(d.sec)}>
+          ${d.label}
+        </button>`,
+      )}
+      <button class="pv-menu-item" @click=${() => void this._customDuration()}>Custom…</button>
     </div>`;
   }
 
@@ -465,9 +680,62 @@ export class TedPhotoViewerCard extends LitElement implements LovelaceCard {
         background: #000;
       }
       .pv-img {
+        position: absolute;
+        inset: 0;
         width: 100%;
         height: 100%;
         display: block;
+      }
+      .pv-img.base {
+        z-index: 0;
+      }
+      .pv-img.top {
+        z-index: 1;
+        opacity: 1;
+      }
+      .pv-img.top.fading {
+        opacity: 0;
+        transition: opacity var(--pv-fade, 2s) ease;
+      }
+      .pv-img.top.fading.shown {
+        opacity: 1;
+      }
+      .pv-pill {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        z-index: 2;
+        width: 44px;
+        height: 64px;
+        border: none;
+        border-radius: 999px;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+        background: rgba(0, 0, 0, 0.32);
+        opacity: 0.28;
+        transition: opacity 0.2s ease, background 0.2s ease;
+        backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
+      }
+      .pv-pill.left {
+        left: 10px;
+      }
+      .pv-pill.right {
+        right: 10px;
+      }
+      .pv-stage:hover .pv-pill,
+      .pv-stage.shown .pv-pill {
+        opacity: 0.9;
+      }
+      .pv-pill:hover {
+        opacity: 1;
+        background: rgba(0, 0, 0, 0.55);
+      }
+      .pv-pill ha-icon {
+        --mdc-icon-size: 28px;
       }
       .pv-loading {
         color: var(--ted-style-muted, var(--secondary-text-color));
@@ -484,11 +752,49 @@ export class TedPhotoViewerCard extends LitElement implements LovelaceCard {
         position: absolute;
         top: 10px;
         right: 10px;
+        z-index: 3;
         display: flex;
         gap: 8px;
         opacity: 0;
         transition: opacity 0.2s ease;
         pointer-events: none;
+      }
+      .pv-menu {
+        position: absolute;
+        top: 52px;
+        right: 0;
+        z-index: 4;
+        min-width: 176px;
+        padding: 6px;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        background: rgba(20, 20, 20, 0.92);
+        color: #fff;
+        border-radius: 12px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+      }
+      .pv-menu-title {
+        font-size: 0.7rem;
+        opacity: 0.7;
+        padding: 4px 10px 6px;
+      }
+      .pv-menu-item {
+        -webkit-appearance: none;
+        appearance: none;
+        border: none;
+        cursor: pointer;
+        text-align: left;
+        padding: 8px 10px;
+        border-radius: 8px;
+        background: transparent;
+        color: #fff;
+        font: inherit;
+      }
+      .pv-menu-item:hover {
+        background: rgba(255, 255, 255, 0.12);
       }
       .pv-stage:hover .pv-controls,
       .pv-stage.shown .pv-controls {
