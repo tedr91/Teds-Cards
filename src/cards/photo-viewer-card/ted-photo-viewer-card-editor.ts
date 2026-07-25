@@ -39,14 +39,14 @@ export class TedPhotoViewerCardEditor extends LitElement implements LovelaceCard
       folder: cfg.folder ?? "",
       fit: cfg.fit ?? "contain",
       fill: cfg.fill ?? false,
-      backend_integration: cfg.backend_integration ?? false,
       open_last_on_load: cfg.open_last_on_load ?? false,
       theme: cfg.theme ?? "ha",
       background: cfg.background ?? "",
       transparency: cfg.transparency,
       blur: cfg.blur,
     };
-    const schema = [
+    const isAlbum = source === "album";
+    const topSchema = [
       {
         type: "expandable",
         name: "",
@@ -58,9 +58,8 @@ export class TedPhotoViewerCardEditor extends LitElement implements LovelaceCard
         ],
       },
       { name: "source", selector: { select: { mode: "dropdown", options: SOURCE_OPTIONS } } },
-      ...(source === "album"
-        ? [{ name: "folder", selector: { text: {} } }]
-        : [{ name: "image", selector: { text: {} } }]),
+    ];
+    const bottomSchema = [
       {
         type: "grid",
         name: "",
@@ -70,31 +69,45 @@ export class TedPhotoViewerCardEditor extends LitElement implements LovelaceCard
           { name: "fill", selector: { boolean: {} } },
         ],
       },
-      {
-        type: "grid",
-        name: "",
-        column_min_width: "100px",
-        schema: [
-          { name: "backend_integration", selector: { boolean: {} } },
-          { name: "open_last_on_load", selector: { boolean: {} } },
-        ],
-      },
+      { name: "open_last_on_load", selector: { boolean: {} } },
     ];
     return html`<div class="editor">
       <ha-form
         .hass=${this.hass}
         .data=${data}
-        .schema=${schema}
+        .schema=${topSchema}
         .computeLabel=${this._computeLabel}
         .computeHelper=${this._computeHelper}
         @value-changed=${this._valueChanged}
       ></ha-form>
-      <div class="browse-row">
-        <button class="browse-btn" @click=${this._browse}>
-          <ha-icon icon="mdi:folder-image"></ha-icon>
-          <span>${source === "album" ? "Browse for a folder…" : "Browse for an image…"}</span>
-        </button>
+      <div class="media-field">
+        <div class="mf-label">${isAlbum ? "Album folder (media-source URI)" : "Image (URL or media path)"}</div>
+        <div class="mf-row">
+          <input
+            class="mf-input"
+            type="text"
+            .value=${isAlbum ? cfg.folder ?? "" : cfg.image ?? ""}
+            placeholder=${isAlbum ? "media-source://…" : "https://… or media-source://…"}
+            @change=${this._onMediaInput}
+          />
+          <button
+            class="browse-btn"
+            title=${isAlbum ? "Browse for a folder" : "Browse for an image"}
+            @click=${this._browse}
+          >
+            <ha-icon icon="mdi:folder-image"></ha-icon>
+            <span>Browse</span>
+          </button>
+        </div>
       </div>
+      <ha-form
+        .hass=${this.hass}
+        .data=${data}
+        .schema=${bottomSchema}
+        .computeLabel=${this._computeLabel}
+        .computeHelper=${this._computeHelper}
+        @value-changed=${this._valueChanged}
+      ></ha-form>
     </div>`;
   }
 
@@ -112,8 +125,6 @@ export class TedPhotoViewerCardEditor extends LitElement implements LovelaceCard
         return "Image fit";
       case "fill":
         return "Fill available space";
-      case "backend_integration":
-        return "Backend integration";
       case "open_last_on_load":
         return "Re-open last photo on load";
       case "theme":
@@ -129,8 +140,6 @@ export class TedPhotoViewerCardEditor extends LitElement implements LovelaceCard
     switch (schema.name) {
       case "folder":
         return "Leave empty to use the Photos album folder from Settings (needs backend integration).";
-      case "backend_integration":
-        return "Enables the Settings-driven folder, plus Favorite and Set-as-background.";
       case "open_last_on_load":
         return "For the Photos view: re-open the photo this device last viewed (else start empty).";
       default:
@@ -144,6 +153,16 @@ export class TedPhotoViewerCardEditor extends LitElement implements LovelaceCard
     if (!next.image) delete next.image;
     if (!next.folder) delete next.folder;
     if (!next.background) delete next.background;
+    fireEvent(this, "config-changed", { config: next });
+  };
+
+  /** Commit the image (single) or folder (album) text field. */
+  private _onMediaInput = (ev: Event): void => {
+    const value = (ev.target as HTMLInputElement).value.trim();
+    const key = (this._config?.source ?? "single") === "album" ? "folder" : "image";
+    const next = { ...this._config } as PhotoViewerCardConfig;
+    if (value) next[key] = value;
+    else delete next[key];
     fireEvent(this, "config-changed", { config: next });
   };
 
@@ -171,10 +190,35 @@ export class TedPhotoViewerCardEditor extends LitElement implements LovelaceCard
     ha-form {
       display: block;
     }
-    .browse-row {
-      margin-top: 12px;
+    .media-field {
+      margin: 12px 0 4px;
+    }
+    .mf-label {
+      font-size: 0.75rem;
+      color: var(--secondary-text-color);
+      margin: 0 4px 6px;
+    }
+    .mf-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .mf-input {
+      flex: 1 1 auto;
+      min-width: 0;
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--divider-color, rgba(120, 120, 120, 0.3));
+      background: var(--secondary-background-color, transparent);
+      color: var(--primary-text-color);
+      font: inherit;
+    }
+    .mf-input:focus {
+      outline: none;
+      border-color: var(--primary-color);
     }
     .browse-btn {
+      flex: 0 0 auto;
       display: inline-flex;
       align-items: center;
       gap: 8px;
