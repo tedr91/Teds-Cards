@@ -941,6 +941,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.331
+
+- **Navbar launcher highlights the correct view.** Fixed a timing bug where, right after navigating (e.g. Photos → Home), the launcher would briefly highlight the new view's button and then flip back to highlight the previous one. The active-view highlight is now captured on navigation and no longer re-derived during unrelated re-renders.
+
 ### v1.0.330
 
 - **Photo Viewer card: touch swipe gestures.** On a touchscreen, swipe **right/left** to go to the next/previous photo (album mode), and swipe **up/down** to switch the image fit between **Fill** and **Contain**.

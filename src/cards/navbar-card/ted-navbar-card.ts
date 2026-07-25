@@ -119,6 +119,12 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
   /** Cached launcher (View Launcher) buttons for this render cycle; invalidated on
    *  settings change, navigation, and config change. */
   private _launcherCache?: NavButtonConfig[];
+  /** The current view path used for the launcher's active-button highlight. Captured
+   *  ONLY on real navigation events (location-changed / popstate), never re-derived from
+   *  window.location during incidental rebuilds (settings/hass) — otherwise a rebuild that
+   *  happens mid-transition could read a stale URL and highlight the wrong button. */
+  private _activeViewPath?: string;
+  private _activeViewRaf?: number;
   private _editMode = false;
   /** Shared controller for status-item brightness/volume popovers. */
   private _slider = new StatusSliderController(this);
@@ -216,6 +222,8 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
     this._editMode = detectEditOrPreview(this);
     this._collapsed = this._autoHide();
     this._prevAutoHide = this._autoHide();
+    // Seed the active-view path from the current URL for the first render.
+    this._activeViewPath = readCurrentViewPath();
     void this._loadHelpers();
     this._applyPadding();
     this._syncClockTimer();
@@ -246,6 +254,7 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
     document.removeEventListener("pointerdown", this._onDocPointerDown, true);
     this._clearHide();
     if (this._resizeRaf) cancelAnimationFrame(this._resizeRaf);
+    if (this._activeViewRaf) cancelAnimationFrame(this._activeViewRaf);
     if (this._clockTimer !== undefined) {
       window.clearInterval(this._clockTimer);
       this._clockTimer = undefined;
@@ -857,7 +866,7 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
         this._settingOverride("launcher_quick_launch") !== false,
       dashboardUrlPath: root,
       dashboardKeyByPath: dashboardKeyByViewPath(eff),
-      currentViewPath: readCurrentViewPath(),
+      currentViewPath: this._activeViewPath ?? readCurrentViewPath(),
       highlightActive: this._settingOverride("launcher_highlight_active") !== false,
       buttonColor: typeof buttonColorRaw === "string" && buttonColorRaw ? buttonColorRaw : undefined,
       highlightColor: typeof highlightColorRaw === "string" && highlightColorRaw ? highlightColorRaw : undefined,
@@ -893,12 +902,34 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
   private _onVisibilityEvent = (): void => {
     const launcherActive = this._launcherEnabled();
     if (!this._hasConditional && !launcherActive) return;
-    // Navigation changes the current view — refresh the active-view highlight.
-    if (launcherActive) this._launcherCache = undefined;
+    // Navigation changes the current view — capture the active path NOW (the URL is
+    // already settled for pushState/popstate) and refresh the active-view highlight.
+    if (launcherActive) {
+      this._setActiveViewPath(readCurrentViewPath());
+      this._launcherCache = undefined;
+      // Belt-and-suspenders: re-read once the route fully settles, in case the URL
+      // hadn't updated yet when the event fired.
+      if (this._activeViewRaf) cancelAnimationFrame(this._activeViewRaf);
+      this._activeViewRaf = requestAnimationFrame(() => {
+        this._activeViewRaf = undefined;
+        this._setActiveViewPath(readCurrentViewPath());
+      });
+    }
     this._visible.clear();
     this._buildButtonElements();
     this.requestUpdate();
   };
+
+  /** Update the tracked active view path; rebuild the launcher when it actually changes. */
+  private _setActiveViewPath(path: string | undefined): void {
+    if (path === this._activeViewPath) return;
+    this._activeViewPath = path;
+    if (this._launcherEnabled()) {
+      this._launcherCache = undefined;
+      this._buildButtonElements();
+      this.requestUpdate();
+    }
+  }
 
   /**
    * Trim sections' trailing items into their chevron overflow popup when the bar runs
