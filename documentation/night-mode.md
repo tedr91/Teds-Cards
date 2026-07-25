@@ -5,10 +5,10 @@ lowering the screen brightness, and switching to a night font color — then smo
 your daytime values in the morning. It's configured entirely from **Settings → General → Automatic
 night mode** and runs automatically on every view (no per-view configuration).
 
-> **Requires the [Ted's Cards Backend](https://github.com/tedr91/Teds-Cards-Backend) integration**
+> **Requires the [Ted's Dashboard System](https://github.com/tedr91/Teds-Dashboard-System) integration**
 > (v1.0.50+) and **Ted's Cards** v1.0.232+. The settings live in the backend store, and the feature
 > runs on the invisible **Background** card that Ted's Dashboard already includes on every view
-> (with `backend_integration: true`).
+> (with `dashboard_integration: true`).
 
 ---
 
@@ -158,9 +158,9 @@ Auto/Light/Dark mode changes.
 
 | Requirement | Why |
 | --- | --- |
-| **Ted's Cards Backend** v1.0.50+ | Stores the night settings and the per-device day snapshot. |
+| **Ted's Dashboard System** v1.0.50+ | Stores the night settings and the per-device day snapshot. |
 | **Ted's Cards** v1.0.232+ | The night-mode engine + Settings panel. |
-| Background card with `backend_integration: true` | The engine runs on the invisible Background card. Ted's Dashboard already includes it on every view. |
+| Background card with `dashboard_integration: true` | The engine runs on the invisible Background card. Ted's Dashboard already includes it on every view. |
 | [browser_mod](https://github.com/thomasloven/hass-browser_mod) *(optional)* | Provides the auto-resolved per-device **screen light** used to dim the display, and the per-device **Dark mode** switching. Not required if you point **Screen brightness entity** at your own `light`/`number` entity and leave **Switch to Dark mode** off. |
 
 ---

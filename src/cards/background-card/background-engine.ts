@@ -320,7 +320,7 @@ class BackgroundEngine {
     const filename = this._currentBingFilename();
     if (!filename || !this.backendInt || !this.hass?.callWS) return;
     try {
-      await this.hass.callWS({ type: "teds_cards_backend/favorite_bing_photo", filename });
+      await this.hass.callWS({ type: "teds_dashboard_system/favorite_bing_photo", filename });
     } catch {
       /* best-effort */
     }
@@ -332,7 +332,7 @@ class BackgroundEngine {
     const url = this.slideUrls[this.slideIdx];
     if (filename && this.backendInt && this.hass?.callWS) {
       try {
-        await this.hass.callWS({ type: "teds_cards_backend/remove_bing_photo", filename });
+        await this.hass.callWS({ type: "teds_dashboard_system/remove_bing_photo", filename });
       } catch {
         /* best-effort */
       }
@@ -499,7 +499,7 @@ class BackgroundEngine {
       if (!this.backendInt || !this.hass?.callWS) return [];
       try {
         const r = await this.hass.callWS<{ photos?: BingPhoto[] }>({
-          type: "teds_cards_backend/list_bing_photos",
+          type: "teds_dashboard_system/list_bing_photos",
         });
         const photos = r?.photos ?? [];
         for (const p of photos)
@@ -513,7 +513,7 @@ class BackgroundEngine {
       if (!this.backendInt || !this.hass?.callWS) return [];
       try {
         const r = await this.hass.callWS<{ photos?: string[] }>({
-          type: "teds_cards_backend/list_favorites",
+          type: "teds_dashboard_system/list_favorites",
         });
         candidates = (r?.photos ?? []).filter((u): u is string => typeof u === "string");
       } catch {

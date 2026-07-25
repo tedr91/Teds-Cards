@@ -182,15 +182,15 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
     });
     // Keep this device's settings live (+ registered). The auto-return-home and
     // welcome→home redirect behaviors only run when the navbar opts into the
-    // Ted's Cards Backend integration (YAML `backend_integration: true`).
+    // Ted's Dashboard System integration (YAML `dashboard_integration: true`).
     new SettingsController(this, () => this.hass);
     new AutoReturnController(this, () => this._backendIntegration());
     new HomeRedirectController(this, () => this._backendIntegration());
   }
 
-  /** Whether this navbar opts into Ted's Cards Backend behaviors (YAML-only). */
+  /** Whether this navbar opts into Ted's Dashboard System behaviors (YAML-only). */
   private _backendIntegration(): boolean {
-    return this._config?.backend_integration === true;
+    return this._config?.dashboard_integration === true;
   }
 
   /** The first "notifications" status item across all sections (if any). */
@@ -1383,7 +1383,7 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
       slider: this._slider,
       keyPrefix,
       // `navigate-dashboard` resolves a dashboard-path setting, so it only applies when
-      // this navbar opts into the Ted's Cards Backend integration. Other actions run.
+      // this navbar opts into the Ted's Dashboard System integration. Other actions run.
       backendIntegration: this._backendIntegration(),
     };
     // An item that renders nothing (e.g. empty timers/alarms/notifications) gets NO

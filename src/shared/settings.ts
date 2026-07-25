@@ -1,6 +1,6 @@
 /**
  * Shared client for the Ted's Cards settings system. A single module-level store
- * subscribes once to the backend's `teds_cards_backend/subscribe_settings` command,
+ * subscribes once to the backend's `teds_dashboard_system/subscribe_settings` command,
  * registers this device (so server-side playback can target its area), and exposes
  * the merged "effective" settings (defaults ⊕ global ⊕ this device's overrides).
  *
@@ -14,7 +14,7 @@ import { resolveDeviceArea } from "./device-area";
 import { clientInfo } from "./client-info";
 import { SETTINGS_DEFAULTS, type SettingsMap, type SettingsValue } from "./settings-schema";
 
-const DOMAIN = "teds_cards_backend";
+const DOMAIN = "teds_dashboard_system";
 
 interface HassLike {
   connection?: {

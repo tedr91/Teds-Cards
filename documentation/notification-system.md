@@ -1,15 +1,15 @@
 # Ted's Notification System
 
 A server-backed notification pipeline for the Ted's Cards ecosystem. Notifications
-are created and persisted **server-side** by the [Ted's Cards Backend](https://github.com/tedr91/Teds-Cards-Backend)
+are created and persisted **server-side** by the [Ted's Dashboard System](https://github.com/tedr91/Teds-Dashboard-System)
 integration, then surfaced on the frontend as **toasts**, a **Notification Center
 card**, and a **navbar / Room Card bell**. Notifications can be scoped to an area,
 so each device only sees what's relevant to the room it's in.
 
-> **Requires the [Ted's Cards Backend](https://github.com/tedr91/Teds-Cards-Backend)
+> **Requires the [Ted's Dashboard System](https://github.com/tedr91/Teds-Dashboard-System)
 > integration** (HACS). Without it, `sensor.teds_notifications` and the
-> `teds_cards_backend.*` services don't exist and the notification UI shows an
-> "Install the Ted's Cards Backend integration" hint.
+> `teds_dashboard_system.*` services don't exist and the notification UI shows an
+> "Install the Ted's Dashboard System integration" hint.
 
 ---
 
@@ -17,17 +17,17 @@ so each device only sees what's relevant to the room it's in.
 
 ```
                           ┌──────────────────────────────────────────┐
-                          │        Ted's Cards Backend (Python)        │
-   automations / cards ──▶│  teds_cards_backend.notify (+ alarms,      │
+                          │        Ted's Dashboard System (Python)        │
+   automations / cards ──▶│  teds_dashboard_system.notify (+ alarms,      │
    (call services)        │  timers that auto-notify)                  │
                           │                                            │
                           │  • persistent store (survives restarts)    │
                           │  • sensor.teds_notifications               │
-                          │  • fires event teds_cards_backend_          │
+                          │  • fires event teds_dashboard_system_          │
                           │    notification                            │
                           └───────────────┬────────────────────────────┘
                                           │  WebSocket:
-                                          │  teds_cards_backend/subscribe_notifications
+                                          │  teds_dashboard_system/subscribe_notifications
                                           ▼
         ┌──────────────────────────────────────────────────────────────┐
         │                     Ted's Cards (frontend)                     │
@@ -70,9 +70,9 @@ The store keeps the **50** newest notifications (FIFO).
 
 ## Services
 
-All services are in the `teds_cards_backend` domain.
+All services are in the `teds_dashboard_system` domain.
 
-### `teds_cards_backend.notify`
+### `teds_dashboard_system.notify`
 
 Create (or replace) a notification.
 
@@ -89,7 +89,7 @@ Create (or replace) a notification.
 | `actions` | | list | Action buttons (see below). |
 
 ```yaml
-action: teds_cards_backend.notify
+action: teds_dashboard_system.notify
 data:
   title: Laundry
   message: Washer finished
@@ -99,7 +99,7 @@ data:
   timeout: 30
 ```
 
-### `teds_cards_backend.dismiss_notification`
+### `teds_dashboard_system.dismiss_notification`
 
 Remove a notification entirely.
 
@@ -107,7 +107,7 @@ Remove a notification entirely.
 | --- | --- | --- |
 | `id` | ✅ | string |
 
-### `teds_cards_backend.mark_read`
+### `teds_dashboard_system.mark_read`
 
 Mark one, an area's worth, or all notifications as read.
 
@@ -118,7 +118,7 @@ Mark one, an area's worth, or all notifications as read.
 
 Omit both to mark **everything** read.
 
-### `teds_cards_backend.clear_notifications`
+### `teds_dashboard_system.clear_notifications`
 
 Remove notifications.
 
@@ -150,7 +150,7 @@ A notification (or a `notify` call) can carry action buttons. Each action:
 Running any action also dismisses the notification.
 
 ```yaml
-action: teds_cards_backend.notify
+action: teds_dashboard_system.notify
 data:
   title: Front door
   message: Motion detected
@@ -183,7 +183,7 @@ Cards read this sensor to render lists and badge counts. It updates in real time
 
 ## Events & the WebSocket subscription
 
-The backend fires the Home Assistant event **`teds_cards_backend_notification`**:
+The backend fires the Home Assistant event **`teds_dashboard_system_notification`**:
 
 - **On create** — the full notification object.
 - **On read / dismiss / clear** — a dismissal signal: `{ "id": "<id>", "dismissed": true }`.
@@ -194,12 +194,12 @@ listen to this event directly. Instead they use a dedicated WebSocket command th
 any authenticated user may call:
 
 ```
-teds_cards_backend/subscribe_notifications
+teds_dashboard_system/subscribe_notifications
 ```
 
-The command forwards each `teds_cards_backend_notification` event's data to the
+The command forwards each `teds_dashboard_system_notification` event's data to the
 subscriber. Event-triggered automations can still listen to
-`teds_cards_backend_notification` directly.
+`teds_dashboard_system_notification` directly.
 
 ---
 
@@ -237,7 +237,7 @@ feedback loop). This means a **house-wide** alarm/timer that popped on every scr
 clears from every screen the moment you dismiss it on one. The same applies to
 `dismiss_notification` and `clear_notifications`.
 
-> Cross-device dismissal requires **Ted's Cards Backend v1.0.9+** and **Ted's Cards
+> Cross-device dismissal requires **Ted's Dashboard System v1.0.9+** and **Ted's Cards
 > v1.0.65+**. Older combinations still work; they just don't sync the dismissal.
 
 ---
@@ -295,7 +295,7 @@ and dismissed with ✕. "Clear all" clears the scoped notifications.
 **House-wide announcement**
 
 ```yaml
-action: teds_cards_backend.notify
+action: teds_dashboard_system.notify
 data:
   title: Dinner
   message: Dinner is ready!
@@ -307,7 +307,7 @@ data:
 **Room-scoped reminder that only pops in the office**
 
 ```yaml
-action: teds_cards_backend.notify
+action: teds_dashboard_system.notify
 data:
   title: Standup
   message: Daily standup in 5 minutes
@@ -318,7 +318,7 @@ data:
 **Update a live notification in place** (same `id`)
 
 ```yaml
-action: teds_cards_backend.notify
+action: teds_dashboard_system.notify
 data:
   id: garage_door
   title: Garage
@@ -330,7 +330,7 @@ data:
 **Clear a room's notifications**
 
 ```yaml
-action: teds_cards_backend.clear_notifications
+action: teds_dashboard_system.clear_notifications
 data:
   area: kitchen
 ```

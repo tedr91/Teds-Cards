@@ -33,11 +33,11 @@ After spending months attempting to find an "on/off/brightness" switch that I li
 | Music Card | `custom:ted-music-card` | Music Assistant player for the current device (wraps droans/mass-player-card; requires it + `mass_queue`). |
 | Calendar Card | `custom:ted-calendar-card` | Calendar for the current device (wraps superdingo101/daylight-calendar-card; requires it). |
 | Navbar Card | `custom:ted-navbar-card` | Navigation bar pinned to the top or bottom, with buttons and status items in left/center/right zones. |
-| Alarm Card | `custom:ted-alarm-card` | Add, view, and enable/disable alarms (requires the Ted's Cards Backend integration). |
-| Timer Card | `custom:ted-timer-card` | Start, view, and cancel countdown timers (requires the Ted's Cards Backend integration). |
-| Announce Card | `custom:ted-announce-card` | Broadcast spoken (TTS) announcements to devices/areas, with predefined messages and recents (requires the Ted's Cards Backend integration). |
-| Assist-Response Card | `custom:ted-assist-response-card` | Display a title + message (+ optional image) pushed by a voice intent or automation, and navigate the targeted screens to it — the visual counterpart to a spoken Assist answer (requires the Ted's Cards Backend integration). |
-| Photo Viewer Card | `custom:ted-photo-viewer-card` | View a single photo or a folder album — page through it (arrows/keys), run a crossfade slideshow, favorite it, and set it as your wallpaper (favorite/set-as-wallpaper require the Ted's Cards Backend integration). |
+| Alarm Card | `custom:ted-alarm-card` | Add, view, and enable/disable alarms (requires the Ted's Dashboard System integration). |
+| Timer Card | `custom:ted-timer-card` | Start, view, and cancel countdown timers (requires the Ted's Dashboard System integration). |
+| Announce Card | `custom:ted-announce-card` | Broadcast spoken (TTS) announcements to devices/areas, with predefined messages and recents (requires the Ted's Dashboard System integration). |
+| Assist-Response Card | `custom:ted-assist-response-card` | Display a title + message (+ optional image) pushed by a voice intent or automation, and navigate the targeted screens to it — the visual counterpart to a spoken Assist answer (requires the Ted's Dashboard System integration). |
+| Photo Viewer Card | `custom:ted-photo-viewer-card` | View a single photo or a folder album — page through it (arrows/keys), run a crossfade slideshow, favorite it, and set it as your wallpaper (favorite/set-as-wallpaper require the Ted's Dashboard System integration). |
 
 ---
 
@@ -901,7 +901,7 @@ sections:                 # up to 5 sections
 
 ### ⏰ Alarm Card
 
-Add, view, and enable/disable **alarms**. Requires the **[Ted's Cards Backend](https://github.com/tedr91/Teds-Cards-Backend)**
+Add, view, and enable/disable **alarms**. Requires the **[Ted's Dashboard System](https://github.com/tedr91/Teds-Dashboard-System)**
 integration (which owns the alarms and fires them reliably server-side). The card reads
 `sensor.teds_alarms` and calls the backend's `add_alarm` / `update_alarm` / `remove_alarm` services.
 
@@ -920,7 +920,7 @@ matching the other cards.
 
 ### ⏱️ Timer Card
 
-Start, view, and cancel **countdown timers**. Also requires the **Ted's Cards Backend** integration;
+Start, view, and cancel **countdown timers**. Also requires the **Ted's Dashboard System** integration;
 the card reads `sensor.teds_timers` and calls `start_timer` / `cancel_timer`.
 
 ```yaml
@@ -941,6 +941,10 @@ options as the Alarm card apply.
 
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
+
+### v1.0.341
+
+- **Renamed “Ted's Cards Backend” → “Ted's Dashboard System”.** The companion integration's domain changed from `teds_cards_backend` to `teds_dashboard_system`, so all cards now call the new services/WebSocket commands and listen for the new events. The card option `backend_integration: true` was renamed to `dashboard_integration: true` — update your dashboard YAML. Requires Ted's Dashboard System v1.0.83+ (remove the old integration and add the new one).
 
 ### v1.0.340
 
@@ -972,7 +976,7 @@ the Home Assistant / HACS **update** dialog when you update. Newest first.
 
 ### v1.0.333
 
-- **New Assist-Response card + view.** A new `custom:ted-assist-response-card` displays a title + message (and optional background image) pushed by a voice intent or automation — the visual counterpart to a spoken Assist answer (like View Assist's "Info" view). Call the backend's `teds_cards_backend.assist_response` service with the answer text targeting areas/devices; the targeted screens switch to the Assist-Response view and show it, filtered per device (device/area/house-wide) and restored from `sensor.teds_assist_responses` after a reload. The content stays until it's replaced. The `info_dashboard` navigation setting was renamed to `assist_response_dashboard`. Requires the Ted's Cards Backend integration.
+- **New Assist-Response card + view.** A new `custom:ted-assist-response-card` displays a title + message (and optional background image) pushed by a voice intent or automation — the visual counterpart to a spoken Assist answer (like View Assist's "Info" view). Call the backend's `teds_dashboard_system.assist_response` service with the answer text targeting areas/devices; the targeted screens switch to the Assist-Response view and show it, filtered per device (device/area/house-wide) and restored from `sensor.teds_assist_responses` after a reload. The content stays until it's replaced. The `info_dashboard` navigation setting was renamed to `assist_response_dashboard`. Requires the Ted's Dashboard System integration.
 
 ### v1.0.332
 
@@ -1012,7 +1016,7 @@ the Home Assistant / HACS **update** dialog when you update. Newest first.
 
 ### v1.0.323
 
-- **Photo Viewer card editor: tidier layout + consistency.** The **Browse** button now sits inline next to the image/album-folder field, right under the Photo source selector (instead of stranded at the bottom). The `backend_integration` option is now YAML-only, matching the other card-first cards (Background, Clock/Weather, Fullscreen).
+- **Photo Viewer card editor: tidier layout + consistency.** The **Browse** button now sits inline next to the image/album-folder field, right under the Photo source selector (instead of stranded at the bottom). The `dashboard_integration` option is now YAML-only, matching the other card-first cards (Background, Clock/Weather, Fullscreen).
 
 ### v1.0.322
 
@@ -1028,7 +1032,7 @@ the Home Assistant / HACS **update** dialog when you update. Newest first.
 
 ### v1.0.319
 
-- **New Photo Viewer card (`custom:ted-photo-viewer-card`).** Show a single photo or a folder album on a dashboard (or fill the new **Photos** view). When a photo is open you can **Favorite** it, **Set it as this device's wallpaper**, or **Close** it. The Photos view re-opens the photo this device last viewed (toggle in **Settings → Photos**), and supports deep-linking a specific photo via `?photo=<name-or-index>`. A new **Photos** settings group holds the album folder, the re-open toggle, and slideshow transition options; the wallpaper **Slideshow** gains a **Favorites** album source. Favorite / Set-as-background and the Settings-driven album folder require the Ted's Cards Backend (v1.0.80+).
+- **New Photo Viewer card (`custom:ted-photo-viewer-card`).** Show a single photo or a folder album on a dashboard (or fill the new **Photos** view). When a photo is open you can **Favorite** it, **Set it as this device's wallpaper**, or **Close** it. The Photos view re-opens the photo this device last viewed (toggle in **Settings → Photos**), and supports deep-linking a specific photo via `?photo=<name-or-index>`. A new **Photos** settings group holds the album folder, the re-open toggle, and slideshow transition options; the wallpaper **Slideshow** gains a **Favorites** album source. Favorite / Set-as-background and the Settings-driven album folder require the Ted's Dashboard System (v1.0.80+).
 
 ### v1.0.318
 
@@ -1089,27 +1093,27 @@ the Home Assistant / HACS **update** dialog when you update. Newest first.
 
 ### v1.0.304
 
-- **Fullscreen Card editor is now card-first.** The Ted's Fullscreen Card editor opens straight to the **card picker** (like the stack cards) so you pick the card to house first, with the card's own options tucked into a collapsible **Full-screen options** panel below. The `backend_integration` and `state_key` options are now **YAML-only** (matching the other cards).
+- **Fullscreen Card editor is now card-first.** The Ted's Fullscreen Card editor opens straight to the **card picker** (like the stack cards) so you pick the card to house first, with the card's own options tucked into a collapsible **Full-screen options** panel below. The `dashboard_integration` and `state_key` options are now **YAML-only** (matching the other cards).
 
 ### v1.0.303
 
-- **New — Fullscreen Card.** A new **Ted's Fullscreen Card** (`custom:ted-fullscreen-card`) that houses a single card (Music, Camera, Calendar, …) and toggles it between a normal card and **full screen** with a small circular icon in the top-right corner — *expand* to fill the screen, *minimize* to restore. The full-screen overlay clears the navbar, header and device safe-areas. Opt in to `backend_integration` (with a `state_key`) to **remember** the normal/maximized state across reloads and size the overlay more intelligently around the navbar (including sizing under an auto-hiding bar). Configured with a full visual editor. Requires Ted's Cards Backend v1.0.77+ for saved state.
+- **New — Fullscreen Card.** A new **Ted's Fullscreen Card** (`custom:ted-fullscreen-card`) that houses a single card (Music, Camera, Calendar, …) and toggles it between a normal card and **full screen** with a small circular icon in the top-right corner — *expand* to fill the screen, *minimize* to restore. The full-screen overlay clears the navbar, header and device safe-areas. Opt in to `dashboard_integration` (with a `state_key`) to **remember** the normal/maximized state across reloads and size the overlay more intelligently around the navbar (including sizing under an auto-hiding bar). Configured with a full visual editor. Requires Ted's Dashboard System v1.0.77+ for saved state.
 
 ### v1.0.302
 
-- **Announce refinements.** Predefined-message icons are now chosen with a **searchable icon picker** (with preview) instead of typing `mdi:…`. The **Recent** list is now **per-device** — each device only shows the announcements it sent. And the composer's **Mode** control is now **Repeat alert sound** (Off by default / On). Requires Ted's Cards Backend v1.0.76+.
+- **Announce refinements.** Predefined-message icons are now chosen with a **searchable icon picker** (with preview) instead of typing `mdi:…`. The **Recent** list is now **per-device** — each device only shows the announcements it sent. And the composer's **Mode** control is now **Repeat alert sound** (Off by default / On). Requires Ted's Dashboard System v1.0.76+.
 
 ### v1.0.301
 
-- **Much better sound selection in Settings.** Alert-sound fields (notifications, alarms, timers, announcements) are now a **dropdown of the bundled sounds** grouped by type, with a **▶ preview button** to hear a sound before choosing it, plus a **Custom / Browse…** option that opens Home Assistant's media browser for your own file (or a pasted URL). No more typing raw sound paths. Requires Ted's Cards Backend v1.0.75+ for the bundled-sound list (older backends still allow Default + Custom).
+- **Much better sound selection in Settings.** Alert-sound fields (notifications, alarms, timers, announcements) are now a **dropdown of the bundled sounds** grouped by type, with a **▶ preview button** to hear a sound before choosing it, plus a **Custom / Browse…** option that opens Home Assistant's media browser for your own file (or a pasted URL). No more typing raw sound paths. Requires Ted's Dashboard System v1.0.75+ for the bundled-sound list (older backends still allow Default + Custom).
 
 ### v1.0.300
 
-- **Fixed duplicate Dismiss button on timer & alarm alerts.** Timer/alarm completion toasts were showing **two** Dismiss buttons; they now show **Snooze** + a single **Dismiss**. Pairs with Ted's Cards Backend v1.0.74+.
+- **Fixed duplicate Dismiss button on timer & alarm alerts.** Timer/alarm completion toasts were showing **two** Dismiss buttons; they now show **Snooze** + a single **Dismiss**. Pairs with Ted's Dashboard System v1.0.74+.
 
 ### v1.0.299
 
-- **Announcements can speak a preface + the title.** A new **Spoken preface** setting (Settings → Announce → Voice, default “Incoming announcement”, blank for none) is spoken first, and a predefined message's **title is now read aloud** before its message. The full spoken order is: chime → preface → title → short pause → message → chime. Requires Ted's Cards Backend v1.0.73+.
+- **Announcements can speak a preface + the title.** A new **Spoken preface** setting (Settings → Announce → Voice, default “Incoming announcement”, blank for none) is spoken first, and a predefined message's **title is now read aloud** before its message. The full spoken order is: chime → preface → title → short pause → message → chime. Requires Ted's Dashboard System v1.0.73+.
 
 ### v1.0.298
 
@@ -1117,11 +1121,11 @@ the Home Assistant / HACS **update** dialog when you update. Newest first.
 
 ### v1.0.297
 
-- **Announce view redesign.** The Announce card is now a compact, frosted composer that matches the rest of the dashboard: pick a message and target from **dropdowns** (*Say… / To… / Mode…*) instead of long chip lists. Targeting has an explicit **Everyone** option and groups **Rooms** and **Devices**, with **offline devices dimmed**. The send button summarizes the target (“Announce to Kitchen +2”) and flashes **Sent ✓**. **Recent** now shows the time and sending device, can be **saved as a predefined message** (★, admins), and repositions itself — a side rail on wide screens, a collapsible section on narrow ones. Requires Ted's Cards Backend v1.0.69+.
+- **Announce view redesign.** The Announce card is now a compact, frosted composer that matches the rest of the dashboard: pick a message and target from **dropdowns** (*Say… / To… / Mode…*) instead of long chip lists. Targeting has an explicit **Everyone** option and groups **Rooms** and **Devices**, with **offline devices dimmed**. The send button summarizes the target (“Announce to Kitchen +2”) and flashes **Sent ✓**. **Recent** now shows the time and sending device, can be **saved as a predefined message** (★, admins), and repositions itself — a side rail on wide screens, a collapsible section on narrow ones. Requires Ted's Dashboard System v1.0.69+.
 
 ### v1.0.296
 
-- **Announce: simpler repeat model.** The composer's mode picker is now **Repeat alert sound: Play once / Until dismissed** (the separate "repeat" toggle is gone). A "Play once" announcement plays through once; an "Until dismissed" one keeps repeating its alert chime. The on-screen message now stays until it's dismissed **or** the timeout elapses, and the repeating sound stops at exactly the same moment the message closes (whether you dismissed it or it timed out). The Settings **"Announcement timeout"** now governs both the message and the sound (0 = until dismissed). Requires Ted's Cards Backend v1.0.68+.
+- **Announce: simpler repeat model.** The composer's mode picker is now **Repeat alert sound: Play once / Until dismissed** (the separate "repeat" toggle is gone). A "Play once" announcement plays through once; an "Until dismissed" one keeps repeating its alert chime. The on-screen message now stays until it's dismissed **or** the timeout elapses, and the repeating sound stops at exactly the same moment the message closes (whether you dismissed it or it timed out). The Settings **"Announcement timeout"** now governs both the message and the sound (0 = until dismissed). Requires Ted's Dashboard System v1.0.68+.
 
 ### v1.0.295
 
@@ -1129,7 +1133,7 @@ the Home Assistant / HACS **update** dialog when you update. Newest first.
 
 ### v1.0.294
 
-- **Announce: reply to a sender.** An incoming announcement now shows a **Reply** button (alongside Dismiss) when it came from another device. Tapping it prompts for a message and sends it straight back to the sender — who receives it with its own Reply button, so you can go back and forth. Announcements now carry the sending device to make this work. Requires Ted's Cards Backend v1.0.64+.
+- **Announce: reply to a sender.** An incoming announcement now shows a **Reply** button (alongside Dismiss) when it came from another device. Tapping it prompts for a message and sends it straight back to the sender — who receives it with its own Reply button, so you can go back and forth. Announcements now carry the sending device to make this work. Requires Ted's Dashboard System v1.0.64+.
 - **Announce settings fix.** The **+ Add message** button on the Settings → Announce tab now works — it was silently discarding the new blank row before it could render.
 
 ### v1.0.293
@@ -1159,7 +1163,7 @@ the Home Assistant / HACS **update** dialog when you update. Newest first.
 
 ### v1.0.287
 
-- **New Announce card + view.** A new `custom:ted-announce-card` lets you broadcast a spoken (text-to-speech) announcement to your Ted's Dashboard devices: pick target **rooms and/or individual devices** (or leave it house-wide), choose a **predefined message** or type a **custom** one, and send it as a **Play once** or **Until dismissed** announcement (with an optional repeating alert chime). A **Recent** list lets you re-send, load, or remove past announcements. Manage the predefined message list and voice/volume defaults in the new **Settings → Announce** tab. Announcement toasts appear **large and centered** on the targeted screens. Requires Ted's Cards Backend v1.0.63+.
+- **New Announce card + view.** A new `custom:ted-announce-card` lets you broadcast a spoken (text-to-speech) announcement to your Ted's Dashboard devices: pick target **rooms and/or individual devices** (or leave it house-wide), choose a **predefined message** or type a **custom** one, and send it as a **Play once** or **Until dismissed** announcement (with an optional repeating alert chime). A **Recent** list lets you re-send, load, or remove past announcements. Manage the predefined message list and voice/volume defaults in the new **Settings → Announce** tab. Announcement toasts appear **large and centered** on the targeted screens. Requires Ted's Dashboard System v1.0.63+.
 
 ### v1.0.286
 
@@ -1321,7 +1325,7 @@ the Home Assistant / HACS **update** dialog when you update. Newest first.
 
 ### v1.0.247
 
-- **Voice navigation** — dashboards now follow Ted's Cards Backend navigation signals: saying *"show cameras / go to climate / open music"* (or asking about the weather, or changing a thermostat by voice) navigates the screens **in that room** to the matching view. Activated by the navbar and background card when `backend_integration` is enabled. Requires Ted's Cards Backend v1.0.61+.
+- **Voice navigation** — dashboards now follow Ted's Dashboard System navigation signals: saying *"show cameras / go to climate / open music"* (or asking about the weather, or changing a thermostat by voice) navigates the screens **in that room** to the matching view. Activated by the navbar and background card when `dashboard_integration` is enabled. Requires Ted's Dashboard System v1.0.61+.
 
 ### v1.0.246
 
@@ -1329,7 +1333,7 @@ the Home Assistant / HACS **update** dialog when you update. Newest first.
 
 ### v1.0.245
 
-- **Wallpaper defaults** — new/unset devices now default to the **Bing Photo of the Day slideshow** at **75%** brightness. Requires Ted's Cards Backend v1.0.56+.
+- **Wallpaper defaults** — new/unset devices now default to the **Bing Photo of the Day slideshow** at **75%** brightness. Requires Ted's Dashboard System v1.0.56+.
 - **Combined Bing cache setting** — the slideshow's "Cache size" and "Clear cache" controls are now a single **Bing photo cache** field: a photo-count input with a trash-can button beside it (hover for "Clear cache").
 
 ### v1.0.244
@@ -1354,18 +1358,18 @@ the Home Assistant / HACS **update** dialog when you update. Newest first.
 
 ### v1.0.239
 
-- **Bing photo actions** — the Bing Photo of the Day info flyout now has **Favorite** (saves the image to a `favorites` folder for later), **Remove** (deletes it from the cache and jumps to a new photo), and **Next** (jumps to a new photo) buttons. Requires Ted's Cards Backend v1.0.55+.
+- **Bing photo actions** — the Bing Photo of the Day info flyout now has **Favorite** (saves the image to a `favorites` folder for later), **Remove** (deletes it from the cache and jumps to a new photo), and **Next** (jumps to a new photo) buttons. Requires Ted's Dashboard System v1.0.55+.
 - **Slideshow shuffle** — slideshows now reshuffle on every loop, so the order stays genuinely random over time instead of repeating one fixed sequence.
 - **Attribution flyout dismissal** — the caption now closes when you tap the icon again, interact with anything else on screen, or after 15 seconds.
 - **Attribution icon & left navbar** — the info icon shifts right by the navbar's width when a left/right navbar is active, so it never sits underneath it.
 
 ### v1.0.238
 
-- **Background brightness** — the **Background brightness** slider now sits at the top of **Settings → General → Background Wallpaper**, and its default is now **75%**. Requires Ted's Cards Backend v1.0.54+.
+- **Background brightness** — the **Background brightness** slider now sits at the top of **Settings → General → Background Wallpaper**, and its default is now **75%**. Requires Ted's Dashboard System v1.0.54+.
 
 ### v1.0.237
 
-- **Night mode: transition in seconds + fixes** — the **Transition duration** is now set in **seconds** (default 30 s), and the default dim levels are screen **75%** / background **25%**. Also fixes a color flash at the start of the fade: `ted-style` cards now fade directly from their own color to the night color (previously they briefly flashed to the Home Assistant theme color first). Requires Ted's Cards Backend v1.0.53+.
+- **Night mode: transition in seconds + fixes** — the **Transition duration** is now set in **seconds** (default 30 s), and the default dim levels are screen **75%** / background **25%**. Also fixes a color flash at the start of the fade: `ted-style` cards now fade directly from their own color to the night color (previously they briefly flashed to the Home Assistant theme color first). Requires Ted's Dashboard System v1.0.53+.
 
 ### v1.0.236
 
@@ -1377,15 +1381,15 @@ the Home Assistant / HACS **update** dialog when you update. Newest first.
 
 ### v1.0.234
 
-- **Night mode: automatic Dark mode** — Automatic Night Mode can now switch the device to **Dark** theme mode at night. It stores this device's current **Auto / Light / Dark** setting, switches to Dark a few seconds after the transition finishes, and restores your setting at night's end (or when you disable night mode). Toggle it under **Settings → General → Automatic night mode → Switch to Dark mode** (needs browser_mod). Requires Ted's Cards Backend v1.0.52+.
+- **Night mode: automatic Dark mode** — Automatic Night Mode can now switch the device to **Dark** theme mode at night. It stores this device's current **Auto / Light / Dark** setting, switches to Dark a few seconds after the transition finishes, and restores your setting at night's end (or when you disable night mode). Toggle it under **Settings → General → Automatic night mode → Switch to Dark mode** (needs browser_mod). Requires Ted's Dashboard System v1.0.52+.
 
 ### v1.0.233
 
-- **Background brightness + night dim controls** — added a **Background brightness** slider under **Settings → General → Background Wallpaper** (default 100%) that dims the wallpaper at all times. Automatic Night Mode's dim control is now split into **Dim brightness (screen)** and an independent **Dim brightness (background)** that stacks with it. New defaults: transition duration **1 min**, screen **75%**, background **25%**. Requires Ted's Cards Backend v1.0.51+.
+- **Background brightness + night dim controls** — added a **Background brightness** slider under **Settings → General → Background Wallpaper** (default 100%) that dims the wallpaper at all times. Automatic Night Mode's dim control is now split into **Dim brightness (screen)** and an independent **Dim brightness (background)** that stacks with it. New defaults: transition duration **1 min**, screen **75%**, background **25%**. Requires Ted's Dashboard System v1.0.51+.
 
 ### v1.0.232
 
-- **Night mode fixes & restore hardening** — the night font color now correctly recolors Ted's cards (clock, weather, etc.) that define their own text color. The captured daytime values are now stored per-device in the backend (surviving cache clears) instead of the browser, and for light entities night mode now also snapshots and restores the color temperature and on/off state. Toggling **Enabled** off during the night restores your daytime values over a quick 10 seconds. Requires Ted's Cards Backend v1.0.50+.
+- **Night mode fixes & restore hardening** — the night font color now correctly recolors Ted's cards (clock, weather, etc.) that define their own text color. The captured daytime values are now stored per-device in the backend (surviving cache clears) instead of the browser, and for light entities night mode now also snapshots and restores the color temperature and on/off state. Toggling **Enabled** off during the night restores your daytime values over a quick 10 seconds. Requires Ted's Dashboard System v1.0.50+.
 
 ### v1.0.231
 
@@ -1393,7 +1397,7 @@ the Home Assistant / HACS **update** dialog when you update. Newest first.
 
 ### v1.0.230
 
-- **Automatic night mode** — a new **Settings → General → Automatic night mode** panel (just below Icon set) dims the dashboard on a nightly schedule. Set a **night start/end time**, **dim brightness**, **night font color**, and **transition duration**: at night it darkens the background, lowers the screen brightness (via the device's browser_mod screen light by default, or a light/number entity you pick per device), and switches the font color to your night color — then smoothly restores your daytime values in the morning. Settings are global with per-device overrides. Requires Ted's Cards Backend v1.0.49+.
+- **Automatic night mode** — a new **Settings → General → Automatic night mode** panel (just below Icon set) dims the dashboard on a nightly schedule. Set a **night start/end time**, **dim brightness**, **night font color**, and **transition duration**: at night it darkens the background, lowers the screen brightness (via the device's browser_mod screen light by default, or a light/number entity you pick per device), and switches the font color to your night color — then smoothly restores your daytime values in the morning. Settings are global with per-device overrides. Requires Ted's Dashboard System v1.0.49+.
 
 ### v1.0.229
 
@@ -1405,7 +1409,7 @@ the Home Assistant / HACS **update** dialog when you update. Newest first.
 
 ### v1.0.227
 
-- **Bing Photo of the Day wallpapers** — the Background slideshow gains a new **Bing Photo of the Day** album source (requires Ted's Cards Backend). The backend downloads Bing's daily images into its own cache and serves them locally, so Mood matching and the Readability scrim work as usual. A small info icon in the top-left corner reveals the photo's title/copyright on hover or tap, the slideshow auto-refreshes daily (even on always-on kiosks), and the cache size is configurable (default 100 photos) with a **Clear cache** button.
+- **Bing Photo of the Day wallpapers** — the Background slideshow gains a new **Bing Photo of the Day** album source (requires Ted's Dashboard System). The backend downloads Bing's daily images into its own cache and serves them locally, so Mood matching and the Readability scrim work as usual. A small info icon in the top-left corner reveals the photo's title/copyright on hover or tap, the slideshow auto-refreshes daily (even on always-on kiosks), and the cache size is configurable (default 100 photos) with a **Clear cache** button.
 
 ### v1.0.226
 
@@ -1436,7 +1440,7 @@ the Home Assistant / HACS **update** dialog when you update. Newest first.
 
 ### v1.0.220
 
-- **Home-Welcome landing view** — the Home dashboard now defaults to `[root]/home-welcome` (matching the renamed landing view), and the reboot/reload home-redirect recognizes it as the landing page. Requires Ted's Cards Backend v1.0.46+.
+- **Home-Welcome landing view** — the Home dashboard now defaults to `[root]/home-welcome` (matching the renamed landing view), and the reboot/reload home-redirect recognizes it as the landing page. Requires Ted's Dashboard System v1.0.46+.
 
 ### v1.0.219
 
@@ -1480,7 +1484,7 @@ the Home Assistant / HACS **update** dialog when you update. Newest first.
 
 ### v1.0.209
 
-- **View Launcher colors** — the launcher button tint/icon color (default White) and the active-view ring color (default Accent) are now separate settings under **Settings → Navbar → Launcher Buttons**: **Button color** and **Highlight color**. Requires Ted's Cards Backend v1.0.45+.
+- **View Launcher colors** — the launcher button tint/icon color (default White) and the active-view ring color (default Accent) are now separate settings under **Settings → Navbar → Launcher Buttons**: **Button color** and **Highlight color**. Requires Ted's Dashboard System v1.0.45+.
 
 ### v1.0.208
 
@@ -1492,7 +1496,7 @@ the Home Assistant / HACS **update** dialog when you update. Newest first.
 
 ### v1.0.206
 
-- **View Launcher navbar buttons** — navbars with `backend_integration` can now show auto-discovered buttons that navigate to your dashboard's views, configured in **Settings → Navbar → Launcher Buttons**. Choose which views appear (a global available list with an optional per-device subset), set each button's size / name / icon / badge / dynamic highlighting, pick which navbar section they sit in, optionally combine views that share a prefix (e.g. `Home-*`) into a single expandable button seeded with the primary view's icon, and highlight the button for the view you're currently on. Requires Ted's Cards Backend v1.0.44+.
+- **View Launcher navbar buttons** — navbars with `dashboard_integration` can now show auto-discovered buttons that navigate to your dashboard's views, configured in **Settings → Navbar → Launcher Buttons**. Choose which views appear (a global available list with an optional per-device subset), set each button's size / name / icon / badge / dynamic highlighting, pick which navbar section they sit in, optionally combine views that share a prefix (e.g. `Home-*`) into a single expandable button seeded with the primary view's icon, and highlight the button for the view you're currently on. Requires Ted's Dashboard System v1.0.44+.
 
 ### v1.0.205
 
@@ -1635,7 +1639,7 @@ the Home Assistant / HACS **update** dialog when you update. Newest first.
 
 ### v1.0.172
 
-- **New Calendar card** — added `custom:ted-calendar-card`, a calendar for the **current device** that wraps the third-party [Daylight Calendar card](https://github.com/superdingo101/daylight-calendar-card). It shows the calendars chosen per-device in the new **Settings → Calendars** list (falling back to sensible defaults), with Ted's styling baked in. If the Daylight Calendar card isn't installed, it shows a clear "not installed" message with install steps and an **Open HACS** button, and swaps itself for the real calendar automatically once it loads. Requires Ted's Cards Backend v1.0.37+.
+- **New Calendar card** — added `custom:ted-calendar-card`, a calendar for the **current device** that wraps the third-party [Daylight Calendar card](https://github.com/superdingo101/daylight-calendar-card). It shows the calendars chosen per-device in the new **Settings → Calendars** list (falling back to sensible defaults), with Ted's styling baked in. If the Daylight Calendar card isn't installed, it shows a clear "not installed" message with install steps and an **Open HACS** button, and swaps itself for the real calendar automatically once it loads. Requires Ted's Dashboard System v1.0.37+.
 
 ### v1.0.171
 
@@ -1651,7 +1655,7 @@ the Home Assistant / HACS **update** dialog when you update. Newest first.
 
 ### v1.0.168
 
-- **Default Music volume is now 5%** — the per-device **Music volume** setting defaults to 5% (was 50%). Devices with an existing value keep it. Pairs with Ted's Cards Backend v1.0.35+.
+- **Default Music volume is now 5%** — the per-device **Music volume** setting defaults to 5% (was 50%). Devices with an existing value keep it. Pairs with Ted's Dashboard System v1.0.35+.
 
 ### v1.0.167
 
@@ -1679,7 +1683,7 @@ the Home Assistant / HACS **update** dialog when you update. Newest first.
 
 ### v1.0.161
 
-- **Icon set setting** — added **Settings → General → Icon set**. Ted's built-in icons (Status card, Settings category tabs, and more over time) now follow the chosen icon family — **Auto** (best installed), Material Design, Fluent, Streamline, or Pepicons — with a Material Design fallback when an icon isn't available in the chosen set. An internal name map reconciles the different icon names across families. Requires Ted's Cards Backend v1.0.34+.
+- **Icon set setting** — added **Settings → General → Icon set**. Ted's built-in icons (Status card, Settings category tabs, and more over time) now follow the chosen icon family — **Auto** (best installed), Material Design, Fluent, Streamline, or Pepicons — with a Material Design fallback when an icon isn't available in the chosen set. An internal name map reconciles the different icon names across families. Requires Ted's Dashboard System v1.0.34+.
 - **Status card — User Name** — added a **User Name** row (the logged-in Home Assistant user) at the top of the Status card.
 
 ### v1.0.160
@@ -1713,7 +1717,7 @@ the Home Assistant / HACS **update** dialog when you update. Newest first.
 
 ### v1.0.153
 
-- **Separate players for music vs. system sounds** — **Settings → Media** now has two per-device players: **Music & media player** (used by the Music view / Music Assistant) and **System sounds player** (alarms, timers, alerts, notifications). The Music card uses the music player, falling back to the system-sounds player and then the device's own player, so single-speaker setups still work with one entry. The Status card shows both. Pairs with Ted's Cards Backend v1.0.33+.
+- **Separate players for music vs. system sounds** — **Settings → Media** now has two per-device players: **Music & media player** (used by the Music view / Music Assistant) and **System sounds player** (alarms, timers, alerts, notifications). The Music card uses the music player, falling back to the system-sounds player and then the device's own player, so single-speaker setups still work with one entry. The Status card shows both. Pairs with Ted's Dashboard System v1.0.33+.
 
 ### v1.0.152
 
@@ -1732,7 +1736,7 @@ the Home Assistant / HACS **update** dialog when you update. Newest first.
 ### v1.0.149
 
 - **Settings changes apply instantly again** — writing a setting (e.g. the Background **Mode**) now updates the UI and any backend-integrated cards immediately, instead of waiting on a backend round-trip that could leave a dropdown showing an unsaved value while the fields below stayed on the old one.
-- **Note for dashboards driving the wallpaper from Settings** — the Ted Background Card defaults to self-contained (card-only) as of v1.0.147; set `backend_integration: true` on the card to have it follow Settings → General → Background Wallpaper (with per-device overrides).
+- **Note for dashboards driving the wallpaper from Settings** — the Ted Background Card defaults to self-contained (card-only) as of v1.0.147; set `dashboard_integration: true` on the card to have it follow Settings → General → Background Wallpaper (with per-device overrides).
 
 ### v1.0.148
 
@@ -1740,14 +1744,14 @@ the Home Assistant / HACS **update** dialog when you update. Newest first.
 
 ### v1.0.147
 
-- **Ted Background Card works without the backend** — the card now has a full editor and carries its own wallpaper config, so you can set the background per-card (solid/image/slideshow, size/align/repeat/scroll, and more) with no Ted's Cards Backend. Turn on **Use Ted's Cards Backend** to instead drive it from Settings and get per-device wallpapers; card options still override.
+- **Ted Background Card works without the backend** — the card now has a full editor and carries its own wallpaper config, so you can set the background per-card (solid/image/slideshow, size/align/repeat/scroll, and more) with no Ted's Dashboard System. Turn on **Use Ted's Dashboard System** to instead drive it from Settings and get per-device wallpapers; card options still override.
 - **Mood matching** — the slideshow "Type preference" is now **Mood matching** (On / Off / Force Light / Force Dark). "On" analyses each image's brightness and prefers images that match the current light/dark theme — now for **any** slideshow source, including your own folders.
 - **Enhance readability** — a new toggle (with adjustable **strength**) tones the wallpaper toward the theme's contrast so overlaid content stays legible.
-- **Built-in wallpapers over CDN** — card-only users (without the backend serving them locally) now get the bundled wallpapers too. Requires Ted's Cards Backend v1.0.32+ for backend-integrated use.
+- **Built-in wallpapers over CDN** — card-only users (without the backend serving them locally) now get the bundled wallpapers too. Requires Ted's Dashboard System v1.0.32+ for backend-integrated use.
 
 ### v1.0.146
 
-- **Background uploads go to a dedicated “Ted Dash System” folder** — the Background Wallpaper **Add image** now stores uploads in a `Ted Dash System` folder under Home Assistant's **My media** (created by the Ted's Cards Backend on setup) instead of the generic image store, and **Select image** / slideshow **Select folder** open the media browser directly inside that folder. Requires Ted's Cards Backend v1.0.31+.
+- **Background uploads go to a dedicated “Ted Dash System” folder** — the Background Wallpaper **Add image** now stores uploads in a `Ted Dash System` folder under Home Assistant's **My media** (created by the Ted's Dashboard System on setup) instead of the generic image store, and **Select image** / slideshow **Select folder** open the media browser directly inside that folder. Requires Ted's Dashboard System v1.0.31+.
 
 ### v1.0.145
 
@@ -1795,19 +1799,19 @@ the Home Assistant / HACS **update** dialog when you update. Newest first.
 
 ### v1.0.132
 
-- **Background Wallpaper tweaks** — the default Solid Color is now a muted indigo (`#57608E`), and the "gradient effect" now matches the "Ted's Home Theater" card surface: a 145° three-stop diagonal that steps the chosen color darker. Pairs with Ted's Cards Backend v1.0.30+.
+- **Background Wallpaper tweaks** — the default Solid Color is now a muted indigo (`#57608E`), and the "gradient effect" now matches the "Ted's Home Theater" card surface: a 145° three-stop diagonal that steps the chosen color darker. Pairs with Ted's Dashboard System v1.0.30+.
 
 ### v1.0.131
 
-- **Background Wallpapers** — new **Settings → General → Background Wallpaper** control with four modes: **Solid Color** (color picker + optional gradient), **Single Image** (recent thumbnails, browse HA media, or upload a new image), **Slideshow** (built-in album or a media folder, theme-matched/light/dark/all, shuffle, cycle duration), and **HA Theme** (defer to the active theme). Shared options for size, alignment, repeat, and fixed/scroll. Settings apply globally or per-device. A new invisible **Ted Background Card** (`custom:ted-background-card`) paints the dashboard from these settings — add one per view (e.g. a shared layout). Requires Ted's Cards Backend v1.0.29+.
+- **Background Wallpapers** — new **Settings → General → Background Wallpaper** control with four modes: **Solid Color** (color picker + optional gradient), **Single Image** (recent thumbnails, browse HA media, or upload a new image), **Slideshow** (built-in album or a media folder, theme-matched/light/dark/all, shuffle, cycle duration), and **HA Theme** (defer to the active theme). Shared options for size, alignment, repeat, and fixed/scroll. Settings apply globally or per-device. A new invisible **Ted Background Card** (`custom:ted-background-card`) paints the dashboard from these settings — add one per view (e.g. a shared layout). Requires Ted's Dashboard System v1.0.29+.
 
 ### v1.0.130
 
-- **Status items — button-style interactions** — every Navbar and Room Card status item now supports `tap_action`, `hold_action`, and `double_tap_action` (like the Button Card), replacing the old `datetime`/`weather` `tap_navigate`. For the interactive items (brightness, volume, notifications, alarms, timers) a configured action **overrides** that gesture's built-in behavior; leave it unset to keep the default (e.g. brightness tap still opens its slider). Editable in the card editor under a new **Interactions** section. The `navigate-dashboard` action still requires the navbar's `backend_integration`; the Button Card and status items now share one action dispatcher.
+- **Status items — button-style interactions** — every Navbar and Room Card status item now supports `tap_action`, `hold_action`, and `double_tap_action` (like the Button Card), replacing the old `datetime`/`weather` `tap_navigate`. For the interactive items (brightness, volume, notifications, alarms, timers) a configured action **overrides** that gesture's built-in behavior; leave it unset to keep the default (e.g. brightness tap still opens its slider). Editable in the card editor under a new **Interactions** section. The `navigate-dashboard` action still requires the navbar's `dashboard_integration`; the Button Card and status items now share one action dispatcher.
 
 ### v1.0.129
 
-- **Navbar Card — hold menu requires backend integration** — the long-press settings menu (auto-hide / float / position / size / Dashboard Settings / Exit) now only appears on a navbar with `backend_integration: true`. Those controls drive backend-backed per-device settings, so a plain navbar without backend integration no longer opens the menu.
+- **Navbar Card — hold menu requires backend integration** — the long-press settings menu (auto-hide / float / position / size / Dashboard Settings / Exit) now only appears on a navbar with `dashboard_integration: true`. Those controls drive backend-backed per-device settings, so a plain navbar without backend integration no longer opens the menu.
 
 ### v1.0.128
 
@@ -1863,7 +1867,7 @@ the Home Assistant / HACS **update** dialog when you update. Newest first.
 
 ### v1.0.115
 
-- **New Climate Card + Temperatures settings** — added `custom:ted-climate-card`, which auto-populates a view with native `thermostat` cards (one per climate entity, `show_current_as_primary`). Choose which thermostats each device shows in the new **Settings → Temperatures** category (same per-device model as Cameras), with layout options Auto / Tabbed / Vertical / Horizontal. The Cameras settings list UI was generalized into a reusable entity-list picker shared by both categories. Requires Ted's Cards Backend v1.0.28+.
+- **New Climate Card + Temperatures settings** — added `custom:ted-climate-card`, which auto-populates a view with native `thermostat` cards (one per climate entity, `show_current_as_primary`). Choose which thermostats each device shows in the new **Settings → Temperatures** category (same per-device model as Cameras), with layout options Auto / Tabbed / Vertical / Horizontal. The Cameras settings list UI was generalized into a reusable entity-list picker shared by both categories. Requires Ted's Dashboard System v1.0.28+.
 
 ### v1.0.114
 
@@ -1883,17 +1887,17 @@ the Home Assistant / HACS **update** dialog when you update. Newest first.
 
 ### v1.0.110
 
-- **Clock Weather Card `backend_integration` option (YAML-only)** — the Clock Weather Card gained a `backend_integration` flag (default `false`), matching the Navbar Card. When enabled and the card has no `weather_entity` of its own, it sources the entity from a new global **Weather entity** setting (Settings → General; device scope, then global), falling back to the first `weather.*` entity. Off by default, so the card keeps working with no backend dependency. Pairs with Ted's Cards Backend v1.0.27+.
+- **Clock Weather Card `dashboard_integration` option (YAML-only)** — the Clock Weather Card gained a `dashboard_integration` flag (default `false`), matching the Navbar Card. When enabled and the card has no `weather_entity` of its own, it sources the entity from a new global **Weather entity** setting (Settings → General; device scope, then global), falling back to the first `weather.*` entity. Off by default, so the card keeps working with no backend dependency. Pairs with Ted's Dashboard System v1.0.27+.
 - **Weather entity setting** — added a `weather_entity` setting under Settings → General so a single place can drive the weather entity for opted-in Ted clock/weather cards.
 
 ### v1.0.109
 
-- **Navbar `backend_integration` option (YAML-only)** — the Navbar Card gained a `backend_integration` flag (default `false`) that gates its Ted's Cards Backend behaviors: **auto-return-home** on idle, a new **welcome → home redirect** on load, and status-item **`tap_navigate`**. It's left off by default so the bar can be dropped into any dashboard without cross-navigation surprises; set `backend_integration: true` on the Ted Dashboard navbar to keep those behaviors.
-- **Return to your Home view after a reboot/reload** — with `backend_integration` on, opening the dashboard's default welcome view now redirects to this device's configured **Home dashboard** (from Settings) instead of stranding wall panels on the welcome page. It fires once per page load, so the welcome view can still be opened manually afterwards.
+- **Navbar `dashboard_integration` option (YAML-only)** — the Navbar Card gained a `dashboard_integration` flag (default `false`) that gates its Ted's Dashboard System behaviors: **auto-return-home** on idle, a new **welcome → home redirect** on load, and status-item **`tap_navigate`**. It's left off by default so the bar can be dropped into any dashboard without cross-navigation surprises; set `dashboard_integration: true` on the Ted Dashboard navbar to keep those behaviors.
+- **Return to your Home view after a reboot/reload** — with `dashboard_integration` on, opening the dashboard's default welcome view now redirects to this device's configured **Home dashboard** (from Settings) instead of stranding wall panels on the welcome page. It fires once per page load, so the welcome view can still be opened manually afterwards.
 
 ### v1.0.108
 
-- **Per-device camera layout** — added a `cameras_layout` setting (Auto grid / Single / Quad / Multi) shown at the top of Settings → Cameras. In `cameras_source: settings` mode the Camera Card takes its layout from this setting (per-device or global), so each device can arrange its cameras without editing YAML. Pairs with Ted's Cards Backend v1.0.26+.
+- **Per-device camera layout** — added a `cameras_layout` setting (Auto grid / Single / Quad / Multi) shown at the top of Settings → Cameras. In `cameras_source: settings` mode the Camera Card takes its layout from this setting (per-device or global), so each device can arrange its cameras without editing YAML. Pairs with Ted's Dashboard System v1.0.26+.
 
 ### v1.0.107
 
@@ -1943,7 +1947,7 @@ the Home Assistant / HACS **update** dialog when you update. Newest first.
 
 ### v1.0.96
 
-- **Camera Card can be driven by per-device Settings** — set `cameras_source: settings` and the Camera Card shows this device's own camera list from Settings → Cameras. **Global** holds the available camera allow-list (with Auto-populate); each device curates its own ordered subset (with a **Sync camera list** button). Also adds a responsive **Auto grid** layout that adapts to the number of cameras, a **Fill** option to fill a dashboard area, and a friendly empty-state prompt (with a Settings button) when a device has no cameras yet. Pairs with Ted's Cards Backend v1.0.24+.
+- **Camera Card can be driven by per-device Settings** — set `cameras_source: settings` and the Camera Card shows this device's own camera list from Settings → Cameras. **Global** holds the available camera allow-list (with Auto-populate); each device curates its own ordered subset (with a **Sync camera list** button). Also adds a responsive **Auto grid** layout that adapts to the number of cameras, a **Fill** option to fill a dashboard area, and a friendly empty-state prompt (with a Settings button) when a device has no cameras yet. Pairs with Ted's Dashboard System v1.0.24+.
 
 ### v1.0.95
 
@@ -1980,15 +1984,15 @@ the Home Assistant / HACS **update** dialog when you update. Newest first.
 
 ### v1.0.88
 
-- **Status Card layout tidy-up** — the **Ted's Cards Backend** row moved to the top of the panel, the redundant **Integrations** row was removed (those items already appear in the **Requirements** tooltip), and the row label/icon vertical alignment was corrected.
+- **Status Card layout tidy-up** — the **Ted's Dashboard System** row moved to the top of the panel, the redundant **Integrations** row was removed (those items already appear in the **Requirements** tooltip), and the row label/icon vertical alignment was corrected.
 
 ### v1.0.87
 
-- **Status Card polish** — the **Requirements** and **Integrations** rows now open a hover/tap/keyboard tooltip listing each item with a state icon (met / missing / unknown); the requirement count now tallies only real dependency attributes (it no longer miscounted Home Assistant's auto-added `friendly_name`/`icon`); the **Backend** row is renamed **Ted's Backend** with a tooltip linking the Ted's Cards Backend HACS integration; and the **Weather** and **Media Player** rows now name the resolved entity (`Available · <name>`).
+- **Status Card polish** — the **Requirements** and **Integrations** rows now open a hover/tap/keyboard tooltip listing each item with a state icon (met / missing / unknown); the requirement count now tallies only real dependency attributes (it no longer miscounted Home Assistant's auto-added `friendly_name`/`icon`); the **Backend** row is renamed **Ted's Backend** with a tooltip linking the Ted's Dashboard System HACS integration; and the **Weather** and **Media Player** rows now name the resolved entity (`Available · <name>`).
 
 ### v1.0.86
 
-- **New Status Card + Welcome-page device panel** — a new `custom:ted-status-card` shows this device's readiness at a glance: how many requirements and integrations are met, whether Browser Mod has registered *this* browser (with its Browser ID, read client-side the same way the Browser Mod panel does), the backend connection + version, the weather entity, and the media-player playback target. It is intentionally left out of the "Add card" picker and used by reference in YAML (`type: custom:ted-status-card`). Pairs with Ted's Cards Backend v1.0.21+ (which exposes the backend `version`) and the Ted Dashboard Welcome page.
+- **New Status Card + Welcome-page device panel** — a new `custom:ted-status-card` shows this device's readiness at a glance: how many requirements and integrations are met, whether Browser Mod has registered *this* browser (with its Browser ID, read client-side the same way the Browser Mod panel does), the backend connection + version, the weather entity, and the media-player playback target. It is intentionally left out of the "Add card" picker and used by reference in YAML (`type: custom:ted-status-card`). Pairs with Ted's Dashboard System v1.0.21+ (which exposes the backend `version`) and the Ted Dashboard Welcome page.
 - **Clock Weather Card — correct auto-sizing when the clock is hidden** — a weather-only or date-only card in a fill (grid-layout) area no longer reserves the hidden clock's height when auto-fitting. Previously the phantom clock height shrank the visible weather/date to roughly a third of its intended size in height-constrained areas.
 
 ### v1.0.85
@@ -1997,11 +2001,11 @@ the Home Assistant / HACS **update** dialog when you update. Newest first.
 
 ### v1.0.84
 
-- **MessageBox `set-setting` action + admin-only Global settings** — MessageBox action buttons can now write a Ted's Cards setting (`action: set-setting` with `scope`, `setting`, `value`) and then navigate, so a "Use this layout" button can save your choice before switching views. The Settings card now shows **Global** settings as **read-only** for non-admins (device-scope stays editable). Pairs with Ted's Cards Backend v1.0.20+, which enforces that only admins may write Global settings.
+- **MessageBox `set-setting` action + admin-only Global settings** — MessageBox action buttons can now write a Ted's Cards setting (`action: set-setting` with `scope`, `setting`, `value`) and then navigate, so a "Use this layout" button can save your choice before switching views. The Settings card now shows **Global** settings as **read-only** for non-admins (device-scope stays editable). Pairs with Ted's Dashboard System v1.0.20+, which enforces that only admins may write Global settings.
 
 ### v1.0.83
 
-- **Settings — expanded Navigation section** — the **Auto-return home after** setting moved to the top of the Navigation section, and new root-relative dashboard-path settings were added for **Weather, Calendar, Cameras, Climate, Music, Photos, Info, and Announce**. Pairs with Ted's Cards Backend v1.0.19+.
+- **Settings — expanded Navigation section** — the **Auto-return home after** setting moved to the top of the Navigation section, and new root-relative dashboard-path settings were added for **Weather, Calendar, Cameras, Climate, Music, Photos, Info, and Announce**. Pairs with Ted's Dashboard System v1.0.19+.
 
 ### v1.0.82
 
@@ -2014,7 +2018,7 @@ the Home Assistant / HACS **update** dialog when you update. Newest first.
 ### v1.0.80
 
 - **MessageBox card — standard visibility conditions** — the card's bespoke `show_if` (form factor / View Assist presence / missing cards / entity state) is replaced by a `visibility:` list using the **same conditions engine as the Navbar Card** (`screen`, `view-assist`, `card`, `state`, `numeric_state`, `user`, and `and`/`or`/`not`). Top-level conditions are AND-ed. A new generic **`card`** condition (`registered` / `not_registered`) covers the old "warn when a dependency card isn't installed" use.
-- **Devices report their screen to the backend** — on registration each device now sends its viewport **width/height, orientation, and form factor** to Ted's Cards Backend (updated, throttled, when the screen changes), so server-side logic and dashboards can reason about the client. Pairs with Ted's Cards Backend v1.0.17+.
+- **Devices report their screen to the backend** — on registration each device now sends its viewport **width/height, orientation, and form factor** to Ted's Dashboard System (updated, throttled, when the screen changes), so server-side logic and dashboards can reason about the client. Pairs with Ted's Dashboard System v1.0.17+.
 
 ### v1.0.79
 
@@ -2040,7 +2044,7 @@ the Home Assistant / HACS **update** dialog when you update. Newest first.
 
 ### v1.0.74
 
-- **Alarms/Timers status items — tap & hold actions** — tapping the Alarms or Timers navbar item navigates to its configured dashboard; holding opens a quick menu: **View Alarms** / **Disable Alarms**, and **View Timers** / **Pause all timers** / **Cancel all timers** (scoped to the device's area). New **Alarms dashboard** and **Timers dashboard** settings (default to the alarms-timers view's matching tab). Requires **Ted's Cards Backend v1.0.15+**.
+- **Alarms/Timers status items — tap & hold actions** — tapping the Alarms or Timers navbar item navigates to its configured dashboard; holding opens a quick menu: **View Alarms** / **Disable Alarms**, and **View Timers** / **Pause all timers** / **Cancel all timers** (scoped to the device's area). New **Alarms dashboard** and **Timers dashboard** settings (default to the alarms-timers view's matching tab). Requires **Ted's Dashboard System v1.0.15+**.
 - **Notifications status item — hold for Do Not Disturb** — tapping still opens the notifications list; holding now offers **Enable / Disable Do not disturb** for this device.
 - **Count badge** — the Alarms/Timers/Notifications count badge is smaller and tucked further into the corner so it no longer covers the icon.
 
@@ -2050,11 +2054,11 @@ the Home Assistant / HACS **update** dialog when you update. Newest first.
 - **Navbar — combined Date/Time item** — the separate **Time** and **Date** items are now one **Date/Time** item with a **Display** choice (Both / Time only / Date only) and token-based **Date format** (default `ddd, MMMM D`) and **Time format** (default `h:MM`); the unused format field disables based on Display.
 - **Badge-item editor** — Notifications / Alarms / Timers now share a tidy layout (Area + Name, Icon + Hide-when-empty side by side, then a **Display badge icon** toggle to show/hide the count bubble).
 - **Navbar menu tidy-up** — removed Temperature, Occupancy, and Spacer from the navbar's status-item menu (still available on the Room Card); "Brightness control"/"Volume control" are now just **Brightness**/**Volume**.
-- **New default navigation** — **Home dashboard** defaults to `[root]/home` and **Auto-return home after** defaults to `0` (never). Requires **Ted's Cards Backend v1.0.14+**.
+- **New default navigation** — **Home dashboard** defaults to `[root]/home` and **Auto-return home after** defaults to `0` (never). Requires **Ted's Dashboard System v1.0.14+**.
 
 ### v1.0.72
 
-- **Per-severity notification sounds** — the Settings card's **Notifications** group now has Info / Success / Warning / Danger / Tip sound fields (each `"default"` falls back to the general alert sound), so different severities can play different sounds. Requires **Ted's Cards Backend v1.0.13+**.
+- **Per-severity notification sounds** — the Settings card's **Notifications** group now has Info / Success / Warning / Danger / Tip sound fields (each `"default"` falls back to the general alert sound), so different severities can play different sounds. Requires **Ted's Dashboard System v1.0.13+**.
 - **Notification persistence replaces "sticky"** — notifications now carry a `persistence` of **transient** (toast only, never stored), **normal** (auto-clears when read/dismissed), or **sticky** (stays until manually cleared).
 - **Repeat is now a simple on/off** — the timer/alarm **Max repeats** setting is gone; a repeating alert loops for the sound's own length until dismissed (or the notification times out), handled server-side.
 
@@ -2066,7 +2070,7 @@ the Home Assistant / HACS **update** dialog when you update. Newest first.
 
 ### v1.0.69
 
-- **Settings system (global + per-device)** — a new backend-backed settings layer with a **Ted Settings card** (`custom:ted-settings-card`) featuring **Global** and **This device** tabs (each field can inherit or override). Covers timer/alarm snooze, alert sounds/volume/repeat, media player, notification sound, Do Not Disturb, and dashboard navigation. Requires **Ted's Cards Backend v1.0.11+**.
+- **Settings system (global + per-device)** — a new backend-backed settings layer with a **Ted Settings card** (`custom:ted-settings-card`) featuring **Global** and **This device** tabs (each field can inherit or override). Covers timer/alarm snooze, alert sounds/volume/repeat, media player, notification sound, Do Not Disturb, and dashboard navigation. Requires **Ted's Dashboard System v1.0.11+**.
 - **Snooze is now per-device** — timer/alarm completion notifications show **Snooze (Xmin)** / **Dismiss** resolved from *this device's* effective snooze settings (or hide Snooze if disabled), on both the toast and the Notification Center.
 - **Do Not Disturb** — suppresses toasts (and mutes server-side alert sounds) on a device.
 - **Auto-return home** — the navbar returns the device to its configured Home dashboard after an idle period (`auto_return_home_after`, 0 = never); only active when the settings backend is installed.
@@ -2087,7 +2091,7 @@ the Home Assistant / HACS **update** dialog when you update. Newest first.
 
 ### v1.0.65
 
-- **Notification toasts clear on every device** — dismissing a notification toast (or marking it read / clearing it) now closes the matching toast on **all** devices, so a house-wide alarm/timer that popped everywhere disappears everywhere the moment you dismiss it on one screen. Requires Ted's Cards Backend v1.0.9+.
+- **Notification toasts clear on every device** — dismissing a notification toast (or marking it read / clearing it) now closes the matching toast on **all** devices, so a house-wide alarm/timer that popped everywhere disappears everywhere the moment you dismiss it on one screen. Requires Ted's Dashboard System v1.0.9+.
 - **Button Card — area-scoped badge & highlight counts** — the badge and dynamic-highlight can now count a list attribute (e.g. `alarms` / `active`) with an optional **area scope**, so navbar Alarm/Timer badges & accents reflect only the current device's area (plus house-wide items) instead of the raw total. New `count_attribute` + `area_scoped` options (badge fields added to the visual editor).
 
 ### v1.0.64
@@ -2105,7 +2109,7 @@ the Home Assistant / HACS **update** dialog when you update. Newest first.
 - **Alarm & Timer cards — per-item scope** — the Add/Edit dialog now has a **This room / House-wide** choice, so you can create a house-wide alarm or countdown that appears on every device.
 - **Room Card — watermark refinements** — the watermark now sits flush in the top-left corner (no rounding), defaults to 300% size with 30%/70% icon/background transparency, sizes the header so buttons start below it, and adds optional **Icon color** and **Icon background color** overrides.
 
-> Note: the per-item scope requires the latest **Ted's Cards Backend** integration.
+> Note: the per-item scope requires the latest **Ted's Dashboard System** integration.
 
 ### v1.0.61
 
@@ -2162,7 +2166,7 @@ the Home Assistant / HACS **update** dialog when you update. Newest first.
 
 ### v1.0.49
 
-- **Notification toasts fixed on kiosk dashboards** — toasts now subscribe via the backend's `teds_cards_backend/subscribe_notifications` WebSocket command instead of the raw event, resolving the "Unauthorized"/refused-subscription errors that non-admin (e.g. Wallpanel) users hit. Requires Ted's Cards Backend v1.0.7+.
+- **Notification toasts fixed on kiosk dashboards** — toasts now subscribe via the backend's `teds_dashboard_system/subscribe_notifications` WebSocket command instead of the raw event, resolving the "Unauthorized"/refused-subscription errors that non-admin (e.g. Wallpanel) users hit. Requires Ted's Dashboard System v1.0.7+.
 
 ### v1.0.48
 
@@ -2229,16 +2233,16 @@ the Home Assistant / HACS **update** dialog when you update. Newest first.
 
 ### v1.0.35
 
-- **New: Notification Center card** — a bell with an unread badge over a scrollable list of notifications (severity accents, per-item dismiss, actions, time-ago, room labels), with **Mark all read** / **Clear all**. Has an **Area** filter and can pop toasts. Reads `sensor.teds_notifications` (needs **Ted's Cards Backend v1.0.6+**).
+- **New: Notification Center card** — a bell with an unread badge over a scrollable list of notifications (severity accents, per-item dismiss, actions, time-ago, room labels), with **Mark all read** / **Clear all**. Has an **Area** filter and can pop toasts. Reads `sensor.teds_notifications` (needs **Ted's Dashboard System v1.0.6+**).
 - **Navbar Card** — new **Notifications bell** status item: a bell + unread badge that opens a popover list of notifications (dismiss / clear all), with an optional **Area** filter.
 
 ### v1.0.34
 
-- **Notifications (foundation)** — the Timer and Alarm cards now show **toast notifications** driven by Ted's Cards Backend: finished timers and ringing alarms pop a dismissable message, and any `teds_cards_backend.notify` service call does too. Toasts respect the card's **Area**. Requires **Ted's Cards Backend v1.0.6+**. (A dedicated Notification Center card and navbar bell are coming next.)
+- **Notifications (foundation)** — the Timer and Alarm cards now show **toast notifications** driven by Ted's Dashboard System: finished timers and ringing alarms pop a dismissable message, and any `teds_dashboard_system.notify` service call does too. Toasts respect the card's **Area**. Requires **Ted's Dashboard System v1.0.6+**. (A dedicated Notification Center card and navbar bell are coming next.)
 
 ### v1.0.33
 
-- **Timer Card** — **long-press** a **Recent** preset to open a **Delete** popup that removes it from the recent list. Requires **Ted's Cards Backend v1.0.5+**.
+- **Timer Card** — **long-press** a **Recent** preset to open a **Delete** popup that removes it from the recent list. Requires **Ted's Dashboard System v1.0.5+**.
 
 ### v1.0.32
 
@@ -2246,7 +2250,7 @@ the Home Assistant / HACS **update** dialog when you update. Newest first.
 
 ### v1.0.31
 
-- **Timer Card** — when a timer finishes it now pops a dismissable **completion message** (styled like Ted's MessageBox) reading "&lt;name&gt; — X hr, Y min, Z sec completed!", with a close button and a ~10s auto-dismiss. Respects the card's **Area** so each room only announces its own timers. Requires **Ted's Cards Backend v1.0.4+**.
+- **Timer Card** — when a timer finishes it now pops a dismissable **completion message** (styled like Ted's MessageBox) reading "&lt;name&gt; — X hr, Y min, Z sec completed!", with a close button and a ~10s auto-dismiss. Respects the card's **Area** so each room only announces its own timers. Requires **Ted's Dashboard System v1.0.4+**.
 
 ### v1.0.30
 
@@ -2258,7 +2262,7 @@ the Home Assistant / HACS **update** dialog when you update. Newest first.
 
 ### v1.0.28
 
-- **Alarm & Timer Cards** — new **Area** option scopes a card to a room: when set, the card only shows alarms/timers for that area and tags anything created here with it (needs **Ted's Cards Backend v1.0.3+**). Leave it unset for a whole-home view, where each item shows a small **room label**. The redundant "sensor" option was removed.
+- **Alarm & Timer Cards** — new **Area** option scopes a card to a room: when set, the card only shows alarms/timers for that area and tags anything created here with it (needs **Ted's Dashboard System v1.0.3+**). Leave it unset for a whole-home view, where each item shows a small **room label**. The redundant "sensor" option was removed.
 
 ### v1.0.27
 
@@ -2317,7 +2321,7 @@ the Home Assistant / HACS **update** dialog when you update. Newest first.
 
 ### v1.0.15
 
-- **Alarm Card** — the **New alarm** popup now has a **repeat-day picker** (Mon–Sun), and each alarm row shows a **gear** to edit it (label, time, and days). Day sets are summarised as **Every day**, **Weekdays**, or **Weekends** where they match, otherwise the individual days are listed. Requires **Ted's Cards Backend v1.0.2+** so newly added or edited alarms refresh the card immediately.
+- **Alarm Card** — the **New alarm** popup now has a **repeat-day picker** (Mon–Sun), and each alarm row shows a **gear** to edit it (label, time, and days). Day sets are summarised as **Every day**, **Weekdays**, or **Weekends** where they match, otherwise the individual days are listed. Requires **Ted's Dashboard System v1.0.2+** so newly added or edited alarms refresh the card immediately.
 - **Timer Card** — **Active** timers now span the **full width** of the card (one per row) instead of sitting in columns, and every tile's controls (pause / resume, edit, and a new **delete**) are **inline** with the time and name, in both the Active and Recent sections.
 
 ### v1.0.14
@@ -2331,7 +2335,7 @@ the Home Assistant / HACS **update** dialog when you update. Newest first.
 ### v1.0.12
 
 - **Alarm Card** — redesigned: a **+** in the header opens a **New alarm** popup; alarms now **sort by time of day with enabled ones first**; each row shows a large **12-hour time**; and the per-row menu is replaced by a **delete** button that confirms via Home Assistant's standard dialog.
-- **Timer Card** — redesigned as a **responsive grid of tiles** (column count adapts to the card width) split into **Active** and **Recent** sections. Active tiles show a **progress bar**, remaining time and name, with **pause / resume** and a **gear** to edit (rename, change duration, or delete). A **+** in the header opens a **New timer** popup. Requires **Ted's Cards Backend v1.0.1+** for pause/resume/edit.
+- **Timer Card** — redesigned as a **responsive grid of tiles** (column count adapts to the card width) split into **Active** and **Recent** sections. Active tiles show a **progress bar**, remaining time and name, with **pause / resume** and a **gear** to edit (rename, change duration, or delete). A **+** in the header opens a **New timer** popup. Requires **Ted's Dashboard System v1.0.1+** for pause/resume/edit.
 - **Editor sections** — the Timer editor's sections (Active / Recent) support **drag-to-reorder** and inline **show/hide** toggles, matching the other cards.
 
 ### v1.0.11

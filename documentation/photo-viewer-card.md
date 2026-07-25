@@ -16,8 +16,8 @@ hover) to reveal the action buttons in the top-right corner.
 ## Requirements
 
 - **No backend** is required to show a photo or a media-folder album.
-- **Ted's Cards Backend** (`teds_cards_backend`) is required for the extras — set
-  `backend_integration: true` to enable:
+- **Ted's Dashboard System** (`teds_dashboard_system`) is required for the extras — set
+  `dashboard_integration: true` to enable:
   - the Settings-driven **album folder** (Settings → Photos → Album folder),
   - **Favorite** (copies the photo into the backend's `favorites` album), and
   - **Set as background** (stores the photo and switches this device's wallpaper to it).
@@ -41,7 +41,7 @@ type: custom:ted-photo-viewer-card
 source: album
 fill: true
 open_last_on_load: true
-backend_integration: true
+dashboard_integration: true
 theme: ted-style
 ```
 
@@ -61,13 +61,13 @@ folder: media-source://media_source/local/Family Photos
 | --- | --- | --- | --- |
 | `source` | `single` \| `album` | `single` | Show one image, or browse a folder album. |
 | `image` | string | — | Single mode: a URL, `media-source://` URI, or local HA path. |
-| `folder` | string | — | Album mode: a `media-source://` folder URI. When omitted and `backend_integration` is on, the **Photos album folder** setting is used. |
+| `folder` | string | — | Album mode: a `media-source://` folder URI. When omitted and `dashboard_integration` is on, the **Photos album folder** setting is used. |
 | `album_source` | `folder` | `folder` | Album backend. Only Home Assistant media folders ship today. |
 | `fit` | `contain` \| `cover` | `contain` | How the image sits in the frame. |
 | `fill` | boolean | `false` | Fill the parent container (used by the content-only Photos view). |
 | `open_last_on_load` | boolean | `false` | On load, re-open this device's last-viewed photo (else start empty). The Photos view sets this true. |
 | `url_param` | string | `photo` | URL query param used to deep-link a photo (e.g. `?photo=sunset.jpg`). |
-| `backend_integration` | boolean | `false` | Enable the Settings-driven folder, Favorite, and Set-as-background. |
+| `dashboard_integration` | boolean | `false` | Enable the Settings-driven folder, Favorite, and Set-as-background. |
 | `settings_path` | string | — | Deep link for the empty-state **Settings** button. |
 | `theme` | `ha` \| `ted-style` | `ha` | Theme for the empty-state surface + text. |
 | `background` | color | — | Matte color behind the photo (the letterbox bars). Default black. |
@@ -116,7 +116,7 @@ between **Fill** and **Contain**.
 
 | Setting | Description |
 | --- | --- |
-| **Album folder** | The media folder shown on the Photos view (used when `backend_integration` is on). |
+| **Album folder** | The media folder shown on the Photos view (used when `dashboard_integration` is on). |
 | **Re-open last photo** | When the Photos view loads, re-open this device's last-viewed photo. |
 | **Slideshow transition** | Crossfade or none (used by the auto-slideshow). |
 | **Crossfade duration** | Length of the crossfade between photos. |

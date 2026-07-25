@@ -269,7 +269,7 @@ export const SETTINGS_FIELDS: SettingField[] = [
   },
   { key: "climate_list", label: "Thermostats", group: "Thermostats", kind: "entity-list", entityDomain: "climate", help: "Global lists the available thermostats; each device curates its own subset." },
   // Photos
-  { key: "photos_folder", label: "Album folder", group: "Photos", kind: "folder", help: "Media folder of photos shown on the Photos view. Ted's Photo Viewer card reads this when backend_integration is on." },
+  { key: "photos_folder", label: "Album folder", group: "Photos", kind: "folder", help: "Media folder of photos shown on the Photos view. Ted's Photo Viewer card reads this when dashboard_integration is on." },
   { key: "photos_auto_open_last", label: "Re-open last photo", group: "Photos", kind: "boolean", help: "When the Photos view loads, re-open the photo this device last viewed (otherwise it opens empty)." },
   {
     key: "photos_slideshow_transition",
@@ -325,10 +325,10 @@ export const SETTINGS_FIELDS: SettingField[] = [
     help: "Where the bar sits on the screen.",
   },
   { key: "navbar_size", label: "Size", group: "Navbar", kind: "number", min: 32, max: 96, unit: "px", help: "Bar thickness in pixels (buttons/items size from this)." },
-  { key: "launcher", label: "Launcher Buttons", group: "Navbar", kind: "launcher", help: "Auto-discovered buttons that navigate to this dashboard's views. Shown on navbars with backend_integration." },
+  { key: "launcher", label: "Launcher Buttons", group: "Navbar", kind: "launcher", help: "Auto-discovered buttons that navigate to this dashboard's views. Shown on navbars with dashboard_integration." },
   // General
   { key: "device_type", label: "Device type", group: "General", kind: "device-type", deviceOnly: true, help: "A profile for this device that seeds a coherent home view, navbar layout, and fullscreen default in one step." },
-  { key: "weather_entity", label: "Weather entity", group: "General", kind: "entity", entityDomain: "weather", help: "Default weather entity used by Ted's weather/clock cards that opt in via `backend_integration: true`." },
+  { key: "weather_entity", label: "Weather entity", group: "General", kind: "entity", entityDomain: "weather", help: "Default weather entity used by Ted's weather/clock cards that opt in via `dashboard_integration: true`." },
   {
     key: "icon_set",
     label: "Icon set",

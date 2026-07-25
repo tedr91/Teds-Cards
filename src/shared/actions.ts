@@ -4,7 +4,7 @@
  * status items (Navbar / Room card read-outs). Mirrors Home Assistant's built-in
  * button behavior plus two Ted's extras: a corrected `toggle` (handles scenes,
  * buttons, valves, …) and the `navigate-dashboard` action that resolves a dashboard
- * path from the Ted's Cards Backend settings at tap time.
+ * path from the Ted's Dashboard System settings at tap time.
  */
 import {
   type ActionConfig,
@@ -92,7 +92,7 @@ export interface TedActionConfig {
 
 export interface RunTedActionOptions {
   /** When `false`, the `navigate-dashboard` action is ignored (standalone hosts that
-   *  don't opt into the Ted's Cards Backend). Other actions always run. */
+   *  don't opt into the Ted's Dashboard System). Other actions always run. */
   backendIntegration?: boolean;
   /** Action to run for `tap` when no explicit `tap_action` is set (Button Card only). */
   defaultAction?: string;

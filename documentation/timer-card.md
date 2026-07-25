@@ -5,7 +5,7 @@
 Start, view, and cancel countdown timers. Timers run **server-side** so they keep
 counting across restarts and reloads, and can be scoped to a room/area.
 
-> **Requires the [Ted's Cards Backend](https://github.com/tedr91/Teds-Cards-Backend)
+> **Requires the [Ted's Dashboard System](https://github.com/tedr91/Teds-Dashboard-System)
 > integration** — it reads `sensor.teds_timers`. When a timer finishes it plays on
 > the device's configured media player (see [Settings](./settings-card.md)) and pops
 > a [notification](./notification-system.md).

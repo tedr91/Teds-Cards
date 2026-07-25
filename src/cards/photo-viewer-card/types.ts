@@ -18,7 +18,7 @@ export interface PhotoViewerCardConfig extends LovelaceCardConfig {
   /** Album mode backend. Default "folder". */
   album_source?: PhotoAlbumSource;
   /** Album mode: a `media-source://` folder URI. When omitted and
-   *  `backend_integration` is on, the `photos_folder` setting is used. */
+   *  `dashboard_integration` is on, the `photos_folder` setting is used. */
   folder?: string;
   /** How the image sits in the frame. Default "contain" (letterboxed). */
   fit?: PhotoFit;
@@ -30,7 +30,7 @@ export interface PhotoViewerCardConfig extends LovelaceCardConfig {
   /** URL query param used for deep-linking a photo. Default "photo". */
   url_param?: string;
   /** Opt into the backend (settings-driven folder, favorite, set-as-background). */
-  backend_integration?: boolean;
+  dashboard_integration?: boolean;
   /** Deep link for the empty-state "Settings" button. */
   settings_path?: string;
 

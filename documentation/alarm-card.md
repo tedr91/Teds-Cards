@@ -5,7 +5,7 @@
 Add, view, and enable/disable alarms. Alarms are stored **server-side** so they
 fire reliably and survive restarts, and can be scoped to a room/area.
 
-> **Requires the [Ted's Cards Backend](https://github.com/tedr91/Teds-Cards-Backend)
+> **Requires the [Ted's Dashboard System](https://github.com/tedr91/Teds-Dashboard-System)
 > integration** — it reads `sensor.teds_alarms`. When an alarm rings it plays on the
 > device's configured media player (see [Settings](./settings-card.md)) and pops a
 > [notification](./notification-system.md).

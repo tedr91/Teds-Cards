@@ -54,7 +54,7 @@ export interface StatusItemContext {
   /** Room Card injects area-based entity resolution; other hosts omit it. */
   resolveAreaEntity?: (kind: "temperature" | "occupancy") => string | undefined;
   /** When false, the `navigate-dashboard` action on a status item is ignored (hosts
-   *  that opt out of the Ted's Cards Backend integration, e.g. a standalone navbar).
+   *  that opt out of the Ted's Dashboard System integration, e.g. a standalone navbar).
    *  Other actions still run. Defaults to enabled when omitted. */
   backendIntegration?: boolean;
 }
@@ -496,7 +496,7 @@ function renderCountItem(
   const anchorId = `${ctx.keyPrefix}-cnt-anchor-${index}`;
   const optsPopId = `${ctx.keyPrefix}-cnt-opts-${index}`;
   const svc = (service: string, data: Record<string, unknown>) =>
-    ctx.hass.callService("teds_cards_backend", service, data);
+    ctx.hass.callService("teds_dashboard_system", service, data);
 
   const options: ItemOption[] = isAlarms
     ? [
@@ -572,7 +572,7 @@ function renderNotificationsItem(
   const detailPopId = `${popId}-detail`;
   const optsPopId = `${popId}-opts`;
   const svc = (service: string, data: Record<string, unknown>) =>
-    ctx.hass.callService("teds_cards_backend", service, data);
+    ctx.hass.callService("teds_dashboard_system", service, data);
   const dnd = settingsStore.effective().do_not_disturb === true;
   const dndOptions: ItemOption[] = [
     {

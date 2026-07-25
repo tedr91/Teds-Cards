@@ -812,7 +812,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
 
   /** The actual sound a "default" media field resolves to (shown as its placeholder). */
   private _resolvedDefaultSound(key: string): string {
-    const bundled = (name: string) => `/teds_cards_backend/sounds/${name}.mp3`;
+    const bundled = (name: string) => `/teds_dashboard_system/sounds/${name}.mp3`;
     if (key === "timer_alert_sound") return bundled("timer");
     if (key === "alarm_alert_sound") return bundled("alarm");
     if (key === "notification_sound") return bundled("notification");
@@ -1921,7 +1921,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     });
     if (!ok) return;
     try {
-      await this.hass.callWS({ type: "teds_cards_backend/clear_bing_photos_cache" });
+      await this.hass.callWS({ type: "teds_dashboard_system/clear_bing_photos_cache" });
     } catch {
       /* best-effort */
     }
@@ -2715,7 +2715,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
         <ha-card class=${classMap(cardClasses)} style=${styleMap(cardStyle)}>
           ${cfg.brushed ? brushedOverlay : nothing} ${header}
           ${missing
-            ? html`<div class="warn">Install the <b>Ted's Cards Backend</b> integration to use settings.</div>`
+            ? html`<div class="warn">Install the <b>Ted's Dashboard System</b> integration to use settings.</div>`
             : html`<div class="tabs" role="tablist">
                 <button class="tab ${scope === "global" ? "active" : ""}" @click=${() => setUiScope("global")}>
                   Global
@@ -2759,7 +2759,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
         <ha-card class=${classMap(cardClasses)} style=${styleMap(cardStyle)}>
           ${cfg.brushed ? brushedOverlay : nothing} ${header}
           ${missing
-            ? html`<div class="warn">Install the <b>Ted's Cards Backend</b> integration to use settings.</div>`
+            ? html`<div class="warn">Install the <b>Ted's Dashboard System</b> integration to use settings.</div>`
             : html`
                 <div class="tabs" role="tablist">
                   <button class="tab ${scope === "global" ? "active" : ""}" @click=${() => setUiScope("global")}>
@@ -2847,7 +2847,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
       <ha-card class=${classMap(cardClasses)} style=${styleMap(cardStyle)}>
         ${cfg.brushed ? brushedOverlay : nothing} ${header}
         ${missing
-          ? html`<div class="warn">Install the <b>Ted's Cards Backend</b> integration to use settings.</div>`
+          ? html`<div class="warn">Install the <b>Ted's Dashboard System</b> integration to use settings.</div>`
           : html`
               ${!scopeShared && showGlobal && showDevice
                 ? html`<div class="tabs" role="tablist">

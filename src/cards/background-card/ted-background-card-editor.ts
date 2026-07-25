@@ -34,7 +34,7 @@ export class TedBackgroundCardEditor extends LitElement implements LovelaceCardE
 
   protected updated(): void {
     // Discover the "Ted Dash System" media folder only when integrated.
-    if (this._config?.backend_integration && this.hass && this._mediaFolder === null) {
+    if (this._config?.dashboard_integration && this.hass && this._mediaFolder === null) {
       void getMediaFolder(this.hass).then((f) => {
         if (f) this._mediaFolder = f;
       });
@@ -97,7 +97,7 @@ export class TedBackgroundCardEditor extends LitElement implements LovelaceCardE
     });
     if (!ok) return;
     try {
-      await this.hass.callWS({ type: "teds_cards_backend/clear_bing_photos_cache" });
+      await this.hass.callWS({ type: "teds_dashboard_system/clear_bing_photos_cache" });
     } catch {
       /* best-effort */
     }
@@ -105,7 +105,7 @@ export class TedBackgroundCardEditor extends LitElement implements LovelaceCardE
 
   protected render(): TemplateResult | typeof nothing {
     if (!this._config) return nothing;
-    const backendInt = this._config.backend_integration === true;
+    const backendInt = this._config.dashboard_integration === true;
     const ctx: BackgroundFieldsCtx = {
       get: (k) => this._get(k),
       set: (k, v) => this._set(k, v),
@@ -125,7 +125,7 @@ export class TedBackgroundCardEditor extends LitElement implements LovelaceCardE
       <div class="editor">
         <div class="bg-field">
           <div class="row-label">
-            <span>Use Ted's Cards Backend</span>
+            <span>Use Ted's Dashboard System</span>
             <span class="help">
               Sync with per-device Settings and serve built-in wallpapers locally. Off = a
               self-contained card that stores its wallpaper in the card config.
@@ -134,7 +134,7 @@ export class TedBackgroundCardEditor extends LitElement implements LovelaceCardE
           <div class="row-control">
             <ha-switch
               .checked=${backendInt}
-              @change=${(e: Event) => this._set("backend_integration", (e.target as HTMLInputElement).checked)}
+              @change=${(e: Event) => this._set("dashboard_integration", (e.target as HTMLInputElement).checked)}
             ></ha-switch>
           </div>
         </div>

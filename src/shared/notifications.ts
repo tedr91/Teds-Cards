@@ -18,7 +18,7 @@ export interface NotifAction {
   variant?: "primary" | "default";
 }
 
-/** A notification as delivered by the backend `teds_cards_backend/subscribe_notifications` command. */
+/** A notification as delivered by the backend `teds_dashboard_system/subscribe_notifications` command. */
 export interface TedNotification {
   id: string;
   title?: string;
@@ -64,7 +64,7 @@ export interface NotificationToastOptions {
 }
 
 /**
- * Subscribes to backend notifications via the `teds_cards_backend/subscribe_notifications`
+ * Subscribes to backend notifications via the `teds_dashboard_system/subscribe_notifications`
  * WebSocket command and pops a MessageBox-style toast for each notification (area-filtered).
  * A dedicated command is used instead of `subscribe_events` because non-admin (kiosk) users
  * are not allowed to subscribe to custom HA events. Deduped by id via the shared popup layer,
@@ -101,7 +101,7 @@ export class NotificationToastController implements ReactiveController {
     if (this._sub || !conn) return;
     this._sub = conn.subscribeMessage<TedNotification>(
       (n) => this._onEvent(n),
-      { type: "teds_cards_backend/subscribe_notifications" },
+      { type: "teds_dashboard_system/subscribe_notifications" },
     );
   }
 
@@ -144,7 +144,7 @@ export class NotificationToastController implements ReactiveController {
       duration: announcement ? 0 : timeoutMs || 8000,
       barDuration: announcement ? timeoutMs : undefined,
       // Manually dismissing the toast marks the notification read (auto-timeout does not).
-      onDismiss: () => hass?.callService?.("teds_cards_backend", "mark_read", { id: n.id }),
+      onDismiss: () => hass?.callService?.("teds_dashboard_system", "mark_read", { id: n.id }),
     });
   }
 
@@ -199,7 +199,7 @@ export class NotificationToastController implements ReactiveController {
     if (!text) return;
     const myId = resolveDeviceId();
     const myName = settingsStore.registry()[myId]?.name;
-    hass?.callService?.("teds_cards_backend", "announce", {
+    hass?.callService?.("teds_dashboard_system", "announce", {
       message: text,
       title: myName ? `Reply from ${myName}` : "Reply",
       devices: [src],
@@ -214,8 +214,8 @@ export class NotificationToastController implements ReactiveController {
     if (!s) return;
     const data: Record<string, unknown> = { name: s.name, minutes };
     if (s.area) data.location = s.area;
-    hass?.callService?.("teds_cards_backend", "start_timer", data);
-    hass?.callService?.("teds_cards_backend", "mark_read", { id: n.id });
+    hass?.callService?.("teds_dashboard_system", "start_timer", data);
+    hass?.callService?.("teds_dashboard_system", "mark_read", { id: n.id });
   }
 
   /** Run a notification action, then dismiss the notification everywhere. */
@@ -247,6 +247,6 @@ export class NotificationToastController implements ReactiveController {
       default:
         break;
     }
-    hass?.callService?.("teds_cards_backend", "dismiss_notification", { id: n.id });
+    hass?.callService?.("teds_dashboard_system", "dismiss_notification", { id: n.id });
   }
 }

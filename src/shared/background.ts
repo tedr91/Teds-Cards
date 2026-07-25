@@ -294,11 +294,13 @@ async function _computeLuminance(url: string): Promise<number | null> {
 // integration serving them locally, still get the bundled wallpapers).
 // ---------------------------------------------------------------------------
 
-/** jsDelivr base for the bundled wallpapers shipped in the Teds-Cards-Backend repo.
+/** jsDelivr base for the bundled wallpapers shipped in the Ted's Dashboard System repo.
  *  Bump the pinned tag whenever that repo's `backgrounds/` change (mirrors the Room
- *  Card `PHOTO_CDN_BASE`). Serves `index.json` + `<general|light-mode|dark-mode>/<name>`. */
+ *  Card `PHOTO_CDN_BASE`). Serves `index.json` + `<general|light-mode|dark-mode>/<name>`.
+ *  NOTE: uses the current GitHub repo name `Teds-Cards-Backend` (the rename to
+ *  `Teds-Dashboard-System` is pending; GitHub redirects the old name once renamed). */
 export const BUILTIN_CDN_BASE =
-  "https://cdn.jsdelivr.net/gh/tedr91/Teds-Cards-Backend@v1.0.32/custom_components/teds_cards_backend/backgrounds/";
+  "https://cdn.jsdelivr.net/gh/tedr91/Teds-Cards-Backend@v1.0.83/custom_components/teds_dashboard_system/backgrounds/";
 
 /** Category → the folder it lives in under the backgrounds root. */
 const BUILTIN_CDN_DIRS: Record<"general" | "light" | "dark", string> = {

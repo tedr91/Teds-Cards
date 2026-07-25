@@ -10,9 +10,9 @@ import type {
 
 export interface BackgroundCardConfig extends LovelaceCardConfig {
   type: string;
-  /** Opt into the Teds-Cards-Backend settings store (per-device settings, built-in
+  /** Opt into the Teds-Dashboard-System settings store (per-device settings, built-in
    *  wallpapers served locally). Default false = self-contained, card-only. */
-  backend_integration?: boolean;
+  dashboard_integration?: boolean;
   // Per-card wallpaper overrides (any set field wins over settings / defaults).
   background_mode?: BackgroundMode;
   background_scroll?: boolean;

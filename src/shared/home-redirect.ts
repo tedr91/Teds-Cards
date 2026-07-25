@@ -33,7 +33,7 @@ export class HomeRedirectController implements ReactiveController {
   private _unsub?: () => void;
 
   /** @param enabled Optional gate; when it returns false the controller does nothing
-   *  (e.g. a navbar that hasn't opted into the Ted's Cards Backend integration). */
+   *  (e.g. a navbar that hasn't opted into the Ted's Dashboard System integration). */
   constructor(
     host: ReactiveControllerHost,
     private _enabled?: () => boolean,

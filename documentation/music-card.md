@@ -31,7 +31,7 @@ these once (all via HACS) before using the Music view:
    - **`engine: mass`** — [`mass-player-card`](https://github.com/droans/mass-player-card)
      (HACS → Frontend) **plus** the [`mass_queue`](https://github.com/droans/mass_queue)
      custom integration it requires (add a config entry for your Music Assistant server).
-3. **Ted's Cards Backend** (`teds_cards_backend`) — needed for the per-device
+3. **Ted's Dashboard System** (`teds_dashboard_system`) — needed for the per-device
    **Settings → Sounds → Music player** (this card's default source).
 
 > If the selected engine's card isn't installed, the Music view shows an "unknown

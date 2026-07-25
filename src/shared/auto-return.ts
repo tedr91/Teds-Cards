@@ -15,7 +15,7 @@ export class AutoReturnController implements ReactiveController {
   private _onActivity = (): void => this._reset();
 
   /** @param enabled Optional gate; when it returns false the controller stays dormant
-   *  (e.g. a navbar that hasn't opted into the Ted's Cards Backend integration). */
+   *  (e.g. a navbar that hasn't opted into the Ted's Dashboard System integration). */
   constructor(
     host: ReactiveControllerHost,
     private _enabled?: () => boolean,

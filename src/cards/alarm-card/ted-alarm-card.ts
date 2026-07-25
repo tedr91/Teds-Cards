@@ -294,7 +294,7 @@ export class TedAlarmCard extends LitElement implements LovelaceCard {
             : nothing}
         </div>
         ${missing
-          ? html`<div class="warn">Install the <b>Ted's Cards Backend</b> integration to use alarms.</div>`
+          ? html`<div class="warn">Install the <b>Ted's Dashboard System</b> integration to use alarms.</div>`
           : html`
               ${this._areaUnresolved() ? this._renderAreaBanner() : nothing}
               <div class="list">

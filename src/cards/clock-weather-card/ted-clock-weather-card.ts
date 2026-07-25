@@ -269,7 +269,7 @@ export class TedClockWeatherCard extends LitElement implements LovelaceCard {
       this._now = new Date();
     }, TICK_MS);
     // Keep settings live only when this card opts into the backend (YAML
-    // `backend_integration: true`); otherwise it never feeds hass to the store,
+    // `dashboard_integration: true`); otherwise it never feeds hass to the store,
     // so there is no backend dependency.
     new SettingsController(this, () => (this._backendIntegration() ? this.hass : undefined));
     // Re-attach the width observer when the card is moved back into the DOM
@@ -457,9 +457,9 @@ export class TedClockWeatherCard extends LitElement implements LovelaceCard {
     return this.hass ? Object.keys(this.hass.states).find((id) => id.startsWith("weather.")) : undefined;
   }
 
-  /** Whether this card opts into Ted's Cards Backend behaviors (YAML-only). */
+  /** Whether this card opts into Ted's Dashboard System behaviors (YAML-only). */
   private _backendIntegration(): boolean {
-    return this._config?.backend_integration === true;
+    return this._config?.dashboard_integration === true;
   }
 
   /** A setting override for `key` (device scope, else global scope), or undefined when

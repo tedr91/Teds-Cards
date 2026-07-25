@@ -4,10 +4,10 @@ export const TIMER_CARD_TYPE = `${NAMESPACE}-timer-card`;
 export const TIMER_CARD_EDITOR_TYPE = `${TIMER_CARD_TYPE}-editor`;
 export const TIMER_CARD_NAME = "Ted Timer Card";
 export const TIMER_CARD_DESCRIPTION =
-  "Start, view, and cancel countdown timers (requires the Ted's Cards Backend integration).";
+  "Start, view, and cancel countdown timers (requires the Ted's Dashboard System integration).";
 
 export const TIMERS_SENSOR = "sensor.teds_timers";
-export const TIMER_DOMAIN = "teds_cards_backend";
+export const TIMER_DOMAIN = "teds_dashboard_system";
 
 /** The reorderable / toggleable sections of the Timer card. */
 export type TimerSection = "active" | "recent";

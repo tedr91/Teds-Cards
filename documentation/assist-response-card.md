@@ -8,11 +8,11 @@ message** (and optional background image) to one or more devices/areas; the card
 displays it and the targeted screens automatically switch to the Assist-Response
 view.
 
-> Requires the **Ted's Cards Backend** integration.
+> Requires the **Ted's Dashboard System** integration.
 
 ## How it works
 
-1. An automation / voice pipeline calls the `teds_cards_backend.assist_response`
+1. An automation / voice pipeline calls the `teds_dashboard_system.assist_response`
    service with the answer text and a target (areas and/or devices).
 2. The backend stores the latest answer per target and pushes it to the subscribed
    cards over a WebSocket stream. Each card shows the answer only if it targets
@@ -63,7 +63,7 @@ house-wide never force-navigates every screen).
     - platform: conversation
       command: ["what's the weather"]
   action:
-    - service: teds_cards_backend.assist_response
+    - service: teds_dashboard_system.assist_response
       data:
         title: "Weather"
         message: "It's 72°F and sunny, with a high of 78°."

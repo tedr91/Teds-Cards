@@ -44,7 +44,7 @@ export class TedBackgroundCard extends LitElement implements LovelaceCard {
     super();
     // Only feed/subscribe the backend settings store when the card opts in;
     // card-only use stays fully self-contained (getHass returns undefined).
-    new SettingsController(this, () => (this._config?.backend_integration ? this.hass : undefined));
+    new SettingsController(this, () => (this._config?.dashboard_integration ? this.hass : undefined));
   }
 
   /** The card's per-card background_* overrides as a settings map. */
@@ -63,13 +63,13 @@ export class TedBackgroundCard extends LitElement implements LovelaceCard {
     // The shared engine owns the wallpaper; every view's card just keeps it alive
     // (ref-counted) so the background persists — and the slideshow stays on the
     // same image — as you navigate between views.
-    backgroundEngine.attach(this.hass, this._overrides(), !!this._config?.backend_integration);
+    backgroundEngine.attach(this.hass, this._overrides(), !!this._config?.dashboard_integration);
     // The night-mode engine runs on the same always-present card; it only acts when the
-    // card opts into the backend settings store (backend_integration).
-    nightModeEngine.attach(this.hass, !!this._config?.backend_integration);
+    // card opts into the backend settings store (dashboard_integration).
+    nightModeEngine.attach(this.hass, !!this._config?.dashboard_integration);
     // Fallback activator for the shared navigation-signal listener (the navbar is the
     // primary activator; the background card covers views without a navbar).
-    navigationSignal.attach(this.hass, !!this._config?.backend_integration);
+    navigationSignal.attach(this.hass, !!this._config?.dashboard_integration);
   }
 
   public disconnectedCallback(): void {
@@ -88,7 +88,7 @@ export class TedBackgroundCard extends LitElement implements LovelaceCard {
     if (!config) throw new Error("Invalid configuration");
     this._config = { ...config };
     if (this.isConnected) {
-      backgroundEngine.setConfig(this._overrides(), !!config.backend_integration);
+      backgroundEngine.setConfig(this._overrides(), !!config.dashboard_integration);
     }
   }
 

@@ -45,7 +45,7 @@ sections:
 | --- | --- | --- | --- |
 | `auto_hide` | boolean | false | Collapse the bar into its edge (a small pill remains) until revealed. |
 | `auto_hide_delay` | number (s) | 5 | Seconds before an auto-hide bar re-collapses. |
-| `hold_menu` | boolean | true | Long-press the bar to open a settings menu (auto-hide / float / position / size, plus custom items, Dashboard Settings, Exit). Requires `backend_integration: true` — the menu is hidden without it. |
+| `hold_menu` | boolean | true | Long-press the bar to open a settings menu (auto-hide / float / position / size, plus custom items, Dashboard Settings, Exit). Requires `dashboard_integration: true` — the menu is hidden without it. |
 | `menu_items` | array | | Extra custom action rows in the long-press menu (below). |
 | `exit_path` | string | `/lovelace` | Where the menu's "Exit" item navigates. |
 
@@ -56,7 +56,7 @@ Each `menu_items` entry: `name` (required), `icon` (mdi), `entity` (optional), a
 
 | Option | Type | Default | Description |
 | --- | --- | --- | --- |
-| `backend_integration` | boolean | false | Opt into Ted's Cards Backend behaviors: auto-return-home on idle, welcome-view redirect to the device's home, and the `navigate-dashboard` action on status items. |
+| `dashboard_integration` | boolean | false | Opt into Ted's Dashboard System behaviors: auto-return-home on idle, welcome-view redirect to the device's home, and the `navigate-dashboard` action on status items. |
 
 ### Sections
 
@@ -87,7 +87,7 @@ Every status item supports button-style `tap_action`, `hold_action`, and
 (brightness, volume, notifications, alarms, timers) a configured action **overrides**
 the item's built-in behavior for that gesture; leave it unset to keep the default
 (e.g. brightness tap opens the slider). The `navigate-dashboard` action requires
-`backend_integration: true`; all other actions work regardless.
+`dashboard_integration: true`; all other actions work regardless.
 
 ### Per-device settings
 

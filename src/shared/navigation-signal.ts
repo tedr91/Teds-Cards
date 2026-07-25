@@ -1,8 +1,8 @@
 /**
  * Shared navigation-signal listener.
  *
- * Ted's Cards Backend fires a server-side navigation signal (via the
- * `teds_cards_backend/subscribe_navigate` WebSocket command) when a voice command
+ * Ted's Dashboard System fires a server-side navigation signal (via the
+ * `teds_dashboard_system/subscribe_navigate` WebSocket command) when a voice command
  * asks to "show cameras / climate / weather / music / …", or when a voice-driven
  * climate/music action nudges the screen to the matching view. Each signal carries
  * `{ dashboard, area, device_id }`; every dashboard device decides whether the
@@ -53,7 +53,7 @@ class NavigationSignal {
     if (this._sub || !conn) return;
     this._sub = conn.subscribeMessage<NavigateSignal>(
       (sig) => this._onSignal(sig),
-      { type: "teds_cards_backend/subscribe_navigate" },
+      { type: "teds_dashboard_system/subscribe_navigate" },
     );
   }
 

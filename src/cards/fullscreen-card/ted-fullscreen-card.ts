@@ -84,14 +84,14 @@ export class TedFullscreenCard extends LitElement implements LovelaceCard {
     super();
     // Only feed/subscribe the backend settings store when the card opts in;
     // card-only use stays fully self-contained (getHass returns undefined).
-    new SettingsController(this, () => (this._config?.backend_integration ? this.hass : undefined));
+    new SettingsController(this, () => (this._config?.dashboard_integration ? this.hass : undefined));
   }
 
   public setConfig(config: FullscreenCardConfig): void {
     if (!config) throw new Error("Invalid configuration");
     this._config = { ...config };
     // Without the backend, the state is purely local: seed it from the config.
-    if (!config.backend_integration) {
+    if (!config.dashboard_integration) {
       this._maximized = config.start_maximized === true;
       this._stateResolved = true;
     } else {
@@ -203,7 +203,7 @@ export class TedFullscreenCard extends LitElement implements LovelaceCard {
 
   /** Resolve the initial maximized state from the store, once, when opted in. */
   private _resolveInitialState(): void {
-    if (this._stateResolved || !this._config?.backend_integration) return;
+    if (this._stateResolved || !this._config?.dashboard_integration) return;
     if (!settingsStore.hasLoaded()) return;
     const key = this._config.state_key;
     const saved = key ? this._stateMap()[key] : undefined;
@@ -222,7 +222,7 @@ export class TedFullscreenCard extends LitElement implements LovelaceCard {
   /** Persist the current state to the backend (when opted in with a `state_key`). */
   private _persist(maximized: boolean): void {
     const key = this._config?.state_key;
-    if (!this._config?.backend_integration || !key) return;
+    if (!this._config?.dashboard_integration || !key) return;
     settingsStore.setValue("device", FULLSCREEN_STATES_KEY, {
       ...this._stateMap(),
       [key]: maximized,
@@ -253,7 +253,7 @@ export class TedFullscreenCard extends LitElement implements LovelaceCard {
     let left = safe("left");
     let right = safe("right");
 
-    if (cfg?.backend_integration) {
+    if (cfg?.dashboard_integration) {
       const eff = settingsStore.effective();
       const pos = String(eff.navbar_position ?? "bottom");
       const size = Number(eff.navbar_size ?? 48);
@@ -284,7 +284,7 @@ export class TedFullscreenCard extends LitElement implements LovelaceCard {
 
     const style: Record<string, string> = { top, bottom, left, right };
     // Cap the overlay to this device's known screen size (a guard; usually a no-op).
-    if (cfg?.backend_integration) {
+    if (cfg?.dashboard_integration) {
       const reg = settingsStore.registry()[settingsStore.deviceId];
       if (reg?.client_width) style["max-width"] = `${reg.client_width}px`;
       if (reg?.client_height) style["max-height"] = `${reg.client_height}px`;

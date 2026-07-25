@@ -43,12 +43,12 @@ export interface FullscreenCardConfig extends LovelaceCardConfig {
   /** Zoom the card content (percent). Default `100`. */
   scale?: number;
   /**
-   * Opt in to the Ted's Cards backend. When enabled the card can persist its
+   * Opt in to the Ted's Dashboard System. When enabled the card can persist its
    * maximized state (per `state_key`) and size the overlay more intelligently
    * (navbar position / auto-hide awareness + this device's screen size).
    * Default `false` (fully self-contained). YAML-only (not in the visual editor).
    */
-  backend_integration?: boolean;
+  dashboard_integration?: boolean;
   /**
    * Identifies this card when saving its maximized state to the backend. Required
    * for the state to persist across reloads; when unset the state stays in memory.

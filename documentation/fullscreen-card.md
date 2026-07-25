@@ -51,7 +51,7 @@ card:
 | `expand_icon` | string | `fluent:arrow-maximize-20-regular` | Override the "expand" corner icon. |
 | `minimize_icon` | string | `fluent:arrow-minimize-20-regular` | Override the "minimize/restore" corner icon. |
 | `background`, `transparency`, `blur`, `brushed`, `shadow`, `scale` | | | Appearance (general) — see [Appearance & theming](./README.md#appearance--theming-shared). When any of `background` / `transparency` / `blur` / `brushed` is set, the card paints its own frosted surface behind the housed card (otherwise it stays a transparent passthrough). |
-| `backend_integration` | boolean | false | **YAML-only.** Opt in to the Ted's Cards backend (save state + smarter sizing — see below). |
+| `dashboard_integration` | boolean | false | **YAML-only.** Opt in to the Ted's Dashboard System (save state + smarter sizing — see below). |
 | `state_key` | string | | **YAML-only.** Identifies this card when saving its maximized state. Required for the state to persist. |
 | `empty_title`, `empty_message` | string | | Text shown when no `card` is configured. |
 
@@ -63,7 +63,7 @@ card:
 
 ## Backend integration (optional)
 
-With `backend_integration: true` the card uses the Ted's Cards backend to unlock:
+With `dashboard_integration: true` the card uses the Ted's Dashboard System to unlock:
 
 - **Saved state** — the normal/maximized state is remembered per device and restored
   on reload. This requires a **`state_key`** so each card is identified; without one
@@ -75,7 +75,7 @@ With `backend_integration: true` the card uses the Ted's Cards backend to unlock
 
 ```yaml
 type: custom:ted-fullscreen-card
-backend_integration: true
+dashboard_integration: true
 state_key: music-view-player
 card:
   type: custom:ted-music-card
@@ -83,4 +83,4 @@ card:
 
 Without the backend, full-screen still clears a bottom/top navbar and the safe-areas
 (via the reserved-space CSS variables the navbar publishes); side-navbar avoidance and
-saved state require `backend_integration`.
+saved state require `dashboard_integration`.

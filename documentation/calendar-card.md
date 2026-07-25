@@ -19,7 +19,7 @@ This card renders `custom:daylight-calendar-card`, which you install once via HA
    [`daylight-calendar-card`](https://github.com/superdingo101/daylight-calendar-card)
    Lovelace card (HACS → Frontend). This provides the `custom:daylight-calendar-card`
    element.
-2. **Ted's Cards Backend** (`teds_cards_backend`) — needed for the per-device
+2. **Ted's Dashboard System** (`teds_dashboard_system`) — needed for the per-device
    **Settings → Calendars** list (this card's default source).
 
 > If `custom:daylight-calendar-card` isn't installed, the card shows a **"Calendar card

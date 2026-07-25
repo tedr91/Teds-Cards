@@ -28,7 +28,7 @@ interface GridOptions {
 /**
  * Assist-Response card — the visual counterpart to a spoken Assist answer.
  *
- * A voice intent or automation calls the `teds_cards_backend.assist_response`
+ * A voice intent or automation calls the `teds_dashboard_system.assist_response`
  * service with a title + message (+ optional image), targeting areas/devices. The
  * backend pushes it over the `subscribe_assist_responses` stream and (unless the
  * caller opts out) navigates the targeted screens here. This card renders whatever

@@ -6,7 +6,7 @@ Global and per-device settings for the Ted's Cards system. Settings drive things
 like the notification/alarm/timer sounds and volumes, the media player used for
 playback, dashboard navigation paths, and the navbar's per-device behavior.
 
-> **Requires the [Ted's Cards Backend](https://github.com/tedr91/Teds-Cards-Backend)
+> **Requires the [Ted's Dashboard System](https://github.com/tedr91/Teds-Dashboard-System)
 > integration** — it reads/writes `sensor.teds_settings`.
 
 ---

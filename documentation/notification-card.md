@@ -7,8 +7,8 @@ notifications from the [Ted's Notification System](./notification-system.md). Un
 the compact navbar bell (a popover), this is a full always-visible card suited to a
 dashboard column or sidebar.
 
-> **Requires the [Ted's Cards Backend](https://github.com/tedr91/Teds-Cards-Backend)
-> integration.** Without it the card shows: *"Install the Ted's Cards Backend
+> **Requires the [Ted's Dashboard System](https://github.com/tedr91/Teds-Dashboard-System)
+> integration.** Without it the card shows: *"Install the Ted's Dashboard System
 > integration to use notifications."*
 
 ---

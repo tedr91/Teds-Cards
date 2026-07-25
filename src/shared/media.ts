@@ -7,7 +7,7 @@
  * import any private frontend modules.
  */
 
-const DOMAIN = "teds_cards_backend";
+const DOMAIN = "teds_dashboard_system";
 
 interface HassLike {
   callWS?<T>(msg: Record<string, unknown>): Promise<T>;

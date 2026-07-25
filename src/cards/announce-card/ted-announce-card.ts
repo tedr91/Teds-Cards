@@ -380,7 +380,7 @@ export class TedAnnounceCard extends LitElement implements LovelaceCard {
             : nothing}
         </div>
         ${missing
-          ? html`<div class="warn">Install the <b>Ted's Cards Backend</b> integration to send announcements.</div>`
+          ? html`<div class="warn">Install the <b>Ted's Dashboard System</b> integration to send announcements.</div>`
           : this._renderBody()}
       </ha-card>
     `;

@@ -383,7 +383,7 @@ export class TedTimerCard extends LitElement implements LovelaceCard {
             : nothing}
         </div>
         ${missing
-          ? html`<div class="warn">Install the <b>Ted's Cards Backend</b> integration to use timers.</div>`
+          ? html`<div class="warn">Install the <b>Ted's Dashboard System</b> integration to use timers.</div>`
           : html`
               ${this._areaUnresolved() ? this._renderAreaBanner() : nothing}
               <div class="body">${sections}</div>

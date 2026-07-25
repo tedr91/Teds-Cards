@@ -7,8 +7,8 @@ and send a spoken announcement to your Ted's Dashboard devices. Announcements ar
 spoken aloud (text-to-speech) on each target's speaker and appear as a **large,
 centered toast** on the targeted screens.
 
-> **Requires the [Ted's Cards Backend](https://github.com/tedr91/Teds-Cards-Backend)
-> integration.** Without it the card shows: *"Install the Ted's Cards Backend
+> **Requires the [Ted's Dashboard System](https://github.com/tedr91/Teds-Dashboard-System)
+> integration.** Without it the card shows: *"Install the Ted's Dashboard System
 > integration to send announcements."*
 
 ---

@@ -18,8 +18,8 @@ import type { StatusCardConfig } from "./types";
 const REQUIREMENTS_SENSOR = "sensor.teds_requirements";
 const SETTINGS_SENSOR = "sensor.teds_settings";
 
-/** The Ted's Cards Backend HACS integration, linked from the backend row's tooltip. */
-const BACKEND_REPO_URL = "https://github.com/tedr91/Teds-Cards-Backend";
+/** The Ted's Dashboard System HACS integration, linked from the backend row's tooltip. */
+const BACKEND_REPO_URL = "https://github.com/tedr91/Teds-Dashboard-System";
 
 /** Status level → semantic glyph key (resolved via the configured icon set). */
 const GLYPH_KEYS = {
@@ -232,15 +232,15 @@ export class TedStatusCard extends LitElement implements LovelaceCard {
     const version = typeof attrs?.version === "string" ? (attrs.version as string) : undefined;
     rows.push({
       icon: themedIcon("server"),
-      label: "Ted's Cards Backend",
+      label: "Ted's Dashboard System",
       value: connected ? (version ? `Connected · v${version}` : "Connected") : "Not installed",
       level: connected ? "ok" : "bad",
       tip: {
-        title: "Ted's Cards Backend",
+        title: "Ted's Dashboard System",
         note: connected
           ? "The integration powering alarms, timers, notifications and per-device settings."
-          : "Install the Ted's Cards Backend integration via HACS to enable alarms, timers, notifications and settings.",
-        link: { label: "Ted's Cards Backend on GitHub", url: BACKEND_REPO_URL },
+          : "Install the Ted's Dashboard System integration via HACS to enable alarms, timers, notifications and settings.",
+        link: { label: "Ted's Dashboard System on GitHub", url: BACKEND_REPO_URL },
       },
     });
 

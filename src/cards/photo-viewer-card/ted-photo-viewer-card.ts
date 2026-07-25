@@ -160,7 +160,7 @@ export class TedPhotoViewerCard extends LitElement implements LovelaceCard {
   }
 
   private _backendIntegration(): boolean {
-    return this._config?.backend_integration === true;
+    return this._config?.dashboard_integration === true;
   }
 
   // --- Album resolution ------------------------------------------------------
@@ -474,7 +474,7 @@ export class TedPhotoViewerCard extends LitElement implements LovelaceCard {
     if (!this._backendIntegration() || !this.hass?.callWS || !this._displayUrl) return;
     try {
       const r = await this.hass.callWS<{ success?: boolean }>({
-        type: "teds_cards_backend/favorite_photo",
+        type: "teds_dashboard_system/favorite_photo",
         ref: this._displayUrl,
       });
       if (r?.success) {
@@ -493,7 +493,7 @@ export class TedPhotoViewerCard extends LitElement implements LovelaceCard {
     this._flash("Saving wallpaper…");
     try {
       const r = await this.hass.callWS<{ success?: boolean; url?: string }>({
-        type: "teds_cards_backend/store_background_photo",
+        type: "teds_dashboard_system/store_background_photo",
         ref: this._displayUrl,
       });
       if (r?.success && r.url) {

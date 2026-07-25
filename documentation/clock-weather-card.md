@@ -35,7 +35,7 @@ icon_style: fancy
 
 | Option | Type | Default | Description |
 | --- | --- | --- | --- |
-| `backend_integration` | boolean | false | Opt into Ted's Cards Backend (YAML-only). When on and no `weather_entity` is set on the card, the entity is sourced from the global **Weather entity** setting (Settings → General; device scope, then global). Off = no backend dependency. |
+| `dashboard_integration` | boolean | false | Opt into Ted's Dashboard System (YAML-only). When on and no `weather_entity` is set on the card, the entity is sourced from the global **Weather entity** setting (Settings → General; device scope, then global). Off = no backend dependency. |
 | `hug_content` | boolean | false | Hug the content height (fonts sized to width) instead of filling the container — lets an `auto`-height grid area size to the clock. |
 | `max_height` | string (CSS) | | Cap the card height (e.g. `calc(100dvh * 0.25)`); fonts scale down to fit. |
 | `theme`, `background`, `transparency`, `blur`, `brushed`, `shadow` | | | See [Appearance & theming](./README.md#appearance--theming-shared). |
@@ -68,7 +68,7 @@ icon_style: fancy
 | Option | Type | Default | Description |
 | --- | --- | --- | --- |
 | `show_weather` | boolean | false | Show the weather. |
-| `weather_entity` | string | | A `weather.*` entity. When omitted and `backend_integration: true`, falls back to the global **Weather entity** setting, then to the first `weather.*` entity found. |
+| `weather_entity` | string | | A `weather.*` entity. When omitted and `dashboard_integration: true`, falls back to the global **Weather entity** setting, then to the first `weather.*` entity found. |
 | `weather_size` | `standard` \| `custom` | `standard` | Weather size. |
 | `weather_size_custom` | number (px) | | Size when `weather_size: custom`. |
 | `show_weather_icon` | boolean | true | Show the weather icon. |
