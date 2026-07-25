@@ -10,7 +10,8 @@ export interface AssistResponseCardConfig extends LovelaceCardConfig {
   title?: string;
   /** Placeholder message shown before the first answer arrives. */
   placeholder?: string;
-  /** Default background image URL, used when a pushed answer carries no image. */
+  /** Static background image URL shown behind the frosted box. The response's own
+   *  `image` renders inline instead (beside/above the text). */
   background_image?: string;
   /** Fill the content area (default true). */
   fill?: boolean;

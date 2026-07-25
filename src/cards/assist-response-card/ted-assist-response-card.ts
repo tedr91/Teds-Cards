@@ -50,8 +50,11 @@ export class TedAssistResponseCard extends LitElement implements LovelaceCard {
   @property({ attribute: false }) public hass?: HomeAssistant;
   @state() private _config?: AssistResponseCardConfig;
   @state() private _answer?: AssistResponse;
+  /** True when the card is wider than it is tall (landscape) — drives image placement. */
+  @state() private _wide = true;
 
   private _sub?: Promise<() => void>;
+  private _ro?: ResizeObserver;
 
   public constructor() {
     super();
@@ -74,12 +77,26 @@ export class TedAssistResponseCard extends LitElement implements LovelaceCard {
   public connectedCallback(): void {
     super.connectedCallback();
     this._ensureSub();
+    this._ro = new ResizeObserver(() => this._measure());
+    this._ro.observe(this);
+    this._measure();
   }
 
   public disconnectedCallback(): void {
     super.disconnectedCallback();
     this._sub?.then((unsub) => unsub()).catch(() => undefined);
     this._sub = undefined;
+    this._ro?.disconnect();
+    this._ro = undefined;
+  }
+
+  /** Landscape (wide) → image beside the text; portrait/narrow → image above it. */
+  private _measure(): void {
+    const w = this.clientWidth;
+    const h = this.clientHeight;
+    if (!w || !h) return;
+    const wide = w >= h;
+    if (wide !== this._wide) this._wide = wide;
   }
 
   protected updated(changed: Map<string, unknown>): void {
@@ -142,7 +159,11 @@ export class TedAssistResponseCard extends LitElement implements LovelaceCard {
     const message = hasAnswer
       ? this._answer!.message
       : cfg.placeholder ?? "Waiting for a response…";
-    const image = this._answer?.image || cfg.background_image;
+    // Per-response image renders INLINE (VA infopic style); background_image is the
+    // static backdrop behind the frosted box.
+    const answerImage = this._answer?.image || undefined;
+    const bgImage = cfg.background_image;
+    const bodyClass = answerImage ? (this._wide ? " has-image row" : " has-image col") : "";
 
     const icon =
       cfg.icon === undefined
@@ -159,10 +180,10 @@ export class TedAssistResponseCard extends LitElement implements LovelaceCard {
 
     return html`
       <div class="ar-root${this._fill() ? " fill" : ""}">
-        ${image
+        ${bgImage
           ? html`<div
               class="ar-bg"
-              style=${styleMap({ backgroundImage: `url("${image}")` })}
+              style=${styleMap({ backgroundImage: `url("${bgImage}")` })}
             ></div>`
           : nothing}
         <div
@@ -174,7 +195,12 @@ export class TedAssistResponseCard extends LitElement implements LovelaceCard {
           ${icon ? html`<ha-icon class="ar-icon" .icon=${icon}></ha-icon>` : nothing}
           <div class="ar-content">
             ${title ? html`<div class="ar-title">${title}</div>` : nothing}
-            <div class="ar-message ${hasAnswer ? "" : "placeholder"}">${message}</div>
+            <div class="ar-body${bodyClass}">
+              ${answerImage
+                ? html`<img class="ar-image" src=${answerImage} alt="" />`
+                : nothing}
+              <div class="ar-message ${hasAnswer ? "" : "placeholder"}">${message}</div>
+            </div>
           </div>
         </div>
       </div>
@@ -206,17 +232,18 @@ export class TedAssistResponseCard extends LitElement implements LovelaceCard {
         background-repeat: no-repeat;
       }
       /* MessageBox-style frosted box with a left accent stripe. Fills the content
-         area (same size as before); the icon + text are centered within it. */
+         area; the icon sits next to the title and the content is top-aligned. */
       .ar-box {
         --ar-surface: 28, 32, 44;
         --ar-accent: var(--ted-style-accent, #4cc2ff);
+        --ar-msg-size: clamp(20px, 3vw, 44px);
         position: relative;
         z-index: 1;
         box-sizing: border-box;
         flex: 1 1 auto;
         display: flex;
         gap: 18px;
-        align-items: center;
+        align-items: flex-start;
         width: 100%;
         overflow: auto;
         padding: clamp(18px, 3vw, 40px) clamp(20px, 3.5vw, 44px);
@@ -242,25 +269,60 @@ export class TedAssistResponseCard extends LitElement implements LovelaceCard {
       }
       .ar-icon {
         color: var(--ar-accent);
-        --mdc-icon-size: clamp(30px, 3.6vw, 46px);
+        --mdc-icon-size: var(--ar-msg-size);
         flex: 0 0 auto;
-        margin-top: 2px;
       }
       .ar-content {
         display: flex;
         flex-direction: column;
-        gap: 8px;
+        gap: 10px;
         min-width: 0;
         flex: 1 1 auto;
       }
+      /* Body holds the (optional) inline response image + the message. Landscape =
+         image beside the text (row); portrait/narrow = image above it (column). */
+      .ar-body {
+        display: flex;
+        min-width: 0;
+        flex: 1 1 auto;
+      }
+      .ar-body.row {
+        flex-direction: row;
+        align-items: flex-start;
+        gap: clamp(16px, 2.4vw, 28px);
+      }
+      .ar-body.col {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: clamp(12px, 2vw, 20px);
+      }
+      .ar-body .ar-message {
+        flex: 1 1 auto;
+      }
+      .ar-image {
+        flex: 0 0 auto;
+        object-fit: contain;
+        border-radius: var(--ted-style-radius);
+        background: rgba(0, 0, 0, 0.18);
+      }
+      .ar-body.row .ar-image {
+        max-width: 42%;
+        max-height: 100%;
+      }
+      .ar-body.col .ar-image {
+        max-width: 100%;
+        max-height: 55%;
+      }
       .ar-title {
-        font-size: clamp(18px, 2vw, 30px);
-        font-weight: 600;
-        letter-spacing: 0.01em;
+        font-size: var(--ar-msg-size);
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        line-height: 1.15;
         color: var(--ted-style-text);
       }
       .ar-message {
-        font-size: clamp(20px, 3vw, 44px);
+        font-size: var(--ar-msg-size);
         line-height: 1.3;
         font-weight: 500;
         text-wrap: balance;

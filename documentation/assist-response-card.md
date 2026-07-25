@@ -33,7 +33,7 @@ so a reloaded or freshly-navigated screen shows the latest content immediately.
 | `type` | string | — | `custom:ted-assist-response-card` |
 | `title` | string | `Assist` | Fallback title shown before the first answer (and when a pushed answer has no title). |
 | `placeholder` | string | `Waiting for a response…` | Message shown before the first answer arrives. |
-| `background_image` | string | — | Default background image URL, used when a pushed answer carries no image. |
+| `background_image` | string | — | Static background image URL shown behind the frosted box (the response's own `image` renders inline). |
 | `fill` | boolean | `true` | Fill the content area. |
 | `theme` | `ted-style` \| `ha` | `ted-style` | Card theme. |
 | `background` | color | — | Optional background color override. |
@@ -46,7 +46,7 @@ so a reloaded or freshly-navigated screen shows the latest content immediately.
 | --- | --- | --- | --- |
 | `message` | string | yes | The answer text (main body). |
 | `title` | string | no | Title shown at the top-left. |
-| `image` | string | no | Background image URL for this answer. |
+| `image` | string | no | Image URL shown **inline** with the answer — beside the text on landscape screens, above it on portrait/narrow ones. |
 | `areas` | list of area ids | no | Target these areas. |
 | `devices` | list of device ids | no | Target these devices (Ted device ids, e.g. `bm:…`). |
 | `navigate` | boolean | no (default `true`) | Also switch the targeted screens to the view. |
