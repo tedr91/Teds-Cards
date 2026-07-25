@@ -941,6 +941,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.320
+
+- **Photo Viewer card fixes.** The card is no longer invisible when no photo is selected — the empty state now always shows its surface and placeholder. The card editor's appearance options were renamed to **Appearance (general)** and moved to the top of the config UI.
+
 ### v1.0.319
 
 - **New Photo Viewer card (`custom:ted-photo-viewer-card`).** Show a single photo or a folder album on a dashboard (or fill the new **Photos** view). When a photo is open you can **Favorite** it, **Set it as this device's wallpaper**, or **Close** it. The Photos view re-opens the photo this device last viewed (toggle in **Settings → Photos**), and supports deep-linking a specific photo via `?photo=<name-or-index>`. A new **Photos** settings group holds the album folder, the re-open toggle, and slideshow transition options; the wallpaper **Slideshow** gains a **Favorites** album source. Favorite / Set-as-background and the Settings-driven album folder require the Ted's Cards Backend (v1.0.80+).

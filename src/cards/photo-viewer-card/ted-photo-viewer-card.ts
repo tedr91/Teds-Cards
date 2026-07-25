@@ -440,12 +440,14 @@ export class TedPhotoViewerCard extends LitElement implements LovelaceCard {
     css`
       :host {
         display: block;
+        height: 100%;
       }
       .pv-root {
         position: relative;
+        display: flex;
         width: 100%;
         height: 100%;
-        min-height: 160px;
+        min-height: 180px;
         border-radius: var(--ted-style-radius, 8px);
         overflow: hidden;
         background: var(--ted-style-surface, var(--ha-card-background, #1c1c1c));
@@ -517,14 +519,15 @@ export class TedPhotoViewerCard extends LitElement implements LovelaceCard {
         --mdc-icon-size: 22px;
       }
       .pv-empty {
-        position: absolute;
-        inset: 0;
+        flex: 1 1 auto;
+        box-sizing: border-box;
+        width: 100%;
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
         gap: 6px;
-        padding: 24px;
+        padding: 32px 24px;
         text-align: center;
       }
       .pv-empty-icon {

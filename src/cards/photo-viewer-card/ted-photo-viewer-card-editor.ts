@@ -46,6 +46,16 @@ export class TedPhotoViewerCardEditor extends LitElement implements LovelaceCard
       blur: cfg.blur,
     };
     const schema = [
+      {
+        type: "expandable",
+        name: "",
+        title: "Appearance (general)",
+        schema: [
+          { name: "theme", selector: { select: { mode: "dropdown", options: THEME_OPTIONS } } },
+          { name: "background", selector: { ui_color: {} } },
+          transparencyBlurSchema(cfg.transparency),
+        ],
+      },
       { name: "source", selector: { select: { mode: "dropdown", options: SOURCE_OPTIONS } } },
       ...(source === "album"
         ? [{ name: "folder", selector: { text: {} } }]
@@ -66,16 +76,6 @@ export class TedPhotoViewerCardEditor extends LitElement implements LovelaceCard
         schema: [
           { name: "backend_integration", selector: { boolean: {} } },
           { name: "open_last_on_load", selector: { boolean: {} } },
-        ],
-      },
-      {
-        type: "expandable",
-        name: "",
-        title: "Appearance",
-        schema: [
-          { name: "theme", selector: { select: { mode: "dropdown", options: THEME_OPTIONS } } },
-          { name: "background", selector: { ui_color: {} } },
-          transparencyBlurSchema(cfg.transparency),
         ],
       },
     ];
