@@ -69,10 +69,10 @@ folder: media-source://media_source/local/Family Photos
 | `url_param` | string | `photo` | URL query param used to deep-link a photo (e.g. `?photo=sunset.jpg`). |
 | `backend_integration` | boolean | `false` | Enable the Settings-driven folder, Favorite, and Set-as-background. |
 | `settings_path` | string | — | Deep link for the empty-state **Settings** button. |
-| `theme` | `ha` \| `ted-style` | `ha` | Card surface theme. |
-| `background` | color | — | Surface background color. |
-| `transparency` | number (0–100) | — | Surface transparency. |
-| `blur` | number (0–100) | — | Backdrop blur. |
+| `theme` | `ha` \| `ted-style` | `ha` | Theme for the empty-state surface + text. |
+| `background` | color | — | Matte color behind the photo (the letterbox bars). Default black. |
+| `transparency` | number (0–100) | — | Matte transparency — lets the dashboard wallpaper show through the letterbox bars. |
+| `blur` | number (0–100) | — | Backdrop blur behind a translucent matte. |
 | `empty_title` / `empty_message` | string | — | Override the "nothing open" placeholder text. |
 
 ---

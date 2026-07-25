@@ -502,11 +502,16 @@ export class TedPhotoViewerCard extends LitElement implements LovelaceCard {
   protected render(): TemplateResult | typeof nothing {
     const cfg = this._config;
     if (!cfg) return nothing;
-    const style = appearanceStyle({
-      background: cssColor(cfg.background),
-      transparency: cfg.transparency,
-      blur: cfg.blur,
-    });
+    // While viewing, the stage supplies the matte; keep the root transparent so a
+    // translucent matte reveals the dashboard wallpaper (not the card surface). In
+    // the empty state the root shows the themed/appearance surface.
+    const style: Record<string, string> = this._openedRef
+      ? { background: "transparent" }
+      : appearanceStyle({
+          background: cssColor(cfg.background),
+          transparency: cfg.transparency,
+          blur: cfg.blur,
+        });
     return html`<div
       class="pv-root ${tedCardThemeClass(cfg.theme)}${cfg.fill ? " fill" : ""}"
       style=${styleMap(style)}
@@ -517,13 +522,23 @@ export class TedPhotoViewerCard extends LitElement implements LovelaceCard {
   }
 
   private _renderPhoto(): TemplateResult {
-    const fit = this._config?.fit === "cover" ? "cover" : "contain";
-    const album = this._config?.source === "album";
+    const cfg = this._config;
+    const fit = cfg?.fit === "cover" ? "cover" : "contain";
+    const album = cfg?.source === "album";
     const canNav = album && this._albumRefs.length > 1;
     const fadeSec = this._crossfadeSec();
     const topClass = `pv-img top${this._fading ? " xf" : ""}`;
+    // The stage is the matte behind the photo: default black, but the Appearance
+    // background/transparency/blur recolor it (and let the wallpaper show through
+    // the letterbox bars when translucent).
+    const stageStyle = appearanceStyle({
+      background: cssColor(cfg?.background) ?? "#000",
+      transparency: cfg?.transparency,
+      blur: cfg?.blur,
+    });
     return html`<div
       class="pv-stage${this._controlsShown ? " shown" : ""}"
+      style=${styleMap(stageStyle)}
       @click=${() => this._toggleControls()}
     >
       ${this._fadeUrl
