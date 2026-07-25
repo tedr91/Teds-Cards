@@ -941,6 +941,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.332
+
+- **Navbar launcher highlight now follows the on-screen view.** A follow-up to the previous fix: the active-view highlight was still reading the browser URL, which can briefly disagree with the view Home Assistant is actually showing during a transition — so it could settle on the previous view's button. It now reads Home Assistant's current view directly and converges on the view that's actually displayed.
+
 ### v1.0.331
 
 - **Navbar launcher highlights the correct view.** Fixed a timing bug where, right after navigating (e.g. Photos → Home), the launcher would briefly highlight the new view's button and then flip back to highlight the previous one. The active-view highlight is now captured on navigation and no longer re-derived during unrelated re-renders.

@@ -107,9 +107,23 @@ export function readLovelaceViews(): LauncherViewInfo[] {
 
 /** The path segment identifying the currently-open view (or undefined at the root). */
 export function readCurrentViewPath(): string | undefined {
+  // Prefer Home Assistant's authoritative current-view index (what's actually on
+  // screen) over parsing window.location — during a view transition the URL can
+  // momentarily disagree with the displayed view, which would highlight the wrong
+  // launcher button. `hui-root._curView` is the index of the view being shown.
+  const panel = findLovelacePanel();
+  const huiRoot = panel?.shadowRoot?.querySelector?.("hui-root") as
+    | (HTMLElement & { _curView?: number | string })
+    | null;
+  const cur = huiRoot?._curView;
+  const views = panel?.lovelace?.config?.views;
+  if (typeof cur === "number" && Array.isArray(views) && views[cur]) {
+    const v = views[cur];
+    return typeof v.path === "string" && v.path ? v.path : String(cur);
+  }
+  // Fallback: parse the URL (/<dashboard>/<view> → the segment after the slug).
   const dash = readDashboardUrlPath();
   const segments = window.location.pathname.split("/").filter(Boolean);
-  // /<dashboard>/<view> → the segment after the dashboard slug.
   const dashIdx = segments.indexOf(dash);
   if (dashIdx >= 0 && segments.length > dashIdx + 1) return decodeURIComponent(segments[dashIdx + 1]);
   return segments.length >= 2 ? decodeURIComponent(segments[segments.length - 1]) : undefined;

@@ -125,6 +125,7 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
    *  happens mid-transition could read a stale URL and highlight the wrong button. */
   private _activeViewPath?: string;
   private _activeViewRaf?: number;
+  private _activeViewTimer?: number;
   private _editMode = false;
   /** Shared controller for status-item brightness/volume popovers. */
   private _slider = new StatusSliderController(this);
@@ -255,6 +256,7 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
     this._clearHide();
     if (this._resizeRaf) cancelAnimationFrame(this._resizeRaf);
     if (this._activeViewRaf) cancelAnimationFrame(this._activeViewRaf);
+    if (this._activeViewTimer) clearTimeout(this._activeViewTimer);
     if (this._clockTimer !== undefined) {
       window.clearInterval(this._clockTimer);
       this._clockTimer = undefined;
@@ -902,23 +904,34 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
   private _onVisibilityEvent = (): void => {
     const launcherActive = this._launcherEnabled();
     if (!this._hasConditional && !launcherActive) return;
-    // Navigation changes the current view — capture the active path NOW (the URL is
-    // already settled for pushState/popstate) and refresh the active-view highlight.
+    // Navigation changes the current view — refresh the active-view highlight. HA updates
+    // its authoritative current view (hui-root._curView) in afterNextRender, slightly after
+    // this event fires, so re-read across the next frame + a short delay to converge on the
+    // view actually shown (not the transient URL).
     if (launcherActive) {
-      this._setActiveViewPath(readCurrentViewPath());
       this._launcherCache = undefined;
-      // Belt-and-suspenders: re-read once the route fully settles, in case the URL
-      // hadn't updated yet when the event fired.
-      if (this._activeViewRaf) cancelAnimationFrame(this._activeViewRaf);
-      this._activeViewRaf = requestAnimationFrame(() => {
-        this._activeViewRaf = undefined;
-        this._setActiveViewPath(readCurrentViewPath());
-      });
+      this._scheduleActiveViewSettle();
     }
     this._visible.clear();
     this._buildButtonElements();
     this.requestUpdate();
   };
+
+  /** Read the current view now, then again as HA's view state settles, updating the
+   *  launcher's active-highlight each time it actually changes. */
+  private _scheduleActiveViewSettle(): void {
+    this._setActiveViewPath(readCurrentViewPath());
+    if (this._activeViewRaf) cancelAnimationFrame(this._activeViewRaf);
+    this._activeViewRaf = requestAnimationFrame(() => {
+      this._activeViewRaf = undefined;
+      this._setActiveViewPath(readCurrentViewPath());
+    });
+    if (this._activeViewTimer) clearTimeout(this._activeViewTimer);
+    this._activeViewTimer = window.setTimeout(() => {
+      this._activeViewTimer = undefined;
+      this._setActiveViewPath(readCurrentViewPath());
+    }, 150);
+  }
 
   /** Update the tracked active view path; rebuild the launcher when it actually changes. */
   private _setActiveViewPath(path: string | undefined): void {
