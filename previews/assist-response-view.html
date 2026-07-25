@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Assist-Response view — preview</title>
+    <style>
+      /* ---- Ted's Style theme tokens (from src/shared/theme.ts) ---- */
+      :root {
+        --ted-style-accent: #4cc2ff;
+        --ted-style-on-accent: #000;
+        --ted-style-text: #fff;
+        --ted-style-muted: rgba(255, 255, 255, 0.786);
+        --ted-style-icon-dim: rgba(255, 255, 255, 0.5);
+        --ted-style-divider: rgba(255, 255, 255, 0.0931);
+        --ted-style-surface: #2b2b2b;
+        --ted-style-radius: 8px;
+        --ted-style-gap: 14px;
+        font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system,
+          BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: #101014;
+        color: #e7e7ea;
+        padding: 28px;
+        display: flex;
+        flex-direction: column;
+        gap: 26px;
+        align-items: center;
+      }
+      h1 { font-size: 20px; font-weight: 600; margin: 0; }
+      .sub { color: #9aa; font-size: 13px; margin: 2px 0 0; text-align: center; max-width: 720px; }
+      .caption { color: #9aa; font-size: 12px; text-align: center; margin-top: 8px; }
+
+      /* ---- A dashboard "page" frame: wallpaper + content card + navbar ---- */
+      .device {
+        width: min(880px, 96vw);
+        aspect-ratio: 16 / 10;
+        border-radius: 20px;
+        overflow: hidden;
+        position: relative;
+        box-shadow: 0 22px 60px rgba(0, 0, 0, 0.55);
+        /* wallpaper */
+        background:
+          radial-gradient(120% 90% at 15% 10%, #35507a 0%, transparent 55%),
+          radial-gradient(120% 90% at 85% 90%, #5a3a6e 0%, transparent 55%),
+          linear-gradient(160deg, #1a2233, #0e0f16 70%);
+        padding: 22px;
+        display: grid;
+        grid-template-rows: 1fr auto;
+        gap: 14px;
+      }
+      .device.small { width: min(420px, 92vw); }
+      .row { display: flex; gap: 26px; flex-wrap: wrap; justify-content: center; align-items: flex-start; }
+      .col { display: flex; flex-direction: column; align-items: center; }
+
+      /* ---- The Assist-Response card (from ted-assist-response-card.ts styles) ---- */
+      .ar-card {
+        position: relative;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        color: var(--ted-style-text);
+        border-radius: var(--ted-style-radius);
+        min-height: 160px;
+        height: 100%;
+        /* ted-style brushed dark gradient */
+        background: linear-gradient(145deg, #2e2e32 0%, #222226 45%, #16161a 100%);
+        border: 1px solid var(--ted-style-divider);
+      }
+      .ar-card.ha {
+        background: rgba(250, 250, 252, 0.92);
+        color: #16181d;
+        border: 1px solid rgba(120, 120, 120, 0.22);
+        --ted-style-text: #16181d;
+        --ted-style-muted: #6f6f6f;
+      }
+      .ar-bg {
+        position: absolute;
+        inset: 0;
+        z-index: 0;
+        background-size: cover;
+        background-position: center;
+      }
+      .ar-inner {
+        position: relative;
+        z-index: 1;
+        display: grid;
+        grid-template-rows: min-content 1fr;
+        gap: 12px;
+        flex: 1;
+        min-height: 0;
+        padding: clamp(16px, 3vw, 40px);
+      }
+      .ar-title {
+        font-size: clamp(18px, 2.4vw, 34px);
+        font-weight: 600;
+        line-height: 1.15;
+        color: var(--ted-style-text);
+      }
+      .ar-message {
+        align-self: center;
+        font-size: clamp(20px, 3.4vw, 52px);
+        line-height: 1.3;
+        font-weight: 500;
+        text-wrap: balance;
+        overflow-wrap: anywhere;
+        white-space: pre-wrap;
+        color: var(--ted-style-text);
+      }
+      .ar-message.placeholder { color: var(--ted-style-muted); font-weight: 400; }
+
+      /* ---- Mock bottom navbar (just for context) ---- */
+      .navbar {
+        display: flex;
+        justify-content: center;
+        gap: 22px;
+        padding: 10px 18px;
+        border-radius: 12px;
+        background: rgba(30, 30, 34, 0.5);
+        backdrop-filter: blur(18px);
+        border: 1px solid var(--ted-style-divider);
+      }
+      .navbar .ico {
+        width: 30px; height: 30px; border-radius: 8px;
+        display: grid; place-items: center;
+        color: var(--ted-style-muted); font-size: 16px;
+      }
+      .navbar .ico.active { color: var(--ted-style-accent); background: rgba(76, 194, 255, 0.14); }
+    </style>
+  </head>
+  <body>
+    <h1>Assist-Response view</h1>
+    <p class="sub">
+      A voice intent or automation calls <code>teds_cards_backend.assist_response</code> with a
+      title + message; the targeted screen switches to this view and shows the answer. Content
+      stays until replaced (no auto-revert yet).
+    </p>
+
+    <!-- Main realistic page: an answered state -->
+    <div class="col">
+      <div class="device">
+        <div class="ar-card">
+          <div class="ar-inner">
+            <div class="ar-title">Weather</div>
+            <div class="ar-message">It's 72°F and sunny in the kitchen, with a high of 78° this afternoon.</div>
+          </div>
+        </div>
+        <div class="navbar">
+          <div class="ico">🏠</div>
+          <div class="ico">📅</div>
+          <div class="ico active">💬</div>
+          <div class="ico">🎵</div>
+          <div class="ico">⚙️</div>
+        </div>
+      </div>
+      <div class="caption">Pushed answer — full page (wallpaper + card + navbar for context)</div>
+    </div>
+
+    <!-- Variants -->
+    <div class="row">
+      <div class="col">
+        <div class="device small">
+          <div class="ar-card">
+            <div class="ar-inner">
+              <div class="ar-title">Assist</div>
+              <div class="ar-message placeholder">Waiting for a response…</div>
+            </div>
+          </div>
+          <div class="navbar"><div class="ico">🏠</div><div class="ico active">💬</div><div class="ico">⚙️</div></div>
+        </div>
+        <div class="caption">Idle / placeholder (before the first answer)</div>
+      </div>
+
+      <div class="col">
+        <div class="device small">
+          <div class="ar-card">
+            <div class="ar-bg" style="background-image: radial-gradient(120% 120% at 70% 20%, #2b4c78, #10131c); opacity: 0.9;"></div>
+            <div class="ar-inner">
+              <div class="ar-title">Shopping list</div>
+              <div class="ar-message" style="font-size: clamp(18px, 3vw, 34px)">Milk, eggs, bread, coffee, and apples.</div>
+            </div>
+          </div>
+          <div class="navbar"><div class="ico">🏠</div><div class="ico active">💬</div><div class="ico">⚙️</div></div>
+        </div>
+        <div class="caption">Answer with a background image</div>
+      </div>
+
+      <div class="col">
+        <div class="device small">
+          <div class="ar-card ha">
+            <div class="ar-inner">
+              <div class="ar-title">Reminder</div>
+              <div class="ar-message" style="font-size: clamp(18px, 3vw, 34px)">Trash goes out tonight.</div>
+            </div>
+          </div>
+          <div class="navbar"><div class="ico">🏠</div><div class="ico active">💬</div><div class="ico">⚙️</div></div>
+        </div>
+        <div class="caption">theme: ha (follows the HA theme)</div>
+      </div>
+    </div>
+  </body>
+</html>
