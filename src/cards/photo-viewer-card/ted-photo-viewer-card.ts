@@ -750,7 +750,7 @@ export class TedPhotoViewerCard extends LitElement implements LovelaceCard {
       }
       .pv-controls {
         position: absolute;
-        top: 10px;
+        bottom: 10px;
         right: 10px;
         z-index: 3;
         display: flex;
@@ -761,7 +761,7 @@ export class TedPhotoViewerCard extends LitElement implements LovelaceCard {
       }
       .pv-menu {
         position: absolute;
-        top: 52px;
+        bottom: 52px;
         right: 0;
         z-index: 4;
         min-width: 176px;
