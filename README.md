@@ -941,6 +941,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.321
+
+- **Photo Viewer card: fixed a blank card.** The card rendered completely empty (a correctly-sized but blank tile) because of an invalid CSS class binding that crashed its render at runtime. It now renders its photo / album / placeholder as intended.
+
 ### v1.0.320
 
 - **Photo Viewer card fixes.** The card is no longer invisible when no photo is selected — the empty state now always shows its surface and placeholder. The card editor's appearance options were renamed to **Appearance (general)** and moved to the top of the config UI.

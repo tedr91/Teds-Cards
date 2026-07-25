@@ -1,6 +1,5 @@
 import { LitElement, css, html, nothing, type TemplateResult } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
-import { classMap } from "lit/directives/class-map.js";
 import { styleMap } from "lit/directives/style-map.js";
 import {
   type HomeAssistant,
@@ -359,7 +358,7 @@ export class TedPhotoViewerCard extends LitElement implements LovelaceCard {
       blur: cfg.blur,
     });
     return html`<div
-      class="pv-root ${tedCardThemeClass(cfg.theme)} ${classMap({ fill: !!cfg.fill })}"
+      class="pv-root ${tedCardThemeClass(cfg.theme)}${cfg.fill ? " fill" : ""}"
       style=${styleMap(style)}
     >
       ${this._openedRef ? this._renderPhoto() : this._renderEmpty()}
@@ -370,7 +369,7 @@ export class TedPhotoViewerCard extends LitElement implements LovelaceCard {
   private _renderPhoto(): TemplateResult {
     const fit = this._config?.fit === "cover" ? "cover" : "contain";
     return html`<div
-      class="pv-stage ${classMap({ shown: this._controlsShown })}"
+      class="pv-stage${this._controlsShown ? " shown" : ""}"
       @click=${() => this._toggleControls()}
     >
       ${this._displayUrl
