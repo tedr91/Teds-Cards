@@ -36,6 +36,7 @@ After spending months attempting to find an "on/off/brightness" switch that I li
 | Alarm Card | `custom:ted-alarm-card` | Add, view, and enable/disable alarms (requires the Ted's Cards Backend integration). |
 | Timer Card | `custom:ted-timer-card` | Start, view, and cancel countdown timers (requires the Ted's Cards Backend integration). |
 | Announce Card | `custom:ted-announce-card` | Broadcast spoken (TTS) announcements to devices/areas, with predefined messages and recents (requires the Ted's Cards Backend integration). |
+| Assist-Response Card | `custom:ted-assist-response-card` | Display a title + message (+ optional image) pushed by a voice intent or automation, and navigate the targeted screens to it — the visual counterpart to a spoken Assist answer (requires the Ted's Cards Backend integration). |
 | Photo Viewer Card | `custom:ted-photo-viewer-card` | View a single photo or a folder album — page through it (arrows/keys), run a crossfade slideshow, favorite it, and set it as your wallpaper (favorite/set-as-wallpaper require the Ted's Cards Backend integration). |
 
 ---

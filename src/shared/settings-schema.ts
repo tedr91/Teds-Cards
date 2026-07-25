@@ -202,7 +202,7 @@ export const SETTINGS_DEFAULTS: SettingsMap = {
   climate_dashboard: "[root]/climate",
   music_dashboard: "[root]/music",
   photos_dashboard: "[root]/photos",
-  info_dashboard: "[root]/info",
+  assist_response_dashboard: "[root]/assist-response",
   announce_dashboard: "[root]/announce",
   auto_return_home_after: 0,
 };
@@ -359,7 +359,7 @@ export const SETTINGS_FIELDS: SettingField[] = [
   { key: "climate_dashboard", label: "Climate dashboard", group: "Navigation", kind: "text", rootRelative: true },
   { key: "music_dashboard", label: "Music dashboard", group: "Navigation", kind: "text", rootRelative: true },
   { key: "photos_dashboard", label: "Photos dashboard", group: "Navigation", kind: "text", rootRelative: true },
-  { key: "info_dashboard", label: "Info dashboard", group: "Navigation", kind: "text", rootRelative: true },
+  { key: "assist_response_dashboard", label: "Assist-Response dashboard", group: "Navigation", kind: "text", rootRelative: true },
   { key: "announce_dashboard", label: "Announce dashboard", group: "Navigation", kind: "text", rootRelative: true },
 ];
 

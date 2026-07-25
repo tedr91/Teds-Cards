@@ -17,6 +17,7 @@
 import type { HomeAssistant } from "custom-card-helpers";
 
 import { resolveDeviceArea, resolveDeviceHaId } from "./device-area";
+import { resolveDeviceId } from "./device-id";
 import { resolveDashboardPath } from "./settings";
 
 /** A navigation signal as delivered by the backend. */
@@ -60,7 +61,11 @@ class NavigationSignal {
     if (!sig?.dashboard) return;
     const hass = this._hass;
     const areaMatch = !!sig.area && sig.area === resolveDeviceArea(hass, undefined).area;
-    const deviceMatch = !!sig.device_id && sig.device_id === resolveDeviceHaId(hass);
+    // Match either the HA device-registry id (voice-satellite nudges) or Ted's own
+    // device id (`bm:`/`id:` — the same space the Assist-Response `devices` list uses).
+    const deviceMatch =
+      !!sig.device_id &&
+      (sig.device_id === resolveDeviceHaId(hass) || sig.device_id === resolveDeviceId());
     if (!areaMatch && !deviceMatch) return;
 
     const path = resolveDashboardPath(sig.dashboard);

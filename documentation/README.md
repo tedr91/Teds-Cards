@@ -29,6 +29,7 @@ picker, where most have a visual editor).
 | [MessageBox](./messagebox-card.md) | `custom:ted-messagebox-card` | A dismissible message banner (no backend). |
 | [Notification](./notification-card.md) | `custom:ted-notification-card` | Backend-driven notification list + toasts. |
 | [Announce](./announce-card.md) | `custom:ted-announce-card` | Broadcast spoken announcements to devices/areas (needs the backend). |
+| [Assist-Response](./assist-response-card.md) | `custom:ted-assist-response-card` | Display a voice/automation-pushed title + message on targeted screens (needs the backend). |
 | [Photo Viewer](./photo-viewer-card.md) | `custom:ted-photo-viewer-card` | View a single photo or a folder album — favorite, set as wallpaper, slideshow. |
 
 See also the [Notification System](./notification-system.md) overview for how the
