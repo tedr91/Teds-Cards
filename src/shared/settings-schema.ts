@@ -210,8 +210,6 @@ export const SETTINGS_DEFAULTS: SettingsMap = {
 export const SETTINGS_FIELDS: SettingField[] = [
   // Sounds
   { key: "system_sound_player", label: "System sounds player", group: "Sounds", kind: "entity", entityDomain: "media_player", deviceOnly: true, help: "Alarms, timers, alerts & notifications play on this speaker. Set per-device." },
-  { key: "music_player", label: "Music player", group: "Sounds", subsection: "Music", kind: "entity", entityDomain: "media_player", entityPlatform: "music_assistant", deviceOnly: true, help: "Music Assistant player for the Music view. Falls back to the system sounds player. Set per-device." },
-  { key: "music_volume", label: "Music volume", group: "Sounds", subsection: "Music", kind: "percent" },
   { key: "do_not_disturb", label: "Do Not Disturb", group: "Sounds", subsection: "Notifications", kind: "boolean", help: "Suppresses toasts and alert sounds on this device." },
   { key: "notification_volume", label: "Sound volume", group: "Sounds", subsection: "Notifications", kind: "percent" },
   { key: "notification_sound", label: "Alert sound (default)", group: "Sounds", subsection: "Notifications", kind: "media", help: "Fallback sound for notifications of any severity." },
@@ -220,6 +218,8 @@ export const SETTINGS_FIELDS: SettingField[] = [
   { key: "notification_sound_warning", label: "Warning sound", group: "Sounds", subsection: "Notifications", kind: "media", help: "Leave empty to use the fallback above." },
   { key: "notification_sound_danger", label: "Danger sound", group: "Sounds", subsection: "Notifications", kind: "media", help: "Leave empty to use the fallback above." },
   { key: "notification_sound_tip", label: "Tip sound", group: "Sounds", subsection: "Notifications", kind: "media", help: "\"default\" uses the fallback above." },
+  { key: "music_player", label: "Music player", group: "Sounds", subsection: "Music", kind: "entity", entityDomain: "media_player", entityPlatform: "music_assistant", deviceOnly: true, help: "Music Assistant player for the Music view. Falls back to the system sounds player. Set per-device." },
+  { key: "music_volume", label: "Music volume", group: "Sounds", subsection: "Music", kind: "percent" },
   { key: "alarm_alert_volume", label: "Alarms volume", group: "Sounds", subsection: "Alarms", kind: "percent" },
   { key: "alarm_alert_sound", label: "Alarms sound", group: "Sounds", subsection: "Alarms", kind: "media" },
   { key: "timer_alert_volume", label: "Timers volume", group: "Sounds", subsection: "Timers", kind: "percent" },
