@@ -778,9 +778,9 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
         return this._renderSoundPicker(field, value, disabled, onChange);
       case "folder": {
         const cur = typeof value === "string" ? value : "";
-        return html`<div class="rootpath">
+        return html`<div class="folderfield">
           <input
-            class="txt"
+            class="txt folder-input"
             type="text"
             .value=${cur}
             ?disabled=${disabled}
@@ -789,10 +789,11 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
               onChange((e.target as HTMLInputElement).value.trim() || null)}
           />
           <button
-            class="link-btn"
+            class="folder-browse"
             ?disabled=${disabled}
             @click=${() => void this._pickFolderInto(onChange)}
           >
+            <ha-icon icon="mdi:folder-open-outline"></ha-icon>
             Choose…
           </button>
         </div>`;
@@ -3240,7 +3241,8 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
       .rootpath {
         display: inline-flex;
         align-items: stretch;
-        max-width: 42vw;
+        width: 24rem;
+        max-width: 90vw;
       }
       .rootprefix {
         display: inline-flex;
@@ -3263,6 +3265,43 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
       .rootpath ha-selector.rootsel {
         flex: 1 1 auto;
         min-width: 12ch;
+      }
+      .folderfield {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        width: 30rem;
+        max-width: 90vw;
+      }
+      .folderfield .folder-input {
+        flex: 1 1 auto;
+        width: auto;
+        min-width: 0;
+        max-width: none;
+      }
+      .folder-browse {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font: inherit;
+        font-size: 0.85em;
+        padding: 5px 12px;
+        border-radius: 8px;
+        border: 1px solid var(--ted-style-divider);
+        background: var(--ted-style-surface-2);
+        color: inherit;
+        cursor: pointer;
+        white-space: nowrap;
+      }
+      .folder-browse:hover:not(:disabled) {
+        background: var(--ted-style-surface-3, var(--ted-style-surface-2));
+      }
+      .folder-browse:disabled {
+        opacity: 0.5;
+        cursor: default;
+      }
+      .folder-browse ha-icon {
+        --mdc-icon-size: 16px;
       }
       .pct {
         display: inline-flex;

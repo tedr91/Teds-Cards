@@ -942,6 +942,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.338
+
+- **Tidier Settings layout.** The Navigation dashboard-view pickers are now a consistent fixed width so they line up neatly instead of staggering by content length, and the Photos "Album folder" field was restyled with a roomier input and a proper bordered "Choose…" button (with a folder icon) in place of the cramped link.
+
 ### v1.0.337
 
 - **Navigation settings: pick a view instead of typing a path.** In Settings → Navigation, the dashboard-view fields (Home, Alarms, Timers, Weather, Calendar, etc.) are now a searchable dropdown of your dashboard's actual views (shown by title), including the known tabbed destinations (e.g. "Alarms & Timers — Alarms tab"). You can still type a custom path with a query string, and the values stay root-portable.
