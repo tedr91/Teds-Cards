@@ -191,10 +191,7 @@ export class TedAssistResponseCard extends LitElement implements LovelaceCard {
       .ar-root {
         position: relative;
         display: flex;
-        align-items: center;
-        justify-content: center;
         box-sizing: border-box;
-        padding: clamp(14px, 2.6vw, 36px);
         min-height: 160px;
       }
       .ar-root.fill {
@@ -208,20 +205,21 @@ export class TedAssistResponseCard extends LitElement implements LovelaceCard {
         background-position: center;
         background-repeat: no-repeat;
       }
-      /* MessageBox-style frosted box with a left accent stripe. */
+      /* MessageBox-style frosted box with a left accent stripe. Fills the content
+         area (same size as before); the icon + text are centered within it. */
       .ar-box {
         --ar-surface: 28, 32, 44;
         --ar-accent: var(--ted-style-accent, #4cc2ff);
         position: relative;
         z-index: 1;
         box-sizing: border-box;
+        flex: 1 1 auto;
         display: flex;
         gap: 18px;
-        align-items: flex-start;
-        width: min(820px, 100%);
-        max-height: 100%;
+        align-items: center;
+        width: 100%;
         overflow: auto;
-        padding: clamp(18px, 2.6vw, 30px) clamp(20px, 3vw, 34px);
+        padding: clamp(18px, 3vw, 40px) clamp(20px, 3.5vw, 44px);
         border-radius: var(--ted-style-radius);
         color: var(--ted-style-text, #fff);
         background: rgba(var(--ar-surface), var(--ar-bg-alpha, 0.62));

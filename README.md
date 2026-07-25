@@ -942,6 +942,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.335
+
+- **Assist-Response card fills the content area again.** Kept the MessageBox look but restored the previous size: the frosted box now fills the whole content area edge-to-edge (instead of a centered fixed-width box), with the icon + title + message centered within it.
+
 ### v1.0.334
 
 - **Assist-Response card restyled to the MessageBox look.** The Assist-Response card now renders a frosted, translucent box with a colored left accent stripe and a leading icon + title + message (matching the MessageBox card), for both the `ted-style` and `ha` themes. New `icon`, `accent`, and `shadow` options; `transparency`/`blur` now behave like the MessageBox.
