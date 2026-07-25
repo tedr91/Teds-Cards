@@ -2418,7 +2418,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
         <div class="row-label">
           <span>Quick launch groups</span>
           <span class="help">Single tap on a group opens the corresponding
-            <button class="link-inline" @click=${() => this._selectSection("Navigation")}>navigation dashboard</button>;
+            <button class="link-inline" @click=${() => this._selectSection("Dashboards")}>navigation dashboard</button>;
             hold on a group opens the group selector popout.</span>
         </div>
         <div class="row-control">

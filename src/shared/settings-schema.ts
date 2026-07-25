@@ -67,22 +67,22 @@ export interface SettingField {
 
 export const SETTINGS_GROUPS = [
   "General",
-  "Navigation",
+  "Dashboards",
   "Navbar",
   "Sounds",
-  "Alarms/Timers",
-  "Announce",
-  "Calendars",
   "Cameras",
   "Thermostats",
-  "Photos"
+  "Calendars",
+  "Alarms/Timers",
+  "Photos",
+  "Announce"
 ] as const;
 
 /** Per-category tab icons — a Fluent icon (used when the `fluent` iconset is installed)
  *  with an mdi fallback for when it isn't. */
 export const SETTINGS_GROUP_ICONS: Record<string, { fluent: string; mdi: string }> = {
   General: { fluent: "fluent:settings-24-regular", mdi: "mdi:tune" },
-  Navigation: { fluent: "fluent:dashboard-20-regular", mdi: "mdi:navigation-variant-outline" },
+  Dashboards: { fluent: "fluent:dashboard-20-regular", mdi: "mdi:navigation-variant-outline" },
   Navbar: { fluent: "fluent:panel-bottom-20-filled", mdi: "mdi:dock-bottom" },
   Sounds: { fluent: "fluent:speaker-2-24-regular", mdi: "mdi:volume-high" },
   "Alarms/Timers": { fluent: "fluent:clock-alarm-24-regular", mdi: "mdi:alarm" },
@@ -347,20 +347,20 @@ export const SETTINGS_FIELDS: SettingField[] = [
   { key: "night_mode", label: "Automatic night mode", group: "General", kind: "nightmode", help: "Automatically dims the background, lowers screen brightness, and switches to a night font color on a nightly schedule, restoring day values in the morning." },
   { key: "background", label: "Background Wallpaper", group: "General", kind: "background", help: "Dashboard background painted by the invisible ted-background-card." },
   { key: "debug_mode", label: "Debug mode", group: "General", kind: "boolean", subsection: "Advanced", help: "Publishes the --ted-debug CSS variable so dashboards can show layout debug outlines." },
-  // Navigation
-  { key: "auto_return_home_after", label: "Auto-return home after", group: "Navigation", kind: "number", min: 0, max: 3600, unit: "s", help: "0 = never." },
-  { key: "dashboard_root", label: "Dashboard root", group: "Navigation", kind: "text" },
-  { key: "home_dashboard", label: "Home dashboard", group: "Navigation", kind: "text", rootRelative: true, help: "The view the Home button opens." },
-  { key: "alarms_dashboard", label: "Alarms dashboard", group: "Navigation", kind: "text", rootRelative: true },
-  { key: "timers_dashboard", label: "Timers dashboard", group: "Navigation", kind: "text", rootRelative: true },
-  { key: "weather_dashboard", label: "Weather dashboard", group: "Navigation", kind: "text", rootRelative: true },
-  { key: "calendar_dashboard", label: "Calendar dashboard", group: "Navigation", kind: "text", rootRelative: true },
-  { key: "cameras_dashboard", label: "Cameras dashboard", group: "Navigation", kind: "text", rootRelative: true },
-  { key: "climate_dashboard", label: "Climate dashboard", group: "Navigation", kind: "text", rootRelative: true },
-  { key: "music_dashboard", label: "Music dashboard", group: "Navigation", kind: "text", rootRelative: true },
-  { key: "photos_dashboard", label: "Photos dashboard", group: "Navigation", kind: "text", rootRelative: true },
-  { key: "assist_response_dashboard", label: "Assist-Response dashboard", group: "Navigation", kind: "text", rootRelative: true },
-  { key: "announce_dashboard", label: "Announce dashboard", group: "Navigation", kind: "text", rootRelative: true },
+  // Dashboards
+  { key: "auto_return_home_after", label: "Auto-return home after", group: "Dashboards", kind: "number", min: 0, max: 3600, unit: "s", help: "0 = never." },
+  { key: "dashboard_root", label: "Dashboard root", group: "Dashboards", kind: "text" },
+  { key: "home_dashboard", label: "Home dashboard", group: "Dashboards", kind: "text", rootRelative: true, help: "The view the Home button opens." },
+  { key: "alarms_dashboard", label: "Alarms dashboard", group: "Dashboards", kind: "text", rootRelative: true },
+  { key: "timers_dashboard", label: "Timers dashboard", group: "Dashboards", kind: "text", rootRelative: true },
+  { key: "weather_dashboard", label: "Weather dashboard", group: "Dashboards", kind: "text", rootRelative: true },
+  { key: "calendar_dashboard", label: "Calendar dashboard", group: "Dashboards", kind: "text", rootRelative: true },
+  { key: "cameras_dashboard", label: "Cameras dashboard", group: "Dashboards", kind: "text", rootRelative: true },
+  { key: "climate_dashboard", label: "Climate dashboard", group: "Dashboards", kind: "text", rootRelative: true },
+  { key: "music_dashboard", label: "Music dashboard", group: "Dashboards", kind: "text", rootRelative: true },
+  { key: "photos_dashboard", label: "Photos dashboard", group: "Dashboards", kind: "text", rootRelative: true },
+  { key: "assist_response_dashboard", label: "Assist-Response dashboard", group: "Dashboards", kind: "text", rootRelative: true },
+  { key: "announce_dashboard", label: "Announce dashboard", group: "Dashboards", kind: "text", rootRelative: true },
 ];
 
 /** Fields grouped for the card UI, in declared order per group. */
