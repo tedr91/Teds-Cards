@@ -941,6 +941,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.329
+
+- **Photo Viewer card: removed the Close button + Escape handling.** The on-image **X** close button is gone, and the card no longer intercepts the **Escape** key — so Escape now cleanly exits a wrapping Fullscreen card instead of doing both at once. The prev/next arrow-pills are also slightly slimmer and fainter at rest.
+
 ### v1.0.328
 
 - **Photo Viewer card: slimmer nav pills.** The prev/next arrow-pills are now half as wide with taller chevrons, and their corner radius follows the card's selected theme.

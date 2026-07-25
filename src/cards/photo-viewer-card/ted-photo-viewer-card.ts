@@ -266,13 +266,9 @@ export class TedPhotoViewerCard extends LitElement implements LovelaceCard {
 
   private _onKeyDown = (e: KeyboardEvent): void => {
     if (!this._openedRef) return;
+    if (this._config?.source !== "album" || this._albumRefs.length < 2) return;
     const tag = (document.activeElement?.tagName ?? "").toLowerCase();
     if (tag === "input" || tag === "textarea") return;
-    if (e.key === "Escape") {
-      this._close();
-      return;
-    }
-    if (this._config?.source !== "album" || this._albumRefs.length < 2) return;
     if (e.key === "ArrowRight") {
       e.preventDefault();
       this._advance(1, true);
@@ -345,15 +341,6 @@ export class TedPhotoViewerCard extends LitElement implements LovelaceCard {
       if (gen !== this._albumGen) return;
       if (!this._urlCache.has(ref)) await this._resolveRef(ref);
     }
-  }
-
-  private _close(): void {
-    this._stopSlideshow();
-    this._openedRef = null;
-    this._displayUrl = null;
-    this._fadeUrl = null;
-    this._fading = false;
-    this._controlsShown = false;
   }
 
   private _toggleControls(): void {
@@ -611,9 +598,6 @@ export class TedPhotoViewerCard extends LitElement implements LovelaceCard {
               <ha-icon icon=${ic(this._slideshow ? IC.stop : IC.slideshow)}></ha-icon>
             </button>`
           : nothing}
-        <button class="pv-btn" title="Close" @click=${() => this._close()}>
-          <ha-icon icon=${ic(IC.close)}></ha-icon>
-        </button>
         ${this._durationPickerOpen ? this._renderDurationMenu() : nothing}
       </div>
     </div>`;
@@ -735,7 +719,7 @@ export class TedPhotoViewerCard extends LitElement implements LovelaceCard {
         top: 50%;
         transform: translateY(-50%);
         z-index: 2;
-        width: 22px;
+        width: 18px;
         height: 64px;
         border: none;
         border-radius: var(--ted-style-radius, 8px);
@@ -745,7 +729,7 @@ export class TedPhotoViewerCard extends LitElement implements LovelaceCard {
         justify-content: center;
         color: #fff;
         background: rgba(0, 0, 0, 0.32);
-        opacity: 0.28;
+        opacity: 0.16;
         transition: opacity 0.2s ease, background 0.2s ease;
         backdrop-filter: blur(4px);
         -webkit-backdrop-filter: blur(4px);
@@ -766,7 +750,7 @@ export class TedPhotoViewerCard extends LitElement implements LovelaceCard {
       }
       .pv-pill ha-icon {
         --mdc-icon-size: 28px;
-        transform: scaleY(2);
+        transform: scale(0.75, 1.5);
       }
       .pv-loading {
         color: var(--ted-style-muted, var(--secondary-text-color));

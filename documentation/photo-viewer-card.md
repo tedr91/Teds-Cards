@@ -96,7 +96,6 @@ specific album photo (matched by filename or position), e.g.
   album.
 - **Set as background** — stores the photo on the backend (deduped), switches this
   device's wallpaper to **Single Image**, and selects it.
-- **Close** — returns the viewer to its empty state (your last-viewed photo is kept).
 
 In **album** mode (2+ photos) you also get:
 
@@ -106,8 +105,6 @@ In **album** mode (2+ photos) you also get:
   30m / custom); the viewer then auto-advances until you press it again. Photos change
   with a **crossfade** (or instantly), per **Settings → Photos → Slideshow transition**
   and **Crossfade duration**.
-
-Press **Escape** to close the open photo.
 
 ---
 
