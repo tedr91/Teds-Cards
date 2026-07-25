@@ -941,6 +941,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.328
+
+- **Photo Viewer card: slimmer nav pills.** The prev/next arrow-pills are now half as wide with taller chevrons, and their corner radius follows the card's selected theme.
+
 ### v1.0.327
 
 - **Photo Viewer card: Appearance settings now work.** The Appearance (general) options were being hidden behind the photo's black stage. **Background** now recolors the matte behind the photo (the letterbox bars), **Transparency** lets the dashboard wallpaper show through those bars, and **Blur** frosts behind a translucent matte.

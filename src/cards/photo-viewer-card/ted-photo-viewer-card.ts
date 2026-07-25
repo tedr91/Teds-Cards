@@ -735,10 +735,10 @@ export class TedPhotoViewerCard extends LitElement implements LovelaceCard {
         top: 50%;
         transform: translateY(-50%);
         z-index: 2;
-        width: 44px;
+        width: 22px;
         height: 64px;
         border: none;
-        border-radius: 999px;
+        border-radius: var(--ted-style-radius, 8px);
         cursor: pointer;
         display: inline-flex;
         align-items: center;
@@ -766,6 +766,7 @@ export class TedPhotoViewerCard extends LitElement implements LovelaceCard {
       }
       .pv-pill ha-icon {
         --mdc-icon-size: 28px;
+        transform: scaleY(2);
       }
       .pv-loading {
         color: var(--ted-style-muted, var(--secondary-text-color));
