@@ -15,10 +15,15 @@ export interface AssistResponseCardConfig extends LovelaceCardConfig {
   /** Fill the content area (default true). */
   fill?: boolean;
 
-  // Visual
+  // Visual — MessageBox-style frosted box
   theme?: TedStyleTheme;
-  /** Optional override for the card background (hex/rgb/hsl/var or a theme color name). */
-  background?: string;
+  /** Leading icon (MessageBox-style). Defaults to a message icon; set "" to hide. */
+  icon?: string;
+  /** Accent color for the left stripe + icon (hex/rgb/hsl/var or a theme color name).
+   *  Defaults to the theme accent. */
+  accent?: string;
+  /** Drop shadow under the box (default true). */
+  shadow?: boolean;
   transparency?: number;
   blur?: number;
 }

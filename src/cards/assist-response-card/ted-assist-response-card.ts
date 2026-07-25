@@ -3,7 +3,8 @@ import { customElement, property, state } from "lit/decorators.js";
 import { styleMap } from "lit/directives/style-map.js";
 import type { HomeAssistant, LovelaceCard, LovelaceCardEditor } from "custom-card-helpers";
 
-import { appearanceStyle } from "../../shared/appearance";
+import { cssColor } from "../../shared/appearance";
+import { resolveIcon } from "../../shared/icons";
 import { tedCardThemeClass, tedStyleTheme } from "../../shared/theme";
 import { SettingsController, settingsStore } from "../../shared/settings";
 import { announcementTargetsDevice, resolveDeviceArea } from "../../shared/device-area";
@@ -135,11 +136,6 @@ export class TedAssistResponseCard extends LitElement implements LovelaceCard {
     if (!this._config) return nothing;
     const cfg = this._config;
     const themeClass = tedCardThemeClass(cfg.theme ?? "ted-style");
-    const style = appearanceStyle({
-      background: cfg.background,
-      transparency: cfg.transparency,
-      blur: cfg.blur,
-    });
 
     const hasAnswer = !!this._answer?.message;
     const title = (this._answer?.title ?? cfg.title ?? "Assist") || "";
@@ -148,22 +144,40 @@ export class TedAssistResponseCard extends LitElement implements LovelaceCard {
       : cfg.placeholder ?? "Waiting for a response…";
     const image = this._answer?.image || cfg.background_image;
 
+    const icon =
+      cfg.icon === undefined
+        ? resolveIcon({ fluent: "chat-24-regular", mdi: "message-reply-text" }) ??
+          "mdi:message-reply-text"
+        : cfg.icon;
+
+    const boxVars: Record<string, string> = {};
+    if (typeof cfg.transparency === "number") {
+      boxVars["--ar-bg-alpha"] = `${Math.max(0, Math.min(100, 100 - cfg.transparency))}%`;
+    }
+    if (typeof cfg.blur === "number") boxVars["--ar-blur"] = `${cfg.blur}px`;
+    if (cfg.accent) boxVars["--ar-accent"] = cssColor(cfg.accent) ?? cfg.accent;
+
     return html`
-      <ha-card
-        class="ted-card ${themeClass}${this._fill() ? " fill" : ""}"
-        style=${styleMap(style)}
-      >
+      <div class="ar-root${this._fill() ? " fill" : ""}">
         ${image
           ? html`<div
               class="ar-bg"
               style=${styleMap({ backgroundImage: `url("${image}")` })}
             ></div>`
           : nothing}
-        <div class="ar-inner">
-          ${title ? html`<div class="ar-title">${title}</div>` : nothing}
-          <div class="ar-message ${hasAnswer ? "" : "placeholder"}">${message}</div>
+        <div
+          class="ar-box ${themeClass}${cfg.shadow === false ? "" : " ar-shadow"}"
+          style=${styleMap(boxVars)}
+          role="status"
+          aria-live="polite"
+        >
+          ${icon ? html`<ha-icon class="ar-icon" .icon=${icon}></ha-icon>` : nothing}
+          <div class="ar-content">
+            ${title ? html`<div class="ar-title">${title}</div>` : nothing}
+            <div class="ar-message ${hasAnswer ? "" : "placeholder"}">${message}</div>
+          </div>
         </div>
-      </ha-card>
+      </div>
     `;
   }
 
@@ -174,17 +188,16 @@ export class TedAssistResponseCard extends LitElement implements LovelaceCard {
         display: block;
         height: 100%;
       }
-      ha-card {
+      .ar-root {
         position: relative;
-        overflow: hidden;
         display: flex;
-        flex-direction: column;
-        color: var(--ted-style-text);
-        background: var(--ted-style-surface);
-        border-radius: var(--ted-style-radius);
+        align-items: center;
+        justify-content: center;
+        box-sizing: border-box;
+        padding: clamp(14px, 2.6vw, 36px);
         min-height: 160px;
       }
-      ha-card.fill {
+      .ar-root.fill {
         height: 100%;
       }
       .ar-bg {
@@ -195,25 +208,61 @@ export class TedAssistResponseCard extends LitElement implements LovelaceCard {
         background-position: center;
         background-repeat: no-repeat;
       }
-      .ar-inner {
+      /* MessageBox-style frosted box with a left accent stripe. */
+      .ar-box {
+        --ar-surface: 28, 32, 44;
+        --ar-accent: var(--ted-style-accent, #4cc2ff);
         position: relative;
         z-index: 1;
-        display: grid;
-        grid-template-rows: min-content 1fr;
-        gap: 12px;
-        flex: 1;
-        min-height: 0;
-        padding: clamp(16px, 3vw, 40px);
+        box-sizing: border-box;
+        display: flex;
+        gap: 18px;
+        align-items: flex-start;
+        width: min(820px, 100%);
+        max-height: 100%;
+        overflow: auto;
+        padding: clamp(18px, 2.6vw, 30px) clamp(20px, 3vw, 34px);
+        border-radius: var(--ted-style-radius);
+        color: var(--ted-style-text, #fff);
+        background: rgba(var(--ar-surface), var(--ar-bg-alpha, 0.62));
+        backdrop-filter: blur(var(--ar-blur, 22px)) saturate(150%);
+        -webkit-backdrop-filter: blur(var(--ar-blur, 22px)) saturate(150%);
+        border: 1px solid rgba(255, 255, 255, 0.22);
+        border-left: 5px solid var(--ar-accent);
+      }
+      .ar-box.ar-shadow {
+        box-shadow: 0 18px 48px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.16);
+      }
+      /* Follow the active HA theme for the surface/text when theme: ha. */
+      .ar-box.ted-card--theme-ha {
+        color: var(--primary-text-color, #1c1c1c);
+        background: var(--ha-card-background, var(--card-background-color, #fff));
+        border: 1px solid var(--divider-color, rgba(120, 120, 120, 0.22));
+        border-left: 5px solid var(--ar-accent);
+        backdrop-filter: var(--ha-card-backdrop-filter, none);
+        -webkit-backdrop-filter: var(--ha-card-backdrop-filter, none);
+      }
+      .ar-icon {
+        color: var(--ar-accent);
+        --mdc-icon-size: clamp(30px, 3.6vw, 46px);
+        flex: 0 0 auto;
+        margin-top: 2px;
+      }
+      .ar-content {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        min-width: 0;
+        flex: 1 1 auto;
       }
       .ar-title {
-        font-size: clamp(18px, 2.4vw, 34px);
+        font-size: clamp(18px, 2vw, 30px);
         font-weight: 600;
-        line-height: 1.15;
+        letter-spacing: 0.01em;
         color: var(--ted-style-text);
       }
       .ar-message {
-        align-self: center;
-        font-size: clamp(20px, 3.4vw, 52px);
+        font-size: clamp(20px, 3vw, 44px);
         line-height: 1.3;
         font-weight: 500;
         text-wrap: balance;

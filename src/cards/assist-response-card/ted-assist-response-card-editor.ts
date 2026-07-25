@@ -20,7 +20,7 @@ export class TedAssistResponseCardEditor extends LitElement implements LovelaceC
   }
 
   private _defaults(): Partial<AssistResponseCardConfig> {
-    return { theme: "ted-style", fill: true, transparency: undefined, blur: undefined, background: undefined };
+    return { theme: "ted-style", fill: true, shadow: true, transparency: undefined, blur: undefined };
   }
 
   protected render(): TemplateResult | typeof nothing {
@@ -40,6 +40,7 @@ export class TedAssistResponseCardEditor extends LitElement implements LovelaceC
   private _schema(data: Partial<AssistResponseCardConfig>) {
     return [
       { name: "title", selector: { text: { placeholder: "Assist" } } },
+      { name: "icon", selector: { icon: {} } },
       { name: "placeholder", selector: { text: { placeholder: "Waiting for a response…" } } },
       { name: "background_image", selector: { text: {} } },
       { name: "fill", selector: { boolean: {} } },
@@ -62,7 +63,8 @@ export class TedAssistResponseCardEditor extends LitElement implements LovelaceC
               },
             },
           },
-          { name: "background", selector: { ui_color: {} } },
+          { name: "accent", selector: { ui_color: {} } },
+          { name: "shadow", selector: { boolean: {} } },
           transparencyBlurSchema(data.transparency),
         ],
       },
@@ -79,10 +81,14 @@ export class TedAssistResponseCardEditor extends LitElement implements LovelaceC
         return "Default background image (URL)";
       case "fill":
         return "Fill the content area";
+      case "icon":
+        return "Icon";
       case "theme":
         return "Theme";
-      case "background":
-        return "Background color";
+      case "accent":
+        return "Accent color";
+      case "shadow":
+        return "Drop shadow";
       default:
         return appearanceLabel(schema.name) ?? schema.name;
     }
@@ -95,10 +101,12 @@ export class TedAssistResponseCardEditor extends LitElement implements LovelaceC
     // Strip values that equal the defaults to keep the YAML tidy.
     if (config.theme === defaults.theme) delete config.theme;
     if (config.fill === defaults.fill) delete config.fill;
+    if (config.shadow === defaults.shadow) delete config.shadow;
     if (config.transparency === undefined) delete config.transparency;
     if (config.blur === undefined) delete config.blur;
-    if (!config.background) delete config.background;
+    if (!config.accent) delete config.accent;
     if (!config.title) delete config.title;
+    if (config.icon === undefined) delete config.icon;
     if (!config.placeholder) delete config.placeholder;
     if (!config.background_image) delete config.background_image;
     fireEvent(this, "config-changed", { config });
