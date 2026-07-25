@@ -3,6 +3,7 @@ import { customElement, property, state } from "lit/decorators.js";
 import { type HomeAssistant, type LovelaceCardEditor, fireEvent } from "custom-card-helpers";
 
 import { appearanceLabel, transparencyBlurSchema } from "../../shared/appearance";
+import { getMediaFolder, pickMedia } from "../../shared/media";
 import { PHOTO_VIEWER_CARD_EDITOR_TYPE } from "./const";
 import type { PhotoViewerCardConfig } from "./types";
 
@@ -79,14 +80,22 @@ export class TedPhotoViewerCardEditor extends LitElement implements LovelaceCard
         ],
       },
     ];
-    return html`<ha-form
-      .hass=${this.hass}
-      .data=${data}
-      .schema=${schema}
-      .computeLabel=${this._computeLabel}
-      .computeHelper=${this._computeHelper}
-      @value-changed=${this._valueChanged}
-    ></ha-form>`;
+    return html`<div class="editor">
+      <ha-form
+        .hass=${this.hass}
+        .data=${data}
+        .schema=${schema}
+        .computeLabel=${this._computeLabel}
+        .computeHelper=${this._computeHelper}
+        @value-changed=${this._valueChanged}
+      ></ha-form>
+      <div class="browse-row">
+        <button class="browse-btn" @click=${this._browse}>
+          <ha-icon icon="mdi:folder-image"></ha-icon>
+          <span>${source === "album" ? "Browse for a folder…" : "Browse for an image…"}</span>
+        </button>
+      </div>
+    </div>`;
   }
 
   private _computeLabel = (schema: { name: string }): string => {
@@ -138,9 +147,53 @@ export class TedPhotoViewerCardEditor extends LitElement implements LovelaceCard
     fireEvent(this, "config-changed", { config: next });
   };
 
+  /** Open Home Assistant's media browser and set the image (single) or folder
+   *  (album) from the user's pick. */
+  private _browse = async (): Promise<void> => {
+    if (!this.hass) return;
+    const startFolder = (await getMediaFolder(this.hass)) ?? undefined;
+    const uri = await pickMedia(this, this.hass, { accept: ["image/*"], startFolder });
+    if (!uri) return;
+    const next = { ...this._config } as PhotoViewerCardConfig;
+    if ((next.source ?? "single") === "album") {
+      // The picker returns a file; strip its last segment to get the folder URI.
+      if (uri.includes("/")) next.folder = uri.replace(/\/[^/]*$/, "");
+    } else {
+      next.image = uri;
+    }
+    fireEvent(this, "config-changed", { config: next });
+  };
+
   public static styles = css`
+    .editor {
+      display: block;
+    }
     ha-form {
       display: block;
     }
+    .browse-row {
+      margin-top: 12px;
+    }
+    .browse-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 14px;
+      border-radius: 999px;
+      border: 1px solid var(--divider-color, rgba(120, 120, 120, 0.3));
+      background: var(--secondary-background-color, rgba(120, 120, 120, 0.1));
+      color: var(--primary-text-color);
+      font: inherit;
+      cursor: pointer;
+    }
+    .browse-btn:hover {
+      background: color-mix(in srgb, var(--primary-color) 12%, transparent);
+      border-color: var(--primary-color);
+    }
+    .browse-btn ha-icon {
+      --mdc-icon-size: 20px;
+      color: var(--primary-color);
+    }
   `;
 }
+

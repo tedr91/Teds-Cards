@@ -941,6 +941,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v1.0.322
+
+- **Photo Viewer card editor: browse for a file.** The card editor now has a **Browse** button that opens Home Assistant's media browser, so you can pick an image (or, in album mode, a folder) instead of typing the path by hand. Typing a URL/path still works.
+
 ### v1.0.321
 
 - **Photo Viewer card: fixed a blank card.** The card rendered completely empty (a correctly-sized but blank tile) because of an invalid CSS class binding that crashed its render at runtime. It now renders its photo / album / placeholder as intended.
