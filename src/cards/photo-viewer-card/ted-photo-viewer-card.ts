@@ -112,7 +112,7 @@ export class TedPhotoViewerCard extends LitElement implements LovelaceCard {
   public constructor() {
     super();
     // Keep this device's settings live (folder / auto-open / last-viewed).
-    new SettingsController(this, () => (this._backendIntegration() ? this.hass : undefined));
+    new SettingsController(this, () => (this._dashboardIntegration() ? this.hass : undefined));
   }
 
   public connectedCallback(): void {
@@ -159,7 +159,7 @@ export class TedPhotoViewerCard extends LitElement implements LovelaceCard {
     this._maybeAutoOpen();
   }
 
-  private _backendIntegration(): boolean {
+  private _dashboardIntegration(): boolean {
     return this._config?.dashboard_integration === true;
   }
 
@@ -170,7 +170,7 @@ export class TedPhotoViewerCard extends LitElement implements LovelaceCard {
   private _albumFolder(): string | undefined {
     const cfg = this._config;
     if (cfg?.folder) return cfg.folder;
-    if (this._backendIntegration()) {
+    if (this._dashboardIntegration()) {
       const f = settingsStore.effective().photos_folder;
       if (typeof f === "string" && f) return f;
     }
@@ -326,7 +326,7 @@ export class TedPhotoViewerCard extends LitElement implements LovelaceCard {
       this._fadeUrl = null;
       this._fading = false;
     }
-    if (this._backendIntegration()) settingsStore.setValue("device", "photos_last_viewed", ref);
+    if (this._dashboardIntegration()) settingsStore.setValue("device", "photos_last_viewed", ref);
   }
 
   private async _resolveRef(ref: string): Promise<string | null> {
@@ -471,7 +471,7 @@ export class TedPhotoViewerCard extends LitElement implements LovelaceCard {
   // --- Actions ---------------------------------------------------------------
 
   private async _favorite(): Promise<void> {
-    if (!this._backendIntegration() || !this.hass?.callWS || !this._displayUrl) return;
+    if (!this._dashboardIntegration() || !this.hass?.callWS || !this._displayUrl) return;
     try {
       const r = await this.hass.callWS<{ success?: boolean }>({
         type: "teds_dashboard_system/favorite_photo",
@@ -489,7 +489,7 @@ export class TedPhotoViewerCard extends LitElement implements LovelaceCard {
   }
 
   private async _setAsBackground(): Promise<void> {
-    if (!this._backendIntegration() || !this.hass?.callWS || !this._displayUrl) return;
+    if (!this._dashboardIntegration() || !this.hass?.callWS || !this._displayUrl) return;
     this._flash("Saving wallpaper…");
     try {
       const r = await this.hass.callWS<{ success?: boolean; url?: string }>({
@@ -524,7 +524,7 @@ export class TedPhotoViewerCard extends LitElement implements LovelaceCard {
 
   private _settingsPath(): string | null {
     if (this._config?.settings_path) return this._resolveRoot(this._config.settings_path);
-    if (!this._backendIntegration()) return null;
+    if (!this._dashboardIntegration()) return null;
     const root = String(settingsStore.effective().dashboard_root ?? "ted-dashboard");
     return `/${root}/settings?tab=photos&scope=device`;
   }
@@ -630,7 +630,7 @@ export class TedPhotoViewerCard extends LitElement implements LovelaceCard {
             </button>`
         : nothing}
       <div class="pv-controls" @click=${(e: Event) => e.stopPropagation()}>
-        ${this._backendIntegration()
+        ${this._dashboardIntegration()
           ? html`<button
                 class="pv-btn"
                 title="Favorite"

@@ -271,7 +271,7 @@ export class TedClockWeatherCard extends LitElement implements LovelaceCard {
     // Keep settings live only when this card opts into the backend (YAML
     // `dashboard_integration: true`); otherwise it never feeds hass to the store,
     // so there is no backend dependency.
-    new SettingsController(this, () => (this._backendIntegration() ? this.hass : undefined));
+    new SettingsController(this, () => (this._dashboardIntegration() ? this.hass : undefined));
     // Re-attach the width observer when the card is moved back into the DOM
     // (e.g. after leaving the dashboard editor), so font sizes recompute for
     // the restored width instead of staying stuck at the editor's width.
@@ -450,7 +450,7 @@ export class TedClockWeatherCard extends LitElement implements LovelaceCard {
     if (this._config?.weather_entity) return this._config.weather_entity;
     // When opted into the backend, source it from the `weather_entity` setting
     // (device scope, then global) as a fallback before scanning for any weather.*.
-    if (this._backendIntegration()) {
+    if (this._dashboardIntegration()) {
       const o = this._settingOverride("weather_entity");
       if (typeof o === "string" && o) return o;
     }
@@ -458,7 +458,7 @@ export class TedClockWeatherCard extends LitElement implements LovelaceCard {
   }
 
   /** Whether this card opts into Ted's Dashboard System behaviors (YAML-only). */
-  private _backendIntegration(): boolean {
+  private _dashboardIntegration(): boolean {
     return this._config?.dashboard_integration === true;
   }
 

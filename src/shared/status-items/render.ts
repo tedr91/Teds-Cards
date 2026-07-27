@@ -56,7 +56,7 @@ export interface StatusItemContext {
   /** When false, the `navigate-dashboard` action on a status item is ignored (hosts
    *  that opt out of the Ted's Dashboard System integration, e.g. a standalone navbar).
    *  Other actions still run. Defaults to enabled when omitted. */
-  backendIntegration?: boolean;
+  dashboardIntegration?: boolean;
 }
 
 /** True when a list contains a live clock/date item (so the host should tick). */
@@ -89,7 +89,7 @@ function effectiveGestures(
   };
   const run = (action: "tap" | "hold" | "double_tap", explicit?: unknown) =>
     hasTedAction(explicit as never)
-      ? () => runTedAction(ctx.host, ctx.hass, cfg, action, { backendIntegration: ctx.backendIntegration })
+      ? () => runTedAction(ctx.host, ctx.hass, cfg, action, { dashboardIntegration: ctx.dashboardIntegration })
       : undefined;
   return {
     tap: run("tap", item.tap_action) ?? builtins?.tap,
@@ -351,7 +351,7 @@ function renderDateTimeItem(item: DateTimeStatusItem, ctx: StatusItemContext): T
  *  the navbar weather widget can inherit the globally-configured weather entity before
  *  falling back to the first `weather.*` entity. */
 function settingWeatherEntity(ctx: StatusItemContext): string | undefined {
-  if (!ctx.backendIntegration) return undefined;
+  if (!ctx.dashboardIntegration) return undefined;
   const dev = settingsStore.deviceSettings();
   const glob = settingsStore.globalSettings();
   const val =

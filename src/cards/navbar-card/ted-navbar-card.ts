@@ -184,12 +184,12 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
     // welcome→home redirect behaviors only run when the navbar opts into the
     // Ted's Dashboard System integration (YAML `dashboard_integration: true`).
     new SettingsController(this, () => this.hass);
-    new AutoReturnController(this, () => this._backendIntegration());
-    new HomeRedirectController(this, () => this._backendIntegration());
+    new AutoReturnController(this, () => this._dashboardIntegration());
+    new HomeRedirectController(this, () => this._dashboardIntegration());
   }
 
   /** Whether this navbar opts into Ted's Dashboard System behaviors (YAML-only). */
-  private _backendIntegration(): boolean {
+  private _dashboardIntegration(): boolean {
     return this._config?.dashboard_integration === true;
   }
 
@@ -230,7 +230,7 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
     this._syncClockTimer();
     this._settingsUnsub = settingsStore.subscribe(this._onSettingsChanged);
     // Primary activator for the shared navigation-signal listener (voice “show <view>”).
-    navigationSignal.attach(this.hass, this._backendIntegration());
+    navigationSignal.attach(this.hass, this._dashboardIntegration());
     this.addEventListener("pointerdown", this._guardTap, true);
     this.addEventListener("click", this._guardTap, true);
     window.addEventListener("resize", this._onResize);
@@ -328,7 +328,7 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
   /** Unread notifications for this device (house-wide + this device's area), from the
    *  backend notifications sensor. Drives the auto-hide pill glow. 0 when not integrated. */
   private _unreadNotifications(): number {
-    if (!this._backendIntegration() || !this.hass) return 0;
+    if (!this._dashboardIntegration() || !this.hass) return 0;
     const all = this.hass.states["sensor.teds_notifications"]?.attributes?.notifications;
     if (!Array.isArray(all)) return 0;
     const area = resolveDeviceArea(this.hass, undefined).area;
@@ -533,7 +533,7 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
   private _holdMenuEnabled(): boolean {
     // The hold menu drives backend-backed per-device settings (auto-hide/float/position/
     // size) and dashboard navigation, so it's only available with backend integration.
-    return this._backendIntegration() && this._config?.hold_menu !== false && !this._editMode;
+    return this._dashboardIntegration() && this._config?.hold_menu !== false && !this._editMode;
   }
 
   /** Begin the long-press timer when the bar background (not a button/status item) is
@@ -826,7 +826,7 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
 
   /** Whether the Settings-driven View Launcher buttons are active on this navbar. */
   private _launcherEnabled(): boolean {
-    if (!this._backendIntegration()) return false;
+    if (!this._dashboardIntegration()) return false;
     return this._settingOverride("launcher_enabled") !== false;
   }
 
@@ -1384,7 +1384,7 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
       keyPrefix,
       // `navigate-dashboard` resolves a dashboard-path setting, so it only applies when
       // this navbar opts into the Ted's Dashboard System integration. Other actions run.
-      backendIntegration: this._backendIntegration(),
+      dashboardIntegration: this._dashboardIntegration(),
     };
     // An item that renders nothing (e.g. empty timers/alarms/notifications) gets NO
     // `.nav-status` wrapper, so it doesn't reserve a flex-gap slot in the bar (which

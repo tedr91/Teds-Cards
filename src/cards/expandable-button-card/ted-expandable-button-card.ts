@@ -252,7 +252,7 @@ export class TedExpandableButtonCard extends LitElement implements LovelaceCard 
     }
     if (this.hass && this._config?.tap_action)
       runTedAction(this, this.hass, { tap_action: this._config.tap_action }, "tap", {
-        backendIntegration: true,
+        dashboardIntegration: true,
       });
   };
 

@@ -146,6 +146,7 @@ export const SETTINGS_DEFAULTS: SettingsMap = {
   launcher_highlight_color: "accent",
   do_not_disturb: false,
   debug_mode: false,
+  dashboard_auto_update: true,
   icon_set: "auto",
   weather_entity: null,
   night_enabled: true,
@@ -347,6 +348,7 @@ export const SETTINGS_FIELDS: SettingField[] = [
   { key: "night_mode", label: "Automatic night mode", group: "General", kind: "nightmode", help: "Automatically dims the background, lowers screen brightness, and switches to a night font color on a nightly schedule, restoring day values in the morning." },
   { key: "background", label: "Background Wallpaper", group: "General", kind: "background", help: "Dashboard background painted by the invisible ted-background-card." },
   { key: "debug_mode", label: "Debug mode", group: "General", kind: "boolean", subsection: "Advanced", help: "Publishes the --ted-debug CSS variable so dashboards can show layout debug outlines." },
+  { key: "dashboard_auto_update", label: "Auto-update dashboard files", group: "General", kind: "boolean", subsection: "Advanced", help: "When on, Ted's Dashboard System keeps the installed Ted's Dashboard files up to date automatically. Turn off to pin the current version and manage updates yourself." },
   // Dashboards
   { key: "auto_return_home_after", label: "Auto-return home after", group: "Dashboards", kind: "number", min: 0, max: 3600, unit: "s", help: "0 = never." },
   { key: "dashboard_root", label: "Dashboard root", group: "Dashboards", kind: "text" },

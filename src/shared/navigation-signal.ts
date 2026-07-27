@@ -35,8 +35,8 @@ class NavigationSignal {
   private _sub?: Promise<() => void>;
 
   /** Activate the shared subscription (no-op unless the caller opts into the backend). */
-  attach(hass: HomeAssistant | undefined, backendIntegration: boolean): void {
-    if (!backendIntegration) return;
+  attach(hass: HomeAssistant | undefined, dashboardIntegration: boolean): void {
+    if (!dashboardIntegration) return;
     if (hass) this._hass = hass;
     this._ensure();
   }

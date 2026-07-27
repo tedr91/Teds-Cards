@@ -93,7 +93,7 @@ export interface TedActionConfig {
 export interface RunTedActionOptions {
   /** When `false`, the `navigate-dashboard` action is ignored (standalone hosts that
    *  don't opt into the Ted's Dashboard System). Other actions always run. */
-  backendIntegration?: boolean;
+  dashboardIntegration?: boolean;
   /** Action to run for `tap` when no explicit `tap_action` is set (Button Card only). */
   defaultAction?: string;
 }
@@ -138,9 +138,9 @@ export function runTedAction(
   }
 
   // Navigate to a dashboard-path setting (resolved at tap time, so it honours the
-  // configured root + this device's override). Gated by `backendIntegration`.
+  // configured root + this device's override). Gated by `dashboardIntegration`.
   if ((actionConfig.action as string) === "navigate-dashboard") {
-    if (opts.backendIntegration === false) return;
+    if (opts.dashboardIntegration === false) return;
     if (!confirmTedAction(hass, actionConfig)) return;
     const key = (actionConfig as unknown as { dashboard?: string }).dashboard;
     const path = key ? resolveDashboardPath(key) : "";
