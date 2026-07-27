@@ -20,7 +20,7 @@ import { navigationSignal } from "../../shared/navigation-signal";
 import type { SettingsValue } from "../../shared/settings-schema";
 import { AutoReturnController } from "../../shared/auto-return";
 import { HomeRedirectController } from "../../shared/home-redirect";
-import { KioskController } from "../../shared/kiosk";
+import { KioskController, disableKiosk } from "../../shared/kiosk";
 import { tedCardThemeClass, tedStyleTheme } from "../../shared/theme";
 import { renderStatusItem, type StatusItemContext } from "../../shared/status-items/render";
 import { StatusSliderController } from "../../shared/status-items/slider-controller";
@@ -1253,7 +1253,7 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
                 <ha-icon icon="mdi:cog-outline"></ha-icon>
                 <span>Dashboard Settings</span>
               </button>
-              <button class="nav-menu-row" @click=${() => this._menuAction(exitPath)}>
+              <button class="nav-menu-row" @click=${() => this._exitDashboard(exitPath)}>
                 <ha-icon icon="mdi:exit-to-app"></ha-icon>
                 <span>Exit Ted Dashboard</span>
               </button>
@@ -1286,6 +1286,14 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
   /** Navigate from a menu item, then close the menu. */
   private _menuAction(path: string): void {
     this._closeMenu();
+    this._navigate(path);
+  }
+
+  /** Exit Ted's Dashboard: turn kiosk mode off for this device (so the sidebar/header
+   *  return on other dashboards), then navigate away. */
+  private _exitDashboard(path: string): void {
+    this._closeMenu();
+    disableKiosk();
     this._navigate(path);
   }
 

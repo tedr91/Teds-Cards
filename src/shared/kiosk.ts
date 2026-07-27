@@ -66,3 +66,14 @@ export class KioskController implements ReactiveController {
     this._unsub = undefined;
   }
 }
+
+/**
+ * Turn HA kiosk mode OFF now — e.g. when leaving Ted's Dashboard — so the sidebar and
+ * header return on other dashboards (native kiosk is a runtime flag that otherwise
+ * persists across in-app navigation). Resets internal state so returning to Ted's
+ * Dashboard re-applies this device's `use_kiosk_mode` setting.
+ */
+export function disableKiosk(): void {
+  applied = false;
+  setKiosk(false);
+}
