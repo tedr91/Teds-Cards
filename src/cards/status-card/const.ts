@@ -19,6 +19,5 @@ export const REQUIREMENT_LABELS: Record<string, string> = {
   card_mod: "Card-mod / UIX",
   custom_icons: "Custom Icons",
   daylight_calendar: "Daylight Calendar Card",
-  kiosk_mode: "Kiosk Mode",
   weather: "Weather entity",
 };

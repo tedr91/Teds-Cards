@@ -20,6 +20,7 @@ import { navigationSignal } from "../../shared/navigation-signal";
 import type { SettingsValue } from "../../shared/settings-schema";
 import { AutoReturnController } from "../../shared/auto-return";
 import { HomeRedirectController } from "../../shared/home-redirect";
+import { KioskController } from "../../shared/kiosk";
 import { tedCardThemeClass, tedStyleTheme } from "../../shared/theme";
 import { renderStatusItem, type StatusItemContext } from "../../shared/status-items/render";
 import { StatusSliderController } from "../../shared/status-items/slider-controller";
@@ -186,6 +187,7 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
     new SettingsController(this, () => this.hass);
     new AutoReturnController(this, () => this._dashboardIntegration());
     new HomeRedirectController(this, () => this._dashboardIntegration());
+    new KioskController(this, () => this._dashboardIntegration());
   }
 
   /** Whether this navbar opts into Ted's Dashboard System behaviors (YAML-only). */

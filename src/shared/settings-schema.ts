@@ -147,7 +147,7 @@ export const SETTINGS_DEFAULTS: SettingsMap = {
   do_not_disturb: false,
   debug_mode: false,
   dashboard_auto_update: true,
-  kiosk_users: "",
+  use_kiosk_mode: true,
   icon_set: "auto",
   weather_entity: null,
   night_enabled: true,
@@ -350,7 +350,7 @@ export const SETTINGS_FIELDS: SettingField[] = [
   { key: "background", label: "Background Wallpaper", group: "General", kind: "background", help: "Dashboard background painted by the invisible ted-background-card." },
   { key: "debug_mode", label: "Debug mode", group: "General", kind: "boolean", subsection: "Advanced", help: "Publishes the --ted-debug CSS variable so dashboards can show layout debug outlines." },
   { key: "dashboard_auto_update", label: "Auto-update dashboard files", group: "General", kind: "boolean", subsection: "Advanced", help: "When on, Ted's Dashboard System keeps the installed Ted's Dashboard files up to date automatically. Turn off to pin the current version and manage updates yourself." },
-  { key: "kiosk_users", label: "Kiosk users", group: "General", kind: "text", help: "Comma-separated Home Assistant usernames to lock into kiosk mode (header and sidebar hidden) on Ted's Dashboard. Leave blank for none." },
+  { key: "use_kiosk_mode", label: "Kiosk mode", group: "General", kind: "boolean", deviceOnly: true, help: "Hide Home Assistant's sidebar, header and edit UI on this device for a clean wall-panel look, using Home Assistant's built-in kiosk mode. Set per-device." },
   // Dashboards
   { key: "auto_return_home_after", label: "Auto-return home after", group: "Dashboards", kind: "number", min: 0, max: 3600, unit: "s", help: "0 = never." },
   { key: "dashboard_root", label: "Dashboard root", group: "Dashboards", kind: "text" },

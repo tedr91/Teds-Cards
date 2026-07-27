@@ -195,34 +195,32 @@ export class TedStatusCard extends LitElement implements LovelaceCard {
       level: userName ? "ok" : "warn",
     });
 
-    // Current device's registered name + id (Ted's Cards registration → Browser Mod device name).
+    // Current device's registered name + resolved area (combined into one row).
     const devName =
       settingsStore.registry()[settingsStore.deviceId]?.name || resolveDeviceName(this.hass);
-    rows.push({
-      icon: themedIcon("device"),
-      label: "Device Name",
-      value: devName || "(unnamed)",
-      hint: settingsStore.deviceId,
-      level: devName ? "ok" : "warn",
-    });
-
-    // Current device's resolved area.
     const areaRes = resolveDeviceArea(this.hass);
     const areaLabel = areaName(this.hass, areaRes.area) ?? areaRes.area;
-    const areaSrc =
+    // Where the area was resolved from — surfaced on hover instead of inline.
+    const areaSrcLabel =
       areaRes.source === "browser_mod"
-        ? " · Browser Mod"
+        ? "Browser Mod"
         : areaRes.source === "local"
-          ? " · saved on device"
+          ? "saved on device"
           : areaRes.source === "config"
-            ? " · card"
-            : "";
+            ? "card config"
+            : undefined;
+    const devAreaHint = [
+      settingsStore.deviceId,
+      areaRes.area && areaSrcLabel ? `area from ${areaSrcLabel}` : undefined,
+    ]
+      .filter(Boolean)
+      .join(" · ");
     rows.push({
-      icon: themedIcon("location"),
-      label: "Device Area",
-      value: areaRes.area ? `${areaLabel}${areaSrc}` : "none set",
-      hint: areaRes.area,
-      level: areaRes.area ? "ok" : "warn",
+      icon: themedIcon("device"),
+      label: "Device Name / Area",
+      value: `${devName || "(unnamed)"} / ${areaRes.area ? areaLabel : "no area"}`,
+      hint: devAreaHint,
+      level: devName && areaRes.area ? "ok" : "warn",
     });
 
     // Ted's Backend connection + version (top of the list — it's the funnel that
@@ -244,6 +242,22 @@ export class TedStatusCard extends LitElement implements LovelaceCard {
       },
     });
 
+    // Browser Mod registration + this browser's id (paired with the integration row).
+    const bmInstalled = attrs?.browser_mod === "ok";
+    const bid = browserModId();
+    const webIcon = themedIcon("web");
+    if (bmInstalled && bid && this._browserRegistered(bid)) {
+      rows.push({ icon: webIcon, label: "Browser Mod", value: `Registered · ${bid}`, level: "ok" });
+    } else if (bmInstalled && bid) {
+      rows.push({ icon: webIcon, label: "Browser Mod", value: `Not registered · ${bid}`, level: "warn" });
+    } else if (bmInstalled) {
+      rows.push({ icon: webIcon, label: "Browser Mod", value: "Installed, no browser id", level: "warn" });
+    } else if (attrs?.browser_mod === "setup") {
+      rows.push({ icon: webIcon, label: "Browser Mod", value: "Downloaded — add integration", level: "warn" });
+    } else {
+      rows.push({ icon: webIcon, label: "Browser Mod", value: "Not installed", level: "warn" });
+    }
+
     // Requirements + integrations (need the backend's requirements sensor).
     if (attrs) {
       const reqIds = this._requirementIds(attrs);
@@ -262,22 +276,6 @@ export class TedStatusCard extends LitElement implements LovelaceCard {
         value: "backend not detected",
         level: "unknown",
       });
-    }
-
-    // Browser Mod registration + this browser's id.
-    const bmInstalled = attrs?.browser_mod === "ok";
-    const bid = browserModId();
-    const webIcon = themedIcon("web");
-    if (bmInstalled && bid && this._browserRegistered(bid)) {
-      rows.push({ icon: webIcon, label: "Browser Mod", value: `Registered · ${bid}`, level: "ok" });
-    } else if (bmInstalled && bid) {
-      rows.push({ icon: webIcon, label: "Browser Mod", value: `Not registered · ${bid}`, level: "warn" });
-    } else if (bmInstalled) {
-      rows.push({ icon: webIcon, label: "Browser Mod", value: "Installed, no browser id", level: "warn" });
-    } else if (attrs?.browser_mod === "setup") {
-      rows.push({ icon: webIcon, label: "Browser Mod", value: "Downloaded — add integration", level: "warn" });
-    } else {
-      rows.push({ icon: webIcon, label: "Browser Mod", value: "Not installed", level: "warn" });
     }
 
     // Weather entity.

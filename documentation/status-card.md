@@ -32,7 +32,7 @@ title: System status
 ## What it shows
 
 - **Dependencies / integrations:** HACS, Ted's Cards, Browser Mod, Layout Card,
-  Card-mod (or UIX), Custom Icons, Daylight Calendar, Kiosk Mode, and whether a
+  Card-mod (or UIX), Custom Icons, Daylight Calendar, and whether a
   weather entity is present. Each row reports **ok**, **missing**, or **unknown**.
 - **Backend:** connection state + installed version (reads `sensor.teds_requirements`).
 - **This browser:** its Browser Mod registration id (read client-side from
