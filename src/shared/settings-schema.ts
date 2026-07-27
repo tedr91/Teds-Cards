@@ -4,6 +4,8 @@
  * MUST stay in sync with the backend's `SETTINGS_DEFAULTS` in `const.py`.
  */
 
+import { ICON_PACKS } from "./icon-registry";
+
 export type SettingsValue =
   | boolean
   | number
@@ -338,11 +340,7 @@ export const SETTINGS_FIELDS: SettingField[] = [
     kind: "select",
     options: [
       { value: "auto", label: "Auto (best installed)" },
-      { value: "fluent", label: "Fluent" },
-      { value: "streamline-ultimate-color", label: "Streamline Ultimate" },
-      { value: "streamline-freehand-color", label: "Streamline Freehand" },
-      { value: "pepicons-print", label: "Pepicons" },
-      { value: "mdi", label: "Material Design (MDI)" },
+      ...ICON_PACKS.map((p) => ({ value: p.prefix, label: p.name })),
     ],
     help: "Which icon family Ted's built-in icons use. Auto picks the best installed set; a specific set falls back to Material Design when an icon isn't available.",
   },

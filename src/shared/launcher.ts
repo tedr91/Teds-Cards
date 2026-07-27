@@ -14,6 +14,7 @@ import type { ButtonCardConfig } from "../cards/button-card/types";
 import { EXPANDABLE_BUTTON_CARD_TYPE } from "../cards/expandable-button-card/const";
 import type { NavButtonConfig, NavButtonSize } from "../cards/navbar-card/types";
 import { cssColor, MAX_BLUR_PX } from "./appearance";
+import { resolveViewIcon } from "./icons";
 
 /** A dashboard view discovered from the Lovelace config. */
 export interface LauncherViewInfo {
@@ -320,7 +321,7 @@ function plainButton(view: LauncherViewInfo, p: BuildLauncherParams, showName: b
     ...launcherButtonBase(color, p.navTheme || "ha"),
     ...opt,
     type: `custom:${BUTTON_CARD_TYPE}`,
-    icon: iconOpt || view.icon || DEFAULT_BUTTON_ICON,
+    icon: resolveViewIcon(iconOpt || view.icon) || DEFAULT_BUTTON_ICON,
     name: opt.name || view.title,
     tap_action,
   };
@@ -356,7 +357,7 @@ export function buildLauncherButtons(p: BuildLauncherParams): NavButtonConfig[] 
       ...launcherButtonBase(color, p.navTheme || "ha"),
       ...primaryOpt,
       type: `custom:${EXPANDABLE_BUTTON_CARD_TYPE}`,
-      icon: primaryIcon || group.primary.icon || DEFAULT_BUTTON_ICON,
+      icon: resolveViewIcon(primaryIcon || group.primary.icon) || DEFAULT_BUTTON_ICON,
       name: label,
       flip_icon: false,
       popup_title: label,
