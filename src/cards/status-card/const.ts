@@ -8,7 +8,7 @@ export const STATUS_CARD_DESCRIPTION =
 /** The status values an individual requirement attribute can hold. Used to tell
  *  real requirement attributes apart from HA's auto-added attributes
  *  (friendly_name, icon, …) and the sensor's meta keys (missing, ok, version). */
-export const REQUIREMENT_STATUS_VALUES = new Set(["ok", "missing", "unknown"]);
+export const REQUIREMENT_STATUS_VALUES = new Set(["ok", "setup", "missing", "unknown"]);
 
 /** Friendly, human-readable labels for each requirement id (falls back to the id). */
 export const REQUIREMENT_LABELS: Record<string, string> = {

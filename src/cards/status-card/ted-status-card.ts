@@ -274,6 +274,8 @@ export class TedStatusCard extends LitElement implements LovelaceCard {
       rows.push({ icon: webIcon, label: "Browser Mod", value: `Not registered · ${bid}`, level: "warn" });
     } else if (bmInstalled) {
       rows.push({ icon: webIcon, label: "Browser Mod", value: "Installed, no browser id", level: "warn" });
+    } else if (attrs?.browser_mod === "setup") {
+      rows.push({ icon: webIcon, label: "Browser Mod", value: "Downloaded — add integration", level: "warn" });
     } else {
       rows.push({ icon: webIcon, label: "Browser Mod", value: "Not installed", level: "warn" });
     }
@@ -332,7 +334,13 @@ export class TedStatusCard extends LitElement implements LovelaceCard {
 
   /** Map a requirement attribute value to a status level. */
   private static _levelOf(state: unknown): StatusLevel {
-    return state === "ok" ? "ok" : state === "missing" ? "bad" : "unknown";
+    return state === "ok"
+      ? "ok"
+      : state === "setup"
+        ? "warn"
+        : state === "missing"
+          ? "bad"
+          : "unknown";
   }
 
   protected render(): TemplateResult | typeof nothing {
