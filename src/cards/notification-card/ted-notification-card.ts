@@ -6,6 +6,7 @@ import { styleMap } from "lit/directives/style-map.js";
 import { type HomeAssistant, type LovelaceCard, type LovelaceCardEditor, fireEvent } from "custom-card-helpers";
 
 import { appearanceStyle, cssColor } from "../../shared/appearance";
+import { severityIcon } from "../../shared/icons";
 import { brushedOverlay, tedCardThemeClass, tedStyleTheme } from "../../shared/theme";
 import { registerCustomCard } from "../../shared/register-card";
 import { NotificationToastController, type TedNotification } from "../../shared/notifications";
@@ -32,14 +33,6 @@ interface NotifAction {
   url?: string;
   variant?: "primary" | "default";
 }
-
-const SEVERITY_ICON: Record<string, string> = {
-  info: "mdi:information-outline",
-  success: "mdi:check-circle-outline",
-  warning: "mdi:alert-outline",
-  danger: "mdi:alert-circle-outline",
-  tip: "mdi:lightbulb-on-outline",
-};
 
 interface GridOptions {
   columns?: number | "full";
@@ -274,7 +267,7 @@ export class TedNotificationCard extends LitElement implements LovelaceCard {
 
   private _renderRow(n: TedNotification): TemplateResult {
     const sev = n.severity ?? "info";
-    const icon = n.icon || SEVERITY_ICON[sev] || "mdi:bell-outline";
+    const icon = n.icon || severityIcon(sev);
     const room = this._config?.area ? undefined : this._areaName(n.area);
     const actions = (Array.isArray(n.actions) ? n.actions : []) as NotifAction[];
     return html`

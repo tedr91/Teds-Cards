@@ -60,6 +60,7 @@ export type IconKey =
   | "home-handheld"
   | "home-wallpanel-h"
   | "home-wallpanel-v"
+  | "home-nightstand"
   | "alarms-timers"
   | "announce"
   | "assist-response"
@@ -69,7 +70,13 @@ export type IconKey =
   | "check-circle"
   | "alert-circle"
   | "error-circle"
-  | "help-circle";
+  | "help-circle"
+  // Notification / MessageBox severity icons
+  | "severity-info"
+  | "severity-success"
+  | "severity-warning"
+  | "severity-danger"
+  | "severity-tip";
 
 export const SEMANTIC_ICONS: Record<IconKey, IconNames> = {
   // Pack names below are sourced from Iconify (icon-sets.iconify.design). The Fluent
@@ -77,7 +84,7 @@ export const SEMANTIC_ICONS: Record<IconKey, IconNames> = {
   // with no entry for a pack is a real gap — the resolver falls through priority to MDI.
   account: { mdi: "account", fluent: "person-24-regular", "streamline-ultimate-color": "single-neutral-circle", "streamline-freehand-color": "face-id-male-1", "pepicons-print": "person" },
   device: { mdi: "devices", fluent: "phone-tablet-24-regular", "streamline-ultimate-color": "tablet", "streamline-freehand-color": "tablet-application", "pepicons-print": "smartphone-home-button" },
-  location: { mdi: "map-marker", fluent: "location-24-regular", "streamline-ultimate-color": "earth-pin-2", "streamline-freehand-color": "worldwide-web-location-pin", "pepicons-print": "pinpoint" },
+  location: { mdi: "map-marker", fluent: "location-24-regular", "streamline-ultimate-color": "pin-x-mark", "streamline-freehand-color": "worldwide-web-location-pin", "pepicons-print": "pinpoint" },
   server: { mdi: "server-network", fluent: "server-24-regular", "streamline-ultimate-color": "database-2", "streamline-freehand-color": "server-2", "pepicons-print": "database" },
   requirements: { mdi: "clipboard-check-outline", fluent: "clipboard-checkmark-24-regular", "streamline-ultimate-color": "checklist", "streamline-freehand-color": "form-edition-clipboard-check", "pepicons-print": "clipboard-check" },
   web: { mdi: "web", fluent: "globe-24-regular", "streamline-ultimate-color": "network-browser", "streamline-freehand-color": "worldwide-web-network-www", "pepicons-print": "internet" },
@@ -88,7 +95,7 @@ export const SEMANTIC_ICONS: Record<IconKey, IconNames> = {
   "music-off": { mdi: "music-note-off", fluent: "music-note-off-2-24-regular", "streamline-ultimate-color": "volume-control-remove-1", "streamline-freehand-color": "music-note-circle-block-1", "pepicons-print": "music-note-double-off" },
   settings: { mdi: "cog", fluent: "settings-24-regular", "streamline-ultimate-color": "cog", "streamline-freehand-color": "settings-cog", "pepicons-print": "gear" },
   thermostat: { mdi: "thermostat", fluent: "temperature-24-regular", "streamline-ultimate-color": "temperature-thermometer-high", "streamline-freehand-color": "amusement-park-strength-meter", "pepicons-print": "seedling" },
-  camera: { mdi: "cctv", fluent: "video-24-regular", "streamline-ultimate-color": "go-pro", "streamline-freehand-color": "camera-stabilizer", "pepicons-print": "camera" },
+  camera: { mdi: "cctv", fluent: "video-security-24-regular", "streamline-ultimate-color": "go-pro", "streamline-freehand-color": "camera-stabilizer", "pepicons-print": "camera" },
   calendar: { mdi: "calendar-month", fluent: "calendar-ltr-24-regular", "streamline-ultimate-color": "calendar-1", "streamline-freehand-color": "calendar-grid", "pepicons-print": "calendar" },
   "calendar-off": { mdi: "calendar-remove", fluent: "calendar-cancel-24-regular", "streamline-ultimate-color": "smiley-mad", "streamline-freehand-color": "desktop-action-monitor-remove", "pepicons-print": "calendar-off" },
   cake: { mdi: "cake-variant", fluent: "food-cake-24-regular", "streamline-ultimate-color": "gift-box-1", "streamline-freehand-color": "party-balloon", "pepicons-print": "gift" },
@@ -98,6 +105,7 @@ export const SEMANTIC_ICONS: Record<IconKey, IconNames> = {
   "home-handheld": { mdi: "home", fluent: "home-24-regular", "streamline-ultimate-color": "house-chimney", "streamline-freehand-color": "home-chimney-2", "pepicons-print": "house" },
   "home-wallpanel-h": { mdi: "home", fluent: "home-24-regular", "streamline-ultimate-color": "house-chimney", "streamline-freehand-color": "home-chimney-2", "pepicons-print": "house" },
   "home-wallpanel-v": { mdi: "home", fluent: "home-24-regular", "streamline-ultimate-color": "house-chimney", "streamline-freehand-color": "home-chimney-2", "pepicons-print": "house" },
+  "home-nightstand": { mdi: "home", fluent: "home-24-regular", "streamline-ultimate-color": "house-chimney", "streamline-freehand-color": "home-chimney-2", "pepicons-print": "house" },
   "alarms-timers": { mdi: "alarm-multiple", fluent: "clock-alarm-24-regular", "streamline-ultimate-color": "time-clock-circle", "streamline-freehand-color": "alert-alarm-clock", "pepicons-print": "alarm" },
   announce: { mdi: "bullhorn", fluent: "megaphone-loud-24-regular", "streamline-ultimate-color": "megaphone", "streamline-freehand-color": "share-megaphone", "pepicons-print": "megaphone" },
   "assist-response": { mdi: "message-text", fluent: "chat-24-regular", "streamline-ultimate-color": "messages-bubble-square-typing-1", "streamline-freehand-color": "conversation-chat", "pepicons-print": "text-bubble" },
@@ -107,5 +115,12 @@ export const SEMANTIC_ICONS: Record<IconKey, IconNames> = {
   "check-circle": { mdi: "check-circle", fluent: "checkmark-circle-24-filled", "streamline-ultimate-color": "check-badge", "streamline-freehand-color": "form-validation-check-square-1", "pepicons-print": "checkmark-circle" },
   "alert-circle": { mdi: "alert-circle", fluent: "warning-24-filled", "streamline-ultimate-color": "car-dashboard-warning", "streamline-freehand-color": "alerts-warning-triangle", "pepicons-print": "exclamation-circle" },
   "error-circle": { mdi: "close-octagon", fluent: "dismiss-circle-24-filled", "streamline-ultimate-color": "delete-2", "streamline-freehand-color": "form-validation-remove-square", "pepicons-print": "times-circle" },
-  "help-circle": { mdi: "help-circle", fluent: "question-circle-24-filled", "streamline-ultimate-color": "help-question-network", "streamline-freehand-color": "help-question-circle", "pepicons-print": "question-circle" },
+  "help-circle": { mdi: "help-circle", fluent: "question-circle-24-filled", "streamline-ultimate-color": "help-question-network", "streamline-freehand-color": "question-circle-filled", "pepicons-print": "question-circle" },
+  // Notification / MessageBox severity icons (info/success/warning/danger/tip) — outline
+  // mdi to match the current look; other packs sourced from Iconify.
+  "severity-info": { mdi: "information-outline", fluent: "info-24-regular", "streamline-ultimate-color": "information-circle", "streamline-freehand-color": "newspaper-read-man", "pepicons-print": "info-circle" },
+  "severity-success": { mdi: "check-circle-outline", fluent: "checkmark-circle-24-regular", "streamline-ultimate-color": "check-badge", "streamline-freehand-color": "form-validation-check-square-1", "pepicons-print": "checkmark-circle" },
+  "severity-warning": { mdi: "alert-outline", fluent: "warning-24-regular", "streamline-ultimate-color": "car-dashboard-warning", "streamline-freehand-color": "alerts-warning-triangle", "pepicons-print": "exclamation-circle" },
+  "severity-danger": { mdi: "fire-circle", fluent: "flash-24-regular", "streamline-ultimate-color": "radioactive-circle", "streamline-freehand-color": "alerts-radioactive-circle", "pepicons-print": "fire-circle" },
+  "severity-tip": { mdi: "lightbulb-on-outline", fluent: "lightbulb-24-regular", "streamline-ultimate-color": "idea-strategy", "streamline-freehand-color": "creativity-idea-bulb", "pepicons-print": "raise-hand-circle" },
 };

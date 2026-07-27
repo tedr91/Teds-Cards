@@ -11,6 +11,7 @@ import type { HomeAssistant } from "custom-card-helpers";
 import { STATUS_ITEM_DEFAULT_ICON, DEFAULT_SPACER_SIZE } from "./const";
 import { notificationInScope, resolveDeviceArea } from "../device-area";
 import { settingsStore, resolveDashboardPath } from "../settings";
+import { severityIcon } from "../icons";
 import { runTedAction, hasTedAction } from "../actions";
 import { formatDate, formatTime } from "./datetime";
 import {
@@ -401,18 +402,9 @@ interface NotifRow {
   created?: string;
 }
 
-/** Severity → default icon (mirrors the toast) when a notification has no explicit icon. */
-const NOTIF_SEVERITY_ICON: Record<string, string> = {
-  info: "mdi:information-outline",
-  success: "mdi:check-circle-outline",
-  warning: "mdi:alert-outline",
-  danger: "mdi:alert-circle-outline",
-  tip: "mdi:lightbulb-on-outline",
-};
-
 /** The icon to show for a notification: its own icon, else a severity default. */
 function notifIcon(n: NotifRow): string {
-  return n.icon || NOTIF_SEVERITY_ICON[n.severity ?? "info"] || "mdi:bell-outline";
+  return n.icon || severityIcon(n.severity ?? "info");
 }
 
 /** "just now" / "5m ago" / "2h ago" / "3d ago" — mirrors the Notification Center card. */

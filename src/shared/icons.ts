@@ -127,3 +127,13 @@ export function resolveViewIcon(icon: string | undefined): string | undefined {
   const preferred = String(settingsStore.effective().icon_set ?? "auto");
   return resolveIconForSet(SEMANTIC_ICONS[key], preferred) ?? icon;
 }
+
+/**
+ * Themed icon for a notification / MessageBox severity (`info` / `success` /
+ * `warning` / `danger` / `tip`), honouring the user's `icon_set`. Unknown values
+ * fall back to the info icon.
+ */
+export function severityIcon(severity: string): string {
+  const key = `severity-${severity}` as IconKey;
+  return SEMANTIC_ICONS[key] ? themedIcon(key) : themedIcon("severity-info");
+}

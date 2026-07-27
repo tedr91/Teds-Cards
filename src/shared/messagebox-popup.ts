@@ -1,16 +1,10 @@
 import { LitElement, css, html, nothing, type TemplateResult } from "lit";
 import { customElement, state } from "lit/decorators.js";
 
+import { severityIcon } from "./icons";
+
 /** Severity looks mirror the MessageBox card's accent stripe. */
 export type MessagePopupSeverity = "info" | "success" | "warning" | "danger" | "tip";
-
-const SEVERITY_ICON: Record<MessagePopupSeverity, string> = {
-  info: "mdi:information-outline",
-  success: "mdi:check-circle-outline",
-  warning: "mdi:alert-outline",
-  danger: "mdi:alert-circle-outline",
-  tip: "mdi:lightbulb-on-outline",
-};
 
 /** A button rendered on a toast; `handler` runs, then the toast is dismissed. */
 export interface ToastAction {
@@ -103,7 +97,7 @@ export class TedMessagePopupLayer extends LitElement {
   private _renderBox(m: ActiveMessage): TemplateResult {
     return html`
       <div class="mb-box mb-sev-${m.severity ?? "info"} ${m.prominent ? "prominent" : ""}" role="status">
-        <ha-icon class="mb-icon" .icon=${m.icon ?? SEVERITY_ICON[m.severity ?? "info"]}></ha-icon>
+        <ha-icon class="mb-icon" .icon=${m.icon ?? severityIcon(m.severity ?? "info")}></ha-icon>
         <div class="mb-content">
           ${m.title ? html`<div class="mb-title">${m.title}</div>` : nothing}
           <div class="mb-message">
