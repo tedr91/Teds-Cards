@@ -346,8 +346,25 @@ function renderDateTimeItem(item: DateTimeStatusItem, ctx: StatusItemContext): T
   `;
 }
 
+/** The `weather_entity` setting (device scope, then global), but only when the host
+ *  opted into the Ted's Dashboard System integration. Mirrors the Clock Weather card so
+ *  the navbar weather widget can inherit the globally-configured weather entity before
+ *  falling back to the first `weather.*` entity. */
+function settingWeatherEntity(ctx: StatusItemContext): string | undefined {
+  if (!ctx.backendIntegration) return undefined;
+  const dev = settingsStore.deviceSettings();
+  const glob = settingsStore.globalSettings();
+  const val =
+    "weather_entity" in dev
+      ? dev["weather_entity"]
+      : "weather_entity" in glob
+        ? glob["weather_entity"]
+        : undefined;
+  return typeof val === "string" && val ? val : undefined;
+}
+
 function renderWeatherItem(item: WeatherStatusItem, ctx: StatusItemContext): TemplateResult {
-  const entityId = item.entity ?? firstWeatherEntity(ctx.hass);
+  const entityId = item.entity ?? settingWeatherEntity(ctx) ?? firstWeatherEntity(ctx.hass);
   const stateObj = entityId ? ctx.hass.states[entityId] : undefined;
   const icon = weatherIcon(stateObj, item.icon);
   const temp = weatherTemp(ctx.hass, stateObj);

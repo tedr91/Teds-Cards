@@ -5,6 +5,11 @@
  * as a Lovelace resource. It imports every card in the collection so they all
  * register their custom elements when the module is evaluated.
  */
+// MUST be first: installs the idempotent `customElements.define` guard before
+// any card module runs its `@customElement` decorator, so loading the bundle
+// twice (standalone HACS resource + Ted's Dashboard System integration) can't
+// throw "already defined".
+import "./shared/define-guard";
 import { printVersionBanner } from "./shared/version-banner";
 
 // Cards
