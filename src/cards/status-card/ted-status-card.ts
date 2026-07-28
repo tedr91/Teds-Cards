@@ -367,21 +367,39 @@ export class TedStatusCard extends LitElement implements LovelaceCard {
         },
       });
     } else {
-      // Integration present but nothing matched this device — offer to create one.
-      rows.push({
-        icon: themedIcon("music"),
-        label: "Music and Media Player",
-        value:
-          music.state === "unmatched"
-            ? this._maError ?? "No Music Assistant player"
-            : "none detected",
-        hint: music.state === "unmatched" ? music.base : undefined,
-        level: "warn",
-        action:
-          music.state === "unmatched"
-            ? { label: "Enable music on this device", onClick: () => void this._createMaPlayer(music.base) }
-            : undefined,
-      });
+      // Integration present but nothing matched this device yet. Reflect any in-progress
+      // auto-setup (proactive or manual), then offer a manual enable / retry.
+      const autoState = settingsStore.deviceSettings().music_autoexpose_state;
+      if (this._maBusy || autoState === "pending") {
+        rows.push({
+          icon: themedIcon("music"),
+          label: "Music and Media Player",
+          value: "Initializing… please wait",
+          level: "unknown",
+        });
+      } else {
+        const failed = autoState === "failed";
+        rows.push({
+          icon: themedIcon("music"),
+          label: "Music and Media Player",
+          value:
+            this._maError ??
+            (failed
+              ? "Music setup didn't finish"
+              : music.state === "unmatched"
+                ? "No Music Assistant player"
+                : "none detected"),
+          hint: music.state === "unmatched" ? music.base : undefined,
+          level: failed ? "bad" : "warn",
+          action:
+            music.state === "unmatched"
+              ? {
+                  label: failed ? "Try again" : "Enable music on this device",
+                  onClick: () => void this._createMaPlayer(music.base),
+                }
+              : undefined,
+        });
+      }
     }
 
     return rows;
@@ -426,20 +444,22 @@ export class TedStatusCard extends LitElement implements LovelaceCard {
           <ha-icon class="sc-row-icon" .icon=${r.icon}></ha-icon>
           <span class="sc-label">${r.label}</span>
           <span class="sc-value" title=${r.hint ?? nothing}>${r.value}</span>
-          ${r.action
-            ? html`<button
-                class="sc-action"
-                ?disabled=${this._maBusy}
-                title="Create a Music Assistant player for this device"
-                @click=${(e: Event) => {
-                  e.stopPropagation();
-                  r.action?.onClick();
-                }}
-              >
-                ${this._maBusy ? "Creating…" : r.action.label}
-              </button>`
-            : nothing}
-          <ha-icon class="sc-status" .icon=${TedStatusCard._glyph(r.level)}></ha-icon>
+          <div class="sc-right">
+            ${r.action
+              ? html`<button
+                  class="sc-action"
+                  ?disabled=${this._maBusy}
+                  title="Set this device up as a Music Assistant player"
+                  @click=${(e: Event) => {
+                    e.stopPropagation();
+                    r.action?.onClick();
+                  }}
+                >
+                  ${this._maBusy ? "Setting up…" : r.action.label}
+                </button>`
+              : nothing}
+            <ha-icon class="sc-status" .icon=${TedStatusCard._glyph(r.level)}></ha-icon>
+          </div>
         </div>
       `;
     }
@@ -565,6 +585,13 @@ export class TedStatusCard extends LitElement implements LovelaceCard {
         flex: 0 0 auto;
         display: flex;
         align-items: center;
+      }
+      .sc-right {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 10px;
+        min-width: 0;
       }
       .sc-action {
         flex: 0 0 auto;

@@ -93,23 +93,38 @@ export class MusicAutoExposeController implements ReactiveController {
   private async _run(hass: HomeAssistant, base: string): Promise<void> {
     this._running = true;
     attemptedThisLoad = true;
+    // Persist "pending" so the status card can show an in-progress badge (both cards read
+    // the shared settings store).
+    settingsStore.setValue("device", "music_autoexpose_state", "pending");
+    this._log(`starting auto-expose for ${base}`);
     this._toast("Setting up music on this device…");
     try {
       await hass.callWS({ type: `${DOMAIN}/create_ma_player`, entity_id: base });
     } catch (err) {
-      // "needs_hass_setup" = external MA server (needs a URL + token) → can't auto; leave
-      // the state unset so the guided path shows and a later load can retry. Any other
-      // failure is recorded so the UI can surface it; both back off to the next load.
       const code = (err as { code?: string })?.code;
-      if (code !== "needs_hass_setup") {
+      const message = (err as { message?: string })?.message ?? "Unknown error";
+      this._log(`auto-expose failed (${code ?? "no-code"}): ${message}`, true);
+      if (code === "needs_hass_setup") {
+        // External MA — can't auto-set-up; leave state unset so a later load can retry
+        // once the user configures Music Assistant, and surface the guidance.
+        settingsStore.clearValue("device", "music_autoexpose_state");
+        this._toast(message);
+      } else {
         settingsStore.setValue("device", "music_autoexpose_state", "failed");
+        this._toast(`Couldn't set up music on this device: ${message}`);
       }
       this._running = false;
+      this._host.requestUpdate();
       return;
     }
     // Success: find the new MA player and pin it as this device's music_player.
     const entity = await this._pollForMatch(hass);
-    if (entity) settingsStore.setValue("device", "music_player", entity);
+    if (entity) {
+      settingsStore.setValue("device", "music_player", entity);
+      this._log(`pinned music_player to ${entity}`);
+    } else {
+      this._log("created player but couldn't resolve the exposed MA entity to pin", true);
+    }
     settingsStore.setValue("device", "music_autoexpose_state", "done");
     this._toast("This device is now a Music Assistant speaker.");
     this._running = false;
@@ -124,6 +139,12 @@ export class MusicAutoExposeController implements ReactiveController {
       await new Promise((r) => setTimeout(r, 500));
     }
     return undefined;
+  }
+
+  private _log(message: string, isError = false): void {
+    const line = `[teds MA auto-expose] ${message}`;
+    if (isError) console.warn(line);
+    else console.info(line);
   }
 
   private _toast(message: string): void {

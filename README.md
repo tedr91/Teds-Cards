@@ -942,6 +942,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.2
+
+- **Music auto-setup: clearer feedback + fixes.** While a device sets itself up as a Music Assistant player, the Music and Media Player status row now shows an "Initializing… please wait" badge, and if setup doesn't finish it shows a clear message with a **Try again** button — a failed attempt no longer fails silently. Fixed the status row that wrapped its status icon onto a new line when an action button was present. Added browser-console logging (prefixed `[teds MA auto-expose]`) to help diagnose setup issues.
+
 ### v0.9.1
 
 - **Music on this device, automatically.** A registered device now sets itself up as a Music Assistant player on its own — no button, no steps — so you can play music through the screen you're on (when Music Assistant runs as the Home Assistant add-on). Prefer real speakers? Pick one in Settings → Sounds; a new **Auto-set-up this device for music** toggle lets you opt a device out. A device that's asleep now reads as "offline / sleeping" instead of looking broken.
