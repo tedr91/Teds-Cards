@@ -17,7 +17,7 @@ import {
   subscribeUiScope,
 } from "../../shared/settings";
 import { resolveDeviceMediaPlayer } from "../../shared/device-id";
-import { resolveIconForSet, isIconSetAvailable, themedIcon } from "../../shared/icons";
+import { resolveIconForSet, isIconSetAvailable } from "../../shared/icons";
 import { resolveMusicPlayer } from "../../shared/music-player";
 import { firstWeatherEntity } from "../../shared/status-items/model";
 import {
@@ -98,6 +98,37 @@ const SUBSECTION_ICONS: Record<string, { fluent: string; mdi: string }> = {
   Timers: { fluent: "fluent:timer-24-regular", mdi: "mdi:timer-outline" },
   Advanced: { fluent: "fluent:options-24-regular", mdi: "mdi:tune" },
 };
+
+/** Every chrome icon used across the Settings UI, as { fluent, mdi } pairs so they all
+ *  follow the configured icon set consistently (Fluent when installed, MDI otherwise).
+ *  Entity/view/user-chosen icons are NOT here — those stay as authored. */
+const UI_ICONS = {
+  add: { fluent: "fluent:add-24-regular", mdi: "mdi:plus" },
+  close: { fluent: "fluent:dismiss-24-regular", mdi: "mdi:close" },
+  drag: { fluent: "fluent:re-order-dots-vertical-24-regular", mdi: "mdi:drag" },
+  chevronUp: { fluent: "fluent:chevron-up-24-regular", mdi: "mdi:chevron-up" },
+  chevronDown: { fluent: "fluent:chevron-down-24-regular", mdi: "mdi:chevron-down" },
+  eye: { fluent: "fluent:eye-24-regular", mdi: "mdi:eye-outline" },
+  eyeOff: { fluent: "fluent:eye-off-24-regular", mdi: "mdi:eye-off-outline" },
+  linkOff: { fluent: "fluent:link-dismiss-24-regular", mdi: "mdi:link-off" },
+  linkOn: { fluent: "fluent:link-24-regular", mdi: "mdi:link-variant" },
+  play: { fluent: "fluent:play-24-regular", mdi: "mdi:play" },
+  stop: { fluent: "fluent:stop-24-regular", mdi: "mdi:stop" },
+  folderOpen: { fluent: "fluent:folder-open-24-regular", mdi: "mdi:folder-open-outline" },
+  autoFix: { fluent: "fluent:wand-24-regular", mdi: "mdi:auto-fix" },
+  search: { fluent: "fluent:search-24-regular", mdi: "mdi:magnify" },
+  sync: { fluent: "fluent:arrow-sync-24-regular", mdi: "mdi:sync" },
+  reset: { fluent: "fluent:arrow-reset-24-regular", mdi: "mdi:backup-restore" },
+  more: { fluent: "fluent:more-horizontal-24-regular", mdi: "mdi:dots-horizontal" },
+  settings: { fluent: "fluent:settings-24-regular", mdi: "mdi:cog" },
+  wallpaper: { fluent: "fluent:image-multiple-24-regular", mdi: "mdi:image-multiple-outline" },
+  nightMode: { fluent: "fluent:weather-moon-24-regular", mdi: "mdi:weather-night" },
+  launcher: { fluent: "fluent:rocket-24-regular", mdi: "mdi:rocket-launch-outline" },
+  menuItem: { fluent: "fluent:tap-single-24-regular", mdi: "mdi:gesture-tap-hold" },
+  thermostat: { fluent: "fluent:temperature-24-regular", mdi: "mdi:thermostat" },
+  calendar: { fluent: "fluent:calendar-ltr-24-regular", mdi: "mdi:calendar" },
+  camera: { fluent: "fluent:video-24-regular", mdi: "mdi:cctv" },
+} as const;
 
 /** Button Card editor sections hidden for a launcher button (its tap navigates to a
  *  view, and it's always grid-embedded, so entity/state/interactions/size don't apply). */
@@ -865,7 +896,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
             ?disabled=${disabled}
             @click=${() => void this._pickFolderInto(onChange)}
           >
-            <ha-icon icon="mdi:folder-open-outline"></ha-icon>
+            <ha-icon .icon=${this._ui("folderOpen")}></ha-icon>
             Choose…
           </button>
         </div>`;
@@ -966,7 +997,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
             ?disabled=${disabled}
             @click=${() => (playing ? this._stopSoundPreview() : void this._previewSound(field, cur))}
           >
-            <ha-icon icon=${playing ? "mdi:stop" : "mdi:play"}></ha-icon>
+            <ha-icon .icon=${this._ui(playing ? "stop" : "play")}></ha-icon>
           </button>
         </div>
         ${isCustom
@@ -1058,6 +1089,13 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     const set = String(settingsStore.effective().icon_set ?? "auto");
     const entry = SUBSECTION_ICONS[name];
     return (entry && resolveIconForSet(entry, set)) || "mdi:tune";
+  }
+
+  /** Resolve a Settings-UI chrome icon by name, following the configured icon set
+   *  (Fluent when installed, MDI otherwise) so every icon in the panel stays consistent. */
+  private _ui(name: keyof typeof UI_ICONS): string {
+    const set = String(settingsStore.effective().icon_set ?? "auto");
+    return resolveIconForSet(UI_ICONS[name], set) ?? UI_ICONS[name].mdi;
   }
 
   // --- Dashboard management (Dashboards → Dashboard views) ------------------
@@ -1212,7 +1250,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
   private _renderDashViewRow(v: DashViewInfo, admin: boolean): TemplateResult {
     return html`
       <div class="dash-row ${v.drift ? "drift" : ""} ${v.hidden ? "hidden-view" : ""}">
-        ${admin ? html`<ha-icon class="dash-grip" icon="mdi:drag"></ha-icon>` : nothing}
+        ${admin ? html`<ha-icon class="dash-grip" .icon=${this._ui("drag")}></ha-icon>` : nothing}
         <div class="dash-row-main">
           <span class="dash-name">${this._viewDisplayName(v.name)}</span>
           <span class="dash-meta">
@@ -1229,7 +1267,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
                 title=${v.hidden ? "Show view" : "Hide view"}
                 @click=${() => this._toggleHideView(v)}
               >
-                <ha-icon .icon=${v.hidden ? "mdi:eye-off-outline" : "mdi:eye-outline"}></ha-icon>
+                <ha-icon .icon=${this._ui(v.hidden ? "eyeOff" : "eye")}></ha-icon>
               </button>
               ${v.forked
                 ? html`<button
@@ -1294,7 +1332,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
           ?disabled=${!this._addViewName.trim() || this._dashBusy}
           @click=${() => this._addCustomView()}
         >
-          <ha-icon icon="mdi:plus"></ha-icon><span>Add view</span>
+          <ha-icon .icon=${this._ui("add")}></ha-icon><span>Add view</span>
         </button>
       </div>
     `;
@@ -1369,7 +1407,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     return html`
       <ha-expansion-panel outlined class="sub-panel">
         <div slot="header" class="sub-head">
-          <ha-icon icon="mdi:gesture-tap-hold"></ha-icon>
+          <ha-icon .icon=${this._ui("menuItem")}></ha-icon>
           <span class="sub-head-label">Custom menu items</span>
           <span class="sub-head-value"
             >${items.length
@@ -1400,7 +1438,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
                   </div>
                 </ha-sortable>
                 <button class="link-btn" @click=${() => this._addNavItem()}>
-                  <ha-icon icon="mdi:plus"></ha-icon><span>Add menu item</span>
+                  <ha-icon .icon=${this._ui("add")}></ha-icon><span>Add menu item</span>
                 </button>
               `}
         </div>
@@ -1414,7 +1452,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     return html`
       <div class="nmi-item ${enabled ? "" : "off"}">
         <div class="nmi-header">
-          <ha-icon class="nmi-grip" icon="mdi:drag"></ha-icon>
+          <ha-icon class="nmi-grip" .icon=${this._ui("drag")}></ha-icon>
           <ha-icon class="nmi-hicon" .icon=${it.icon || "mdi:gesture-tap-button"}></ha-icon>
           <span class="nmi-hname" @click=${() => this._toggleNavOpen(i)}
             >${it.name || "Menu item"}</span
@@ -1429,10 +1467,10 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
             title=${open ? "Collapse" : "Expand"}
             @click=${() => this._toggleNavOpen(i)}
           >
-            <ha-icon .icon=${open ? "mdi:chevron-up" : "mdi:chevron-down"}></ha-icon>
+            <ha-icon .icon=${this._ui(open ? "chevronUp" : "chevronDown")}></ha-icon>
           </button>
           <button class="dash-iconbtn" title="Delete" @click=${() => this._removeNavItem(i)}>
-            <ha-icon icon="mdi:close"></ha-icon>
+            <ha-icon .icon=${this._ui("close")}></ha-icon>
           </button>
         </div>
         ${open
@@ -1517,7 +1555,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
             title=${overriding ? "Overriding — click to inherit" : "Inheriting — click to override"}
             @click=${() => this._toggleOverride(field, !overriding)}
           >
-            <ha-icon .icon=${overriding ? "mdi:link-off" : "mdi:link-variant"}></ha-icon>
+            <ha-icon .icon=${this._ui(overriding ? "linkOff" : "linkOn")}></ha-icon>
           </button>
         </div>
       </div>
@@ -1680,7 +1718,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
           : html`<div class="help">No predefined messages yet — add one below.</div>`}
         ${admin
           ? html`<button class="cam-btn add-list-btn" @click=${() => this._addAnnounceMessage()}>
-              <ha-icon icon="mdi:plus"></ha-icon><span>Add a message</span>
+              <ha-icon .icon=${this._ui("add")}></ha-icon><span>Add a message</span>
             </button>`
           : nothing}
       </div>
@@ -1740,12 +1778,12 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
   /** Per-domain presentation: list icon and the noun used in labels/buttons. */
   private _listMeta(field: SettingField): { icon: string; noun: string; nounPlural: string } {
     if (field.entityDomain === "climate") {
-      return { icon: "mdi:thermostat", noun: "thermostat", nounPlural: "thermostats" };
+      return { icon: this._ui("thermostat"), noun: "thermostat", nounPlural: "thermostats" };
     }
     if (field.entityDomain === "calendar") {
-      return { icon: "mdi:calendar", noun: "calendar", nounPlural: "calendars" };
+      return { icon: this._ui("calendar"), noun: "calendar", nounPlural: "calendars" };
     }
-    return { icon: "mdi:cctv", noun: "camera", nounPlural: "cameras" };
+    return { icon: this._ui("camera"), noun: "camera", nounPlural: "cameras" };
   }
 
   private _camerasArray(v: SettingsValue): string[] {
@@ -1822,7 +1860,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
           ${readonly || locked
             ? nothing
             : html`<div class="cam-grip" title="Drag to reorder">
-                <ha-icon icon="mdi:drag"></ha-icon>
+                <ha-icon .icon=${this._ui("drag")}></ha-icon>
               </div>`}
           <ha-icon class="cam-ico" .icon=${rowIcon}></ha-icon>
           <span class="cam-name">${rowName}</span>
@@ -1846,13 +1884,13 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
                 title="Options"
                 @click=${() => options.toggle(id)}
               >
-                <ha-icon icon=${options.isOpen(id) ? "mdi:chevron-up" : "mdi:chevron-down"}></ha-icon>
+                <ha-icon .icon=${this._ui(options.isOpen(id) ? "chevronUp" : "chevronDown")}></ha-icon>
               </button>`
             : nothing}
           ${readonly || locked
             ? nothing
             : html`<button class="cam-del" title="Remove" @click=${() => onRemove(idx)}>
-                <ha-icon icon="mdi:close"></ha-icon>
+                <ha-icon .icon=${this._ui("close")}></ha-icon>
               </button>`}
         </div>
       `;
@@ -2082,7 +2120,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
           </div>
           ${admin
             ? html`<button class="cam-btn" @click=${() => this._autoPopulateGlobal(field)}>
-                <ha-icon icon="mdi:auto-fix"></ha-icon><span>Auto-populate</span>
+                <ha-icon .icon=${this._ui("autoFix")}></ha-icon><span>Auto-populate</span>
               </button>`
             : nothing}
         </div>
@@ -2130,7 +2168,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
           : html`<div class="help">No ${meta.nounPlural} yet — add one below or tap “Auto-populate”.</div>`}
         ${admin && remaining.length
           ? html`<button class="cam-btn add-list-btn" @click=${() => this._openAddList(field)}>
-              <ha-icon icon="mdi:plus"></ha-icon><span>Add a ${meta.noun}</span>
+              <ha-icon .icon=${this._ui("add")}></ha-icon><span>Add a ${meta.noun}</span>
             </button>`
           : nothing}
       </div>
@@ -2169,7 +2207,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
         <div class="ted-sheet add-sheet" @click=${(e: Event) => e.stopPropagation()}>
           <div class="ted-sheet-head">Add a ${meta.noun}</div>
           <div class="add-search">
-            <ha-icon icon="mdi:magnify"></ha-icon>
+            <ha-icon .icon=${this._ui("search")}></ha-icon>
             <input
               class="ted-input"
               type="text"
@@ -2232,7 +2270,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
             title=${overriding ? "Overriding — click to inherit" : "Inheriting — click to override"}
             @click=${() => this._toggleOverride(field, !overriding)}
           >
-            <ha-icon .icon=${overriding ? "mdi:link-off" : "mdi:link-variant"}></ha-icon>
+            <ha-icon .icon=${this._ui(overriding ? "linkOff" : "linkOn")}></ha-icon>
           </button>
         </div>
       </div>
@@ -2276,7 +2314,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
             title="Reset to the current Global list"
             @click=${() => this._syncDevice(field)}
           >
-            <ha-icon icon="mdi:sync"></ha-icon><span>Sync list</span>
+            <ha-icon .icon=${this._ui("sync")}></ha-icon><span>Sync list</span>
           </button>`,
         )}
         ${valid.length
@@ -2443,7 +2481,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     return html`
       <ha-expansion-panel outlined class="sub-panel bg-panel">
         <div slot="header" class="sub-head">
-          <ha-icon icon="mdi:image-multiple-outline"></ha-icon>
+          <ha-icon .icon=${this._ui("wallpaper")}></ha-icon>
           <span class="sub-head-label">${field.label}${scope === "device" ? " — this device" : ""}</span>
           <span class="sub-head-value">${MODE_LABELS[modeVal] ?? modeVal}</span>
         </div>
@@ -2460,7 +2498,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
                     title=${overriding ? "Overriding — click to inherit" : "Inheriting — click to override"}
                     @click=${() => this._setCompositeOverride("background_mode", BACKGROUND_KEYS, !overriding)}
                   >
-                    <ha-icon .icon=${overriding ? "mdi:link-off" : "mdi:link-variant"}></ha-icon>
+                    <ha-icon .icon=${this._ui(overriding ? "linkOff" : "linkOn")}></ha-icon>
                   </button>`
               : field.help
                 ? html`<div class="row-label"><span class="help">${field.help}</span></div>`
@@ -2548,7 +2586,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     return html`
       <ha-expansion-panel outlined class="sub-panel bg-panel">
         <div slot="header" class="sub-head">
-          <ha-icon icon=${themedIcon("weather-night")}></ha-icon>
+          <ha-icon .icon=${this._ui("nightMode")}></ha-icon>
           <span class="sub-head-label">${field.label}${scope === "device" ? " — this device" : ""}</span>
           <span class="sub-head-value">${enabled ? "Enabled" : "Disabled"}</span>
         </div>
@@ -2565,7 +2603,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
                     title=${overriding ? "Overriding — click to inherit" : "Inheriting — click to override"}
                     @click=${() => this._setCompositeOverride("night_enabled", NIGHTMODE_KEYS, !overriding)}
                   >
-                    <ha-icon .icon=${overriding ? "mdi:link-off" : "mdi:link-variant"}></ha-icon>
+                    <ha-icon .icon=${this._ui(overriding ? "linkOff" : "linkOn")}></ha-icon>
                   </button>`
               : field.help
                 ? html`<div class="row-label"><span class="help">${field.help}</span></div>`
@@ -2686,7 +2724,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     return html`
       <ha-expansion-panel outlined class="sub-panel">
         <div slot="header" class="sub-head">
-          <ha-icon icon="mdi:rocket-launch-outline"></ha-icon>
+          <ha-icon .icon=${this._ui("launcher")}></ha-icon>
           <span class="sub-head-label">Launcher Buttons${scope === "device" ? " — this device" : ""}</span>
           <span class="sub-head-value">${enabled ? "On" : "Off"}</span>
         </div>
@@ -2737,7 +2775,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
           <div class="row-label"><span>Buttons — available views &amp; settings</span></div>
           ${admin
             ? html`<button class="cam-btn" @click=${() => this._autoPopulateLauncher(discovered)}>
-                <ha-icon icon="mdi:auto-fix"></ha-icon><span>Auto-populate</span>
+                <ha-icon .icon=${this._ui("autoFix")}></ha-icon><span>Auto-populate</span>
               </button>`
             : nothing}
         </div>
@@ -3060,7 +3098,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
         </div>
         ${groupOverridden
           ? html`<button class="cam-btn" title="Reset to the Global launcher settings" @click=${resetGroup}>
-              <ha-icon icon="mdi:backup-restore"></ha-icon><span>Reset</span>
+              <ha-icon .icon=${this._ui("reset")}></ha-icon><span>Reset</span>
             </button>`
           : nothing}
       </div>
@@ -3089,7 +3127,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
             title=${overriding ? "Overriding — click to inherit" : "Inheriting — click to override"}
             @click=${() => this._toggleOverride({ key, label: "Launcher Buttons", group: "Navbar", kind: "launcher" } as SettingField, !overriding)}
           >
-            <ha-icon .icon=${overriding ? "mdi:link-off" : "mdi:link-variant"}></ha-icon>
+            <ha-icon .icon=${this._ui(overriding ? "linkOff" : "linkOn")}></ha-icon>
           </button>
         </div>
       </div>
@@ -3123,7 +3161,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
           nothing,
           "The launcher buttons this device shows.",
           html`<button class="cam-btn" title="Reset to the current Global list" @click=${() => setList([...globalList])}>
-            <ha-icon icon="mdi:sync"></ha-icon><span>Sync list</span>
+            <ha-icon .icon=${this._ui("sync")}></ha-icon><span>Sync list</span>
           </button>`,
         )}
         ${valid.length
@@ -3189,7 +3227,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
 
     const header = showHeader
       ? html`<div class="head">
-          <ha-icon icon="mdi:cog"></ha-icon>
+          <ha-icon .icon=${this._ui("settings")}></ha-icon>
           <span>${cfg.title ?? "Settings"}</span>
         </div>`
       : nothing;
@@ -3273,7 +3311,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
                         title="More"
                         aria-label="More categories"
                       >
-                        <ha-icon icon="mdi:dots-horizontal"></ha-icon>
+                        <ha-icon .icon=${this._ui("more")}></ha-icon>
                       </button>`
                     : nothing}
                 </div>
