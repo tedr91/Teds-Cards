@@ -942,6 +942,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.1
+
+- **Music on this device, automatically.** A registered device now sets itself up as a Music Assistant player on its own — no button, no steps — so you can play music through the screen you're on (when Music Assistant runs as the Home Assistant add-on). Prefer real speakers? Pick one in Settings → Sounds; a new **Auto-set-up this device for music** toggle lets you opt a device out. A device that's asleep now reads as "offline / sleeping" instead of looking broken.
+
 ### v0.9.0
 
 - Initial public preview release — the baseline we are using for real-world testing ahead of a v1.0.0 release.

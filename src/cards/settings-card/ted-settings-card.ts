@@ -743,7 +743,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
           @click=${() => void this._createMaPlayer(res.base)}
         >
           <ha-icon .icon=${this._ui("add")}></ha-icon><span
-            >${this._maBusy ? "Creating…" : "Create MA player"}</span
+            >${this._maBusy ? "Setting up…" : "Enable music on this device"}</span
           >
         </button>
         ${this._maError ? html`<span class="help nmi-err">${this._maError}</span>` : nothing}

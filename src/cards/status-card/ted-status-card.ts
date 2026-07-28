@@ -333,12 +333,18 @@ export class TedStatusCard extends LitElement implements LovelaceCard {
     const music = resolveMusicPlayer(this.hass);
     const maLoaded = isMassIntegrationLoaded(this.hass);
     if (music.state === "ok") {
+      // A device's own MA player is only "available" while that browser is open, so an
+      // unavailable state is the normal resting state — show it neutrally, not as an error.
+      const st = this.hass?.states?.[music.entity]?.state;
+      const offline = st === "unavailable" || st === "unknown" || st === undefined;
       rows.push({
         icon: themedIcon("music"),
         label: "Music and Media Player",
-        value: `${music.matched ? "Auto-matched" : "Available"} · ${this._entityLabel(music.entity)}`,
+        value: offline
+          ? `Offline / sleeping · ${this._entityLabel(music.entity)}`
+          : `${music.matched ? "Auto-matched" : "Available"} · ${this._entityLabel(music.entity)}`,
         hint: music.entity,
-        level: "ok",
+        level: offline ? "unknown" : "ok",
       });
     } else if (!maLoaded) {
       // The MA app can be running, but without the HA integration no MA players are
@@ -373,7 +379,7 @@ export class TedStatusCard extends LitElement implements LovelaceCard {
         level: "warn",
         action:
           music.state === "unmatched"
-            ? { label: "Create player", onClick: () => void this._createMaPlayer(music.base) }
+            ? { label: "Enable music on this device", onClick: () => void this._createMaPlayer(music.base) }
             : undefined,
       });
     }
