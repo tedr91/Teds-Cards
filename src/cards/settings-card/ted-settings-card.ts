@@ -1343,12 +1343,17 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     }
     const admin = this._isAdmin();
     const items = this._navMenuItems();
+    const enabledCount = items.filter((it) => it.enabled !== false).length;
     return html`
       <ha-expansion-panel outlined class="sub-panel">
         <div slot="header" class="sub-head">
           <ha-icon icon="mdi:gesture-tap-hold"></ha-icon>
           <span class="sub-head-label">Custom menu items</span>
-          <span class="sub-head-value">${items.length || "None"}</span>
+          <span class="sub-head-value"
+            >${items.length
+              ? `${enabledCount} enabled (${items.length} total)`
+              : "None"}</span
+          >
         </div>
         <div class="sub-body">
           <div class="help">
