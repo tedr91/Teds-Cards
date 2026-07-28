@@ -1309,13 +1309,16 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
   }
 
   /** Hold-menu custom items: settings-driven ones (dashboard_integration) then the
-   *  card's own YAML `menu_items`. */
+   *  card's own YAML `menu_items`. Disabled settings items are filtered out. */
   private _menuItems(): NavMenuItem[] {
     const cfg = this._config?.menu_items ?? [];
     if (!this._dashboardIntegration()) return cfg;
     const raw = settingsStore.effective().navbar_menu_items;
     const fromSettings = Array.isArray(raw) ? (raw as unknown as NavMenuItem[]) : [];
-    return [...fromSettings, ...cfg];
+    const enabled = fromSettings.filter(
+      (it) => (it as { enabled?: boolean }).enabled !== false,
+    );
+    return [...enabled, ...cfg];
   }
 
   private _selectPosition(value: NavbarAlignment): void {

@@ -238,6 +238,7 @@ interface NavMenuItemCfg {
   name?: string;
   icon?: string;
   entity?: string;
+  enabled?: boolean;
   tap_action?: unknown;
 }
 const NAV_MENU_ITEM_SCHEMA = [
@@ -308,6 +309,8 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
   /** New custom-view form inputs. */
   @state() private _addViewName = "";
   @state() private _addViewTitle = "";
+  /** Which navbar custom-menu-item rows are expanded (by index). */
+  @state() private _navMenuOpen = new Set<number>();
   /** Shared audio element used to preview sounds. */
   private _soundAudio?: HTMLAudioElement;
   /** Watches the host width so the section tab strip can re-measure its overflow. */
@@ -502,6 +505,19 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
 
   private _selectSection(name: string): void {
     this._section = name;
+    // Persist the active tab in the URL so a re-render/remount (e.g. an embedded
+    // action editor rebuilding) can't snap the card back to the first section.
+    if (this._config?.section_tabs === false) return;
+    try {
+      const url = new URL(window.location.href);
+      const param = this._config?.url_param || "tab";
+      if (url.searchParams.get(param)?.toLowerCase() !== name.toLowerCase()) {
+        url.searchParams.set(param, name.toLowerCase());
+        history.replaceState(history.state, "", url.toString());
+      }
+    } catch {
+      /* ignore */
+    }
   }
 
   /** Category tab icon, following the configured `icon_set` (Fluent/mdi today; mdi fallback). */
@@ -1283,7 +1299,23 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
   }
 
   private _addNavItem(): void {
-    this._commitNavItems([...this._navMenuItems(), { name: "" }]);
+    const items = this._navMenuItems();
+    this._navMenuOpen = new Set(this._navMenuOpen).add(items.length);
+    this._commitNavItems([...items, { name: "", enabled: true }]);
+  }
+
+  private _toggleNavOpen(i: number): void {
+    const next = new Set(this._navMenuOpen);
+    if (next.has(i)) next.delete(i);
+    else next.add(i);
+    this._navMenuOpen = next;
+  }
+
+  private _setNavEnabled(i: number, enabled: boolean): void {
+    const list = this._navMenuItems().map((x) => ({ ...x }));
+    if (!list[i]) return;
+    list[i].enabled = enabled;
+    this._commitNavItems(list);
   }
 
   private _removeNavItem(i: number): void {
@@ -1314,10 +1346,15 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     return html`
       <ha-expansion-panel outlined class="sub-panel">
         <div slot="header" class="sub-head">
+          <ha-icon icon="mdi:gesture-tap-hold"></ha-icon>
           <span class="sub-head-label">Custom menu items</span>
           <span class="sub-head-value">${items.length || "None"}</span>
         </div>
         <div class="sub-body">
+          <div class="help">
+            Here you can add custom items to the navbar pop-up menu (note: access the
+            navbar pop-up by holding on a blank area of the navbar).
+          </div>
           ${!admin
             ? html`<div class="help">Sign in as an admin to edit menu items.</div>`
             : html`
@@ -1332,28 +1369,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
                   }}
                 >
                   <div class="nmi-list">
-                    ${items.map(
-                      (it, i) => html`
-                        <div class="nmi-row">
-                          <ha-icon class="nmi-grip" icon="mdi:drag"></ha-icon>
-                          <ha-form
-                            class="nmi-form"
-                            .hass=${this.hass}
-                            .data=${it}
-                            .schema=${NAV_MENU_ITEM_SCHEMA}
-                            .computeLabel=${navItemLabel}
-                            @value-changed=${(ev: CustomEvent) => this._navItemChanged(i, ev)}
-                          ></ha-form>
-                          <button
-                            class="dash-iconbtn"
-                            title="Delete"
-                            @click=${() => this._removeNavItem(i)}
-                          >
-                            <ha-icon icon="mdi:close"></ha-icon>
-                          </button>
-                        </div>
-                      `,
-                    )}
+                    ${items.map((it, i) => this._renderNavItem(it, i))}
                   </div>
                 </ha-sortable>
                 <button class="link-btn" @click=${() => this._addNavItem()}>
@@ -1362,6 +1378,48 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
               `}
         </div>
       </ha-expansion-panel>
+    `;
+  }
+
+  private _renderNavItem(it: NavMenuItemCfg, i: number): TemplateResult {
+    const open = this._navMenuOpen.has(i);
+    const enabled = it.enabled !== false;
+    return html`
+      <div class="nmi-item ${enabled ? "" : "off"}">
+        <div class="nmi-header">
+          <ha-icon class="nmi-grip" icon="mdi:drag"></ha-icon>
+          <ha-icon class="nmi-hicon" .icon=${it.icon || "mdi:gesture-tap-button"}></ha-icon>
+          <span class="nmi-hname" @click=${() => this._toggleNavOpen(i)}
+            >${it.name || "Menu item"}</span
+          >
+          <ha-switch
+            .checked=${enabled}
+            title=${enabled ? "Enabled" : "Disabled"}
+            @change=${(e: Event) => this._setNavEnabled(i, (e.target as HTMLInputElement).checked)}
+          ></ha-switch>
+          <button
+            class="dash-iconbtn"
+            title=${open ? "Collapse" : "Expand"}
+            @click=${() => this._toggleNavOpen(i)}
+          >
+            <ha-icon .icon=${open ? "mdi:chevron-up" : "mdi:chevron-down"}></ha-icon>
+          </button>
+          <button class="dash-iconbtn" title="Delete" @click=${() => this._removeNavItem(i)}>
+            <ha-icon icon="mdi:close"></ha-icon>
+          </button>
+        </div>
+        ${open
+          ? html`<div class="nmi-body">
+              <ha-form
+                .hass=${this.hass}
+                .data=${it}
+                .schema=${NAV_MENU_ITEM_SCHEMA}
+                .computeLabel=${navItemLabel}
+                @value-changed=${(ev: CustomEvent) => this._navItemChanged(i, ev)}
+              ></ha-form>
+            </div>`
+          : nothing}
+      </div>
     `;
   }
 
@@ -3586,23 +3644,42 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
       .nmi-list {
         display: flex;
         flex-direction: column;
-        gap: 10px;
-      }
-      .nmi-row {
-        display: flex;
-        align-items: flex-start;
         gap: 8px;
+      }
+      .nmi-item {
+        border: 1px solid var(--ted-style-divider, var(--divider-color));
+        border-radius: 8px;
+      }
+      .nmi-item.off {
+        opacity: 0.6;
+      }
+      .nmi-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 8px;
       }
       .nmi-grip {
         flex: none;
-        margin-top: 10px;
         cursor: grab;
         color: var(--ted-style-muted, var(--secondary-text-color));
         --mdc-icon-size: 18px;
       }
-      .nmi-form {
+      .nmi-hicon {
+        flex: none;
+        color: var(--ted-style-text, var(--primary-text-color));
+        --mdc-icon-size: 20px;
+      }
+      .nmi-hname {
         flex: 1 1 auto;
         min-width: 0;
+        cursor: pointer;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .nmi-body {
+        padding: 2px 10px 10px;
       }
       .dash-row-main {
         flex: 1 1 auto;
