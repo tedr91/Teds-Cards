@@ -233,6 +233,22 @@ interface DashViewsData {
   custom_views: DashCustomView[];
 }
 
+/** A settings-driven navbar hold-menu item. */
+interface NavMenuItemCfg {
+  name?: string;
+  icon?: string;
+  entity?: string;
+  tap_action?: unknown;
+}
+const NAV_MENU_ITEM_SCHEMA = [
+  { name: "name", selector: { text: {} } },
+  { name: "icon", selector: { icon: {} } },
+  { name: "tap_action", selector: { ui_action: {} } },
+];
+const navItemLabel = (s: { name: string }): string =>
+  (({ name: "Name", icon: "Icon", tap_action: "Action" }) as Record<string, string>)[s.name] ??
+  s.name;
+
 @customElement(SETTINGS_CARD_TYPE)
 export class TedSettingsCard extends LitElement implements LovelaceCard {
   public static async getConfigElement(): Promise<LovelaceCardEditor> {
@@ -1246,12 +1262,116 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     `;
   }
 
+  // --- Navbar custom menu items (Navbar → Custom menu items) ----------------
+
+  private _navMenuItems(): NavMenuItemCfg[] {
+    const v = this._globalValue("navbar_menu_items");
+    return Array.isArray(v) ? (v as unknown as NavMenuItemCfg[]) : [];
+  }
+
+  private _commitNavItems(list: NavMenuItemCfg[]): void {
+    this._setGlobal("navbar_menu_items", list as unknown as SettingsValue);
+  }
+
+  private _navItemChanged(i: number, ev: CustomEvent): void {
+    const val = ev.detail?.value as NavMenuItemCfg | undefined;
+    if (!val) return;
+    const list = this._navMenuItems().map((x) => ({ ...x }));
+    if (!list[i]) return;
+    list[i] = { ...list[i], ...val };
+    this._commitNavItems(list);
+  }
+
+  private _addNavItem(): void {
+    this._commitNavItems([...this._navMenuItems(), { name: "" }]);
+  }
+
+  private _removeNavItem(i: number): void {
+    this._commitNavItems(this._navMenuItems().filter((_, idx) => idx !== i));
+  }
+
+  private _moveNavItem(oldIndex: number, newIndex: number): void {
+    const list = this._navMenuItems().map((x) => ({ ...x }));
+    if (oldIndex < 0 || oldIndex >= list.length) return;
+    const [m] = list.splice(oldIndex, 1);
+    list.splice(newIndex, 0, m);
+    this._commitNavItems(list);
+  }
+
+  private _renderNavbarMenuItems(scope: "global" | "device"): TemplateResult {
+    if (scope === "device") {
+      return html`
+        <div class="row">
+          <div class="row-label">
+            <span>Custom menu items</span>
+            <span class="help">Managed on the “Global” tab.</span>
+          </div>
+        </div>
+      `;
+    }
+    const admin = this._isAdmin();
+    const items = this._navMenuItems();
+    return html`
+      <ha-expansion-panel outlined class="sub-panel">
+        <div slot="header" class="sub-head">
+          <span class="sub-head-label">Custom menu items</span>
+          <span class="sub-head-value">${items.length || "None"}</span>
+        </div>
+        <div class="sub-body">
+          ${!admin
+            ? html`<div class="help">Sign in as an admin to edit menu items.</div>`
+            : html`
+                <ha-sortable
+                  handle-selector=".nmi-grip"
+                  @item-moved=${(e: CustomEvent) => {
+                    const { oldIndex, newIndex } = e.detail as {
+                      oldIndex: number;
+                      newIndex: number;
+                    };
+                    this._moveNavItem(oldIndex, newIndex);
+                  }}
+                >
+                  <div class="nmi-list">
+                    ${items.map(
+                      (it, i) => html`
+                        <div class="nmi-row">
+                          <ha-icon class="nmi-grip" icon="mdi:drag"></ha-icon>
+                          <ha-form
+                            class="nmi-form"
+                            .hass=${this.hass}
+                            .data=${it}
+                            .schema=${NAV_MENU_ITEM_SCHEMA}
+                            .computeLabel=${navItemLabel}
+                            @value-changed=${(ev: CustomEvent) => this._navItemChanged(i, ev)}
+                          ></ha-form>
+                          <button
+                            class="dash-iconbtn"
+                            title="Delete"
+                            @click=${() => this._removeNavItem(i)}
+                          >
+                            <ha-icon icon="mdi:close"></ha-icon>
+                          </button>
+                        </div>
+                      `,
+                    )}
+                  </div>
+                </ha-sortable>
+                <button class="link-btn" @click=${() => this._addNavItem()}>
+                  <ha-icon icon="mdi:plus"></ha-icon><span>Add menu item</span>
+                </button>
+              `}
+        </div>
+      </ha-expansion-panel>
+    `;
+  }
+
   private _renderGlobalRow(field: SettingField): TemplateResult {
     if (field.kind === "entity-list") return this._renderCamerasGlobal(field);
     if (field.kind === "announce-messages") return this._renderAnnounceMessages("global");
     if (field.kind === "background") return this._renderBackground(field, "global");
     if (field.kind === "nightmode") return this._renderNightMode(field, "global");
     if (field.kind === "launcher") return this._renderLauncher("global");
+    if (field.kind === "navbar-menu-items") return this._renderNavbarMenuItems("global");
     if (field.kind === "dashboard") return this._renderDashboard("global");
     if (field.kind === "device-type") return this._renderDeviceType("global");
     // Device-only fields (e.g. the media player) have no sensible global value.
@@ -1290,6 +1410,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     if (field.kind === "background") return this._renderBackground(field, "device");
     if (field.kind === "nightmode") return this._renderNightMode(field, "device");
     if (field.kind === "launcher") return this._renderLauncher("device");
+    if (field.kind === "navbar-menu-items") return this._renderNavbarMenuItems("device");
     if (field.kind === "dashboard") return this._renderDashboard("device");
     if (field.kind === "device-type") return this._renderDeviceType("device");
     const overriding = this._deviceOverriding(field.key);
@@ -3461,6 +3582,27 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
       }
       .dash-iconbtn:hover {
         color: var(--ted-style-text, var(--primary-text-color));
+      }
+      .nmi-list {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      .nmi-row {
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+      }
+      .nmi-grip {
+        flex: none;
+        margin-top: 10px;
+        cursor: grab;
+        color: var(--ted-style-muted, var(--secondary-text-color));
+        --mdc-icon-size: 18px;
+      }
+      .nmi-form {
+        flex: 1 1 auto;
+        min-width: 0;
       }
       .dash-row-main {
         flex: 1 1 auto;

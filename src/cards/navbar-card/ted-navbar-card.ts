@@ -1240,15 +1240,18 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
                 </button>
               </div>
               <div class="nav-menu-sep"></div>
-              ${(this._config?.menu_items?.length ?? 0) > 0
-                ? html`${this._config!.menu_items!.map(
-                    (item) => html`<button class="nav-menu-row" @click=${() => this._runMenuItem(item)}>
-                      <ha-icon icon=${item.icon || "mdi:play"}></ha-icon>
-                      <span>${item.name}</span>
-                    </button>`,
-                  )}
-                  <div class="nav-menu-sep"></div>`
-                : nothing}
+              ${(() => {
+                const menuItems = this._menuItems();
+                return menuItems.length > 0
+                  ? html`${menuItems.map(
+                      (item) => html`<button class="nav-menu-row" @click=${() => this._runMenuItem(item)}>
+                        <ha-icon icon=${item.icon || "mdi:play"}></ha-icon>
+                        <span>${item.name}</span>
+                      </button>`,
+                    )}
+                    <div class="nav-menu-sep"></div>`
+                  : nothing;
+              })()}
               <button class="nav-menu-row" @click=${() => this._menuAction(settingsPath)}>
                 <ha-icon icon="mdi:cog-outline"></ha-icon>
                 <span>Dashboard Settings</span>
@@ -1303,6 +1306,16 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
     if (!this.hass) return;
     const cfg = { entity: item.entity, tap_action: item.tap_action };
     handleAction(this, this.hass, cfg as unknown as Parameters<typeof handleAction>[2], "tap");
+  }
+
+  /** Hold-menu custom items: settings-driven ones (dashboard_integration) then the
+   *  card's own YAML `menu_items`. */
+  private _menuItems(): NavMenuItem[] {
+    const cfg = this._config?.menu_items ?? [];
+    if (!this._dashboardIntegration()) return cfg;
+    const raw = settingsStore.effective().navbar_menu_items;
+    const fromSettings = Array.isArray(raw) ? (raw as unknown as NavMenuItem[]) : [];
+    return [...fromSettings, ...cfg];
   }
 
   private _selectPosition(value: NavbarAlignment): void {
