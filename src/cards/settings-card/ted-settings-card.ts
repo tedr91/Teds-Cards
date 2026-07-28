@@ -210,6 +210,29 @@ registerCustomCard({
   documentationURL: "https://github.com/tedr91/Teds-Cards#settings-card",
 });
 
+/** WS `list_dashboard_views` payload — installed views + fork/drift state. */
+interface DashViewInfo {
+  name: string;
+  file: string;
+  version?: string | null;
+  latest?: string | null;
+  forked: boolean;
+  fork_version?: string | null;
+  drift: boolean;
+  hidden: boolean;
+}
+interface DashCustomView {
+  file: string;
+  name: string;
+}
+interface DashViewsData {
+  dashboard_version?: string | null;
+  latest_version?: string | null;
+  update_available: boolean;
+  views: DashViewInfo[];
+  custom_views: DashCustomView[];
+}
+
 @customElement(SETTINGS_CARD_TYPE)
 export class TedSettingsCard extends LitElement implements LovelaceCard {
   public static async getConfigElement(): Promise<LovelaceCardEditor> {
@@ -259,6 +282,16 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
   @state() private _soundCustom = new Set<string>();
   /** The sound field key currently previewing (for the play/stop icon), or none. */
   @state() private _soundPlaying?: string;
+
+  /** Installed dashboard views + fork/drift state (Dashboards → Dashboard views). */
+  @state() private _dashViews?: DashViewsData;
+  /** True while a dashboard customize/revert/add/remove service call is in flight. */
+  @state() private _dashBusy = false;
+  /** True once a dashboard-views fetch has been kicked off (avoids a refetch loop). */
+  private _dashRequested = false;
+  /** New custom-view form inputs. */
+  @state() private _addViewName = "";
+  @state() private _addViewTitle = "";
   /** Shared audio element used to preview sounds. */
   private _soundAudio?: HTMLAudioElement;
   /** Watches the host width so the section tab strip can re-measure its overflow. */
@@ -348,6 +381,11 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
       void listSounds(this.hass).then((s) => {
         if (s.length) this._sounds = s;
       });
+    }
+    // Load the installed dashboard views once hass is available.
+    if (this.hass && !this._dashRequested) {
+      this._dashRequested = true;
+      void this._loadDashViews();
     }
     // Also watch the strip itself: its width (the real "available" space) can change
     // without the host resizing (e.g. a scrollbar appearing, layout settling).
@@ -968,12 +1006,253 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     return (entry && resolveIconForSet(entry, set)) || "mdi:tune";
   }
 
+  // --- Dashboard management (Dashboards → Dashboard views) ------------------
+
+  private async _loadDashViews(): Promise<void> {
+    if (!this.hass) return;
+    try {
+      this._dashViews = await this.hass.callWS<DashViewsData>({
+        type: "teds_dashboard_system/list_dashboard_views",
+      });
+    } catch {
+      this._dashViews = undefined;
+    }
+  }
+
+  /** Call a dashboard override service, then refresh (recompose is async server-side). */
+  private async _dashService(service: string, data: Record<string, unknown>): Promise<void> {
+    if (!this.hass || this._dashBusy) return;
+    this._dashBusy = true;
+    try {
+      await this.hass.callService("teds_dashboard_system", service, data);
+      await new Promise((r) => setTimeout(r, 400));
+      await this._loadDashViews();
+    } finally {
+      this._dashBusy = false;
+    }
+  }
+
+  private _customizeView(file: string): void {
+    void this._dashService("dashboard_customize_view", { view: file });
+  }
+
+  private _toggleHideView(v: DashViewInfo): void {
+    const cur = (this._dashViews?.views ?? []).filter((x) => x.hidden).map((x) => x.file);
+    const next = v.hidden ? cur.filter((f) => f !== v.file) : [...cur, v.file];
+    void this._dashService("dashboard_set_layout", { hidden: next });
+  }
+
+  private _reorderViews(oldIndex: number, newIndex: number): void {
+    const views = [...(this._dashViews?.views ?? [])];
+    if (oldIndex < 0 || oldIndex >= views.length) return;
+    const [moved] = views.splice(oldIndex, 1);
+    views.splice(newIndex, 0, moved);
+    void this._dashService("dashboard_set_layout", { order: views.map((x) => x.file) });
+  }
+
+  private async _revertView(file: string): Promise<void> {
+    const ok = await showConfirmation(this, {
+      title: "Revert view",
+      text: "Drop your customizations and return to the shipped version?",
+      confirmText: "Revert",
+      destructive: true,
+    });
+    if (ok) void this._dashService("dashboard_revert_view", { view: file });
+  }
+
+  private _addCustomView(): void {
+    const name = this._addViewName.trim();
+    if (!name) return;
+    const data: Record<string, unknown> = { name };
+    if (this._addViewTitle.trim()) data.title = this._addViewTitle.trim();
+    void this._dashService("dashboard_add_custom_view", data);
+    this._addViewName = "";
+    this._addViewTitle = "";
+  }
+
+  private async _removeCustomView(file: string): Promise<void> {
+    const ok = await showConfirmation(this, {
+      title: "Remove custom view",
+      text: "Delete this custom view? This cannot be undone.",
+      confirmText: "Remove",
+      destructive: true,
+    });
+    if (ok) void this._dashService("dashboard_remove_custom_view", { name: file });
+  }
+
+  /** "view-home-nightstand" → "Home Nightstand". */
+  private _viewDisplayName(name: string): string {
+    return name
+      .replace(/^view-/, "")
+      .replace(/[-_]/g, " ")
+      .replace(/\b\w/g, (c) => c.toUpperCase());
+  }
+
+  private _renderDashboard(scope: "global" | "device"): TemplateResult {
+    if (scope === "device") {
+      return html`
+        <div class="row">
+          <div class="row-label">
+            <span>Dashboard views</span>
+            <span class="help">Managed on the “Global” tab.</span>
+          </div>
+        </div>
+      `;
+    }
+    const admin = this._isAdmin();
+    const data = this._dashViews;
+    const summary = data
+      ? `${data.views.length} shipped · ${data.custom_views.length} custom`
+      : "…";
+    return html`
+      <ha-expansion-panel outlined class="sub-panel">
+        <div slot="header" class="sub-head">
+          <span class="sub-head-label">Dashboard views</span>
+          <span class="sub-head-value">${summary}</span>
+        </div>
+        <div class="sub-body dash-body">
+          ${!data
+            ? html`<div class="help">Loading…</div>`
+            : html`
+                ${data.update_available
+                  ? html`<div class="dash-banner">
+                      Dashboard update available: v${data.dashboard_version} →
+                      v${data.latest_version}
+                    </div>`
+                  : nothing}
+                ${admin
+                  ? html`<ha-sortable
+                      handle-selector=".dash-grip"
+                      @item-moved=${(e: CustomEvent) => {
+                        const { oldIndex, newIndex } = e.detail as {
+                          oldIndex: number;
+                          newIndex: number;
+                        };
+                        this._reorderViews(oldIndex, newIndex);
+                      }}
+                    >
+                      <div class="dash-list">
+                        ${data.views.map((v) => this._renderDashViewRow(v, admin))}
+                      </div>
+                    </ha-sortable>`
+                  : html`<div class="dash-list">
+                      ${data.views.map((v) => this._renderDashViewRow(v, admin))}
+                    </div>`}
+                ${data.custom_views.length
+                  ? html`
+                      <div class="dash-sub">Your custom views</div>
+                      <div class="dash-list">
+                        ${data.custom_views.map((v) => this._renderDashCustomRow(v, admin))}
+                      </div>
+                    `
+                  : nothing}
+                ${admin
+                  ? this._renderAddView()
+                  : html`<div class="help">Sign in as an admin to customize views.</div>`}
+              `}
+        </div>
+      </ha-expansion-panel>
+    `;
+  }
+
+  private _renderDashViewRow(v: DashViewInfo, admin: boolean): TemplateResult {
+    return html`
+      <div class="dash-row ${v.drift ? "drift" : ""} ${v.hidden ? "hidden-view" : ""}">
+        ${admin ? html`<ha-icon class="dash-grip" icon="mdi:drag"></ha-icon>` : nothing}
+        <div class="dash-row-main">
+          <span class="dash-name">${this._viewDisplayName(v.name)}</span>
+          <span class="dash-meta">
+            ${v.version ? html`<span>v${v.version}</span>` : nothing}
+            ${v.forked ? html`<span class="dash-badge">Customized</span>` : nothing}
+            ${v.drift ? html`<span class="dash-badge warn">Update v${v.latest}</span>` : nothing}
+            ${v.hidden ? html`<span class="dash-badge">Hidden</span>` : nothing}
+          </span>
+        </div>
+        ${admin
+          ? html`<div class="dash-actions">
+              <button
+                class="dash-iconbtn"
+                title=${v.hidden ? "Show view" : "Hide view"}
+                @click=${() => this._toggleHideView(v)}
+              >
+                <ha-icon .icon=${v.hidden ? "mdi:eye-off-outline" : "mdi:eye-outline"}></ha-icon>
+              </button>
+              ${v.forked
+                ? html`<button
+                    class="link-btn"
+                    ?disabled=${this._dashBusy}
+                    @click=${() => this._revertView(v.file)}
+                  >
+                    Revert
+                  </button>`
+                : html`<button
+                    class="link-btn"
+                    ?disabled=${this._dashBusy}
+                    @click=${() => this._customizeView(v.file)}
+                  >
+                    Customize
+                  </button>`}
+            </div>`
+          : nothing}
+      </div>
+    `;
+  }
+
+  private _renderDashCustomRow(v: DashCustomView, admin: boolean): TemplateResult {
+    return html`
+      <div class="dash-row">
+        <div class="dash-row-main">
+          <span class="dash-name">${this._viewDisplayName(v.name)}</span>
+          <span class="dash-meta"><span class="dash-badge">Custom</span></span>
+        </div>
+        ${admin
+          ? html`<div class="dash-actions">
+              <button
+                class="link-btn danger"
+                ?disabled=${this._dashBusy}
+                @click=${() => this._removeCustomView(v.file)}
+              >
+                Remove
+              </button>
+            </div>`
+          : nothing}
+      </div>
+    `;
+  }
+
+  private _renderAddView(): TemplateResult {
+    return html`
+      <div class="dash-add">
+        <input
+          class="txt"
+          placeholder="view-name"
+          .value=${this._addViewName}
+          @input=${(e: Event) => (this._addViewName = (e.target as HTMLInputElement).value)}
+        />
+        <input
+          class="txt"
+          placeholder="Title (optional)"
+          .value=${this._addViewTitle}
+          @input=${(e: Event) => (this._addViewTitle = (e.target as HTMLInputElement).value)}
+        />
+        <button
+          class="link-btn"
+          ?disabled=${!this._addViewName.trim() || this._dashBusy}
+          @click=${() => this._addCustomView()}
+        >
+          <ha-icon icon="mdi:plus"></ha-icon><span>Add view</span>
+        </button>
+      </div>
+    `;
+  }
+
   private _renderGlobalRow(field: SettingField): TemplateResult {
     if (field.kind === "entity-list") return this._renderCamerasGlobal(field);
     if (field.kind === "announce-messages") return this._renderAnnounceMessages("global");
     if (field.kind === "background") return this._renderBackground(field, "global");
     if (field.kind === "nightmode") return this._renderNightMode(field, "global");
     if (field.kind === "launcher") return this._renderLauncher("global");
+    if (field.kind === "dashboard") return this._renderDashboard("global");
     if (field.kind === "device-type") return this._renderDeviceType("global");
     // Device-only fields (e.g. the media player) have no sensible global value.
     if (field.deviceOnly) {
@@ -1011,6 +1290,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     if (field.kind === "background") return this._renderBackground(field, "device");
     if (field.kind === "nightmode") return this._renderNightMode(field, "device");
     if (field.kind === "launcher") return this._renderLauncher("device");
+    if (field.kind === "dashboard") return this._renderDashboard("device");
     if (field.kind === "device-type") return this._renderDeviceType("device");
     const overriding = this._deviceOverriding(field.key);
     return html`
@@ -3115,6 +3395,118 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
         color: var(--ted-style-accent, var(--primary-color));
         text-decoration: underline;
         cursor: pointer;
+      }
+      .link-btn[disabled] {
+        opacity: 0.5;
+        cursor: default;
+      }
+      .link-btn.danger {
+        color: var(--error-color, #db4437);
+      }
+      .dash-body {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .dash-banner {
+        padding: 6px 10px;
+        border-radius: 8px;
+        background: color-mix(in srgb, var(--ted-style-accent, var(--primary-color)) 16%, transparent);
+        color: var(--ted-style-text, var(--primary-text-color));
+        font-size: 0.82rem;
+      }
+      .dash-sub {
+        margin-top: 4px;
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--ted-style-muted, var(--secondary-text-color));
+      }
+      .dash-list {
+        display: flex;
+        flex-direction: column;
+      }
+      .dash-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 5px 0;
+        border-bottom: 1px solid var(--ted-style-divider, var(--divider-color));
+      }
+      .dash-row:last-child {
+        border-bottom: none;
+      }
+      .dash-row.drift {
+        border-left: 3px solid var(--warning-color, #ffa600);
+        padding-left: 8px;
+      }
+      .dash-row.hidden-view .dash-name {
+        opacity: 0.5;
+        text-decoration: line-through;
+      }
+      .dash-grip {
+        flex: none;
+        cursor: grab;
+        color: var(--ted-style-muted, var(--secondary-text-color));
+        --mdc-icon-size: 18px;
+      }
+      .dash-iconbtn {
+        flex: none;
+        padding: 0;
+        border: none;
+        background: none;
+        color: var(--ted-style-muted, var(--secondary-text-color));
+        cursor: pointer;
+        --mdc-icon-size: 20px;
+      }
+      .dash-iconbtn:hover {
+        color: var(--ted-style-text, var(--primary-text-color));
+      }
+      .dash-row-main {
+        flex: 1 1 auto;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+      .dash-name {
+        font-size: 0.9rem;
+      }
+      .dash-meta {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        font-size: 0.72rem;
+        color: var(--ted-style-muted, var(--secondary-text-color));
+      }
+      .dash-badge {
+        padding: 1px 6px;
+        border-radius: 999px;
+        font-size: 0.68rem;
+        background: color-mix(in srgb, var(--ted-style-text, var(--primary-text-color)) 12%, transparent);
+      }
+      .dash-badge.warn {
+        background: color-mix(in srgb, var(--warning-color, #ffa600) 26%, transparent);
+        color: var(--ted-style-text, var(--primary-text-color));
+      }
+      .dash-actions {
+        flex: none;
+        display: flex;
+        gap: 10px;
+      }
+      .dash-actions .link-btn {
+        margin-top: 0;
+      }
+      .dash-add {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        margin-top: 6px;
+        flex-wrap: wrap;
+      }
+      .dash-add .txt {
+        flex: 1 1 120px;
+        min-width: 100px;
       }
       .link-inline {
         display: inline;

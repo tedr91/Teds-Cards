@@ -38,6 +38,7 @@ export type SettingKind =
   | "background"
   | "nightmode"
   | "launcher"
+  | "dashboard"
   | "device-type";
 
 export interface SettingField {
@@ -350,6 +351,7 @@ export const SETTINGS_FIELDS: SettingField[] = [
   { key: "dashboard_auto_update", label: "Auto-update dashboard files", group: "General", kind: "boolean", subsection: "Advanced", help: "When on, Ted's Dashboard System keeps the installed Ted's Dashboard files up to date automatically. Turn off to pin the current version and manage updates yourself." },
   { key: "use_kiosk_mode", label: "Kiosk mode", group: "General", kind: "boolean", deviceOnly: true, help: "Hide Home Assistant's sidebar, header and edit UI on this device for a clean wall-panel look, using Home Assistant's built-in kiosk mode. Set per-device." },
   // Dashboards
+  { key: "dashboard_manage", label: "Dashboard views", group: "Dashboards", kind: "dashboard", help: "Customize, add, revert and manage the views on Ted's Dashboard." },
   { key: "auto_return_home_after", label: "Auto-return home after", group: "Dashboards", kind: "number", min: 0, max: 3600, unit: "s", help: "0 = never." },
   { key: "dashboard_root", label: "Dashboard root", group: "Dashboards", kind: "text" },
   { key: "home_dashboard", label: "Home dashboard", group: "Dashboards", kind: "text", rootRelative: true, help: "The view the Home button opens." },
