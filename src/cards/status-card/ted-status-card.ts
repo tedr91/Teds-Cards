@@ -54,6 +54,8 @@ interface StatusRow {
   /** Optional hover hint on the value (e.g. the full entity id). */
   hint?: string;
   tip?: RowTip;
+  /** Optional inline action button (e.g. "Create player"). */
+  action?: { label: string; onClick: () => void };
 }
 
 /** Minimal shape of the HA device registry present on `hass` at runtime. */
@@ -79,6 +81,10 @@ export class TedStatusCard extends LitElement implements LovelaceCard {
   @state() private _config?: StatusCardConfig;
   /** Label of the row whose tooltip is pinned open by tap (hover uses CSS). */
   @state() private _openTip: string | null = null;
+  /** True while the "Create MA player" request is in flight. */
+  @state() private _maBusy = false;
+  /** Error message from the last failed "Create MA player" attempt, if any. */
+  @state() private _maError: string | null = null;
 
   public constructor() {
     super();
@@ -110,6 +116,24 @@ export class TedStatusCard extends LitElement implements LovelaceCard {
   private _toggleTip(key: string, ev: Event): void {
     ev.stopPropagation();
     this._openTip = this._openTip === key ? null : key;
+  }
+
+  /** Ask the backend to auto-create a Music Assistant player for this device's speaker. */
+  private async _createMaPlayer(entityId: string): Promise<void> {
+    if (!this.hass || this._maBusy) return;
+    this._maBusy = true;
+    this._maError = null;
+    try {
+      await this.hass.callWS({
+        type: "teds_dashboard_system/create_ma_player",
+        entity_id: entityId,
+      });
+    } catch (err) {
+      this._maError = (err as { message?: string })?.message || "Couldn't create the player.";
+    } finally {
+      this._maBusy = false;
+      this.requestUpdate();
+    }
   }
 
   public setConfig(config: StatusCardConfig): void {
@@ -314,11 +338,16 @@ export class TedStatusCard extends LitElement implements LovelaceCard {
         music.state === "ok"
           ? `${music.matched ? "Auto-matched" : "Available"} · ${this._entityLabel(music.entity)}`
           : music.state === "unmatched"
-            ? "No Music Assistant player"
+            ? this._maError ?? "No Music Assistant player"
             : "none detected",
       hint:
         music.state === "ok" ? music.entity : music.state === "unmatched" ? music.base : undefined,
       level: music.state === "ok" ? "ok" : "warn",
+      // When a base speaker exists but no MA player matched, offer to create one.
+      action:
+        music.state === "unmatched"
+          ? { label: "Create player", onClick: () => void this._createMaPlayer(music.base) }
+          : undefined,
     });
 
     return rows;
@@ -363,6 +392,19 @@ export class TedStatusCard extends LitElement implements LovelaceCard {
           <ha-icon class="sc-row-icon" .icon=${r.icon}></ha-icon>
           <span class="sc-label">${r.label}</span>
           <span class="sc-value" title=${r.hint ?? nothing}>${r.value}</span>
+          ${r.action
+            ? html`<button
+                class="sc-action"
+                ?disabled=${this._maBusy}
+                title="Create a Music Assistant player for this device"
+                @click=${(e: Event) => {
+                  e.stopPropagation();
+                  r.action?.onClick();
+                }}
+              >
+                ${this._maBusy ? "Creating…" : r.action.label}
+              </button>`
+            : nothing}
           <ha-icon class="sc-status" .icon=${TedStatusCard._glyph(r.level)}></ha-icon>
         </div>
       `;
@@ -489,6 +531,23 @@ export class TedStatusCard extends LitElement implements LovelaceCard {
         flex: 0 0 auto;
         display: flex;
         align-items: center;
+      }
+      .sc-action {
+        flex: 0 0 auto;
+        font: inherit;
+        font-size: 0.82em;
+        line-height: 1;
+        padding: 5px 10px;
+        border-radius: 999px;
+        border: 1px solid var(--ted-style-divider, rgba(255, 255, 255, 0.28));
+        background: var(--ted-style-accent, var(--primary-color, #3b82f6));
+        color: #fff;
+        cursor: pointer;
+        white-space: nowrap;
+      }
+      .sc-action:disabled {
+        opacity: 0.6;
+        cursor: default;
       }
 
       .sc-lvl-ok .sc-status {

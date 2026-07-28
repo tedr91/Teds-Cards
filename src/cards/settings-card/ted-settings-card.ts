@@ -343,6 +343,10 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
   @state() private _addViewTitle = "";
   /** Which navbar custom-menu-item rows are expanded (by index). */
   @state() private _navMenuOpen = new Set<number>();
+  /** True while a "Create MA player" request is in flight. */
+  @state() private _maBusy = false;
+  /** Error from the last failed "Create MA player" attempt, if any. */
+  @state() private _maError: string | null = null;
   /** Shared audio element used to preview sounds. */
   private _soundAudio?: HTMLAudioElement;
   /** Watches the host width so the section tab strip can re-measure its overflow. */
@@ -723,12 +727,41 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
       >`;
     }
     if (res.state === "unmatched") {
-      return html`<span class="help"
-        >No Music Assistant player found for this device (nearest speaker:
-        <b>${this._entityLabel(res.base)}</b>).</span
-      >`;
+      return html`<div class="help">
+        No Music Assistant player found for this device (nearest speaker:
+        <b>${this._entityLabel(res.base)}</b>).
+        <button
+          class="link-btn"
+          ?disabled=${this._maBusy}
+          @click=${() => void this._createMaPlayer(res.base)}
+        >
+          <ha-icon .icon=${this._ui("add")}></ha-icon><span
+            >${this._maBusy ? "Creating…" : "Create MA player"}</span
+          >
+        </button>
+        ${this._maError ? html`<span class="help nmi-err">${this._maError}</span>` : nothing}
+      </div>`;
     }
     return html`<span class="help">No music player found for this device.</span>`;
+  }
+
+  /** Ask the backend to auto-create a Music Assistant player for this device's speaker. */
+  private async _createMaPlayer(entityId?: string): Promise<void> {
+    if (!this.hass || !entityId || this._maBusy) return;
+    this._maBusy = true;
+    this._maError = null;
+    this.requestUpdate();
+    try {
+      await this.hass.callWS({
+        type: "teds_dashboard_system/create_ma_player",
+        entity_id: entityId,
+      });
+    } catch (err) {
+      this._maError = (err as { message?: string })?.message || "Couldn't create the player.";
+    } finally {
+      this._maBusy = false;
+      this.requestUpdate();
+    }
   }
 
   /** The correct fallback hint for a media-player field key. */
@@ -3627,6 +3660,11 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
       .help {
         font-size: 0.78rem;
         color: var(--ted-style-muted);
+      }
+      .help.nmi-err {
+        display: block;
+        margin-top: 4px;
+        color: var(--error-color, #db4437);
       }
       .link-btn {
         align-self: flex-start;
