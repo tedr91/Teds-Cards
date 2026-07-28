@@ -4,6 +4,18 @@ import type { TedStyleTheme } from "../../shared/types";
 /** What each tab button shows in the strip. */
 export type TabHeaderMode = "both" | "icon" | "name";
 
+/** A HACS/custom-element dependency a tab needs in order to render its card. When the
+ *  element isn't registered, the tab shows a friendly "install this" messagebox instead
+ *  of Home Assistant's raw "Configuration error". */
+export interface TabRequirement {
+  /** Custom element tag that must be registered (the `custom:` prefix is optional). */
+  element: string;
+  /** Friendly plugin/card name shown in the messagebox. Defaults to the element tag. */
+  name?: string;
+  /** HACS repo / docs URL linked from the messagebox for installing the dependency. */
+  url?: string;
+}
+
 /** One tab in the tab card: a label/icon plus the child card it displays. */
 export interface TabConfig {
   /** Tab label shown in the tab strip. */
@@ -17,6 +29,9 @@ export interface TabConfig {
   slug?: string;
   /** The card rendered when this tab is active. */
   card?: LovelaceCardConfig;
+  /** Custom-element dependencies; a friendly messagebox replaces the card when any is
+   *  missing (and swaps back to the real card once the element registers). */
+  requires?: TabRequirement[];
 }
 
 /** Configuration for `ted-tab-card`. */

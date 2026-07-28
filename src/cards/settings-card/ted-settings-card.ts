@@ -19,6 +19,7 @@ import {
 import { resolveDeviceMediaPlayer } from "../../shared/device-id";
 import { resolveIconForSet, isIconSetAvailable, themedIcon } from "../../shared/icons";
 import { resolveMusicPlayer } from "../../shared/music-player";
+import { firstWeatherEntity } from "../../shared/status-items/model";
 import {
   fieldsByGroup,
   SETTINGS_DEFAULTS,
@@ -837,6 +838,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
         return html`<ha-entity-picker
           .hass=${this.hass}
           .value=${typeof value === "string" ? value : ""}
+          .placeholder=${this._entityDefaultPlaceholder(field)}
           .includeDomains=${includeEntities || !field.entityDomain ? undefined : [field.entityDomain]}
           .includeEntities=${includeEntities}
           .disabled=${disabled}
@@ -878,6 +880,26 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
           @change=${(e: Event) => onChange((e.target as HTMLInputElement).value)}
         />`;
     }
+  }
+
+  /** Placeholder for an entity field whose empty value resolves to a computed default
+   *  (shown muted in the picker): weather → first `weather.*`; system sounds player →
+   *  this device's media player; music player → the auto-matched Music Assistant player. */
+  private _entityDefaultPlaceholder(field: SettingField): string | undefined {
+    let id: string | undefined;
+    if (field.key === "weather_entity") {
+      id = firstWeatherEntity(this.hass);
+    } else if (field.key === "system_sound_player") {
+      id = this._deviceMediaPlayer();
+    } else if (field.key === "music_player") {
+      const res = resolveMusicPlayer(this.hass);
+      id = res.state === "ok" ? res.entity : undefined;
+    } else {
+      return undefined;
+    }
+    if (!id) return undefined;
+    const name = this.hass?.states[id]?.attributes?.friendly_name;
+    return `Default: ${name || id}`;
   }
 
   /** The actual sound a "default" media field resolves to (shown as its placeholder). */

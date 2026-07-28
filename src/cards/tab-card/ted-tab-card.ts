@@ -15,7 +15,7 @@ import {
   TAB_CARD_NAME,
   TAB_CARD_TYPE,
 } from "./const";
-import type { TabCardConfig, TabConfig, TabHeaderMode } from "./types";
+import type { TabCardConfig, TabConfig, TabHeaderMode, TabRequirement } from "./types";
 
 interface CardHelpers {
   createCardElement(config: LovelaceCardConfig): LovelaceCard;
@@ -77,6 +77,9 @@ export class TedTabCard extends LitElement implements LovelaceCard {
   /** Embedded child cards, keyed by tab index. */
   private _tabEls = new Map<number, TabEntry>();
   private _lastPropagatedHass?: HomeAssistant;
+  /** Required custom-element tags we're already awaiting (so a tab's real card swaps in
+   *  once its plugin registers), to avoid duplicate `whenDefined` watchers. */
+  private _watchedRequires = new Set<string>();
   /** Watches the host width so the tab strip can re-measure its overflow. */
   private _resizeObserver?: ResizeObserver;
 
@@ -171,25 +174,79 @@ export class TedTabCard extends LitElement implements LovelaceCard {
     this.requestUpdate();
   }
 
-  /** (Re)build the cached child cards, reusing any whose config is unchanged. */
+  /** (Re)build the cached child cards, reusing any whose config is unchanged. When a tab
+   *  declares `requires` and any of those custom elements isn't registered, a friendly
+   *  "install this plugin" messagebox is built in the card's place instead of Home
+   *  Assistant's raw "Configuration error". */
   private _buildTabElements(): void {
     if (!this._helpers || !this._config) return;
     const next = new Map<number, TabEntry>();
     (this._config.tabs ?? []).forEach((tab, idx) => {
       if (!tab.card) return;
-      const json = JSON.stringify(tab.card);
+      const missing = this._missingRequires(tab);
+      this._watchRequires(missing);
+      const cardCfg = missing.length ? this._requiresFallbackConfig(missing) : tab.card;
+      const json = JSON.stringify(cardCfg);
       const existing = this._tabEls.get(idx);
       if (existing && existing.json === json) {
         next.set(idx, existing);
         return;
       }
-      const el = this._helpers!.createCardElement(tab.card);
+      const el = this._helpers!.createCardElement(cardCfg);
       (el as unknown as { layout?: string }).layout = "grid";
       if (this.hass) el.hass = this.hass;
       next.set(idx, { el, json });
     });
     this._tabEls = next;
     this._lastPropagatedHass = this.hass;
+  }
+
+  /** Normalize a requirement's element tag (drop an optional `custom:` prefix). */
+  private _reqTag(r: TabRequirement): string {
+    return r.element.replace(/^custom:/, "").trim();
+  }
+
+  /** The tab's declared requirements whose custom element isn't registered yet. */
+  private _missingRequires(tab: TabConfig): TabRequirement[] {
+    if (typeof customElements === "undefined") return [];
+    return (tab.requires ?? []).filter((r) => {
+      const tag = this._reqTag(r);
+      return tag !== "" && !customElements.get(tag);
+    });
+  }
+
+  /** Await each missing element so the real card swaps in once its plugin registers. */
+  private _watchRequires(missing: TabRequirement[]): void {
+    if (typeof customElements === "undefined") return;
+    for (const r of missing) {
+      const tag = this._reqTag(r);
+      if (!tag || this._watchedRequires.has(tag)) continue;
+      this._watchedRequires.add(tag);
+      void customElements.whenDefined(tag).then(() => {
+        this._buildTabElements();
+        this.requestUpdate();
+      });
+    }
+  }
+
+  /** A `ted-messagebox-card` config prompting the user to install the missing plugin(s). */
+  private _requiresFallbackConfig(missing: TabRequirement[]): LovelaceCardConfig {
+    const names = missing.map((r) => r.name || this._reqTag(r));
+    const one = missing.length === 1 ? missing[0] : undefined;
+    return {
+      type: "custom:ted-messagebox-card",
+      theme: "ted-style",
+      severity: "warning",
+      icon: "mdi:puzzle-outline",
+      title: one
+        ? `${one.name || this._reqTag(one)} not installed`
+        : "Missing dashboard plugins",
+      message: one
+        ? `This tab needs the ${one.name || this._reqTag(one)} card. Install it via HACS, then refresh.`
+        : `This tab needs these HACS plugins: ${names.join(", ")}. Install them via HACS, then refresh.`,
+      docs_url: one?.url,
+      docs_label: one?.url ? "Install guide" : undefined,
+    };
   }
 
   private _propagateHass(): void {
