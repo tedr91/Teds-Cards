@@ -77,6 +77,16 @@ export function isMassPlayer(hass: HomeAssistant | undefined, id: string): boole
   return registry(hass)[id]?.platform === MASS_PLAYER_PLATFORM;
 }
 
+/** True when the Home Assistant `music_assistant` **integration** is loaded. The MA
+ *  *app/server* alone never exposes players as HA `media_player` entities — only the
+ *  integration does — so without it the resolver can never match a player. Used to give
+ *  a targeted "add the integration" hint instead of a bare "no player found". */
+export function isMassIntegrationLoaded(hass: HomeAssistant | undefined): boolean {
+  const comps = (hass as unknown as { config?: { components?: string[] } } | undefined)?.config
+    ?.components;
+  return Array.isArray(comps) && comps.includes("music_assistant");
+}
+
 /** All Music Assistant media_player entity ids. */
 function massPlayers(hass: HomeAssistant | undefined): string[] {
   const reg = registry(hass);

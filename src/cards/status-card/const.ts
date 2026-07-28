@@ -18,6 +18,8 @@ export const REQUIREMENT_LABELS: Record<string, string> = {
   layout_card: "Layout Card",
   card_mod: "Card-mod / UIX",
   custom_icons: "Custom Icons",
+  music_assistant: "Music Assistant integration",
+  mass_queue: "Music Assistant Queue (mass_queue)",
   daylight_calendar: "Daylight Calendar Card",
   weather: "Weather entity",
 };

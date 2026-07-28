@@ -6,7 +6,7 @@ import { tedCardThemeClass, tedStyleTheme } from "../../shared/theme";
 import { browserModId, resolveDeviceMediaPlayer, resolveDeviceName } from "../../shared/device-id";
 import { areaName, resolveDeviceArea } from "../../shared/device-area";
 import { themedIcon } from "../../shared/icons";
-import { resolveMusicPlayer, warmMassProviders } from "../../shared/music-player";
+import { resolveMusicPlayer, warmMassProviders, isMassIntegrationLoaded } from "../../shared/music-player";
 import { SettingsController, settingsStore } from "../../shared/settings";
 import {
   REQUIREMENT_LABELS,
@@ -331,24 +331,52 @@ export class TedStatusCard extends LitElement implements LovelaceCard {
 
     // Music & media player (the Music view target — the auto-matched MA player).
     const music = resolveMusicPlayer(this.hass);
-    rows.push({
-      icon: themedIcon("music"),
-      label: "Music and Media Player",
-      value:
-        music.state === "ok"
-          ? `${music.matched ? "Auto-matched" : "Available"} · ${this._entityLabel(music.entity)}`
-          : music.state === "unmatched"
+    const maLoaded = isMassIntegrationLoaded(this.hass);
+    if (music.state === "ok") {
+      rows.push({
+        icon: themedIcon("music"),
+        label: "Music and Media Player",
+        value: `${music.matched ? "Auto-matched" : "Available"} · ${this._entityLabel(music.entity)}`,
+        hint: music.entity,
+        level: "ok",
+      });
+    } else if (!maLoaded) {
+      // The MA app can be running, but without the HA integration no MA players are
+      // exposed as entities — point the user at installing the integration.
+      rows.push({
+        icon: themedIcon("music"),
+        label: "Music and Media Player",
+        value: "Music Assistant integration not set up",
+        level: "warn",
+        tip: {
+          title: "Music Assistant integration",
+          note:
+            "The Music Assistant app/server can be running, but the Home Assistant " +
+            "integration is what exposes MA players as media_player entities. Without it, " +
+            "the Music view has no player to use. Add it under Settings → Devices & Services.",
+          link: {
+            label: "Add the integration",
+            url: "https://my.home-assistant.io/redirect/config_flow_start?domain=music_assistant",
+          },
+        },
+      });
+    } else {
+      // Integration present but nothing matched this device — offer to create one.
+      rows.push({
+        icon: themedIcon("music"),
+        label: "Music and Media Player",
+        value:
+          music.state === "unmatched"
             ? this._maError ?? "No Music Assistant player"
             : "none detected",
-      hint:
-        music.state === "ok" ? music.entity : music.state === "unmatched" ? music.base : undefined,
-      level: music.state === "ok" ? "ok" : "warn",
-      // When a base speaker exists but no MA player matched, offer to create one.
-      action:
-        music.state === "unmatched"
-          ? { label: "Create player", onClick: () => void this._createMaPlayer(music.base) }
-          : undefined,
-    });
+        hint: music.state === "unmatched" ? music.base : undefined,
+        level: "warn",
+        action:
+          music.state === "unmatched"
+            ? { label: "Create player", onClick: () => void this._createMaPlayer(music.base) }
+            : undefined,
+      });
+    }
 
     return rows;
   }

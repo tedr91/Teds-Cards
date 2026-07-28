@@ -18,7 +18,7 @@ import {
 } from "../../shared/settings";
 import { resolveDeviceMediaPlayer } from "../../shared/device-id";
 import { resolveIconForSet, isIconSetAvailable } from "../../shared/icons";
-import { resolveMusicPlayer } from "../../shared/music-player";
+import { resolveMusicPlayer, isMassIntegrationLoaded } from "../../shared/music-player";
 import { firstWeatherEntity } from "../../shared/status-items/model";
 import {
   fieldsByGroup,
@@ -727,6 +727,13 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
       >`;
     }
     if (res.state === "unmatched") {
+      if (!isMassIntegrationLoaded(this.hass)) {
+        return html`<div class="help">
+          No Music Assistant player found — the Music Assistant <b>integration</b> isn't set
+          up in Home Assistant (the app/server alone doesn't expose players as entities). Add
+          it under Settings → Devices &amp; Services.
+        </div>`;
+      }
       return html`<div class="help">
         No Music Assistant player found for this device (nearest speaker:
         <b>${this._entityLabel(res.base)}</b>).
