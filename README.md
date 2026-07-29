@@ -942,6 +942,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.10
+
+- **No more Single-Image background flicker on navigation.** In Single Image wallpaper mode, switching views no longer re-fetches and re-paints the same image (which caused a one-off flicker, especially for uploaded images) — it now skips redundant repaints like Slideshow mode already did.
+
 ### v0.9.9
 
 - **“Enable music on this device” is admin-only.** Adding a Music Assistant player changes Music Assistant’s configuration, which only admins can do — so non-admin sessions now see an explanatory note instead of a button that would fail.

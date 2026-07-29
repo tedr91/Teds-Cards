@@ -94,6 +94,9 @@ class BackgroundEngine {
   private slideUrls: string[] = [];
   private slideIdx = 0;
   private slideSig?: string;
+  /** Signature of the last painted Single-Image state, so navigation (which re-runs
+   *  `apply()`) doesn't re-resolve + re-paint an unchanged image and flicker. */
+  private _imageSig?: string;
   private cycleMin?: number;
   private timer?: number;
   private lastDark?: boolean;
@@ -231,6 +234,14 @@ class BackgroundEngine {
     return ref;
   }
 
+  /** Signature of everything that affects a Single-Image paint (ref + layout + scrim
+   *  inputs + dark mode), used to skip redundant re-resolves/re-paints on navigation. */
+  private _imageSigOf(s: SettingsMap, ref: string | null): string {
+    const parts = BACKGROUND_KEYS.map((k) => `${k}=${String(s[k] ?? "")}`);
+    parts.push(`dark=${this._isDark()}`, `ref=${ref ?? ""}`);
+    return parts.join("|");
+  }
+
   apply(): void {
     const gen = ++this.gen;
     const s = this._effective();
@@ -243,6 +254,7 @@ class BackgroundEngine {
       this.slideUrls = [];
       if (mode !== "image") applyAttribution(null);
     }
+    if (mode !== "image") this._imageSig = undefined;
 
     if (mode === "theme") {
       this._setModeDiag(s, "HA Theme mode — no wallpaper painted, so no readability scrim.");
@@ -260,6 +272,11 @@ class BackgroundEngine {
     }
     if (mode === "image") {
       const ref = typeof s.background_image === "string" ? s.background_image : null;
+      // Skip re-resolving + re-painting an unchanged image (navigation re-runs
+      // `apply()`); a media-source ref re-resolves to a fresh URL and would flicker.
+      const sig = this._imageSigOf(s, ref);
+      if (sig === this._imageSig && this._lastUrl !== null) return;
+      this._imageSig = sig;
       void this._resolveRef(ref).then((url) => {
         if (gen === this.gen) void this._paint(s, url, gen);
       });
