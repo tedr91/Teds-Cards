@@ -20,7 +20,7 @@ import { navigationSignal } from "../../shared/navigation-signal";
 import type { SettingsValue } from "../../shared/settings-schema";
 import { AutoReturnController } from "../../shared/auto-return";
 import { HomeRedirectController } from "../../shared/home-redirect";
-import { KioskController, disableKiosk } from "../../shared/kiosk";
+import { KioskController, KioskNudgeController, disableKiosk } from "../../shared/kiosk";
 import { MusicAutoExposeController } from "../../shared/music-autoexpose";import { tedCardThemeClass, tedStyleTheme } from "../../shared/theme";
 import { renderStatusItem, type StatusItemContext } from "../../shared/status-items/render";
 import { StatusSliderController } from "../../shared/status-items/slider-controller";
@@ -188,6 +188,7 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
     new AutoReturnController(this, () => this._dashboardIntegration());
     new HomeRedirectController(this, () => this._dashboardIntegration());
     new KioskController(this, () => this._dashboardIntegration());
+    new KioskNudgeController(this, () => this._dashboardIntegration());
     new MusicAutoExposeController(this, () => this._dashboardIntegration());
   }
 

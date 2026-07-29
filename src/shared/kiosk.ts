@@ -15,8 +15,11 @@
  * shadow (and reclaiming the view-container's header padding).
  */
 import type { ReactiveController, ReactiveControllerHost } from "lit";
+import type { HomeAssistant } from "custom-card-helpers";
 
 import { settingsStore } from "./settings";
+import { isDeviceRegistered } from "./device-id";
+import { showMessageBox, dismissMessageBox } from "./messagebox-popup";
 
 /** Id of our injected header-hiding <style> in the hui-root shadow. */
 const KIOSK_HEADER_STYLE_ID = "ted-kiosk-hide-header";
@@ -117,4 +120,83 @@ export class KioskController implements ReactiveController {
 export function disableKiosk(): void {
   applied = false;
   setKiosk(false);
+}
+
+// ── Opt-in nudge ────────────────────────────────────────────────────────────
+// Kiosk mode is OFF by default. On a registered device that hasn't turned it on
+// (and hasn't dismissed the nudge forever), show a one-time toast offering to
+// enable it — with Enable / Not now (reappears next load) / Don't ask again.
+
+const NUDGE_KEY = "ted-kiosk-nudge";
+/** Show at most once per page load (survives navbar re-attach on navigation). */
+let nudgedThisLoad = false;
+
+type NudgeHost = ReactiveControllerHost & { hass?: HomeAssistant };
+
+function maybeNudge(hass: HomeAssistant | undefined): void {
+  if (nudgedThisLoad || !settingsStore.hasLoaded()) return;
+  const eff = settingsStore.effective();
+  if (eff.use_kiosk_mode === true) return; // already on
+  if (eff.kiosk_nudge_dismissed === true) return; // dismissed forever
+  // Only nudge a set-up (registered/named) device — a brand-new device is busy
+  // being asked to register first.
+  if (!isDeviceRegistered(hass)) return;
+  nudgedThisLoad = true;
+  showMessageBox({
+    key: NUDGE_KEY,
+    severity: "info",
+    icon: "mdi:television-shimmer",
+    title: "Try Kiosk mode",
+    message:
+      "Hide Home Assistant's sidebar and header for a cleaner, more immersive " +
+      "wall-panel look on this device. You can turn it off anytime in Settings.",
+    duration: 0,
+    actions: [
+      {
+        label: "Enable",
+        primary: true,
+        handler: () => {
+          settingsStore.setValue("device", "use_kiosk_mode", true);
+          dismissMessageBox(NUDGE_KEY);
+        },
+      },
+      { label: "Not now", handler: () => dismissMessageBox(NUDGE_KEY) },
+      {
+        label: "Don't ask again",
+        handler: () => {
+          settingsStore.setValue("device", "kiosk_nudge_dismissed", true);
+          dismissMessageBox(NUDGE_KEY);
+        },
+      },
+    ],
+  });
+}
+
+/**
+ * Offers Kiosk mode (once per page load) on a device where it's off. Attach to a
+ * long-lived host (the navbar); gated behind the Ted's Dashboard System integration.
+ */
+export class KioskNudgeController implements ReactiveController {
+  private _unsub?: () => void;
+
+  constructor(
+    private _host: NudgeHost,
+    private _enabled?: () => boolean,
+  ) {
+    _host.addController(this);
+  }
+
+  hostConnected(): void {
+    if (this._enabled && !this._enabled()) return;
+    maybeNudge(this._host.hass);
+    this._unsub = settingsStore.subscribe(() => {
+      if (this._enabled && !this._enabled()) return;
+      maybeNudge(this._host.hass);
+    });
+  }
+
+  hostDisconnected(): void {
+    this._unsub?.();
+    this._unsub = undefined;
+  }
 }

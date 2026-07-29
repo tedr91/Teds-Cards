@@ -942,6 +942,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.12
+
+- **Kiosk mode is now opt-in.** It no longer turns on by default; instead, a registered device shows a one-time prompt offering to enable it (with “Enable”, “Not now”, and “Don’t ask again”). You can still toggle it anytime in Settings.
+
 ### v0.9.11
 
 - **Kiosk mode now hides the Home Assistant header too.** HA's native kiosk only hides the sidebar; the top header/tab bar is now collapsed as well for a clean full-screen wall-panel look.
