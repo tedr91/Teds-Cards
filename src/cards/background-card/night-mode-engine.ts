@@ -17,6 +17,7 @@ import { SETTINGS_DEFAULTS, type SettingsMap, type SettingsValue } from "../../s
 import {
   brightnessToDim,
   isNight,
+  isNightBySun,
   nowMinutes,
   parseTimeToMinutes,
   resolveBrightnessEntity,
@@ -150,7 +151,13 @@ class NightModeEngine {
     const enabled = s.night_enabled !== false;
     const startM = parseTimeToMinutes(s.night_start) ?? DEFAULT_START;
     const endM = parseTimeToMinutes(s.night_end) ?? DEFAULT_END;
-    const wantNight = enabled && isNight(nowMinutes(), startM, endM);
+    // Sun-integration schedule (falls back to the manual window when sun.sun is absent).
+    const source = String(s.night_schedule_source ?? "manual");
+    const bySun =
+      source === "sun_setting_rising" || source === "sun_dusk_dawn"
+        ? isNightBySun(this.hass, source)
+        : null;
+    const wantNight = enabled && (bySun ?? isNight(nowMinutes(), startM, endM));
     const wasActive = this._getDay() !== null;
     const durMs = Math.max(0, Number(s.night_transition_seconds ?? 30)) * 1_000;
 

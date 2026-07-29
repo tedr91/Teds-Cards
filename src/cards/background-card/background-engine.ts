@@ -252,9 +252,13 @@ class BackgroundEngine {
       this._stopBingRefresh();
       this.slideSig = undefined;
       this.slideUrls = [];
-      if (mode !== "image") applyAttribution(null);
     }
     if (mode !== "image") this._imageSig = undefined;
+    // The top-left attribution icon belongs ONLY to the Bing slideshow album. Clear
+    // it for every other mode/album here — otherwise switching to an album whose list
+    // is empty (e.g. Favorites with no favorites yet) hits a paint early-return that
+    // never touches attribution, leaving the Bing icon stuck on screen.
+    if (!(mode === "slideshow" && s.background_album === "bing_pod")) applyAttribution(null);
 
     if (mode === "theme") {
       this._setModeDiag(s, "HA Theme mode — no wallpaper painted, so no readability scrim.");

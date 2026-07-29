@@ -29,6 +29,8 @@ export interface DeviceTypePreset {
   navbar_float: boolean;
   /** Default maximized state for content `ted-fullscreen-card`s on this device. */
   fullscreen_default: boolean;
+  /** Whether Automatic Night Mode is on for this device type (only nightstands). */
+  night_enabled: boolean;
 }
 
 /** The preset values written when each type is applied. */
@@ -40,6 +42,7 @@ export const DEVICE_TYPE_PRESETS: Record<DeviceType, DeviceTypePreset> = {
     navbar_size: 56,
     navbar_float: false,
     fullscreen_default: true,
+    night_enabled: true,
   },
   "tablet-landscape": {
     home_dashboard: "[root]/home-wallpanel-h",
@@ -48,6 +51,7 @@ export const DEVICE_TYPE_PRESETS: Record<DeviceType, DeviceTypePreset> = {
     navbar_size: 52,
     navbar_float: false,
     fullscreen_default: false,
+    night_enabled: false,
   },
   "tablet-portrait": {
     home_dashboard: "[root]/home-wallpanel-v",
@@ -56,6 +60,7 @@ export const DEVICE_TYPE_PRESETS: Record<DeviceType, DeviceTypePreset> = {
     navbar_size: 52,
     navbar_float: false,
     fullscreen_default: false,
+    night_enabled: false,
   },
   handheld: {
     home_dashboard: "[root]/home-handheld",
@@ -64,6 +69,7 @@ export const DEVICE_TYPE_PRESETS: Record<DeviceType, DeviceTypePreset> = {
     navbar_size: 56,
     navbar_float: true,
     fullscreen_default: true,
+    night_enabled: false,
   },
 };
 
@@ -92,15 +98,30 @@ export function asDeviceType(value: unknown): DeviceType | null {
  * Apply a device type at the DEVICE scope: store `device_type` and cascade each
  * preset value. Also clears the per-card `fullscreen_states` map so the new
  * `fullscreen_default` takes effect immediately (any prior manual maximize state
- * is discarded). Passing `null`/"" clears the `device_type` marker WITHOUT
- * touching the individual settings (they keep whatever the last type seeded).
+ * is discarded). Passing `null`/"" un-types the device: it clears the `device_type`
+ * marker AND the preset overrides it seeded, so the device returns to the untyped
+ * defaults (its home dashboard falls back to the Welcome view).
  */
 export function applyDeviceType(
   store: typeof settingsStore,
   type: DeviceType | null,
 ): void {
   if (!type) {
-    store.clearValue("device", "device_type");
+    // Un-type: clear the marker + every key a preset seeds, so the device inherits
+    // the defaults again (home_dashboard → the Welcome view).
+    for (const key of [
+      "device_type",
+      "home_dashboard",
+      "navbar_position",
+      "navbar_auto_hide",
+      "navbar_size",
+      "navbar_float",
+      "fullscreen_default",
+      "night_enabled",
+      FULLSCREEN_STATES_KEY,
+    ]) {
+      store.clearValue("device", key);
+    }
     return;
   }
   const preset = DEVICE_TYPE_PRESETS[type];
@@ -111,6 +132,7 @@ export function applyDeviceType(
   store.setValue("device", "navbar_size", preset.navbar_size);
   store.setValue("device", "navbar_float", preset.navbar_float);
   store.setValue("device", "fullscreen_default", preset.fullscreen_default);
+  store.setValue("device", "night_enabled", preset.night_enabled);
   // Discard any per-card maximized overrides so the new default is what shows.
   store.setValue("device", FULLSCREEN_STATES_KEY, {});
 }

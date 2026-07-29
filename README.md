@@ -942,6 +942,13 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.11
+
+- **Kiosk mode now hides the Home Assistant header too.** HA's native kiosk only hides the sidebar; the top header/tab bar is now collapsed as well for a clean full-screen wall-panel look.
+- **Automatic Night Mode is now off by default** and turns on automatically for a device set to the **Nightstand** type. Switching a device back to “not set” returns it to the Welcome view and clears its night-mode setting.
+- **Sun-based night schedule.** Night mode can now follow the Sun integration — **sunset→sunrise** or **dusk→dawn** — instead of fixed times (falls back to manual times when the Sun integration isn't available). The manual start/end fields only show when “Manual times” is selected.
+- **Backgrounds:** the Bing “Photo of the Day” attribution icon no longer lingers after switching the slideshow to another album.
+
 ### v0.9.10
 
 - **No more Single-Image background flicker on navigation.** In Single Image wallpaper mode, switching views no longer re-fetches and re-paints the same image (which caused a one-off flicker, especially for uploaded images) — it now skips redundant repaints like Slideshow mode already did.

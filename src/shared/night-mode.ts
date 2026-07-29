@@ -11,6 +11,7 @@ import { browserModId } from "./device-id";
 /** The sub-keys backing the "nightmode" composite setting (mirror `SETTINGS_DEFAULTS`). */
 export const NIGHTMODE_KEYS = [
   "night_enabled",
+  "night_schedule_source",
   "night_start",
   "night_end",
   "night_dim_brightness",
@@ -20,6 +21,10 @@ export const NIGHTMODE_KEYS = [
   "night_dark_mode",
   "night_brightness_entity",
 ] as const;
+
+/** How the night window is determined: fixed manual times, or the Sun integration
+ *  (actual sunset/sunrise, or civil dusk/dawn). */
+export type NightScheduleSource = "manual" | "sun_setting_rising" | "sun_dusk_dawn";
 
 /** Default background brightness at night (percent) → used if `night_dim_background` is unset. */
 export const NIGHT_BACKGROUND_DIM = 0.5;
@@ -56,6 +61,28 @@ export function isNight(now: number, start: number, end: number): boolean {
   if (start < end) return now >= start && now < end;
   // Overnight wrap: night is now >= start (evening) OR now < end (early morning).
   return now >= start || now < end;
+}
+
+/**
+ * True when it's currently night per the Sun integration (`sun.sun`), using the chosen
+ * event pair: actual sunset/sunrise (`sun_setting_rising`) or civil dusk/dawn
+ * (`sun_dusk_dawn`). Returns `null` when `sun.sun` (or the needed attributes) aren't
+ * available, so callers can fall back to the manual window.
+ *
+ * `sun.sun` exposes the NEXT occurrence of each event as an ISO datetime. When the next
+ * up-event (rising/dawn) comes BEFORE the next down-event (setting/dusk), the sun is
+ * currently below the horizon → it's night.
+ */
+export function isNightBySun(hass: unknown, source: NightScheduleSource): boolean | null {
+  const states = (hass as { states?: Record<string, { attributes?: Record<string, unknown> }> } | undefined)?.states;
+  const attrs = states?.["sun.sun"]?.attributes;
+  if (!attrs) return null;
+  const [up, down] =
+    source === "sun_dusk_dawn" ? ["next_dawn", "next_dusk"] : ["next_rising", "next_setting"];
+  const upT = Date.parse(String(attrs[up] ?? ""));
+  const downT = Date.parse(String(attrs[down] ?? ""));
+  if (!Number.isFinite(upT) || !Number.isFinite(downT)) return null;
+  return upT < downT;
 }
 
 /** Minimal registry shapes present on `hass` at runtime (not on the typed HA). */

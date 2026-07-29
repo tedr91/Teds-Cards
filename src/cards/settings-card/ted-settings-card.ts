@@ -197,6 +197,21 @@ const LAUNCHER_SETTING_KEYS = [
 
 /** ha-form schema pieces for the Automatic Night Mode composite. */
 const NIGHT_ENABLED_SCHEMA = [{ name: "night_enabled", selector: { boolean: {} } }];
+const NIGHT_SOURCE_SCHEMA = [
+  {
+    name: "night_schedule_source",
+    selector: {
+      select: {
+        mode: "dropdown",
+        options: [
+          { value: "manual", label: "Manual times" },
+          { value: "sun_setting_rising", label: "Sun: sunset → sunrise" },
+          { value: "sun_dusk_dawn", label: "Sun: dusk → dawn" },
+        ],
+      },
+    },
+  },
+];
 const NIGHT_TIME_SCHEMA = [
   { name: "night_start", selector: { time: {} } },
   { name: "night_end", selector: { time: {} } },
@@ -217,6 +232,7 @@ const ANNOUNCE_ICON_SCHEMA = [{ name: "icon", selector: { icon: {} } }];
 
 const NIGHT_LABELS: Record<string, string> = {
   night_enabled: "Enabled",
+  night_schedule_source: "Schedule",
   night_start: "Night start time",
   night_end: "Night end time",
   night_dim_brightness: "Dim brightness (screen)",
@@ -228,6 +244,8 @@ const NIGHT_LABELS: Record<string, string> = {
 };
 
 const NIGHT_HELPERS: Record<string, string> = {
+  night_schedule_source:
+    "When night mode turns on/off. “Sun” options follow the Sun integration (sunset/sunrise or civil dusk/dawn) and fall back to the manual times if it isn't available.",
   night_dim_brightness: "Target brightness level for the entire screen",
   night_dim_background: "Independant target brightness level for the background; stacks with screen brightness",
   night_dark_mode:
@@ -2668,15 +2686,26 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
             ? html`
                 <ha-form
                   .hass=${this.hass}
-                  .data=${{
-                    night_start: String(val("night_start") ?? "21:00:00"),
-                    night_end: String(val("night_end") ?? "07:00:00"),
-                  }}
-                  .schema=${NIGHT_TIME_SCHEMA}
+                  .data=${{ night_schedule_source: String(val("night_schedule_source") ?? "manual") }}
+                  .schema=${NIGHT_SOURCE_SCHEMA}
                   .disabled=${disabled}
                   .computeLabel=${this._nightLabel}
+                  .computeHelper=${this._nightHelper}
                   @value-changed=${(ev: CustomEvent) => this._onNightModeChanged(ev, scope)}
                 ></ha-form>
+                ${String(val("night_schedule_source") ?? "manual") === "manual"
+                  ? html`<ha-form
+                      .hass=${this.hass}
+                      .data=${{
+                        night_start: String(val("night_start") ?? "21:00:00"),
+                        night_end: String(val("night_end") ?? "07:00:00"),
+                      }}
+                      .schema=${NIGHT_TIME_SCHEMA}
+                      .disabled=${disabled}
+                      .computeLabel=${this._nightLabel}
+                      @value-changed=${(ev: CustomEvent) => this._onNightModeChanged(ev, scope)}
+                    ></ha-form>`
+                  : nothing}
                 <ha-form
                   .hass=${this.hass}
                   .data=${{
