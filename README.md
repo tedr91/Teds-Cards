@@ -942,6 +942,11 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.8
+
+- **Registering also syncs your Browser ID to the login session**, so the device's id (and its name/area) survive cleared local storage.
+- **“Update Name / Area” is admin-only.** Non-admin users now see a clear note that renaming a device or changing its area can only be done by an administrator, instead of a button that bounced back to the home dashboard.
+
 ### v0.9.7
 
 - **One-tap device registration.** When a device isn't registered with Browser Mod (so it has no name or area), the welcome page now shows a helper you can tap to register it right there — no trip to the Browser Mod page. The status card’s “Device Name / Area” and “Browser Mod” rows also open a small popup: register the device when it’s unregistered, or jump to its name/area settings when it is.

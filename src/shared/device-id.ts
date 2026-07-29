@@ -134,6 +134,9 @@ export function registerBrowserMod(hass: unknown): boolean {
   if (!bid || typeof conn?.sendMessage !== "function") return false;
   try {
     conn.sendMessage({ type: "browser_mod/register", browserID: bid });
+    // Also sync this Browser ID to the current login session so it survives cleared
+    // local storage (mirrors Browser Mod's "Sync Browser ID to login session").
+    conn.sendMessage({ type: "browser_mod/store_session", browserID: bid });
     return true;
   } catch {
     return false;

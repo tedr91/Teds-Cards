@@ -202,28 +202,37 @@ export class TedStatusCard extends LitElement implements LovelaceCard {
   /** Popup for the Device Name/Area + Browser Mod rows: register when this browser
    *  isn't set up yet, otherwise jump to its name/area settings. */
   private _deviceRowTip(): RowTip {
-    return isDeviceRegistered(this.hass)
-      ? {
-          title: "Device name & area",
-          note: "Rename this device or change its area in Home Assistant.",
-          action: {
-            label: "Update Name / Area",
-            icon: "mdi:pencil-outline",
-            onClick: () => this._openDeviceSettings(),
-          },
-        }
-      : {
-          title: "Device not registered",
-          note:
-            "This browser isn't registered with Browser Mod, so it has no name or area. " +
-            "Register it to unlock per-device settings, area-scoped alarms and notifications, " +
-            "and the right home layout.",
-          action: {
-            label: "Register this device with Browser Mod",
-            icon: "mdi:web",
-            onClick: () => this._registerDevice(),
-          },
-        };
+    if (!isDeviceRegistered(this.hass)) {
+      return {
+        title: "Device not registered",
+        note:
+          "This browser isn't registered with Browser Mod, so it has no name or area. " +
+          "Register it to unlock per-device settings, area-scoped alarms and notifications, " +
+          "and the right home layout.",
+        action: {
+          label: "Register this device with Browser Mod",
+          icon: "mdi:web",
+          onClick: () => this._registerDevice(),
+        },
+      };
+    }
+    // Renaming a device / changing its area happens in Settings → Devices, which is
+    // admin-only — so offer the action to admins and explain the limitation to others.
+    if (!this.hass?.user?.is_admin) {
+      return {
+        title: "Device name & area",
+        note: "Renaming this device or changing its area can only be done by an administrator.",
+      };
+    }
+    return {
+      title: "Device name & area",
+      note: "Rename this device or change its area in Home Assistant.",
+      action: {
+        label: "Update Name / Area",
+        icon: "mdi:pencil-outline",
+        onClick: () => this._openDeviceSettings(),
+      },
+    };
   }
 
   public setConfig(config: StatusCardConfig): void {
