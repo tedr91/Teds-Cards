@@ -1,4 +1,5 @@
 import { NAMESPACE } from "../../shared/const";
+import { mdiNameKnown } from "../../shared/mdi-names";
 
 export const CALENDAR_CARD_TYPE = `${NAMESPACE}-calendar-card`;
 export const CALENDAR_CARD_EDITOR_TYPE = `${CALENDAR_CARD_TYPE}-editor`;
@@ -82,9 +83,14 @@ export function mdiIconFor(icon: string | null | undefined): string {
   const trimmed = typeof icon === "string" ? icon.trim() : "";
   if (!trimmed) return MDI_FALLBACK_ICON;
   if (trimmed.toLowerCase().startsWith("mdi:")) return trimmed;
-  // Non-MDI (cbi:, si:, phu:, mdil:, …) — keyword-match on the slug after the prefix.
+  // Non-MDI (cbi:, si:, phu:, mdil:, fluent-emoji:, …) — keyword-match on the slug
+  // after the prefix.
   const slug = (trimmed.includes(":") ? trimmed.slice(trimmed.indexOf(":") + 1) : trimmed).toLowerCase();
+  // 1) explicit keyword overrides win (map a family of names onto a chosen glyph).
   for (const [re, mdi] of NON_MDI_KEYWORD_MAP) if (re.test(slug)) return mdi;
+  // 2) default: if the slug is itself a real MDI icon name, use it directly
+  //    (e.g. fluent-emoji:party-popper → mdi:party-popper) — no map entry needed.
+  if (mdiNameKnown(slug)) return `mdi:${slug}`;
   return MDI_FALLBACK_ICON;
 }
 

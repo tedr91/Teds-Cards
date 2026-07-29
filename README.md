@@ -942,6 +942,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.16
+
+- **Calendar icons resolve smarter.** A calendar whose icon is a non-MDI glyph (e.g. `fluent-emoji:party-popper`) now automatically uses the matching `mdi:` icon when one exists — so it shows a real glyph instead of a generic calendar. (The name list is served locally by Ted's Dashboard System; no internet needed.)
+
 ### v0.9.15
 
 - **Consistent empty states.** The Camera and Photo Viewer cards now show the same clean, centered message (with a Settings button) as the Climate, Music, and Calendar cards when nothing's configured yet — instead of a big opaque panel.

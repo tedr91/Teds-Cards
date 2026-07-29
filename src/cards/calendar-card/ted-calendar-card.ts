@@ -12,6 +12,7 @@ import { themedIcon } from "../../shared/icons";
 import { appearanceStyle, cssColor, fadeColor } from "../../shared/appearance";
 import { registerCustomCard } from "../../shared/register-card";
 import { SettingsController, settingsStore } from "../../shared/settings";
+import { ensureMdiNames } from "../../shared/mdi-names";
 import {
   CALENDAR_CARD_DESCRIPTION,
   CALENDAR_CARD_EDITOR_TYPE,
@@ -100,6 +101,9 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
   public connectedCallback(): void {
     super.connectedCallback();
     void this._loadHelpers();
+    // Load the MDI name list once (locally served, cached) so a non-MDI calendar
+    // icon whose slug is a real MDI name auto-resolves; re-render when it's ready.
+    void ensureMdiNames().then(() => this.requestUpdate());
     // If the dependency registers after first paint (lazy HACS resource), re-render
     // so we swap the missing-dependency message for the real calendar.
     if (typeof customElements !== "undefined" && !customElements.get(DAYLIGHT_CARD_TAG)) {
