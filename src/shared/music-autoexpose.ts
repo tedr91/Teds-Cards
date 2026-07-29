@@ -72,9 +72,10 @@ export class MusicAutoExposeController implements ReactiveController {
     if (!settingsStore.registry()[resolveDeviceId()]) return;
     // Per-device opt-out (default on).
     if (settingsStore.effective().music_auto_expose_device === false) return;
-    // Run once per device — terminal states block auto-retry (manual "Try again" recovers).
+    // Skip only when already set up. A prior failure / needs-token still auto-retries on
+    // the next page load (once), so a fixed setup recovers without the user clicking.
     const state = settingsStore.deviceSettings().music_autoexpose_state;
-    if (state === "done" || state === "failed" || state === "needs_token") return;
+    if (state === "done") return;
 
     const res = resolveMusicPlayer(hass);
     if (res.state === "ok") {
@@ -93,6 +94,9 @@ export class MusicAutoExposeController implements ReactiveController {
   private async _run(hass: HomeAssistant, base: string): Promise<void> {
     this._running = true;
     attemptedThisLoad = true;
+    // Only notify on the FIRST failure, so repeated silent auto-retries don't spam.
+    const prev = settingsStore.deviceSettings().music_autoexpose_state;
+    const firstFailure = prev !== "failed" && prev !== "needs_token";
     // Persist "pending" so the status card can show an in-progress badge (both cards read
     // the shared settings store).
     settingsStore.setValue("device", "music_autoexpose_state", "pending");
@@ -105,24 +109,25 @@ export class MusicAutoExposeController implements ReactiveController {
       const message = (err as { message?: string })?.message ?? "Unknown error";
       this._log(`auto-expose failed (${code ?? "no-code"}): ${message}`, true);
       if (code === "needs_admin_token") {
-        // No MA admin token configured — record it (so we don't retry every load) and post
-        // a persistent, reviewable notification with the two ways to fix it.
+        // No MA admin token + non-add-on setup. Record it and (first time only) post a
+        // persistent, reviewable notification with the two ways to fix it.
         settingsStore.setValue("device", "music_autoexpose_state", "needs_token");
-        this._notify(
-          hass,
-          "warning",
-          "Set up music on this device",
-          "Music Assistant only lets an admin add players. To make this device a Music " +
-            "Assistant speaker automatically, paste a Music Assistant admin token in " +
-            "Settings → Devices & Services → Ted's Dashboard System → Configure. Or add it " +
-            "yourself in Music Assistant → Settings → Providers → Home Assistant Players.",
-        );
+        if (firstFailure)
+          this._notify(
+            hass,
+            "warning",
+            "Set up music on this device",
+            "Music Assistant only lets an admin add players. To make this device a Music " +
+              "Assistant speaker automatically, paste a Music Assistant admin token in " +
+              "Settings → Devices & Services → Ted's Dashboard System → Configure. Or add it " +
+              "yourself in Music Assistant → Settings → Providers → Home Assistant Players.",
+          );
       } else if (code === "needs_hass_setup") {
         settingsStore.setValue("device", "music_autoexpose_state", "needs_token");
-        this._notify(hass, "warning", "Set up music on this device", message);
+        if (firstFailure) this._notify(hass, "warning", "Set up music on this device", message);
       } else {
         settingsStore.setValue("device", "music_autoexpose_state", "failed");
-        this._notify(hass, "danger", "Music setup didn't finish", message);
+        if (firstFailure) this._notify(hass, "danger", "Music setup didn't finish", message);
       }
       this._running = false;
       this._host.requestUpdate();

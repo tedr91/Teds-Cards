@@ -942,6 +942,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.5
+
+- **Music setup runs from the start.** A device now sets itself up as a Music Assistant player proactively on load — including recovering a device that failed before — so you no longer see a setup prompt or have to click "Try again" on a device that can finish automatically.
+
 ### v0.9.4
 
 - **Clearer music-setup guidance.** The status card now shows a short, scannable state ("Music Assistant setup needed") instead of a long, truncated message, and the full step-by-step guidance arrives as a persistent Ted notification you can read in the notification center.
