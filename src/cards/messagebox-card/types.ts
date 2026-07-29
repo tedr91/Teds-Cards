@@ -68,9 +68,12 @@ export interface MessageBoxCardConfig extends LovelaceCardConfig {
   dismiss_key?: string;
 
   /** Standard visibility conditions (same engine as the Navbar Card): `state`,
-   *  `numeric_state`, `screen` (media query), `user`, `card`, and
-   *  `and`/`or`/`not`. Top-level conditions are AND-ed; omit to always show. */
-  visibility?: Condition[];
+   *  `numeric_state`, `screen` (media query), `user`, `card`, `device`, and
+   *  `and`/`or`/`not`. Top-level conditions are AND-ed; omit to always show.
+   *  NOTE: intentionally NOT named `visibility` — Home Assistant's `hui-card`
+   *  reserves `visibility:` and would evaluate it with ITS engine (which doesn't
+   *  understand `device`/`card`) before this card renders, hiding the box. */
+  visible_when?: Condition[];
   actions?: MessageBoxAction[];
 
   // Visual overrides

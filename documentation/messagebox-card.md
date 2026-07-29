@@ -87,16 +87,23 @@ Dismissal is **CSS-safe** (no inline scripts). Flags are stored under the
 
 The card is hidden when either flag for its `dismiss_key` is set.
 
-### Visibility conditions — `visibility`
+### Visibility conditions — `visible_when`
 
 Optional list of standard visibility conditions — the **same engine used by the
 Navbar Card** (a superset of Home Assistant's native card `visibility:`). Omit
-`visibility` to always show. Top-level conditions are **AND-ed** (every one must
+`visible_when` to always show. Top-level conditions are **AND-ed** (every one must
 pass); use an `or` / `not` condition to combine them differently.
+
+> **Why `visible_when` and not `visibility`?** Home Assistant reserves the
+> `visibility:` key and evaluates it with its own engine *before* the card
+> renders — which doesn't understand this card's extra `device` / `card`
+> conditions and would hide the box. Using `visible_when` hands full control to
+> this card's engine.
 
 | `condition` | Keys | Shows the card when… |
 | --- | --- | --- |
 | `screen` | `media_query` | The CSS media query matches (e.g. `(max-width: 600px)`, `(orientation: portrait)`). |
+| `device` | `registered` (`true` / `false`) | This device is registered with Browser Mod (`true`) or is not (`false`). |
 | `card` | `registered` / `not_registered` (string or list) | `not_registered` passes when any listed custom card type is **not** registered (warn about a missing dependency); `registered` passes only when all are present. |
 | `state` | `entity`, `attribute`, `state` / `state_not` | The entity's state (or attribute) matches / does not match. |
 | `numeric_state` | `entity`, `above`, `below` | The entity's numeric value is within range. |
@@ -108,7 +115,7 @@ type: custom:ted-messagebox-card
 severity: warning
 title: Missing dependency
 message: Install the Mushroom cards to use this view.
-visibility:
+visible_when:
   - condition: card
     not_registered:
       - custom:mushroom-template-card
@@ -118,7 +125,7 @@ visibility:
 type: custom:ted-messagebox-card
 severity: info
 message: Guest mode is active.
-visibility:
+visible_when:
   - condition: state
     entity: input_boolean.guest_mode
     state: "on"
@@ -183,7 +190,7 @@ actions:
 ## Notes
 
 - The visual editor exposes all of the above (severity, display, dismiss key,
-  `visibility`, and an actions list builder).
+  `visible_when`, and an actions list builder).
 - Because dismissal state is per-browser, a `dismiss_key` banner dismissed on one
   device still shows on others — this is intentional (each screen decides for
   itself). For cross-device, server-backed messages use the

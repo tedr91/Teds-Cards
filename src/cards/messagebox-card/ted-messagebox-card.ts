@@ -30,8 +30,10 @@ import type { MessageBoxAction, MessageBoxCardConfig } from "./types";
  *
  * Dismissal is CSS-safe (no inline scripts): `dismiss` writes a persistent
  * flag, `dismiss-session` a per-session flag, both keyed by `dismiss_key`.
- * Optional `visibility` conditions (the shared engine: `screen`, `card`,
- * `state`, …) gate whether the card is shown.
+ * Optional `visible_when` conditions (the shared engine: `screen`, `card`,
+ * `state`, `device`, …) gate whether the card is shown. (Named `visible_when`
+ * rather than `visibility` so HA's native `hui-card` visibility doesn't clobber
+ * our custom conditions.)
  */
 @customElement(MESSAGEBOX_CARD_TYPE)
 export class TedMessageBoxCard extends LitElement implements LovelaceCard {
@@ -86,7 +88,7 @@ export class TedMessageBoxCard extends LitElement implements LovelaceCard {
       !this._config ||
       this._dismissed ||
       this._isDismissed() ||
-      !isVisible(undefined, this._config.visibility, this.hass)
+      !isVisible(undefined, this._config.visible_when, this.hass)
     );
   }
 

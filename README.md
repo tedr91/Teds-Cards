@@ -942,6 +942,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.14
+
+- **Fixed: Welcome-page setup tips reappear.** The “better layout for this screen” suggestions and the “register this device” prompt were being hidden by Home Assistant's built-in card visibility (it doesn't understand the card's device/screen conditions). Ted's Message Box now uses its own `visible_when` key instead of `visibility`, so those tips show again.
+
 ### v0.9.13
 
 - **Kiosk-mode prompt is tidier.** The one-time “Try Kiosk mode” nudge drops its redundant “Dismiss” button (“Not now” already does that) and its text now points you to Settings for Ted's Dashboard System to turn it on/off.
