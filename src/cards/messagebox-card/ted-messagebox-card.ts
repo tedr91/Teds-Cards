@@ -11,6 +11,7 @@ import {
 import { registerCustomCard } from "../../shared/register-card";
 import { tedCardThemeClass, tedStyleTheme } from "../../shared/theme";
 import { isVisible } from "../../shared/conditions";
+import { registerBrowserMod } from "../../shared/device-id";
 import { settingsStore } from "../../shared/settings";
 import { applyDeviceType, asDeviceType } from "../../shared/device-types";
 import {
@@ -150,6 +151,14 @@ export class TedMessageBoxCard extends LitElement implements LovelaceCard {
         settingsStore.setHass(this.hass as never);
         applyDeviceType(settingsStore, asDeviceType(a.device_type));
         if (a.navigation_path) {
+          window.history.pushState(null, "", a.navigation_path);
+          window.dispatchEvent(new CustomEvent("location-changed", { bubbles: true, composed: true }));
+        }
+        break;
+      case "register-device":
+        // Register this browser with Browser Mod directly; fall back to opening the
+        // Browser Mod panel only when a direct register isn't possible.
+        if (!registerBrowserMod(this.hass) && a.navigation_path) {
           window.history.pushState(null, "", a.navigation_path);
           window.dispatchEvent(new CustomEvent("location-changed", { bubbles: true, composed: true }));
         }

@@ -942,6 +942,11 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.7
+
+- **One-tap device registration.** When a device isn't registered with Browser Mod (so it has no name or area), the welcome page now shows a helper you can tap to register it right there — no trip to the Browser Mod page. The status card’s “Device Name / Area” and “Browser Mod” rows also open a small popup: register the device when it’s unregistered, or jump to its name/area settings when it is.
+- **Layout tips only when they apply.** The “A better layout for this screen” suggestions now appear only once the device is registered, so an unregistered device isn’t nudged prematurely.
+
 ### v0.9.6
 
 - **Alarm & timer navbar icons no longer go blank.** The alarm and timer status items in the navbar could show just their count badge with a missing icon; they now always render.

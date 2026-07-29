@@ -1,5 +1,7 @@
 import type { HomeAssistant } from "custom-card-helpers";
 
+import { isDeviceRegistered } from "./device-id";
+
 /**
  * Visibility conditions for nav items. A superset of Home Assistant's card
  * `visibility:` conditions (so familiar syntax works).
@@ -12,6 +14,7 @@ export type Condition =
   | ScreenCondition
   | UserCondition
   | CardCondition
+  | DeviceCondition
   | AndCondition
   | OrCondition
   | NotCondition
@@ -50,6 +53,13 @@ export interface CardCondition {
   registered?: string | string[];
   /** Pass when any listed custom card type is NOT registered. */
   not_registered?: string | string[];
+}
+
+/** Condition evaluated against this device's Browser Mod registration state. */
+export interface DeviceCondition {
+  condition: "device";
+  /** Pass when this device is registered/named (`true`) or is NOT (`false`). */
+  registered?: boolean;
 }
 
 export interface AndCondition {
@@ -128,6 +138,11 @@ function checkCard(c: CardCondition): boolean {
   return true;
 }
 
+function checkDevice(c: DeviceCondition, hass?: HomeAssistant): boolean {
+  const registered = isDeviceRegistered(hass);
+  return c.registered === false ? !registered : registered;
+}
+
 function checkOne(c: Condition, hass?: HomeAssistant): boolean {
   switch (c.condition) {
     case "state":
@@ -140,6 +155,8 @@ function checkOne(c: Condition, hass?: HomeAssistant): boolean {
       return checkUser(c, hass);
     case "card":
       return checkCard(c);
+    case "device":
+      return checkDevice(c, hass);
     case "and":
       return (c.conditions ?? []).every((x) => checkOne(x, hass));
     case "or":

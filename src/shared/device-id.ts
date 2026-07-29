@@ -104,3 +104,38 @@ export function resolveDeviceName(hass: unknown): string | undefined {
   }
   return undefined;
 }
+
+/** The HA device-registry id of the browser_mod device for *this* client, or
+ *  undefined when this browser hasn't been registered with Browser Mod. */
+export function browserModDeviceId(hass: unknown): string | undefined {
+  const h = hass as RegistryHass | undefined;
+  const bid = browserModId();
+  if (!bid || !h?.devices) return undefined;
+  for (const [id, dev] of Object.entries(h.devices)) {
+    if (dev?.identifiers?.some((i) => i[0] === "browser_mod" && i[1] === bid)) return id;
+  }
+  return undefined;
+}
+
+/** True once this browser is registered with Browser Mod (has a device entry) or
+ *  otherwise has a resolvable device name — i.e. it's "set up" enough for TDS to
+ *  give it a name + area. */
+export function isDeviceRegistered(hass: unknown): boolean {
+  return !!browserModDeviceId(hass) || !!resolveDeviceName(hass);
+}
+
+/** Register THIS browser with Browser Mod directly (creates its device so it can
+ *  be named + given an area), via Browser Mod's `browser_mod/register` websocket
+ *  command. Returns false when it can't be attempted (no browser id / connection),
+ *  so callers can fall back to opening the Browser Mod panel. */
+export function registerBrowserMod(hass: unknown): boolean {
+  const bid = browserModId();
+  const conn = (hass as { connection?: { sendMessage?: (m: unknown) => void } } | undefined)?.connection;
+  if (!bid || typeof conn?.sendMessage !== "function") return false;
+  try {
+    conn.sendMessage({ type: "browser_mod/register", browserID: bid });
+    return true;
+  } catch {
+    return false;
+  }
+}

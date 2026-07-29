@@ -3,7 +3,7 @@ import { customElement, property, state } from "lit/decorators.js";
 import { type HomeAssistant, type LovelaceCard } from "custom-card-helpers";
 
 import { tedCardThemeClass, tedStyleTheme } from "../../shared/theme";
-import { browserModId, resolveDeviceMediaPlayer, resolveDeviceName } from "../../shared/device-id";
+import { browserModId, browserModDeviceId, isDeviceRegistered, registerBrowserMod, resolveDeviceMediaPlayer, resolveDeviceName } from "../../shared/device-id";
 import { areaName, resolveDeviceArea } from "../../shared/device-area";
 import { themedIcon } from "../../shared/icons";
 import { resolveMusicPlayer, warmMassProviders, isMassIntegrationLoaded } from "../../shared/music-player";
@@ -44,6 +44,8 @@ interface RowTip {
   items?: DetailItem[];
   note?: string;
   link?: { label: string; url: string };
+  /** Optional action button rendered inside the popup. */
+  action?: { label: string; icon?: string; onClick: () => void };
 }
 
 interface StatusRow {
@@ -166,6 +168,64 @@ export class TedStatusCard extends LitElement implements LovelaceCard {
     void this.hass?.callService?.("teds_dashboard_system", "notify", data);
   }
 
+  /** Navigate the Home Assistant UI to a panel/config path. */
+  private _navigate(path: string): void {
+    this._openTip = null;
+    window.history.pushState(null, "", path);
+    window.dispatchEvent(new CustomEvent("location-changed", { bubbles: true, composed: true }));
+  }
+
+  /** Register this browser with Browser Mod directly (no navigation); falls back
+   *  to opening the Browser Mod panel if a direct register isn't possible. */
+  private _registerDevice(): void {
+    this._openTip = null;
+    if (registerBrowserMod(this.hass)) {
+      this._notify(
+        "success",
+        "Registering this device",
+        "This device is being registered with Browser Mod. It may take a moment to " +
+          "appear with a name and area \u2014 then you can rename it or set its area.",
+      );
+      // Nudge a re-render so the row flips to "Registered" once the device lands.
+      window.setTimeout(() => this.requestUpdate(), 1500);
+    } else {
+      this._navigate("/browser-mod");
+    }
+  }
+
+  /** Open this device's page (rename + area) — falls back to the integration. */
+  private _openDeviceSettings(): void {
+    const id = browserModDeviceId(this.hass);
+    this._navigate(id ? `/config/devices/device/${id}` : "/config/integrations/integration/browser_mod");
+  }
+
+  /** Popup for the Device Name/Area + Browser Mod rows: register when this browser
+   *  isn't set up yet, otherwise jump to its name/area settings. */
+  private _deviceRowTip(): RowTip {
+    return isDeviceRegistered(this.hass)
+      ? {
+          title: "Device name & area",
+          note: "Rename this device or change its area in Home Assistant.",
+          action: {
+            label: "Update Name / Area",
+            icon: "mdi:pencil-outline",
+            onClick: () => this._openDeviceSettings(),
+          },
+        }
+      : {
+          title: "Device not registered",
+          note:
+            "This browser isn't registered with Browser Mod, so it has no name or area. " +
+            "Register it to unlock per-device settings, area-scoped alarms and notifications, " +
+            "and the right home layout.",
+          action: {
+            label: "Register this device with Browser Mod",
+            icon: "mdi:web",
+            onClick: () => this._registerDevice(),
+          },
+        };
+  }
+
   public setConfig(config: StatusCardConfig): void {
     if (!config) throw new Error("Invalid configuration");
     this._config = { ...config };
@@ -275,6 +335,7 @@ export class TedStatusCard extends LitElement implements LovelaceCard {
       value: `${devName || "(unnamed)"} / ${areaRes.area ? areaLabel : "no area"}`,
       hint: devAreaHint,
       level: devName && areaRes.area ? "ok" : "warn",
+      tip: this._deviceRowTip(),
     });
 
     // Ted's Backend connection + version (top of the list — it's the funnel that
@@ -301,9 +362,9 @@ export class TedStatusCard extends LitElement implements LovelaceCard {
     const bid = browserModId();
     const webIcon = themedIcon("web");
     if (bmInstalled && bid && this._browserRegistered(bid)) {
-      rows.push({ icon: webIcon, label: "Browser Mod", value: `Registered · ${bid}`, level: "ok" });
+      rows.push({ icon: webIcon, label: "Browser Mod", value: `Registered · ${bid}`, level: "ok", tip: this._deviceRowTip() });
     } else if (bmInstalled && bid) {
-      rows.push({ icon: webIcon, label: "Browser Mod", value: `Not registered · ${bid}`, level: "warn" });
+      rows.push({ icon: webIcon, label: "Browser Mod", value: `Not registered · ${bid}`, level: "warn", tip: this._deviceRowTip() });
     } else if (bmInstalled) {
       rows.push({ icon: webIcon, label: "Browser Mod", value: "Installed, no browser id", level: "warn" });
     } else if (attrs?.browser_mod === "setup") {
@@ -532,6 +593,18 @@ export class TedStatusCard extends LitElement implements LovelaceCard {
             </div>`
           : nothing}
         ${tip.note ? html`<div class="sc-tip-note">${tip.note}</div>` : nothing}
+        ${tip.action
+          ? html`<button
+              class="sc-tip-action"
+              @click=${(e: Event) => {
+                e.stopPropagation();
+                tip.action?.onClick();
+              }}
+            >
+              ${tip.action.icon ? html`<ha-icon .icon=${tip.action.icon}></ha-icon>` : nothing}
+              <span>${tip.action.label}</span>
+            </button>`
+          : nothing}
         ${tip.link
           ? html`<a class="sc-tip-link" href=${tip.link.url} target="_blank" rel="noopener noreferrer"
               >${tip.link.label} ›</a
@@ -760,6 +833,28 @@ export class TedStatusCard extends LitElement implements LovelaceCard {
       }
       .sc-tip-link:hover {
         text-decoration: underline;
+      }
+      .sc-tip-action {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        margin-top: 10px;
+        font: inherit;
+        font-size: 0.86em;
+        font-weight: 600;
+        padding: 7px 12px;
+        border-radius: 999px;
+        border: 1px solid var(--ted-style-divider, rgba(255, 255, 255, 0.28));
+        background: var(--ted-style-accent, var(--primary-color, #3b82f6));
+        color: #fff;
+        cursor: pointer;
+        white-space: nowrap;
+      }
+      .sc-tip-action ha-icon {
+        --mdc-icon-size: 18px;
+      }
+      .sc-tip-action:hover {
+        filter: brightness(1.08);
       }
     `,
   ];

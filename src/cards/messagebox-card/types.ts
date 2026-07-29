@@ -18,6 +18,7 @@ export type MessageBoxActionKind =
   | "call-service"
   | "set-setting"
   | "set-device-type"
+  | "register-device"
   | "more-info"
   | "none";
 
