@@ -942,6 +942,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.17
+
+- **Auto-refresh on update.** A new Settings → General → Advanced option (on by default) reloads each device once automatically when the dashboard is updated, so the new files take effect without a manual refresh. Turn it off per-device if you prefer.
+
 ### v0.9.16
 
 - **Calendar icons resolve smarter.** A calendar whose icon is a non-MDI glyph (e.g. `fluent-emoji:party-popper`) now automatically uses the matching `mdi:` icon when one exists — so it shows a real glyph instead of a generic calendar. (The name list is served locally by Ted's Dashboard System; no internet needed.)

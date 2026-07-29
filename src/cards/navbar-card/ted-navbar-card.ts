@@ -21,7 +21,8 @@ import type { SettingsValue } from "../../shared/settings-schema";
 import { AutoReturnController } from "../../shared/auto-return";
 import { HomeRedirectController } from "../../shared/home-redirect";
 import { KioskController, KioskNudgeController, disableKiosk } from "../../shared/kiosk";
-import { MusicAutoExposeController } from "../../shared/music-autoexpose";import { tedCardThemeClass, tedStyleTheme } from "../../shared/theme";
+import { MusicAutoExposeController } from "../../shared/music-autoexpose";
+import { UpdateRefreshController } from "../../shared/update-refresh";import { tedCardThemeClass, tedStyleTheme } from "../../shared/theme";
 import { renderStatusItem, type StatusItemContext } from "../../shared/status-items/render";
 import { StatusSliderController } from "../../shared/status-items/slider-controller";
 import { statusItemStyles } from "../../shared/status-items/styles";
@@ -190,6 +191,7 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
     new KioskController(this, () => this._dashboardIntegration());
     new KioskNudgeController(this, () => this._dashboardIntegration());
     new MusicAutoExposeController(this, () => this._dashboardIntegration());
+    new UpdateRefreshController(this, () => this._dashboardIntegration());
   }
 
   /** Whether this navbar opts into Ted's Dashboard System behaviors (YAML-only). */
