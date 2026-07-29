@@ -478,8 +478,12 @@ export class TedStatusCard extends LitElement implements LovelaceCard {
           level: "unknown",
         });
       } else {
-        const failed = autoState === "failed";
-        const needsSetup = autoState === "needs_token";
+        // Only an admin can add an MA player (it writes Music Assistant's config), so
+        // offer the enable/retry action to admins and explain the limit to everyone else.
+        const admin = !!this.hass?.user?.is_admin;
+        const failed = admin && autoState === "failed";
+        const needsSetup = admin && autoState === "needs_token";
+        const unmatched = music.state === "unmatched";
         rows.push({
           icon: themedIcon("music"),
           label: "Music and Media Player",
@@ -487,16 +491,27 @@ export class TedStatusCard extends LitElement implements LovelaceCard {
             ? "Music setup didn't finish"
             : needsSetup
               ? "Music Assistant setup needed"
-              : music.state === "unmatched"
+              : unmatched
                 ? "No Music Assistant player"
                 : "none detected",
-          hint: music.state === "unmatched" ? music.base : undefined,
+          hint: unmatched ? music.base : undefined,
           level: failed ? "bad" : "warn",
           action:
-            music.state === "unmatched"
+            admin && unmatched
               ? {
                   label: failed || needsSetup ? "Try again" : "Enable music on this device",
                   onClick: () => void this._createMaPlayer(music.base),
+                }
+              : undefined,
+          tip:
+            !admin && unmatched
+              ? {
+                  title: "Music and Media Player",
+                  note:
+                    "Enabling music on this device adds it as a Music Assistant player, which " +
+                    "changes Music Assistant's configuration — only an administrator can do that. " +
+                    "Ask an admin to enable it, or add this device's player in Music Assistant → " +
+                    "Settings → Providers → Home Assistant Players.",
                 }
               : undefined,
         });

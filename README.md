@@ -942,6 +942,11 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.9
+
+- **“Enable music on this device” is admin-only.** Adding a Music Assistant player changes Music Assistant’s configuration, which only admins can do — so non-admin sessions now see an explanatory note instead of a button that would fail.
+- **Consistent Climate empty state.** When a device has no thermostats, the Climate view now shows the standard message card (readable over the wallpaper) with a Settings button, matching the other views.
+
 ### v0.9.8
 
 - **Registering also syncs your Browser ID to the login session**, so the device's id (and its name/area) survive cleared local storage.

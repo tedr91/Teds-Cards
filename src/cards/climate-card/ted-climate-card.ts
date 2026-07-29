@@ -51,6 +51,9 @@ export class TedClimateCard extends LitElement implements LovelaceCard {
   private _helpers?: CardHelpers;
   /** Embedded native thermostat cards, keyed by entity id (json guards rebuilds). */
   private _cards = new Map<string, { el: LovelaceCard; json: string }>();
+  /** The empty-state messagebox child (built once via loadCardHelpers, json-guarded). */
+  private _emptyCard?: LovelaceCard;
+  private _emptyJson?: string;
   private _lastPropagatedHass?: HomeAssistant;
 
   public constructor() {
@@ -179,6 +182,7 @@ export class TedClimateCard extends LitElement implements LovelaceCard {
     if (!this.hass || this.hass === this._lastPropagatedHass) return;
     this._lastPropagatedHass = this.hass;
     for (const entry of this._cards.values()) entry.el.hass = this.hass;
+    if (this._emptyCard) this._emptyCard.hass = this.hass;
   }
 
   private _entityName(id: string): string {
@@ -192,7 +196,9 @@ export class TedClimateCard extends LitElement implements LovelaceCard {
     if (!this._config || !this.hass) return nothing;
     const entities = this._entities();
     if (entities.length === 0) {
-      return this._config.climate_source === "settings" ? this._renderEmpty() : nothing;
+      if (this._config.climate_source !== "settings") return nothing;
+      if (!this._helpers) return html`<div class="loading"></div>`;
+      return this._renderEmpty();
     }
     if (!this._helpers) return html`<div class="loading"></div>`;
     return this._renderLayout(entities);
@@ -250,28 +256,41 @@ export class TedClimateCard extends LitElement implements LovelaceCard {
     return path;
   }
 
-  private _openSettings = (): void => {
-    const path = this._settingsPath();
-    window.history.pushState(null, "", path);
-    window.dispatchEvent(new CustomEvent("location-changed", { bubbles: true, composed: true }));
-  };
-
-  private _renderEmpty(): TemplateResult {
+  /** Config for the empty-state messagebox (rendered as a real ted-messagebox-card
+   *  so the empty state matches the other cards' empty states). */
+  private _emptyConfig(): LovelaceCardConfig {
     const title = this._config?.empty_title ?? "No thermostats yet";
     const message =
       this._config?.empty_message ??
       "This device hasn't been given any thermostats. Open Settings to choose which ones to show.";
-    return html`
-      <div class="empty">
-        <ha-icon class="empty-icon" .icon=${themedIcon("thermostat")}></ha-icon>
-        <div class="empty-title">${title}</div>
-        <div class="empty-msg">${message}</div>
-        <button type="button" class="empty-btn" @click=${this._openSettings}>
-          <ha-icon .icon=${themedIcon("settings")}></ha-icon>
-          <span>Settings</span>
-        </button>
-      </div>
-    `;
+    return {
+      type: "custom:ted-messagebox-card",
+      theme: "ted-style",
+      severity: "info",
+      icon: themedIcon("thermostat"),
+      title,
+      message,
+      actions: [
+        {
+          label: "Settings",
+          icon: themedIcon("settings"),
+          action: "navigate",
+          navigation_path: this._settingsPath(),
+          variant: "primary",
+        },
+      ],
+    };
+  }
+
+  private _renderEmpty(): TemplateResult {
+    const cfg = this._emptyConfig();
+    const json = JSON.stringify(cfg);
+    if (!this._emptyCard || this._emptyJson !== json) {
+      this._emptyCard = this._helpers!.createCardElement(cfg);
+      this._emptyJson = json;
+    }
+    if (this.hass) this._emptyCard.hass = this.hass;
+    return html`<div class="empty-wrap">${this._emptyCard}</div>`;
   }
 
   static styles = css`
@@ -351,45 +370,17 @@ export class TedClimateCard extends LitElement implements LovelaceCard {
     .tab-panel > * {
       height: 100%;
     }
-    /* Empty state */
-    .empty {
+    /* Empty state — a centered ted-messagebox-card. */
+    .empty-wrap {
+      box-sizing: border-box;
+      height: 100%;
       display: flex;
-      flex-direction: column;
       align-items: center;
       justify-content: center;
-      gap: 10px;
-      height: 100%;
-      padding: 24px;
-      box-sizing: border-box;
-      text-align: center;
-      color: var(--secondary-text-color);
+      padding: 12px;
     }
-    .empty-icon {
-      --mdc-icon-size: 56px;
-      color: var(--primary-color);
-      opacity: 0.8;
-    }
-    .empty-title {
-      font-size: 1.15rem;
-      font-weight: 600;
-      color: var(--primary-text-color);
-    }
-    .empty-msg {
-      max-width: 320px;
-      line-height: 1.4;
-    }
-    .empty-btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      margin-top: 6px;
-      padding: 8px 18px;
-      border: none;
-      border-radius: 999px;
-      cursor: pointer;
-      font: inherit;
-      color: var(--text-primary-color, #fff);
-      background: var(--primary-color);
+    .empty-wrap > * {
+      width: min(520px, 100%);
     }
     .loading {
       height: 100%;
