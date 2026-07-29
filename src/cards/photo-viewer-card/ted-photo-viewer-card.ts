@@ -5,6 +5,7 @@ import { styleMap } from "lit/directives/style-map.js";
 import {
   type HomeAssistant,
   type LovelaceCard,
+  type LovelaceCardConfig,
   type LovelaceCardEditor,
 } from "custom-card-helpers";
 
@@ -30,6 +31,11 @@ interface GridOptions {
   rows?: number | "auto";
   min_columns?: number;
   min_rows?: number;
+}
+
+/** Home Assistant's `loadCardHelpers()` return shape (only what this card uses). */
+interface CardHelpers {
+  createCardElement(config: LovelaceCardConfig): LovelaceCard;
 }
 
 /** Photo-viewer icons as `{ fluent, mdi }` maps (Fluent preferred, MDI fallback). */
@@ -109,6 +115,12 @@ export class TedPhotoViewerCard extends LitElement implements LovelaceCard {
   private _swipeStart: { x: number; y: number } | null = null;
   private _suppressClick = false;
 
+  private _helpers?: CardHelpers;
+  /** The empty-state messagebox child (built once via loadCardHelpers, json-guarded). */
+  private _emptyCard?: LovelaceCard;
+  private _emptyJson?: string;
+  private _lastPropagatedHass?: HomeAssistant;
+
   public constructor() {
     super();
     // Keep this device's settings live (folder / auto-open / last-viewed).
@@ -117,6 +129,7 @@ export class TedPhotoViewerCard extends LitElement implements LovelaceCard {
 
   public connectedCallback(): void {
     super.connectedCallback();
+    void this._loadHelpers();
     window.addEventListener("location-changed", this._onLocationChanged);
     window.addEventListener("popstate", this._onLocationChanged);
     document.addEventListener("keydown", this._onKeyDown);
@@ -154,9 +167,22 @@ export class TedPhotoViewerCard extends LitElement implements LovelaceCard {
     return { columns: 12, rows: 5, min_columns: 6, min_rows: 3 };
   }
 
-  protected updated(): void {
+  protected updated(changed: Map<string, unknown>): void {
     void this._ensureAlbum();
     this._maybeAutoOpen();
+    if (changed.has("hass") && this.hass && this.hass !== this._lastPropagatedHass) {
+      this._lastPropagatedHass = this.hass;
+      if (this._emptyCard) this._emptyCard.hass = this.hass;
+    }
+  }
+
+  private async _loadHelpers(): Promise<void> {
+    if (this._helpers) return;
+    const loader = (window as unknown as { loadCardHelpers?: () => Promise<CardHelpers> })
+      .loadCardHelpers;
+    if (!loader) return;
+    this._helpers = await loader();
+    this.requestUpdate();
   }
 
   private _dashboardIntegration(): boolean {
@@ -213,9 +239,11 @@ export class TedPhotoViewerCard extends LitElement implements LovelaceCard {
     if (this._config.open_last_on_load) {
       if (settingsStore.effective().photos_auto_open_last !== false) {
         const last = this._lastViewed();
-        if (last && this._refValid(last)) void this._openRef(last);
+        if (last && this._refValid(last)) {
+          void this._openRef(last);
+          return;
+        }
       }
-      return;
     }
     void this._openInitial();
   }
@@ -534,31 +562,21 @@ export class TedPhotoViewerCard extends LitElement implements LovelaceCard {
     return "/" + path.replace(/^\/+/, "").replace(/^\[root\]\/?/, `${root}/`);
   }
 
-  private _navigate(path: string): void {
-    window.history.pushState(null, "", path);
-    window.dispatchEvent(new CustomEvent("location-changed", { bubbles: true, composed: true }));
-  }
-
   // --- Render ----------------------------------------------------------------
 
   protected render(): TemplateResult | typeof nothing {
     const cfg = this._config;
     if (!cfg) return nothing;
-    // While viewing, the stage supplies the matte; keep the root transparent so a
-    // translucent matte reveals the dashboard wallpaper (not the card surface). In
-    // the empty state the root shows the themed/appearance surface.
-    const style: Record<string, string> = this._openedRef
-      ? { background: "transparent" }
-      : appearanceStyle({
-          background: cssColor(cfg.background),
-          transparency: cfg.transparency,
-          blur: cfg.blur,
-        });
+    // The root is always transparent: while viewing, the stage supplies the matte
+    // (so a translucent matte reveals the wallpaper); when empty, a centered
+    // ted-messagebox-card provides its own surface (consistent with the other cards).
+    const empty = !this._openedRef;
+    const style: Record<string, string> = { background: "transparent" };
     return html`<div
-      class="pv-root ${tedCardThemeClass(cfg.theme)}${cfg.fill ? " fill" : ""}"
+      class="pv-root ${tedCardThemeClass(cfg.theme)}${cfg.fill ? " fill" : ""}${empty ? " empty" : ""}"
       style=${styleMap(style)}
     >
-      ${this._openedRef ? this._renderPhoto() : this._renderEmpty()}
+      ${empty ? this._renderEmpty() : this._renderPhoto()}
       ${this._toast ? html`<div class="pv-toast">${this._toast}</div>` : nothing}
     </div>`;
   }
@@ -672,39 +690,51 @@ export class TedPhotoViewerCard extends LitElement implements LovelaceCard {
     </div>`;
   }
 
-  private _renderEmpty(): TemplateResult {
+  /** Config for the empty-state messagebox (rendered as a real ted-messagebox-card
+   *  so the empty state matches the Camera/Climate/Music cards). */
+  private _emptyConfig(): LovelaceCardConfig {
     const cfg = this._config;
     const album = cfg?.source === "album";
-    const canOpen = album ? this._albumRefs.length > 0 : !!cfg?.image;
-    const title = cfg?.empty_title ?? "No photo open";
+    const title = cfg?.empty_title ?? "No photos yet";
     const message =
       cfg?.empty_message ??
       (album
         ? this._albumLoaded && this._albumRefs.length === 0
           ? "No photos found in this album."
-          : "Open the album to start viewing."
-        : cfg?.image
-          ? "Open a photo to start viewing."
-          : "No photo configured.");
+          : "No photos to show yet."
+        : "No photo configured.");
     const settingsPath = this._settingsPath();
-    return html`<div class="pv-empty">
-      <ha-icon class="pv-empty-icon" icon=${ic(IC.photo)}></ha-icon>
-      <div class="pv-empty-title">${title}</div>
-      <div class="pv-empty-msg">${message}</div>
-      <div class="pv-empty-actions">
-        ${canOpen
-          ? html`<button class="pv-cta" @click=${() => this._openInitial()}>
-              <ha-icon icon=${ic(IC.open)}></ha-icon>
-              <span>${album ? "Open album" : "Open photo"}</span>
-            </button>`
-          : nothing}
-        ${settingsPath
-          ? html`<button class="pv-cta ghost" @click=${() => this._navigate(settingsPath)}>
-              <ha-icon icon=${ic(IC.settings)}></ha-icon><span>Settings</span>
-            </button>`
-          : nothing}
-      </div>
-    </div>`;
+    const actions: Record<string, unknown>[] = [];
+    if (settingsPath) {
+      actions.push({
+        label: "Settings",
+        icon: ic(IC.settings),
+        action: "navigate",
+        navigation_path: settingsPath,
+        variant: "primary",
+      });
+    }
+    return {
+      type: "custom:ted-messagebox-card",
+      theme: "ted-style",
+      severity: "info",
+      icon: ic(IC.photo),
+      title,
+      message,
+      actions,
+    };
+  }
+
+  private _renderEmpty(): TemplateResult {
+    if (!this._helpers) return html`<div class="empty-wrap"></div>`;
+    const cfg = this._emptyConfig();
+    const json = JSON.stringify(cfg);
+    if (!this._emptyCard || this._emptyJson !== json) {
+      this._emptyCard = this._helpers.createCardElement(cfg);
+      this._emptyJson = json;
+    }
+    if (this.hass) this._emptyCard.hass = this.hass;
+    return html`<div class="empty-wrap">${this._emptyCard}</div>`;
   }
 
   public static styles = [
@@ -896,59 +926,22 @@ export class TedPhotoViewerCard extends LitElement implements LovelaceCard {
       .pv-btn ha-icon {
         --mdc-icon-size: 22px;
       }
-      .pv-empty {
-        flex: 1 1 auto;
+      /* Empty state — a centered ted-messagebox-card (matches Camera/Climate/Music). */
+      .pv-root.empty {
+        background: transparent;
+        box-shadow: none;
+      }
+      .empty-wrap {
         box-sizing: border-box;
         width: 100%;
+        height: 100%;
         display: flex;
-        flex-direction: column;
         align-items: center;
         justify-content: center;
-        gap: 6px;
-        padding: 32px 24px;
-        text-align: center;
+        padding: 12px;
       }
-      .pv-empty-icon {
-        --mdc-icon-size: 48px;
-        color: var(--ted-style-muted, var(--secondary-text-color));
-        margin-bottom: 6px;
-      }
-      .pv-empty-title {
-        font-size: 1.1rem;
-        font-weight: 600;
-      }
-      .pv-empty-msg {
-        color: var(--ted-style-muted, var(--secondary-text-color));
-        max-width: 320px;
-      }
-      .pv-empty-actions {
-        display: flex;
-        gap: 8px;
-        margin-top: 12px;
-        flex-wrap: wrap;
-        justify-content: center;
-      }
-      .pv-cta {
-        -webkit-appearance: none;
-        appearance: none;
-        cursor: pointer;
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        padding: 8px 14px;
-        border-radius: 999px;
-        border: none;
-        background: var(--ted-style-accent, var(--primary-color));
-        color: var(--ted-style-on-accent, #fff);
-        font: inherit;
-        font-weight: 600;
-      }
-      .pv-cta.ghost {
-        background: color-mix(in srgb, var(--ted-style-text, currentColor) 12%, transparent);
-        color: var(--ted-style-text, var(--primary-text-color));
-      }
-      .pv-cta ha-icon {
-        --mdc-icon-size: 20px;
+      .empty-wrap > * {
+        width: min(520px, 100%);
       }
       .pv-toast {
         position: absolute;

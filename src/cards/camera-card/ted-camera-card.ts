@@ -5,6 +5,7 @@ import { styleMap } from "lit/directives/style-map.js";
 import {
   type HomeAssistant,
   type LovelaceCard,
+  type LovelaceCardConfig,
   type LovelaceCardEditor,
   handleAction,
   hasAction,
@@ -23,6 +24,11 @@ import {
   CAMERA_CARD_TYPE,
 } from "./const";
 import type { CameraCardConfig, CameraItemConfig, CameraLayout } from "./types";
+
+/** Home Assistant's `loadCardHelpers()` return shape (only what this card uses). */
+interface CardHelpers {
+  createCardElement(config: LovelaceCardConfig): LovelaceCard;
+}
 
 const DOUBLE_CLICK_MS = 250;
 const LONG_PRESS_MS = 500;
@@ -87,6 +93,12 @@ export class TedCameraCard extends LitElement implements LovelaceCard {
   private _longPressFired = false;
   private _io?: IntersectionObserver;
 
+  private _helpers?: CardHelpers;
+  /** The empty-state messagebox child (built once via loadCardHelpers, json-guarded). */
+  private _emptyCard?: LovelaceCard;
+  private _emptyJson?: string;
+  private _lastPropagatedHass?: HomeAssistant;
+
   public constructor() {
     super();
     // Keep this device's settings live so `cameras_source: settings` stays in sync.
@@ -125,6 +137,7 @@ export class TedCameraCard extends LitElement implements LovelaceCard {
 
   public connectedCallback(): void {
     super.connectedCallback();
+    void this._loadHelpers();
     if (!this._imageReady) {
       void ensureHuiImage().then((ok) => {
         if (ok) this._imageReady = true;
@@ -164,6 +177,22 @@ export class TedCameraCard extends LitElement implements LovelaceCard {
     return this._imageReady && this._onScreen && this._tabVisible;
   }
 
+  private async _loadHelpers(): Promise<void> {
+    if (this._helpers) return;
+    const loader = (window as unknown as { loadCardHelpers?: () => Promise<CardHelpers> })
+      .loadCardHelpers;
+    if (!loader) return;
+    this._helpers = await loader();
+    this.requestUpdate();
+  }
+
+  protected updated(changed: Map<string, unknown>): void {
+    if (changed.has("hass") && this.hass && this.hass !== this._lastPropagatedHass) {
+      this._lastPropagatedHass = this.hass;
+      if (this._emptyCard) this._emptyCard.hass = this.hass;
+    }
+  }
+
   protected render(): TemplateResult | typeof nothing {
     if (!this._config || !this.hass) return nothing;
 
@@ -195,10 +224,17 @@ export class TedCameraCard extends LitElement implements LovelaceCard {
     const empty =
       this._config.cameras_source === "settings" && this._sourceCameras().length === 0;
 
+    // Empty state: a transparent, centered ted-messagebox-card (matching the
+    // Climate/Music/Calendar cards) rather than the opaque camera surface.
+    if (empty) {
+      if (!this._helpers) return html`<div class="loading"></div>`;
+      return html`${this._renderEmpty()}${this._renderPopover()}`;
+    }
+
     return html`
       <ha-card class=${classMap(themeClasses)} style=${styleMap(cardStyle)}>
         ${this._config.brushed ? brushedOverlay : nothing}
-        ${empty ? this._renderEmpty() : this._renderLayout(isGrid)}
+        ${this._renderLayout(isGrid)}
       </ha-card>
       ${this._renderPopover()}
     `;
@@ -488,29 +524,42 @@ export class TedCameraCard extends LitElement implements LovelaceCard {
     return path;
   }
 
-  private _openSettings = (): void => {
-    const path = this._settingsPath();
-    window.history.pushState(null, "", path);
-    window.dispatchEvent(new CustomEvent("location-changed", { bubbles: true, composed: true }));
-  };
-
-  /** Shown in `settings` mode when this device has no cameras available. */
-  private _renderEmpty(): TemplateResult {
+  /** Config for the empty-state messagebox (rendered as a real ted-messagebox-card
+   *  so the empty state matches the other cards' empty states). */
+  private _emptyConfig(): LovelaceCardConfig {
     const title = this._config?.empty_title ?? "No cameras yet";
     const message =
       this._config?.empty_message ??
       "This device hasn't been given any cameras. Open Settings to choose which cameras to show.";
-    return html`
-      <div class="empty">
-        <ha-icon class="empty-icon" .icon=${themedIcon("camera")}></ha-icon>
-        <div class="empty-title">${title}</div>
-        <div class="empty-msg">${message}</div>
-        <button type="button" class="empty-btn" @click=${this._openSettings}>
-          <ha-icon .icon=${themedIcon("settings")}></ha-icon>
-          <span>Settings</span>
-        </button>
-      </div>
-    `;
+    return {
+      type: "custom:ted-messagebox-card",
+      theme: "ted-style",
+      severity: "info",
+      icon: themedIcon("camera"),
+      title,
+      message,
+      actions: [
+        {
+          label: "Settings",
+          icon: themedIcon("settings"),
+          action: "navigate",
+          navigation_path: this._settingsPath(),
+          variant: "primary",
+        },
+      ],
+    };
+  }
+
+  /** Shown in `settings` mode when this device has no cameras available. */
+  private _renderEmpty(): TemplateResult {
+    const cfg = this._emptyConfig();
+    const json = JSON.stringify(cfg);
+    if (!this._emptyCard || this._emptyJson !== json) {
+      this._emptyCard = this._helpers!.createCardElement(cfg);
+      this._emptyJson = json;
+    }
+    if (this.hass) this._emptyCard.hass = this.hass;
+    return html`<div class="empty-wrap">${this._emptyCard}</div>`;
   }
 
   private _clearTimers(): void {
@@ -692,49 +741,21 @@ export class TedCameraCard extends LitElement implements LovelaceCard {
       .cam-pop-item.active ha-svg-icon.check {
         visibility: visible;
       }
-      .empty {
+      /* Empty state — a centered ted-messagebox-card (matches Climate/Music/Calendar). */
+      .empty-wrap {
+        box-sizing: border-box;
         width: 100%;
         height: 100%;
         display: flex;
-        flex-direction: column;
         align-items: center;
         justify-content: center;
-        gap: 10px;
-        padding: 24px;
-        box-sizing: border-box;
-        text-align: center;
-        color: var(--ted-style-text, var(--primary-text-color));
+        padding: 12px;
       }
-      .empty-icon {
-        --mdc-icon-size: 46px;
-        color: var(--ted-style-accent, var(--primary-color));
-        opacity: 0.9;
+      .empty-wrap > * {
+        width: min(520px, 100%);
       }
-      .empty-title {
-        font-size: 1.05rem;
-        font-weight: 600;
-      }
-      .empty-msg {
-        max-width: 360px;
-        font-size: 0.9rem;
-        color: var(--ted-style-muted, var(--secondary-text-color));
-      }
-      .empty-btn {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        margin-top: 4px;
-        padding: 8px 16px;
-        border: none;
-        border-radius: 10px;
-        background: var(--ted-style-accent, var(--primary-color));
-        color: #fff;
-        font: inherit;
-        font-weight: 600;
-        cursor: pointer;
-      }
-      .empty-btn ha-svg-icon {
-        --mdc-icon-size: 18px;
+      .loading {
+        height: 100%;
       }
     `,
   ];

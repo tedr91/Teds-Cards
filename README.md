@@ -942,6 +942,11 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.15
+
+- **Consistent empty states.** The Camera and Photo Viewer cards now show the same clean, centered message (with a Settings button) as the Climate, Music, and Calendar cards when nothing's configured yet — instead of a big opaque panel.
+- **Cameras default to the “Multi” layout** (one large feed with smaller thumbnails) for a new device, instead of the auto grid.
+
 ### v0.9.14
 
 - **Fixed: Welcome-page setup tips reappear.** The “better layout for this screen” suggestions and the “register this device” prompt were being hidden by Home Assistant's built-in card visibility (it doesn't understand the card's device/screen conditions). Ted's Message Box now uses its own `visible_when` key instead of `visibility`, so those tips show again.

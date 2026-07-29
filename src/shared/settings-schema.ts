@@ -133,7 +133,7 @@ export const SETTINGS_DEFAULTS: SettingsMap = {
   calendar_theme: "ha",
   calendar_view: "month",
   calendar_emphasize_weekdays: true,
-  cameras_layout: "auto",
+  cameras_layout: "big-small",
   climate_list: [],
   climate_layout: "auto",
   navbar_auto_hide: false,
