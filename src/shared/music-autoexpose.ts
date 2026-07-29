@@ -104,11 +104,22 @@ export class MusicAutoExposeController implements ReactiveController {
       const code = (err as { code?: string })?.code;
       const message = (err as { message?: string })?.message ?? "Unknown error";
       this._log(`auto-expose failed (${code ?? "no-code"}): ${message}`, true);
-      if (code === "needs_admin_token" || code === "needs_hass_setup") {
-        // Can't auto (no MA admin token / external MA). Record it so we don't retry on
-        // every load, and surface a persistent, reviewable notification with the guidance.
+      if (code === "needs_admin_token") {
+        // No MA admin token configured — record it (so we don't retry every load) and post
+        // a persistent, reviewable notification with the two ways to fix it.
         settingsStore.setValue("device", "music_autoexpose_state", "needs_token");
-        this._notify(hass, "warning", "Music setup needs one step", message);
+        this._notify(
+          hass,
+          "warning",
+          "Set up music on this device",
+          "Music Assistant only lets an admin add players. To make this device a Music " +
+            "Assistant speaker automatically, paste a Music Assistant admin token in " +
+            "Settings → Devices & Services → Ted's Dashboard System → Configure. Or add it " +
+            "yourself in Music Assistant → Settings → Providers → Home Assistant Players.",
+        );
+      } else if (code === "needs_hass_setup") {
+        settingsStore.setValue("device", "music_autoexpose_state", "needs_token");
+        this._notify(hass, "warning", "Set up music on this device", message);
       } else {
         settingsStore.setValue("device", "music_autoexpose_state", "failed");
         this._notify(hass, "danger", "Music setup didn't finish", message);

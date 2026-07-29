@@ -942,6 +942,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.4
+
+- **Clearer music-setup guidance.** The status card now shows a short, scannable state ("Music Assistant setup needed") instead of a long, truncated message, and the full step-by-step guidance arrives as a persistent Ted notification you can read in the notification center.
+
 ### v0.9.3
 
 - **Music auto-setup now reports through the Ted notification engine.** When a device can't set itself up as a Music Assistant player automatically (Music Assistant requires an admin token, or you're on an external server), you now get a persistent, reviewable notification with the next step — instead of a toast that vanished before you could read it. The status card shows "Music Assistant setup needed" with a **Try again** button.

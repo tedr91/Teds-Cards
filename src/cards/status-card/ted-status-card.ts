@@ -83,8 +83,6 @@ export class TedStatusCard extends LitElement implements LovelaceCard {
   @state() private _openTip: string | null = null;
   /** True while the "Create MA player" request is in flight. */
   @state() private _maBusy = false;
-  /** Error message from the last failed "Create MA player" attempt, if any. */
-  @state() private _maError: string | null = null;
 
   public constructor() {
     super();
@@ -122,18 +120,50 @@ export class TedStatusCard extends LitElement implements LovelaceCard {
   private async _createMaPlayer(entityId: string): Promise<void> {
     if (!this.hass || this._maBusy) return;
     this._maBusy = true;
-    this._maError = null;
     try {
       await this.hass.callWS({
         type: "teds_dashboard_system/create_ma_player",
         entity_id: entityId,
       });
+      settingsStore.setValue("device", "music_autoexpose_state", "done");
     } catch (err) {
-      this._maError = (err as { message?: string })?.message || "Couldn't create the player.";
+      const code = (err as { code?: string })?.code;
+      const message = (err as { message?: string })?.message || "Couldn't create the player.";
+      if (code === "needs_admin_token") {
+        settingsStore.setValue("device", "music_autoexpose_state", "needs_token");
+        this._notify(
+          "warning",
+          "Set up music on this device",
+          "Music Assistant only lets an admin add players. To make this device a Music " +
+            "Assistant speaker automatically, paste a Music Assistant admin token in " +
+            "Settings → Devices & Services → Ted's Dashboard System → Configure. Or add it " +
+            "yourself in Music Assistant → Settings → Providers → Home Assistant Players.",
+        );
+      } else if (code === "needs_hass_setup") {
+        settingsStore.setValue("device", "music_autoexpose_state", "needs_token");
+        this._notify("warning", "Set up music on this device", message);
+      } else {
+        settingsStore.setValue("device", "music_autoexpose_state", "failed");
+        this._notify("danger", "Music setup didn't finish", message);
+      }
     } finally {
       this._maBusy = false;
       this.requestUpdate();
     }
+  }
+
+  /** Post a persistent, reviewable notification via the Ted notification engine. */
+  private _notify(
+    severity: "info" | "success" | "warning" | "danger" | "tip",
+    title: string,
+    message: string,
+  ): void {
+    const area = (
+      settingsStore.registry()[settingsStore.deviceId] as { area?: string } | undefined
+    )?.area;
+    const data: Record<string, unknown> = { title, message, severity, persistence: "normal" };
+    if (area) data.area = area;
+    void this.hass?.callService?.("teds_dashboard_system", "notify", data);
   }
 
   public setConfig(config: StatusCardConfig): void {
@@ -383,15 +413,13 @@ export class TedStatusCard extends LitElement implements LovelaceCard {
         rows.push({
           icon: themedIcon("music"),
           label: "Music and Media Player",
-          value:
-            this._maError ??
-            (failed
-              ? "Music setup didn't finish"
-              : needsSetup
-                ? "Music Assistant setup needed"
-                : music.state === "unmatched"
-                  ? "No Music Assistant player"
-                  : "none detected"),
+          value: failed
+            ? "Music setup didn't finish"
+            : needsSetup
+              ? "Music Assistant setup needed"
+              : music.state === "unmatched"
+                ? "No Music Assistant player"
+                : "none detected",
           hint: music.state === "unmatched" ? music.base : undefined,
           level: failed ? "bad" : "warn",
           action:
