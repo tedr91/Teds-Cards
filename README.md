@@ -942,6 +942,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.3
+
+- **Music auto-setup now reports through the Ted notification engine.** When a device can't set itself up as a Music Assistant player automatically (Music Assistant requires an admin token, or you're on an external server), you now get a persistent, reviewable notification with the next step — instead of a toast that vanished before you could read it. The status card shows "Music Assistant setup needed" with a **Try again** button.
+
 ### v0.9.2
 
 - **Music auto-setup: clearer feedback + fixes.** While a device sets itself up as a Music Assistant player, the Music and Media Player status row now shows an "Initializing… please wait" badge, and if setup doesn't finish it shows a clear message with a **Try again** button — a failed attempt no longer fails silently. Fixed the status row that wrapped its status icon onto a new line when an action button was present. Added browser-console logging (prefixed `[teds MA auto-expose]`) to help diagnose setup issues.

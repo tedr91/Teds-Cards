@@ -72,9 +72,9 @@ export class MusicAutoExposeController implements ReactiveController {
     if (!settingsStore.registry()[resolveDeviceId()]) return;
     // Per-device opt-out (default on).
     if (settingsStore.effective().music_auto_expose_device === false) return;
-    // Run once per device.
+    // Run once per device — terminal states block auto-retry (manual "Try again" recovers).
     const state = settingsStore.deviceSettings().music_autoexpose_state;
-    if (state === "done") return;
+    if (state === "done" || state === "failed" || state === "needs_token") return;
 
     const res = resolveMusicPlayer(hass);
     if (res.state === "ok") {
@@ -104,14 +104,14 @@ export class MusicAutoExposeController implements ReactiveController {
       const code = (err as { code?: string })?.code;
       const message = (err as { message?: string })?.message ?? "Unknown error";
       this._log(`auto-expose failed (${code ?? "no-code"}): ${message}`, true);
-      if (code === "needs_hass_setup") {
-        // External MA — can't auto-set-up; leave state unset so a later load can retry
-        // once the user configures Music Assistant, and surface the guidance.
-        settingsStore.clearValue("device", "music_autoexpose_state");
-        this._toast(message);
+      if (code === "needs_admin_token" || code === "needs_hass_setup") {
+        // Can't auto (no MA admin token / external MA). Record it so we don't retry on
+        // every load, and surface a persistent, reviewable notification with the guidance.
+        settingsStore.setValue("device", "music_autoexpose_state", "needs_token");
+        this._notify(hass, "warning", "Music setup needs one step", message);
       } else {
         settingsStore.setValue("device", "music_autoexpose_state", "failed");
-        this._toast(`Couldn't set up music on this device: ${message}`);
+        this._notify(hass, "danger", "Music setup didn't finish", message);
       }
       this._running = false;
       this._host.requestUpdate();
@@ -145,6 +145,21 @@ export class MusicAutoExposeController implements ReactiveController {
     const line = `[teds MA auto-expose] ${message}`;
     if (isError) console.warn(line);
     else console.info(line);
+  }
+
+  /** Post a persistent, reviewable notification via the Ted notification engine. */
+  private _notify(
+    hass: HomeAssistant,
+    severity: "info" | "success" | "warning" | "danger" | "tip",
+    title: string,
+    message: string,
+  ): void {
+    const area = (
+      settingsStore.registry()[resolveDeviceId()] as { area?: string } | undefined
+    )?.area;
+    const data: Record<string, unknown> = { title, message, severity, persistence: "normal" };
+    if (area) data.area = area;
+    void hass.callService?.("teds_dashboard_system", "notify", data);
   }
 
   private _toast(message: string): void {

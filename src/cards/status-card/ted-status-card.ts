@@ -379,6 +379,7 @@ export class TedStatusCard extends LitElement implements LovelaceCard {
         });
       } else {
         const failed = autoState === "failed";
+        const needsSetup = autoState === "needs_token";
         rows.push({
           icon: themedIcon("music"),
           label: "Music and Media Player",
@@ -386,15 +387,17 @@ export class TedStatusCard extends LitElement implements LovelaceCard {
             this._maError ??
             (failed
               ? "Music setup didn't finish"
-              : music.state === "unmatched"
-                ? "No Music Assistant player"
-                : "none detected"),
+              : needsSetup
+                ? "Music Assistant setup needed"
+                : music.state === "unmatched"
+                  ? "No Music Assistant player"
+                  : "none detected"),
           hint: music.state === "unmatched" ? music.base : undefined,
           level: failed ? "bad" : "warn",
           action:
             music.state === "unmatched"
               ? {
-                  label: failed ? "Try again" : "Enable music on this device",
+                  label: failed || needsSetup ? "Try again" : "Enable music on this device",
                   onClick: () => void this._createMaPlayer(music.base),
                 }
               : undefined,
