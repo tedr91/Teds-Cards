@@ -38,6 +38,9 @@ export interface MessagePopupOptions {
   /** Called when the user manually dismisses the toast (the Dismiss button) — NOT
    *  on auto-timeout or action-button dismissal. */
   onDismiss?: () => void;
+  /** Hide the built-in "Dismiss" button (e.g. when the custom actions already
+   *  include a close/dismiss button). */
+  hideDismiss?: boolean;
 }
 
 interface ActiveMessage extends MessagePopupOptions {
@@ -115,7 +118,9 @@ export class TedMessagePopupLayer extends LitElement {
                 ${a.label}
               </button>`,
             ) ?? nothing}
-            <button class="mb-abtn" @click=${() => this._dismiss(m.id, true)}>Dismiss</button>
+            ${m.hideDismiss
+              ? nothing
+              : html`<button class="mb-abtn" @click=${() => this._dismiss(m.id, true)}>Dismiss</button>`}
           </div>
         </div>
         ${(m.barDuration ?? m.duration) && (m.barDuration ?? m.duration)! > 0

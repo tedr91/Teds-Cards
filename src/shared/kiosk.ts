@@ -149,8 +149,10 @@ function maybeNudge(hass: HomeAssistant | undefined): void {
     title: "Try Kiosk mode",
     message:
       "Hide Home Assistant's sidebar and header for a cleaner, more immersive " +
-      "wall-panel look on this device. You can turn it off anytime in Settings.",
+      "wall-panel look on this device. You can turn it on/off anytime in Settings " +
+      "for Ted's Dashboard System.",
     duration: 0,
+    hideDismiss: true,
     actions: [
       {
         label: "Enable",

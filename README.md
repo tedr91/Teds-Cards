@@ -942,6 +942,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.13
+
+- **Kiosk-mode prompt is tidier.** The one-time “Try Kiosk mode” nudge drops its redundant “Dismiss” button (“Not now” already does that) and its text now points you to Settings for Ted's Dashboard System to turn it on/off.
+
 ### v0.9.12
 
 - **Kiosk mode is now opt-in.** It no longer turns on by default; instead, a registered device shows a one-time prompt offering to enable it (with “Enable”, “Not now”, and “Don’t ask again”). You can still toggle it anytime in Settings.
