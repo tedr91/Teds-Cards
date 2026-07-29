@@ -11,8 +11,8 @@ export const STATUS_ITEM_DEFAULT_ICON: Record<StatusItemType, string> = {
   datetime: "mdi:calendar-clock",
   weather: "mdi:weather-partly-cloudy",
   notifications: "mdi:bell-outline",
-  alarms: "fluent:clock-alarm-24-regular",
-  timers: "fluent:timer-24-regular",
+  alarms: "mdi:alarm",
+  timers: "mdi:timer-outline",
 };
 
 /** Human-readable label per status item type (used in editor menus). */

@@ -942,6 +942,13 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.6
+
+- **Alarm & timer navbar icons no longer go blank.** The alarm and timer status items in the navbar could show just their count badge with a missing icon; they now always render.
+- **Smarter new-alarm defaults.** New alarms now default to weekdays (Mon–Fri). Clearing every day makes a one-shot alarm that rings once and then disables itself (shown as “Once”), instead of quietly saving as every day.
+- **Announce niceties.** The Announce view’s “Add some” link now opens the Announce tab in Settings directly, and in Settings the “Add a message” button now sits above the message list.
+- **Devices stay online for announcements.** A device now sends a periodic presence heartbeat, so it no longer shows as “offline” in the Announce target list and announcements sent to the current device play their audio.
+
 ### v0.9.5
 
 - **Music setup runs from the start.** A device now sets itself up as a Music Assistant player proactively on load — including recovering a device that failed before — so you no longer see a setup prompt or have to click "Try again" on a device that can finish automatically.

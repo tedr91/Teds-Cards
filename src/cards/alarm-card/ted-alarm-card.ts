@@ -174,7 +174,7 @@ export class TedAlarmCard extends LitElement implements LovelaceCard {
     this._editId = null;
     this._label = "";
     this._time = "07:00";
-    this._days = [0, 1, 2, 3, 4, 5, 6];
+    this._days = [0, 1, 2, 3, 4];
     this._scope = this._effectiveArea() ? "room" : "house";
     this._addOpen = true;
   }
@@ -364,7 +364,7 @@ export class TedAlarmCard extends LitElement implements LovelaceCard {
                     ? html`<span>${grouped}</span>`
                     : a.days.map((d) => html`<span>${DAY_LABELS[d] ?? d}</span>`)}
                 </div>`
-              : nothing}
+              : html`<div class="days"><span>Once</span></div>`}
           </div>
           ${a.description ? html`<div class="desc">${a.description}</div>` : nothing}
         </div>

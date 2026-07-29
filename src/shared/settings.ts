@@ -16,6 +16,11 @@ import { SETTINGS_DEFAULTS, type SettingsMap, type SettingsValue } from "./setti
 
 const DOMAIN = "teds_dashboard_system";
 
+/** How often to re-report this device so its `last_seen` stays fresh. Comfortably
+ *  under the backend's 15-minute presence TTL so the device stays "present" for
+ *  playback targeting even when nothing about it changes. */
+const REGISTER_HEARTBEAT_MS = 5 * 60 * 1000;
+
 interface HassLike {
   connection?: {
     subscribeMessage: <T>(cb: (ev: T) => void, msg: { type: string }) => Promise<() => void>;
@@ -68,6 +73,9 @@ class SettingsStore {
       };
       window.addEventListener("resize", onResize, { passive: true });
       window.addEventListener("orientationchange", onResize, { passive: true });
+      // Presence heartbeat: force a re-register on a timer so `last_seen` stays
+      // fresh even when area/player/name/viewport are unchanged.
+      window.setInterval(() => this._maybeRegister(this._hass, true), REGISTER_HEARTBEAT_MS);
     }
   }
 
@@ -187,8 +195,9 @@ class SettingsStore {
     });
   }
 
-  /** Register (or refresh) this device's id + resolved area + own media player. */
-  private _maybeRegister(hass: HassLike | undefined): void {
+  /** Register (or refresh) this device's id + resolved area + own media player.
+   *  Pass `force` to re-send even when nothing changed (presence heartbeat). */
+  private _maybeRegister(hass: HassLike | undefined, force = false): void {
     const conn = hass?.connection;
     if (!conn?.sendMessagePromise) return;
     const area = resolveDeviceArea(hass as never, undefined).area ?? null;
@@ -197,6 +206,7 @@ class SettingsStore {
     const client = clientInfo();
     const clientSig = `${client.width}x${client.height}:${client.orientation}:${client.form_factor}`;
     if (
+      !force &&
       area === this._registeredArea &&
       mediaPlayer === this._registeredMp &&
       name === this._registeredName &&

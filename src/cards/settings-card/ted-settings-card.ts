@@ -397,6 +397,11 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     if (this._config?.section_tabs !== false) {
       this._sectionResizeObserver = new ResizeObserver(() => this._scheduleSectionMeasure());
       this._sectionResizeObserver.observe(this);
+      // Honor an incoming `?tab=` deep link on (re)mount — a cached view element
+      // being re-shown still holds its previously-selected section, so re-seed it
+      // from the URL (a fresh element already falls back to the URL section).
+      const s = this._sectionFromUrl();
+      if (s) this._section = s;
     }
     this._applyScopeFromUrl();
   }
@@ -1739,6 +1744,11 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
             <span class="help">Ready-made announcements shown in the Announce view.</span>
           </div>
         </div>
+        ${admin
+          ? html`<button class="cam-btn add-list-btn" @click=${() => this._addAnnounceMessage()}>
+              <ha-icon .icon=${this._ui("add")}></ha-icon><span>Add a message</span>
+            </button>`
+          : nothing}
         ${ids.length
           ? this._renderCameraChips(
               ids,
@@ -1755,12 +1765,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
                   (byId(id)?.label || "").trim() || (byId(id)?.text || "").trim() || "Untitled message",
               },
             )
-          : html`<div class="help">No predefined messages yet — add one below.</div>`}
-        ${admin
-          ? html`<button class="cam-btn add-list-btn" @click=${() => this._addAnnounceMessage()}>
-              <ha-icon .icon=${this._ui("add")}></ha-icon><span>Add a message</span>
-            </button>`
-          : nothing}
+          : html`<div class="help">No predefined messages yet — add one above.</div>`}
       </div>
     `;
   }
