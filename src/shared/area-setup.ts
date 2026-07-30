@@ -14,7 +14,7 @@ import type { ReactiveController, ReactiveControllerHost } from "lit";
 import type { HomeAssistant } from "custom-card-helpers";
 
 import { settingsStore } from "./settings";
-import { resolveDeviceArea, listAreas } from "./device-area";
+import { resolveDeviceArea, resolveDeviceHaId, listAreas } from "./device-area";
 import { showMessageBox, dismissMessageBox } from "./messagebox-popup";
 
 interface DeviceEntry {
@@ -41,11 +41,13 @@ function unassignedDevices(hass: HomeAssistant | undefined): DeviceEntry[] {
   });
 }
 
-/** True when this panel (or a sibling app/dashboard device) still needs an area. */
+/** True when THIS panel's own device has no resolvable area (needs a room).
+ *
+ * Based only on this device (its Browser Mod device area / config / local override),
+ * NOT a global scan — so one unassigned device elsewhere never nags other panels. */
 export function needsAreaSetup(hass: HomeAssistant | undefined): boolean {
   if (!hass) return false;
-  if (resolveDeviceArea(hass).source === "none") return true;
-  return unassignedDevices(hass).length > 0;
+  return resolveDeviceArea(hass).source === "none";
 }
 
 function deviceLabel(d: DeviceEntry): string {
@@ -62,7 +64,10 @@ function deviceLabel(d: DeviceEntry): string {
 export function showAreaSetup(hass: HomeAssistant): Promise<void> {
   return new Promise((resolve) => {
     const h = hass as unknown as RegistryHass;
-    const devices = unassignedDevices(hass);
+    const thisId = resolveDeviceHaId(hass);
+    const devices = unassignedDevices(hass).sort((a, b) =>
+      a.id === thisId ? -1 : b.id === thisId ? 1 : 0,
+    );
     const areas = listAreas(hass);
     const admin = !!h.user?.is_admin;
     const selfAllowed = settingsStore.effective().allow_device_area_self_assign !== false;
@@ -132,7 +137,7 @@ export function showAreaSetup(hass: HomeAssistant): Promise<void> {
         const row = document.createElement("div");
         row.style.cssText = "display:flex;align-items:center;gap:10px;justify-content:space-between;";
         const label = document.createElement("div");
-        label.textContent = deviceLabel(d);
+        label.textContent = deviceLabel(d) + (d.id === thisId ? " · this screen" : "");
         label.style.cssText = "flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;";
         const sel = document.createElement("select");
         sel.style.cssText =
