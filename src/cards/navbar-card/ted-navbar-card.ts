@@ -144,6 +144,17 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
    *  (e.g. right after a bottom→side flip) so overflow never measures the wrong axis. */
   private _overflowRetries = 0;
   private _resizeRaf?: number;
+  /** Observes the bar's own box so overflow re-measures when its size settles (e.g. a
+   *  side bar growing from a thin strip to full height as the content area finishes
+   *  laying out) — self-heals the first-paint over-collapse without a manual size nudge. */
+  private _cardRO?: ResizeObserver;
+  private _cardResizeRaf?: number;
+  private _lastCardW = 0;
+  private _lastCardH = 0;
+  /** True when the current render is a content-hugging float bar (fit-content), whose
+   *  box is driven by its content — excluded from the resize auto-heal to avoid a
+   *  measure→shrink→grow oscillation. */
+  private _hugBar = false;
   /** Horizontal inset (px) applied to both sides of the centered zone so its mid-left /
    *  mid-right columns clear the pinned left / right edge zones instead of overlapping
    *  them. Symmetric (= widest edge zone) so the center anchor stays dead-centre. */
@@ -208,7 +219,7 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
 
   /** The first "notifications" status item across all sections (if any). */
   private _notifItem(): { area?: string } | undefined {
-    for (const section of this._config?.sections ?? []) {
+    for (const section of this._configuredSections()) {
       const items = (section.items ?? section.buttons ?? []) as Array<{ type?: string; area?: string }>;
       for (const it of items) {
         if (it.type === "notifications") return it;
@@ -267,6 +278,9 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
     window.removeEventListener("popstate", this._onVisibilityEvent);
     document.removeEventListener("pointerdown", this._onDocPointerDown, true);
     this._clearHide();
+    this._cardRO?.disconnect();
+    this._cardRO = undefined;
+    if (this._cardResizeRaf) cancelAnimationFrame(this._cardResizeRaf);
     if (this._resizeRaf) cancelAnimationFrame(this._resizeRaf);
     if (this._activeViewRaf) cancelAnimationFrame(this._activeViewRaf);
     if (this._activeViewTimer) clearTimeout(this._activeViewTimer);
@@ -513,9 +527,12 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
       if (!ah) this._clearHide();
     }
     this._visible.clear();
-    // Launcher buttons are driven by settings — rebuild them when settings change.
+    // Launcher buttons + the whole bar (navbar_sections) are driven by settings —
+    // rebuild them and refresh conditional/clock state when settings change.
     this._launcherCache = undefined;
+    this._hasConditional = this._computeHasConditional();
     this._buildButtonElements();
+    this._syncClockTimer();
     this.requestUpdate();
   };
 
@@ -719,7 +736,7 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
         (i) =>
           i.visible !== undefined || (Array.isArray(i.visibility) && i.visibility.length > 0),
       );
-    return (this._config?.sections ?? []).some((s) => scan(s.items ?? s.buttons ?? []));
+    return (this._configuredSections()).some((s) => scan(s.items ?? s.buttons ?? []));
   }
 
   /** A nav item is a button when its `type` is an embeddable `custom:` card. */
@@ -729,7 +746,7 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
 
   /** Re-render once a second while any live time/date item is present. */
   private _syncClockTimer(): void {
-    const ticking = (this._config?.sections ?? [])
+    const ticking = this._configuredSections()
       .flatMap((s) => this._sectionItems(s))
       .some((i) => i.type === "time" || i.type === "date");
     if (ticking && this._clockTimer === undefined) {
@@ -748,11 +765,53 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
   }
 
   protected updated(): void {
+    this._observeCard();
     this._measureContentInset();
     this._measureMidInset();
     this._measureOverflow();
     navigationSignal.setHass(this.hass);
   }
+
+  /** Start observing the bar's box once it exists (idempotent; re-observes after a
+   *  disconnect/reconnect since disconnectedCallback drops the observer). */
+  private _observeCard(): void {
+    if (this._cardRO || typeof ResizeObserver === "undefined") return;
+    const card = (this.renderRoot as ShadowRoot | undefined)?.querySelector?.(
+      ".navbar-card",
+    ) as HTMLElement | null;
+    if (!card) return;
+    this._cardRO = new ResizeObserver(this._onCardResize);
+    this._cardRO.observe(card);
+  }
+
+  /** The bar's own box changed size. Overflow collapse is measured from that box, so an
+   *  early measurement (before the content area reaches full height) can wrongly collapse
+   *  every section into a chevron and then freeze (the `_visible` guard). Clearing
+   *  `_visible` on a real box change lets the next `updated()` re-measure against the
+   *  settled size, so the bar corrects itself. Debounced via rAF; hug (fit-content) bars
+   *  are skipped so a content-driven box can't oscillate. */
+  private _onCardResize = (): void => {
+    if (this._editMode || this._hugBar) return;
+    const card = (this.renderRoot as ShadowRoot | undefined)?.querySelector?.(
+      ".navbar-card",
+    ) as HTMLElement | null;
+    if (!card) return;
+    const w = Math.round(card.clientWidth);
+    const h = Math.round(card.clientHeight);
+    if (w === this._lastCardW && h === this._lastCardH) return;
+    this._lastCardW = w;
+    this._lastCardH = h;
+    if (this._cardResizeRaf) cancelAnimationFrame(this._cardResizeRaf);
+    this._cardResizeRaf = requestAnimationFrame(() => {
+      this._cardResizeRaf = undefined;
+      if (this._visible.size === 0) {
+        this._measureOverflow();
+        return;
+      }
+      this._visible.clear();
+      this.requestUpdate();
+    });
+  };
 
   /** Inset the fixed bar to the dashboard content area so the HA sidebar doesn't cover
    *  it (the bar is position:fixed to the viewport; HA offsets the content past the sidebar). */
@@ -814,11 +873,24 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
     }
   }
 
+  /** The bar's source sections: the card's YAML `sections` wins (a view can hard-pin the
+   *  bar); otherwise, on a dashboard-integrated navbar, the `navbar_sections` setting
+   *  drives them so the whole bar is editable in Settings → Navbar (its default is the
+   *  bar Ted's Dashboard ships with). Falls back to empty. */
+  private _configuredSections(): NavSection[] {
+    if (Array.isArray(this._config?.sections)) return this._config!.sections!;
+    if (this._dashboardIntegration()) {
+      const s = settingsStore.effective().navbar_sections;
+      if (Array.isArray(s)) return s as unknown as NavSection[];
+    }
+    return [];
+  }
+
   /** The five fixed sections, padded/defaulted so index maps to a known slot. Locked
    *  sections (0/2/4) always take their fixed alignment; mids (1/3) honour their config.
    *  When the View Launcher is enabled, its buttons are prepended into the target section. */
   private _effectiveSections(): NavSection[] {
-    const cfg = this._config?.sections ?? [];
+    const cfg = this._configuredSections();
     const launcher = this._launcherItems();
     const targetIdx = launcher.length ? launcherSectionIndex(this._launcherSectionValue()) : -1;
     return SECTION_SLOTS.map((_slot, i) => {
@@ -1097,6 +1169,7 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
       byZone.left.some(({ section }) => this._sectionItems(section).length > 0) ||
       byZone.right.some(({ section }) => this._sectionItems(section).length > 0);
     const hug = this._barType() === "float" && !hasSides;
+    this._hugBar = hug;
 
     const navClasses = {
       navbar: true,

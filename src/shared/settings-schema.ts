@@ -37,6 +37,7 @@ export type SettingKind =
   | "announce-messages"
   | "climate-aliases"
   | "navbar-menu-items"
+  | "navbar-sections"
   | "background"
   | "nightmode"
   | "launcher"
@@ -100,6 +101,34 @@ export const SETTINGS_GROUP_ICONS: Record<string, { fluent: string; mdi: string 
   Photos: { fluent: "fluent:image-24-regular", mdi: "mdi:image-multiple" },
 };
 
+/** The default five navbar sections (matches the bar Ted's Dashboard ships with):
+ *  0 = weather, 1/2/3 empty (2 = View Launcher target), 4 = assist · timers · alarms ·
+ *  datetime · notifications. Pre-populated so `navbar_sections` renders today's bar out
+ *  of the box; users can then edit/remove items in Settings → Navbar. Must match the
+ *  backend `SETTINGS_DEFAULTS["navbar_sections"]`. */
+export const DEFAULT_NAVBAR_SECTIONS = [
+  { items: [{ type: "weather", tap_action: { action: "navigate-dashboard", dashboard: "weather_dashboard" } }] },
+  { items: [] },
+  { items: [] },
+  { items: [] },
+  {
+    items: [
+      { type: "assist" },
+      { type: "timers" },
+      { type: "alarms" },
+      {
+        type: "datetime",
+        display: "both-stacked",
+        date_format: "MMMM D",
+        time_format: "h:MM a",
+        tap_action: { action: "navigate-dashboard", dashboard: "calendar_dashboard" },
+        hold_action: { action: "navigate-dashboard", dashboard: "alarms_dashboard" },
+      },
+      { type: "notifications" },
+    ],
+  },
+];
+
 /** Default values — must match the backend `SETTINGS_DEFAULTS`. */
 export const SETTINGS_DEFAULTS: SettingsMap = {
   timer_snooze_enabled: true,
@@ -148,6 +177,7 @@ export const SETTINGS_DEFAULTS: SettingsMap = {
   navbar_position: "bottom",
   navbar_size: 48,
   navbar_menu_items: [],
+  navbar_sections: DEFAULT_NAVBAR_SECTIONS as unknown as SettingsValue,
   launcher_enabled: true,
   launcher_section: "center",
   launcher_combine_groups: true,
@@ -342,7 +372,7 @@ export const SETTINGS_FIELDS: SettingField[] = [
   // Navbar
   { key: "navbar_auto_hide", label: "Auto-hide", group: "Navbar", kind: "boolean", help: "Collapse the navbar into its edge until revealed." },
   { key: "navbar_auto_hide_delay", label: "Auto-hide delay", group: "Navbar", kind: "number", min: 1, max: 60, unit: "s", help: "Seconds before the revealed bar re-collapses." },
-  { key: "navbar_float", label: "Float", group: "Navbar", kind: "boolean", help: "Center the bar with margins and rounded corners (horizontal bars only)." },
+  { key: "navbar_float", label: "Float", group: "Navbar", kind: "boolean", help: "Detach the bar from its edge with margins and rounded corners (any alignment)." },
   { key: "navbar_position", label: "Position", group: "Navbar", kind: "select",
     options: [
       { value: "bottom", label: "Bottom" },
@@ -355,6 +385,7 @@ export const SETTINGS_FIELDS: SettingField[] = [
   { key: "navbar_size", label: "Size", group: "Navbar", kind: "number", min: 32, max: 96, unit: "px", help: "Bar thickness in pixels (buttons/items size from this)." },
   { key: "launcher", label: "Launcher Buttons", group: "Navbar", kind: "launcher", help: "Auto-discovered buttons that navigate to this dashboard's views. Shown on navbars with dashboard_integration." },
   { key: "navbar_menu_items", label: "Custom menu items", group: "Navbar", kind: "navbar-menu-items", help: "Extra rows in the navbar's long-press menu (name + icon + action). Shown on navbars with dashboard_integration." },
+  { key: "navbar_sections", label: "Navbar sections", group: "Navbar", kind: "navbar-sections", help: "The bar's five positional sections and their items (status items + buttons). Shown on navbars with dashboard_integration." },
   // General
   { key: "device_type", label: "Device type", group: "General", kind: "device-type", deviceOnly: true, help: "A profile for this device that seeds a coherent home view, navbar layout, and fullscreen default in one step." },
   { key: "weather_entity", label: "Weather entity", group: "General", kind: "entity", entityDomain: "weather", help: "Default weather entity used by Ted's weather/clock cards that opt in via `dashboard_integration: true`." },

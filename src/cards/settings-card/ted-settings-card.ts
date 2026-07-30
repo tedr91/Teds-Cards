@@ -22,6 +22,7 @@ import { resolveMusicPlayer, isMassIntegrationLoaded } from "../../shared/music-
 import { firstWeatherEntity } from "../../shared/status-items/model";
 import {
   fieldsByGroup,
+  DEFAULT_NAVBAR_SECTIONS,
   SETTINGS_DEFAULTS,
   SETTINGS_GROUP_ICONS,
   type AnnounceMessage,
@@ -62,13 +63,15 @@ import {
 import { matchPerson } from "../calendar-card/const";
 import type { CalendarItemConfig, HiddenEventRule } from "../calendar-card/types";
 import { BUTTON_CARD_TYPE } from "../button-card/const";
-import type { NavButtonSize } from "../navbar-card/types";
+import "../navbar-card/navbar-sections-editor";
+import type { NavButtonSize, NavSection } from "../navbar-card/types";
 import {
   dashboardKeyByViewPath,
   effectiveLauncherPaths,
   groupLauncherViews,
   LAUNCHER_SECTIONS,
   launcherOptionsMap,
+  launcherSectionIndex,
   readLovelaceViews,
   resolveLauncherViews,
   type LauncherButtonOptions,
@@ -1462,6 +1465,100 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     this._commitNavItems(list);
   }
 
+  /** The five navbar sections and their items (status items + buttons), edited via the
+   *  shared sections editor. Global edits the shared bar; a device may override the whole
+   *  set. Only affects navbars with `dashboard_integration` that don't pin `sections` in
+   *  YAML. */
+  private _renderNavbarSections(scope: "global" | "device"): TemplateResult {
+    const admin = this._isAdmin();
+    const eff = settingsStore.effective();
+    const launcherOn = eff.launcher_enabled !== false;
+    const launcherIdx = launcherSectionIndex(String(eff.launcher_section ?? "center"));
+    const asSections = (raw: SettingsValue): NavSection[] =>
+      Array.isArray(raw)
+        ? (raw as unknown as NavSection[])
+        : (DEFAULT_NAVBAR_SECTIONS as unknown as NavSection[]);
+
+    if (scope === "device") {
+      const overriding = this._deviceOverriding("navbar_sections");
+      const sections = asSections(
+        overriding ? this._deviceValue("navbar_sections") : this._globalValue("navbar_sections"),
+      );
+      return html`
+        <ha-expansion-panel outlined class="sub-panel">
+          <div slot="header" class="sub-head">
+            <ha-icon icon="mdi:view-grid"></ha-icon>
+            <span class="sub-head-label">Navbar sections</span>
+            <span class="sub-head-value">${overriding ? "Overriding" : "Inherited"}</span>
+          </div>
+          <div class="sub-body">
+            <button
+              class="link-btn"
+              ?disabled=${!admin}
+              @click=${() => this._toggleNavbarSectionsOverride(!overriding)}
+            >
+              <ha-icon .icon=${overriding ? "mdi:link-variant" : "mdi:link-off"}></ha-icon>
+              <span>${overriding ? "Overriding — click to inherit" : "Inheriting — click to override"}</span>
+            </button>
+            ${overriding
+              ? html`<ted-navbar-sections-editor
+                  .hass=${this.hass}
+                  .sections=${sections}
+                  .launcherEnabled=${launcherOn}
+                  .launcherSectionIndex=${launcherIdx}
+                  @sections-changed=${(ev: Event) =>
+                    this._setDevice(
+                      "navbar_sections",
+                      (ev as CustomEvent).detail.sections as unknown as SettingsValue,
+                    )}
+                ></ted-navbar-sections-editor>`
+              : html`<div class="help">
+                  Inheriting the Global navbar sections. Click “Override” to customize this
+                  device.
+                </div>`}
+          </div>
+        </ha-expansion-panel>
+      `;
+    }
+
+    const sections = asSections(this._globalValue("navbar_sections"));
+    return html`
+      <ha-expansion-panel outlined class="sub-panel">
+        <div slot="header" class="sub-head">
+          <ha-icon icon="mdi:view-grid"></ha-icon>
+          <span class="sub-head-label">Navbar sections</span>
+        </div>
+        <div class="sub-body">
+          <div class="help">
+            The bar's five positional sections (Left · Mid-Left · Center · Mid-Right ·
+            Right) and their items. Removing an item (e.g. the weather or date/time) hides
+            it on every dashboard-integrated navbar.
+          </div>
+          ${!admin
+            ? html`<div class="help">Sign in as an admin to edit the navbar.</div>`
+            : html`<ted-navbar-sections-editor
+                .hass=${this.hass}
+                .sections=${sections}
+                .launcherEnabled=${launcherOn}
+                .launcherSectionIndex=${launcherIdx}
+                @sections-changed=${(ev: Event) =>
+                  this._setGlobal(
+                    "navbar_sections",
+                    (ev as CustomEvent).detail.sections as unknown as SettingsValue,
+                  )}
+              ></ted-navbar-sections-editor>`}
+        </div>
+      </ha-expansion-panel>
+    `;
+  }
+
+  /** Seed the device override from the inherited value (so the editor starts populated),
+   *  or clear it to inherit the Global bar again. */
+  private _toggleNavbarSectionsOverride(on: boolean): void {
+    if (on) this._setDevice("navbar_sections", this._globalValue("navbar_sections"));
+    else settingsStore.clearValue("device", "navbar_sections");
+  }
+
   private _renderNavbarMenuItems(scope: "global" | "device"): TemplateResult {
     if (scope === "device") {
       return html`
@@ -1568,6 +1665,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     if (field.kind === "nightmode") return this._renderNightMode(field, "global");
     if (field.kind === "launcher") return this._renderLauncher("global");
     if (field.kind === "navbar-menu-items") return this._renderNavbarMenuItems("global");
+    if (field.kind === "navbar-sections") return this._renderNavbarSections("global");
     if (field.kind === "dashboard") return this._renderDashboard("global");
     if (field.kind === "device-type") return this._renderDeviceType("global");
     // Device-only fields (e.g. the media player) have no sensible global value.
@@ -1608,6 +1706,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     if (field.kind === "nightmode") return this._renderNightMode(field, "device");
     if (field.kind === "launcher") return this._renderLauncher("device");
     if (field.kind === "navbar-menu-items") return this._renderNavbarMenuItems("device");
+    if (field.kind === "navbar-sections") return this._renderNavbarSections("device");
     if (field.kind === "dashboard") return this._renderDashboard("device");
     if (field.kind === "device-type") return this._renderDeviceType("device");
     const overriding = this._deviceOverriding(field.key);

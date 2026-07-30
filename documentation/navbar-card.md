@@ -65,6 +65,11 @@ Each `menu_items` entry: `name` (required), `icon` (mdi), `entity` (optional), a
 position is fixed by its index — there is no `placement`. On a vertical (left/right) bar,
 `align` left/right read as up/down.
 
+> **Settings-driven sections.** On a navbar with `dashboard_integration: true`, if you omit
+> `sections` from the YAML the bar is driven by the `navbar_sections` setting instead,
+> editable in **Settings → Navbar → Navbar sections** (global, with an optional per-device
+> override). A YAML `sections` block still wins when present, so a view can hard-pin the bar.
+
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
 | `align` | `left` \| `center` \| `right` | per section | Content alignment. Fixed for Left (left), Center (center), Right (right); adjustable for Mid-Left (default left) and Mid-Right (default right), where it also controls which way the section leans. |
