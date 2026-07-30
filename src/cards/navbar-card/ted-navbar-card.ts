@@ -24,6 +24,7 @@ import { KioskController, KioskNudgeController, disableKiosk } from "../../share
 import { MusicAutoExposeController } from "../../shared/music-autoexpose";
 import { UpdateRefreshController } from "../../shared/update-refresh";
 import { AreaSetupController } from "../../shared/area-setup";
+import { VoiceController } from "../../shared/voice-controller";
 import { tedCardThemeClass, tedStyleTheme } from "../../shared/theme";
 import { renderStatusItem, type StatusItemContext } from "../../shared/status-items/render";
 import { StatusSliderController } from "../../shared/status-items/slider-controller";
@@ -195,6 +196,9 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
     new MusicAutoExposeController(this, () => this._dashboardIntegration());
     new UpdateRefreshController(this, () => this._dashboardIntegration());
     new AreaSetupController(this, () => this._dashboardIntegration());
+    // Feed hass to the browser voice engine + re-render so the mic status item
+    // reflects the live voice state.
+    new VoiceController(this, () => this._dashboardIntegration());
   }
 
   /** Whether this navbar opts into Ted's Dashboard System behaviors (YAML-only). */

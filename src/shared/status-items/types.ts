@@ -21,7 +21,8 @@ export type StatusItemType =
   | "weather"
   | "notifications"
   | "alarms"
-  | "timers";
+  | "timers"
+  | "assist";
 
 /** How a status item displays: icon + state, just the icon, or just the state. */
 export type StatusDisplay = "both" | "icon" | "state";
@@ -148,6 +149,12 @@ export interface TimersStatusItem extends StatusItemBase {
   display_badge?: boolean;
 }
 
+/** A microphone button that starts a push-to-talk Assist run in the browser. */
+export interface AssistStatusItem extends StatusItemBase {
+  type: "assist";
+  icon?: string;
+}
+
 export type StatusItem =
   | SensorStatusItem
   | BrightnessStatusItem
@@ -158,7 +165,8 @@ export type StatusItem =
   | WeatherStatusItem
   | NotificationsStatusItem
   | AlarmsStatusItem
-  | TimersStatusItem;
+  | TimersStatusItem
+  | AssistStatusItem;
 
 /** Resolved slider bounds + current value for a brightness / volume control. */
 export interface SliderModel {

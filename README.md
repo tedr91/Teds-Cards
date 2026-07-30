@@ -942,6 +942,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.22
+
+- **New: browser-based voice Assist.** A device can now run the Home Assistant Assist pipeline in the dashboard itself and show its own self-dismissing voice overlay, instead of the Companion app's native Assist dialog. Adds a push-to-talk microphone button in the navbar (mid-right) and an experimental continuous wake word mode (off by default). The overlay shows the live state (listening → your words → the answer) and clears itself when the answer finishes; nightstands/handhelds show the full-screen Assist-Response view while wall panels show a compact toast. New **Voice** settings group. Requires the dashboard to be served over HTTPS (browser microphone requirement) — see the [Voice Assist docs](documentation/voice-assist.md).
+
 ### v0.9.21
 
 - **Improved** the "Assign devices to a room" dialog: a non-admin (kiosk) account now sees only the current screen's device, and admins see the current device pinned to the top with a clear "This device" badge and highlight.

@@ -39,6 +39,7 @@ backend-driven alerts (notifications, alarms, timers) fit together.
 
 | System | What it's for |
 | --- | --- |
+| [Voice Assist](./voice-assist.md) | Run the Assist pipeline in the dashboard with a self-dismissing voice overlay — push-to-talk + optional wake word (needs the backend + HTTPS). |
 | [Automatic Night Mode](./night-mode.md) | Schedule-based background dim, screen brightness, and night font color (needs the backend). |
 | [Notification System](./notification-system.md) | How backend-driven notifications, alarms and timers fit together. |
 

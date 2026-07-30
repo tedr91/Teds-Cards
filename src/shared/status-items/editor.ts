@@ -165,6 +165,8 @@ function baseStatusItemSchema(type: StatusItemType, item?: StatusItem): unknown[
     case "alarms":
     case "timers":
       return BADGE_SCHEMA;
+    case "assist":
+      return [ICON_FIELD, NAME_FIELD];
   }
 }
 
@@ -196,6 +198,8 @@ export function newStatusItem(
       return { type: "alarms" };
     case "timers":
       return { type: "timers" };
+    case "assist":
+      return { type: "assist" };
   }
 }
 

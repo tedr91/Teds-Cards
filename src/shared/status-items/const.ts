@@ -13,6 +13,7 @@ export const STATUS_ITEM_DEFAULT_ICON: Record<StatusItemType, string> = {
   notifications: "mdi:bell-outline",
   alarms: "mdi:alarm",
   timers: "mdi:timer-outline",
+  assist: "mdi:microphone",
 };
 
 /** Human-readable label per status item type (used in editor menus). */
@@ -28,6 +29,7 @@ export const STATUS_ITEM_LABEL: Record<StatusItemType, string> = {
   notifications: "Notifications bell",
   alarms: "Alarms",
   timers: "Timers",
+  assist: "Assist mic",
 };
 
 /** Default display mode per status item type (icon + state / icon only / state only). */
@@ -43,6 +45,7 @@ export const STATUS_ITEM_DEFAULT_DISPLAY: Record<StatusItemType, StatusDisplay> 
   notifications: "icon",
   alarms: "icon",
   timers: "icon",
+  assist: "icon",
 };
 
 /** Status item types offered by the Room Card (a subset of the full set). */
@@ -65,6 +68,7 @@ export const NAVBAR_STATUS_ITEM_TYPES: StatusItemType[] = [
   "notifications",
   "alarms",
   "timers",
+  "assist",
 ];
 
 /** MDI icon per Home Assistant weather condition. */

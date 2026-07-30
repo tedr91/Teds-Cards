@@ -13,6 +13,8 @@ import { notificationInScope, resolveDeviceArea } from "../device-area";
 import { settingsStore, resolveDashboardPath } from "../settings";
 import { severityIcon } from "../icons";
 import { runTedAction, hasTedAction } from "../actions";
+import { voicePipeline } from "../voice-pipeline";
+import { startPushToTalk } from "../voice-controller";
 import { formatDate, formatTime } from "./datetime";
 import {
   brightnessModel,
@@ -35,6 +37,7 @@ import type {
   NotificationsStatusItem,
   AlarmsStatusItem,
   TimersStatusItem,
+  AssistStatusItem,
   SensorStatusItem,
   SliderModel,
   SpacerStatusItem,
@@ -132,7 +135,53 @@ export function renderStatusItem(item: StatusItem, ctx: StatusItemContext, index
       return renderCountItem(item, ctx, index);
     case "timers":
       return renderCountItem(item, ctx, index);
+    case "assist":
+      return renderAssistItem(item, ctx, index);
   }
+}
+
+/** Microphone button — tap starts a push-to-talk Assist run; the icon reflects the
+ *  live voice state. A configured `tap_action` overrides the built-in behavior. */
+function renderAssistItem(
+  item: AssistStatusItem,
+  ctx: StatusItemContext,
+  index: number,
+): TemplateResult | typeof nothing {
+  if (settingsStore.effective().assist_button_enabled === false) return nothing;
+  const snap = voicePipeline.snapshot;
+  const active = snap.active;
+  const icon =
+    item.icon ??
+    (active
+      ? snap.state === "thinking"
+        ? "mdi:dots-horizontal"
+        : snap.state === "responding"
+          ? "mdi:message-reply-text"
+          : "mdi:microphone"
+      : snap.state === "error"
+        ? "mdi:microphone-off"
+        : "mdi:microphone-outline");
+  const anchorId = `${ctx.keyPrefix}-assist-${index}`;
+  const g = effectiveGestures(item, ctx, { tap: () => startPushToTalk(ctx.hass) });
+  const h = gestureHandlers(ctx, g);
+  return html`
+    <div class="status-item">
+      <button
+        id=${anchorId}
+        class="status-icon-button assist-btn${active ? " assist-active" : ""}"
+        style=${active ? "color: var(--ted-style-accent, #4cc2ff)" : ""}
+        title=${String(item.name ?? "Assist")}
+        aria-label="Assist"
+        @pointerdown=${h.down}
+        @pointerup=${h.up}
+        @pointerleave=${h.up}
+        @pointercancel=${h.up}
+        @click=${h.click}
+      >
+        <ha-icon .icon=${icon}></ha-icon>
+      </button>
+    </div>
+  `;
 }
 
 function renderSensorItem(item: SensorStatusItem, ctx: StatusItemContext): TemplateResult {
