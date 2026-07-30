@@ -118,8 +118,10 @@ export class NotificationToastController implements ReactiveController {
     // uses the card's area filter.
     if (n.announce_targets) {
       if (!this._announcementTargetsMe(hass, n.announce_targets)) return;
-    } else if (area && n.area && n.area !== area) {
-      // Area-scoped card: show notifications for this area AND house-wide ones.
+    } else if (n.area && n.area !== area) {
+      // Show this area's notifications AND house-wide ones. A device with no area
+      // (`area` undefined) only gets house-wide ones — an area-scoped notification
+      // for another device must not leak here.
       return;
     }
     // Do Not Disturb (this device's effective setting): suppress toasts entirely.

@@ -942,6 +942,12 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.25
+
+- **Room-scoping fix.** A device with no room assigned now only sees and receives house-wide timers and notifications, instead of every room's — matching how the timer list itself already filtered.
+- **Slideshow crossfade.** The background wallpaper now crossfades when the slideshow advances to the next image, reusing the Photos **Slideshow transition** and **Crossfade duration** settings (no new settings).
+- Calendars now default to the **Ted's Style** theme, and **Automatic Night Mode** now defaults to the Sun (dusk → dawn) schedule.
+
 ### v0.9.24
 
 - **Assist-Response conversation history.** The Assist-Response view is now a scroll-back conversation log: it keeps recent turns (You → Assistant), restores them when you open the view, appends new answers live, and auto-scrolls to the newest while dimming older turns for context. Voice answers now include the recognized question.

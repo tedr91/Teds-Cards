@@ -289,15 +289,31 @@ class BackgroundEngine {
     void this._applySlideshow(s, gen);
   }
 
-  /** Paint a wallpaper image, compositing the readability scrim when enabled. */
-  private async _paint(s: SettingsMap, url: string | null, gen: number): Promise<void> {
+  /** Paint a wallpaper image, compositing the readability scrim when enabled.
+   *  `crossfade` (a slideshow advance) fades the previous image out to the new one
+   *  using the Photos "slideshow transition" + "crossfade duration" settings. */
+  private async _paint(s: SettingsMap, url: string | null, gen: number, crossfade = false): Promise<void> {
     const scrim = await this._scrimFor(s, url);
     if (gen !== this.gen) return;
+    const doXfade =
+      crossfade &&
+      String(s.photos_slideshow_transition ?? "crossfade") !== "none" &&
+      !!this._lastUrl &&
+      this._lastUrl !== url;
     this._lastS = s;
     this._lastUrl = url;
     this._lastScrim = scrim;
-    applyBackground(backgroundLayerCss(s, url, scrim, this._dimFor(s)));
+    applyBackground(
+      backgroundLayerCss(s, url, scrim, this._dimFor(s)),
+      doXfade ? { crossfade: true, seconds: this._crossfadeSeconds(s) } : undefined,
+    );
     this._updateAttribution(s, url);
+  }
+
+  /** The Photos "crossfade duration" setting (seconds), clamped ≥ 0. */
+  private _crossfadeSeconds(s: SettingsMap): number {
+    const v = Number(s.photos_slideshow_crossfade_seconds);
+    return Number.isFinite(v) && v >= 0 ? v : 2;
   }
 
   /** Show the Bing attribution overlay (title/copyright) for the current image,
@@ -332,7 +348,7 @@ class BackgroundEngine {
     const s = this._effective();
     this._advanceSlide(s);
     const gen = ++this.gen;
-    void this._paint(s, this.slideUrls[this.slideIdx], gen);
+    void this._paint(s, this.slideUrls[this.slideIdx], gen, true);
     this._startTimer(Math.max(1, Number(s.background_cycle_minutes ?? 30)));
   }
 
@@ -369,7 +385,7 @@ class BackgroundEngine {
     if (this.slideIdx >= this.slideUrls.length) this.slideIdx = 0;
     const s = this._effective();
     const gen = ++this.gen;
-    void this._paint(s, this.slideUrls[this.slideIdx], gen);
+    void this._paint(s, this.slideUrls[this.slideIdx], gen, true);
     this._startTimer(Math.max(1, Number(s.background_cycle_minutes ?? 30)));
   }
 
@@ -467,7 +483,7 @@ class BackgroundEngine {
     this.timer = window.setInterval(() => {
       const s = this._effective();
       this._advanceSlide(s);
-      void this._paint(s, this.slideUrls[this.slideIdx], this.gen);
+      void this._paint(s, this.slideUrls[this.slideIdx], this.gen, true);
     }, cycleMinutes * 60_000);
   }
 

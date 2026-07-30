@@ -139,7 +139,9 @@ export function notificationInScope(
   deviceArea: string | undefined,
 ): boolean {
   if (n.announce_targets) return announcementTargetsDevice(hass, n.announce_targets);
-  return deviceArea ? !n.area || n.area === deviceArea : true;
+  // A device with no resolved area sees only house-wide (area-less) items — never
+  // notifications scoped to another device's area.
+  return !n.area || n.area === deviceArea;
 }
 
 /** All areas as {id, name}, sorted by name — for the "set device area" banner picker. */

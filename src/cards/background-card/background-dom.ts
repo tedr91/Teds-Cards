@@ -3,6 +3,7 @@
 // for forced view padding). All access to HA's shadow-DOM internals lives here.
 
 const BACKGROUND_STYLE_ID = "ted-background-wallpaper";
+const CROSSFADE_ID = "ted-background-crossfade";
 
 /** A resolved set of CSS background declarations to paint onto the view. */
 export interface BackgroundLayer {
@@ -13,6 +14,11 @@ export interface BackgroundLayer {
   attachment: string;
   color: string;
 }
+
+/** The last layer we painted, so a slideshow advance can crossfade FROM it. */
+let _lastLayer: BackgroundLayer | null = null;
+/** Timer that removes the outgoing crossfade overlay once it has faded out. */
+let _crossfadeTimer: number | undefined;
 
 /** Locate HA's `hui-root` element (the host of the dashboard views), or null. */
 export function findHuiRoot(): HTMLElement | null {
@@ -28,13 +34,25 @@ export function findHuiRoot(): HTMLElement | null {
 /**
  * Paint (or update) the view background. Pass `null` to remove our style and
  * defer to the active HA theme (used by the "HA Theme" mode / on disconnect).
+ *
+ * When `opts.crossfade` is set (a slideshow advance), the OUTGOING image is
+ * painted onto a short-lived overlay above the wallpaper and faded out over
+ * `opts.seconds`, so the new image crossfades in — mirroring the Photos view.
  */
-export function applyBackground(layer: BackgroundLayer | null): void {
+export function applyBackground(
+  layer: BackgroundLayer | null,
+  opts?: { crossfade?: boolean; seconds?: number },
+): void {
   const huiRoot = findHuiRoot();
   if (!huiRoot?.shadowRoot) return;
+  if (opts?.crossfade && _lastLayer && layer) {
+    startCrossfade(huiRoot, _lastLayer, Math.max(0, opts.seconds ?? 2));
+  }
   let styleEl = huiRoot.shadowRoot.querySelector<HTMLStyleElement>(`#${BACKGROUND_STYLE_ID}`);
   if (!layer) {
     styleEl?.remove();
+    _lastLayer = null;
+    removeCrossfade();
     return;
   }
   const css = `:not(.edit-mode) > hui-view {
@@ -51,6 +69,57 @@ export function applyBackground(layer: BackgroundLayer | null): void {
     huiRoot.shadowRoot.appendChild(styleEl);
   }
   if (styleEl.textContent !== css) styleEl.textContent = css;
+  _lastLayer = layer;
+}
+
+/** Paint the outgoing image onto an overlay above the wallpaper (but behind the
+ *  view's content) and fade it out, revealing the freshly-painted new image. */
+function startCrossfade(huiRoot: HTMLElement, oldLayer: BackgroundLayer, seconds: number): void {
+  const view = huiRoot.shadowRoot?.querySelector("hui-view") as HTMLElement | null;
+  if (!view || seconds <= 0) {
+    removeCrossfade();
+    return;
+  }
+  // A crossfade already running: drop it before starting the next one.
+  removeCrossfade();
+  const el = document.createElement("div");
+  el.id = CROSSFADE_ID;
+  el.style.cssText = [
+    "position:absolute",
+    "inset:0",
+    "z-index:-1",
+    "pointer-events:none",
+    `background-image:${oldLayer.image}`,
+    `background-size:${oldLayer.size}`,
+    `background-position:${oldLayer.position}`,
+    `background-repeat:${oldLayer.repeat}`,
+    `background-attachment:${oldLayer.attachment}`,
+    `background-color:${oldLayer.color}`,
+    "opacity:1",
+    `transition:opacity ${seconds}s ease`,
+  ].join(";");
+  // hui-view isn't a stacking context by default, so a z-index:-1 child would
+  // paint BEHIND its own wallpaper. Isolate it (no layout side effects) so the
+  // overlay sits ABOVE the wallpaper but BEHIND content.
+  view.style.isolation = "isolate";
+  view.appendChild(el);
+  // Force a layout read so the initial opacity:1 is committed before we flip to 0.
+  void el.offsetWidth;
+  el.style.opacity = "0";
+  _crossfadeTimer = window.setTimeout(() => removeCrossfade(), seconds * 1000 + 120);
+}
+
+/** Remove the crossfade overlay (and its isolation flag) if present. */
+function removeCrossfade(): void {
+  if (_crossfadeTimer !== undefined) {
+    clearTimeout(_crossfadeTimer);
+    _crossfadeTimer = undefined;
+  }
+  const huiRoot = findHuiRoot();
+  const view = huiRoot?.shadowRoot?.querySelector("hui-view") as HTMLElement | null;
+  const el = view?.querySelector(`#${CROSSFADE_ID}`);
+  if (el) el.remove();
+  if (view) view.style.isolation = "";
 }
 
 /** Remove the injected background style (used on disconnect). */
