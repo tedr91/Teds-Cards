@@ -942,6 +942,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.24
+
+- **Assist-Response conversation history.** The Assist-Response view is now a scroll-back conversation log: it keeps recent turns (You → Assistant), restores them when you open the view, appends new answers live, and auto-scrolls to the newest while dimming older turns for context. Voice answers now include the recognized question.
+
 ### v0.9.23
 
 - **Voice Assist fixes.** Voice requests now send the panel's device id, so room-aware commands work: **"show the cameras"** navigates to the Cameras view, timers create a Ted's timer on the panel (no more "unexpected error"), and the correct room is used. The mic now plays a short chime when it starts listening. The overlay shows the conversation as a single box that accumulates each turn (You → Assistant) and stays up until a little after the spoken answer finishes (long answers no longer vanish early). Every answer is also mirrored to the Assist-Response view so opening it shows the latest response.

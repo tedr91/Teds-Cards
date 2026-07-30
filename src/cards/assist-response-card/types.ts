@@ -33,6 +33,8 @@ export interface AssistResponseCardConfig extends LovelaceCardConfig {
 export interface AssistResponse {
   id?: string;
   title?: string | null;
+  /** The recognized user question that produced this answer (for the transcript). */
+  question?: string | null;
   message: string;
   image?: string | null;
   areas?: string[];

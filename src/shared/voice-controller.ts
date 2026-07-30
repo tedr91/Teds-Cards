@@ -249,14 +249,16 @@ class VoiceManager {
 
   /** Reflect the answer onto the Assist-Response view (targets this device precisely).
    *  Full-screen devices navigate there; compact devices update it silently so a manual
-   *  visit shows the latest answer. */
+   *  visit shows the latest answer. Includes the recognized question for the transcript. */
   private _pushResponse(answer: string, fullscreen: boolean): void {
     try {
-      this._hass?.callService?.(DOMAIN, "assist_response", {
+      const data: Record<string, unknown> = {
         message: answer,
         devices: [resolveDeviceId()],
         navigate: fullscreen,
-      });
+      };
+      if (this._lastStt) data.question = this._lastStt;
+      this._hass?.callService?.(DOMAIN, "assist_response", data);
     } catch {
       /* the overlay still shows the answer */
     }
