@@ -35,6 +35,7 @@ export type SettingKind =
   | "select"
   | "entity-list"
   | "announce-messages"
+  | "climate-aliases"
   | "navbar-menu-items"
   | "background"
   | "nightmode"
@@ -136,6 +137,9 @@ export const SETTINGS_DEFAULTS: SettingsMap = {
   cameras_layout: "big-small",
   climate_list: [],
   climate_layout: "auto",
+  climate_aliases: [],
+  climate_auto_on: false,
+  climate_min_delta: 5,
   navbar_auto_hide: false,
   navbar_auto_hide_delay: 5,
   navbar_float: false,
@@ -216,6 +220,8 @@ export const SETTINGS_DEFAULTS: SettingsMap = {
   photos_dashboard: "[root]/photos",
   assist_response_dashboard: "[root]/assist-response",
   announce_dashboard: "[root]/announce",
+  notifications_dashboard: "[root]/notifications",
+  settings_dashboard: "[root]/settings",
   auto_return_home_after: 0,
 };
 
@@ -244,6 +250,7 @@ export const SETTINGS_FIELDS: SettingField[] = [
   { key: "timer_alert_repeat", label: "Repeat alert", group: "Alarms/Timers", subsection: "Timers", kind: "boolean", help: "Loop the sound until dismissed (or the notification times out)." },
   { key: "timer_snooze_enabled", label: "Enable snoozing", group: "Alarms/Timers", subsection: "Timers", kind: "boolean" },
   { key: "timer_snooze_minutes", label: "Snooze duration", group: "Alarms/Timers", subsection: "Timers", kind: "number", min: 1, max: 60, unit: "min" },
+  { key: "timer_bridge_enabled", label: "Voice timers", group: "Alarms/Timers", subsection: "Timers", kind: "boolean", help: "Show timers started by Home Assistant voice commands on this dashboard's Timers view." },
   // Announce
   { key: "announce_messages", label: "Predefined messages", group: "Announce", kind: "announce-messages", help: "The global list of ready-made announcements shown in the Announce view." },
   { key: "announce_tts_engine", label: "Voice (TTS engine)", group: "Announce", subsection: "Voice", kind: "entity", entityDomain: "tts", help: "Text-to-speech engine used to speak announcements. Leave empty to use Home Assistant's default." },
@@ -281,6 +288,9 @@ export const SETTINGS_FIELDS: SettingField[] = [
     help: "How this device arranges its thermostats on the Climate view.",
   },
   { key: "climate_list", label: "Thermostats", group: "Thermostats", kind: "entity-list", entityDomain: "climate", help: "Global lists the available thermostats; each device curates its own subset." },
+  { key: "climate_aliases", label: "Voice zone names", group: "Thermostats", kind: "climate-aliases", help: "Map spoken names (e.g. \u201cFirst Floor\u201d) to a thermostat, so voice climate commands can target it." },
+  { key: "climate_auto_on", label: "Auto turn on", group: "Thermostats", kind: "boolean", help: "When a voice climate request targets a thermostat that's off, turn it on automatically instead of asking first." },
+  { key: "climate_min_delta", label: "Min heat/cool gap", group: "Thermostats", kind: "number", min: 1, max: 15, unit: "\u00b0", help: "Smallest gap kept between the heat and cool setpoints on heat/cool thermostats." },
   // Photos
   { key: "photos_folder", label: "Album folder", group: "Photos", kind: "folder", help: "Media folder of photos shown on the Photos view. Ted's Photo Viewer card reads this when dashboard_integration is on." },
   { key: "photos_auto_open_last", label: "Re-open last photo", group: "Photos", kind: "boolean", help: "When the Photos view loads, re-open the photo this device last viewed (otherwise it opens empty)." },
@@ -375,6 +385,8 @@ export const SETTINGS_FIELDS: SettingField[] = [
   { key: "photos_dashboard", label: "Photos dashboard", group: "Dashboards", kind: "text", rootRelative: true },
   { key: "assist_response_dashboard", label: "Assist-Response dashboard", group: "Dashboards", kind: "text", rootRelative: true },
   { key: "announce_dashboard", label: "Announce dashboard", group: "Dashboards", kind: "text", rootRelative: true },
+  { key: "notifications_dashboard", label: "Notifications dashboard", group: "Dashboards", kind: "text", rootRelative: true },
+  { key: "settings_dashboard", label: "Settings dashboard", group: "Dashboards", kind: "text", rootRelative: true },
 ];
 
 /** Fields grouped for the card UI, in declared order per group. */

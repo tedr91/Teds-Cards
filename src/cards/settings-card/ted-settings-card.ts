@@ -230,6 +230,15 @@ const NIGHT_ENTITY_SCHEMA = [
 /** ha-form schema for a predefined-announcement icon (HA's searchable icon picker). */
 const ANNOUNCE_ICON_SCHEMA = [{ name: "icon", selector: { icon: {} } }];
 
+/** ha-form schema for picking the climate entity of a voice zone-name alias. */
+const CLIMATE_ALIAS_SCHEMA = [{ name: "entity", selector: { entity: { domain: "climate" } } }];
+
+/** A spoken-zone-name → climate entity mapping (global `climate_aliases` list). */
+interface ClimateAlias {
+  name: string;
+  entity: string;
+}
+
 const NIGHT_LABELS: Record<string, string> = {
   night_enabled: "Enabled",
   night_schedule_source: "Schedule",
@@ -1554,6 +1563,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
   private _renderGlobalRow(field: SettingField): TemplateResult {
     if (field.kind === "entity-list") return this._renderCamerasGlobal(field);
     if (field.kind === "announce-messages") return this._renderAnnounceMessages("global");
+    if (field.kind === "climate-aliases") return this._renderClimateAliases("global");
     if (field.kind === "background") return this._renderBackground(field, "global");
     if (field.kind === "nightmode") return this._renderNightMode(field, "global");
     if (field.kind === "launcher") return this._renderLauncher("global");
@@ -1593,6 +1603,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
   private _renderDeviceRow(field: SettingField): TemplateResult {
     if (field.kind === "entity-list") return this._renderCamerasDevice(field);
     if (field.kind === "announce-messages") return this._renderAnnounceMessages("device");
+    if (field.kind === "climate-aliases") return this._renderClimateAliases("device");
     if (field.kind === "background") return this._renderBackground(field, "device");
     if (field.kind === "nightmode") return this._renderNightMode(field, "device");
     if (field.kind === "launcher") return this._renderLauncher("device");
@@ -1670,6 +1681,106 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
             )}
           </select>
         </div>
+      </div>
+    `;
+  }
+
+  // --- Voice zone names: spoken-name → climate entity aliases (global) ---------
+  private _climateAliases(): ClimateAlias[] {
+    const v = this._globalValue("climate_aliases");
+    return Array.isArray(v) ? (v as unknown as ClimateAlias[]) : [];
+  }
+
+  private _commitClimateAliases(list: ClimateAlias[]): void {
+    const clean = list.map((a) => ({ name: (a.name || "").trim(), entity: (a.entity || "").trim() }));
+    this._setGlobal("climate_aliases", clean as unknown as SettingsValue);
+  }
+
+  private _updateClimateAliasName(i: number, ev: Event): void {
+    const value = (ev.target as HTMLInputElement).value;
+    const list = this._climateAliases().map((a) => ({ ...a }));
+    if (!list[i]) return;
+    list[i].name = value;
+    this._commitClimateAliases(list);
+  }
+
+  private _updateClimateAliasEntity(i: number, ev: CustomEvent): void {
+    const entity = (ev.detail?.value as { entity?: string } | undefined)?.entity ?? "";
+    const list = this._climateAliases().map((a) => ({ ...a }));
+    if (!list[i] || (list[i].entity ?? "") === entity) return;
+    list[i].entity = entity;
+    this._commitClimateAliases(list);
+  }
+
+  private _addClimateAlias(): void {
+    if (!this._isAdmin()) return;
+    this._commitClimateAliases([...this._climateAliases(), { name: "", entity: "" }]);
+  }
+
+  private _removeClimateAlias(i: number): void {
+    this._commitClimateAliases(this._climateAliases().filter((_, idx) => idx !== i));
+  }
+
+  private _renderClimateAliases(scope: "global" | "device"): TemplateResult {
+    if (scope === "device") {
+      return html`
+        <div class="row">
+          <div class="row-label">
+            <span>Voice zone names</span>
+            <span class="help">Managed globally — edit them on the “Global” tab.</span>
+          </div>
+        </div>
+      `;
+    }
+    const admin = this._isAdmin();
+    const aliases = this._climateAliases();
+    return html`
+      <div class="cam-row">
+        <div class="cam-head">
+          <div class="row-label">
+            <span>Voice zone names</span>
+            <span class="help">Map spoken names (e.g. “First Floor”) to a thermostat, for voice climate control.</span>
+          </div>
+        </div>
+        ${admin
+          ? html`<button class="cam-btn add-list-btn" @click=${() => this._addClimateAlias()}>
+              <ha-icon .icon=${this._ui("add")}></ha-icon><span>Add a zone name</span>
+            </button>`
+          : nothing}
+        ${aliases.length
+          ? aliases.map(
+              (a, i) => html`
+                <div class="alias-row" style="display:flex;gap:8px;align-items:center;margin-top:8px;">
+                  <input
+                    class="ann-input"
+                    style="flex:1 1 40%;min-width:110px;"
+                    type="text"
+                    .value=${a.name ?? ""}
+                    placeholder="First Floor"
+                    ?disabled=${!admin}
+                    @change=${(e: Event) => this._updateClimateAliasName(i, e)}
+                  />
+                  <ha-form
+                    style="flex:1 1 60%;--ha-form-padding:0;"
+                    .hass=${this.hass}
+                    .schema=${CLIMATE_ALIAS_SCHEMA}
+                    .data=${{ entity: a.entity ?? "" }}
+                    .computeLabel=${() => ""}
+                    .disabled=${!admin}
+                    @value-changed=${(e: CustomEvent) => this._updateClimateAliasEntity(i, e)}
+                  ></ha-form>
+                  <button
+                    style="background:none;border:none;cursor:pointer;padding:4px;color:var(--ted-style-muted,#888);"
+                    title="Remove"
+                    ?disabled=${!admin}
+                    @click=${() => this._removeClimateAlias(i)}
+                  >
+                    <ha-icon icon="mdi:delete-outline"></ha-icon>
+                  </button>
+                </div>
+              `,
+            )
+          : html`<div class="help">No zone names yet — add one above.</div>`}
       </div>
     `;
   }
