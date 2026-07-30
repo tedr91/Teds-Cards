@@ -65,11 +65,13 @@ export function showAreaSetup(hass: HomeAssistant): Promise<void> {
   return new Promise((resolve) => {
     const h = hass as unknown as RegistryHass;
     const thisId = resolveDeviceHaId(hass);
-    const devices = unassignedDevices(hass).sort((a, b) =>
-      a.id === thisId ? -1 : b.id === thisId ? 1 : 0,
-    );
-    const areas = listAreas(hass);
     const admin = !!h.user?.is_admin;
+    // Admins can assign any un-scoped device; a non-admin (kiosk) user only ever
+    // sees THIS device — the one they're actually looking at.
+    const devices = unassignedDevices(hass)
+      .filter((d) => admin || d.id === thisId)
+      .sort((a, b) => (a.id === thisId ? -1 : b.id === thisId ? 1 : 0));
+    const areas = listAreas(hass);
     const selfAllowed = settingsStore.effective().allow_device_area_self_assign !== false;
 
     const layer = document.createElement("div");
@@ -134,11 +136,31 @@ export function showAreaSetup(hass: HomeAssistant): Promise<void> {
       const list = document.createElement("div");
       list.style.cssText = "padding:8px 20px 4px;display:flex;flex-direction:column;gap:10px;";
       for (const d of devices) {
+        const isThis = d.id === thisId;
         const row = document.createElement("div");
-        row.style.cssText = "display:flex;align-items:center;gap:10px;justify-content:space-between;";
+        row.style.cssText =
+          "display:flex;align-items:center;gap:10px;justify-content:space-between;" +
+          "border-radius:8px;padding:6px 8px;margin:0 -8px;" +
+          (isThis
+            ? "outline:1.5px solid var(--primary-color,#2196f3);" +
+              "background:rgba(127,127,127,.10);"
+            : "");
         const label = document.createElement("div");
-        label.textContent = deviceLabel(d) + (d.id === thisId ? " · this screen" : "");
-        label.style.cssText = "flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;";
+        label.style.cssText =
+          "flex:1 1 auto;min-width:0;display:flex;align-items:center;gap:8px;overflow:hidden;";
+        const name = document.createElement("span");
+        name.textContent = deviceLabel(d);
+        name.style.cssText = "overflow:hidden;text-overflow:ellipsis;white-space:nowrap;";
+        label.append(name);
+        if (isThis) {
+          const badge = document.createElement("span");
+          badge.textContent = "This device";
+          badge.style.cssText =
+            "flex:0 0 auto;font-size:.72rem;font-weight:700;letter-spacing:.02em;" +
+            "padding:2px 8px;border-radius:999px;color:#fff;" +
+            "background:var(--primary-color,#2196f3);";
+          label.append(badge);
+        }
         const sel = document.createElement("select");
         sel.style.cssText =
           "flex:0 0 auto;max-width:52%;font:inherit;padding:6px 8px;border-radius:8px;" +

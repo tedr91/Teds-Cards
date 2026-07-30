@@ -942,6 +942,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.21
+
+- **Improved** the "Assign devices to a room" dialog: a non-admin (kiosk) account now sees only the current screen's device, and admins see the current device pinned to the top with a clear "This device" badge and highlight.
+
 ### v0.9.20
 
 - **Fixed:** the "Assign this screen to a room" prompt could appear on panels that already have a room (it was being triggered by *other* unassigned devices). It now prompts only when this panel's own device has no room, and the fix dialog marks this screen so it's clear which device to set.
