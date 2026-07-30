@@ -1812,6 +1812,9 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
         height: 100%;
         display: flex;
         flex-direction: column;
+        /* Cluster the sections (top → center → bottom) and center them vertically on the
+           screen rather than stretching to the full height. */
+        justify-content: center;
       }
       .navbar.float .navbar-card {
         border-radius: var(--ted-style-radius, 12px);
@@ -1922,9 +1925,12 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
         padding-bottom: 10px;
       }
       .navbar.vertical .zone.center {
-        flex: 1;
+        /* Size to content (don't grow) so the card's justify-content centers the whole
+           top/center/bottom cluster; auto rows keep mid-up / center / mid-down order
+           without clipping. */
+        flex: 0 0 auto;
         display: grid;
-        grid-template-rows: 1fr auto 1fr;
+        grid-template-rows: auto auto auto;
         justify-items: center;
         pointer-events: none;
       }
