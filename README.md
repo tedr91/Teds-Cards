@@ -942,6 +942,11 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.29
+
+- **Vertical navbar layout fixes.** A **floating** left/right navbar now hugs its content (only as tall as its items) and centers vertically on the screen, even when the Left/Right sections are enabled. A **non-floating** (snap) side bar goes back to spanning the full height with its content spread top → center → bottom (fixes a regression from v0.9.28).
+- **Nightstand profile trims the navbar.** Picking the **Nightstand** device type now also limits the launcher to **Home**, **Music**, and **Alarms/Timers**, and shows only the Center (launcher) navbar section — for a minimal bedside bar.
+
 ### v0.9.28
 
 - **Vertical navbars center their content.** A left/right (vertical) navbar now clusters its items and centers them vertically on the screen instead of stretching from the top, so a side bar looks balanced regardless of how many buttons it has.

@@ -10,7 +10,7 @@
  */
 
 import { FULLSCREEN_STATES_KEY } from "../cards/fullscreen-card/const";
-import { SETTINGS_DEFAULTS } from "./settings-schema";
+import { DEFAULT_NAVBAR_SECTIONS, SETTINGS_DEFAULTS, type SettingsValue } from "./settings-schema";
 import { settingsStore } from "./settings";
 
 /** The set of device profiles. `undefined` = no profile applied. */
@@ -31,7 +31,21 @@ export interface DeviceTypePreset {
   fullscreen_default: boolean;
   /** Whether Automatic Night Mode is on for this device type (only nightstands). */
   night_enabled: boolean;
+  /** Curated View Launcher subset (view paths) for this device, if the type limits it.
+   *  Omitted = the device inherits the global launcher list (all views). */
+  launcher_list?: string[];
+  /** Explicit navbar sections for this device, if the type reshapes the bar (e.g. the
+   *  nightstand hides everything but the Center/launcher section). Omitted = inherit. */
+  navbar_sections?: unknown[];
 }
+
+/** The nightstand navbar: the default five sections with every section EXCEPT the
+ *  Center (launcher) one hidden, so a revealed nightstand bar shows just its curated
+ *  launcher buttons. Items are preserved (only `visible` is flipped) so re-enabling a
+ *  section in Settings brings its content back. */
+const NIGHTSTAND_NAVBAR_SECTIONS = DEFAULT_NAVBAR_SECTIONS.map((section, i) =>
+  i === 2 ? section : { ...section, visible: false },
+);
 
 /** The preset values written when each type is applied. */
 export const DEVICE_TYPE_PRESETS: Record<DeviceType, DeviceTypePreset> = {
@@ -43,6 +57,10 @@ export const DEVICE_TYPE_PRESETS: Record<DeviceType, DeviceTypePreset> = {
     navbar_float: false,
     fullscreen_default: true,
     night_enabled: true,
+    // A minimal bar: only Home, Music, and Alarms/Timers launcher buttons, and only the
+    // Center (launcher) section shown.
+    launcher_list: ["home-nightstand", "music", "alarms-timers"],
+    navbar_sections: NIGHTSTAND_NAVBAR_SECTIONS,
   },
   "tablet-landscape": {
     home_dashboard: "[root]/home-wallpanel-h",
@@ -118,6 +136,8 @@ export function applyDeviceType(
       "navbar_float",
       "fullscreen_default",
       "night_enabled",
+      "launcher_list",
+      "navbar_sections",
       FULLSCREEN_STATES_KEY,
     ]) {
       store.clearValue("device", key);
@@ -133,6 +153,13 @@ export function applyDeviceType(
   store.setValue("device", "navbar_float", preset.navbar_float);
   store.setValue("device", "fullscreen_default", preset.fullscreen_default);
   store.setValue("device", "night_enabled", preset.night_enabled);
+  // Launcher subset + navbar section layout — only some types reshape these; clear the
+  // device override for types that don't, so they inherit the global bar.
+  if (preset.launcher_list) store.setValue("device", "launcher_list", preset.launcher_list);
+  else store.clearValue("device", "launcher_list");
+  if (preset.navbar_sections)
+    store.setValue("device", "navbar_sections", preset.navbar_sections as unknown as SettingsValue);
+  else store.clearValue("device", "navbar_sections");
   // Discard any per-card maximized overrides so the new default is what shows.
   store.setValue("device", FULLSCREEN_STATES_KEY, {});
 }

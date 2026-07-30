@@ -1039,6 +1039,9 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
    */
   private _measureOverflow(): void {
     if (this._editMode || !this._config) return;
+    // A vertical float bar hugs its content (fit-content height) and centers — it grows
+    // to fit rather than collapsing items into a chevron, so skip overflow entirely.
+    if (this._barType() === "float" && this._isVertical()) return;
     if (this._visible.size > 0) return; // already computed this cycle; wait for a reset
     const root = this.renderRoot as ShadowRoot | undefined;
     const card = root?.querySelector?.(".navbar-card") as HTMLElement | null;
@@ -1169,7 +1172,9 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
       byZone.left.some(({ section }) => this._sectionItems(section).length > 0) ||
       byZone.right.some(({ section }) => this._sectionItems(section).length > 0);
     const hug = this._barType() === "float" && !hasSides;
-    this._hugBar = hug;
+    // A vertical float bar also sizes to its content (fit-content height) — treat it like
+    // a hug bar for the resize auto-heal so its content-driven box can't oscillate.
+    this._hugBar = hug || (this._barType() === "float" && this._isVertical());
 
     const navClasses = {
       navbar: true,
@@ -1812,50 +1817,47 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
         height: 100%;
         display: flex;
         flex-direction: column;
-        /* Cluster the sections (top → center → bottom) and center them vertically on the
-           screen rather than stretching to the full height. */
-        justify-content: center;
       }
       .navbar.float .navbar-card {
         border-radius: var(--ted-style-radius, 12px);
       }
-      /* Center the floating bar along its length: a horizontal bar centers left/right,
-         a vertical (left/right) bar centers top/bottom. */
+      /* Horizontal float: center the bar left/right in normal block flow. */
       .navbar.float:not(.vertical) .navbar-card {
         margin: 0 auto;
       }
-      .navbar.float.vertical .navbar-card {
-        margin: auto 0;
-      }
-      /* Center-only float bars hug their content (just larger than the buttons),
-         still capped by the configured min/max length. With edge items (left/right on a
-         horizontal bar, top/bottom on a vertical one) the bar keeps its full length so
-         those items can pin to the edges. */
-      .navbar.float .navbar-card.hug {
+      /* Vertical float: the fixed container is a centered flex column, so the card hugs
+         its content HEIGHT (only as tall as its items) and sits vertically centered on
+         screen — regardless of which sections are enabled. (margin:auto can't center a
+         block vertically, so use flex.) */
+      .navbar.float.vertical {
         display: flex;
-        align-items: center;
+        flex-direction: column;
         justify-content: center;
       }
-      .navbar.float:not(.vertical) .navbar-card.hug {
-        width: fit-content;
-        padding: 0 12px;
-      }
-      .navbar.float.vertical .navbar-card.hug {
+      .navbar.float.vertical .navbar-card {
         height: fit-content;
         padding: 12px 0;
       }
-      .navbar.float .navbar-card.hug .zone.left,
-      .navbar.float .navbar-card.hug .zone.right {
+      .navbar.float.vertical .zone.center {
+        flex: 0 0 auto;
+        grid-template-rows: auto auto auto;
+      }
+      /* Horizontal center-only float hugs its width and hides the (empty) side zones so
+         it wraps just the centered buttons. */
+      .navbar.float:not(.vertical) .navbar-card.hug {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: fit-content;
+        padding: 0 12px;
+      }
+      .navbar.float:not(.vertical) .navbar-card.hug .zone.left,
+      .navbar.float:not(.vertical) .navbar-card.hug .zone.right {
         display: none;
       }
       .navbar.float:not(.vertical) .navbar-card.hug .zone.center {
         position: static;
         transform: none;
-      }
-      /* Vertical center zone is already static (flex column); just stop it growing so
-         the bar hugs the buttons instead of stretching to the full height. */
-      .navbar.float.vertical .navbar-card.hug .zone.center {
-        flex: 0 0 auto;
       }
 
       /* Three zones: side zones pin to opposite edges, center is a grid so the
@@ -1925,12 +1927,12 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
         padding-bottom: 10px;
       }
       .navbar.vertical .zone.center {
-        /* Size to content (don't grow) so the card's justify-content centers the whole
-           top/center/bottom cluster; auto rows keep mid-up / center / mid-down order
-           without clipping. */
-        flex: 0 0 auto;
+        /* Snap bar: the center zone fills the space between the top and bottom zones and
+           keeps its own content vertically centered (1fr auto 1fr). Vertical FLOAT bars
+           override this (flex:0 / auto rows) to hug their content. */
+        flex: 1;
         display: grid;
-        grid-template-rows: auto auto auto;
+        grid-template-rows: 1fr auto 1fr;
         justify-items: center;
         pointer-events: none;
       }
