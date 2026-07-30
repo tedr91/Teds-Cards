@@ -129,9 +129,7 @@ export class TedNavbarCardEditor extends LitElement implements LovelaceCardEdito
   }
 
   private _appearanceSchema() {
-    const a = this._config?.alignment;
-    const isVertical = a === "left" || a === "right";
-    const isFloat = !isVertical && this._config?.bar_type === "float";
+    const isFloat = this._config?.bar_type === "float";
     return [
       {
         name: "",
@@ -172,23 +170,20 @@ export class TedNavbarCardEditor extends LitElement implements LovelaceCardEdito
                   },
                 },
               },
-              // Float is horizontal-only; a left/right (vertical) bar is always snap.
-              ...(isVertical
-                ? []
-                : [
-                    {
-                      name: "bar_type",
-                      selector: {
-                        select: {
-                          mode: "dropdown",
-                          options: [
-                            { value: "snap", label: "Snap (edge-to-edge)" },
-                            { value: "float", label: "Float (centered)" },
-                          ],
-                        },
-                      },
-                    },
-                  ]),
+              // Float applies to any alignment: a horizontal bar centers/hugs its
+              // width, a vertical (left/right) bar centers/hugs its height.
+              {
+                name: "bar_type",
+                selector: {
+                  select: {
+                    mode: "dropdown",
+                    options: [
+                      { value: "snap", label: "Snap (edge-to-edge)" },
+                      { value: "float", label: "Float (centered)" },
+                    ],
+                  },
+                },
+              },
             ],
           },
           ...(isFloat
@@ -246,9 +241,9 @@ export class TedNavbarCardEditor extends LitElement implements LovelaceCardEdito
       case "size":
         return "Size (bar thickness)";
       case "min_width":
-        return "Minimum width";
+        return this._vertical() ? "Minimum length" : "Minimum width";
       case "max_width":
-        return "Maximum width";
+        return this._vertical() ? "Maximum length" : "Maximum width";
       case "transparency":
         return "Transparency";
       case "blur":

@@ -34,9 +34,9 @@ sections:
 | Option | Type | Default | Description |
 | --- | --- | --- | --- |
 | `alignment` | `bottom` \| `top` \| `left` \| `right` | `bottom` | Screen edge. Left/right are vertical bars. |
-| `bar_type` | `snap` \| `float` | `snap` | `snap` = edge-to-edge; `float` = centered with margins + rounded corners (horizontal only). |
+| `bar_type` | `snap` \| `float` | `snap` | `snap` = edge-to-edge; `float` = detached, centered along its length with margins + rounded corners. Works on any edge (a vertical left/right bar centers/hugs its height). |
 | `size` | number (px) | 48 | Bar thickness; buttons/items size from this. |
-| `min_width` / `max_width` | number (px) | | Float-mode width bounds. |
+| `min_width` / `max_width` | number (px) | | Float-mode length bounds — width on a top/bottom bar, height on a left/right bar. |
 | `theme`, `background`, `transparency`, `blur` | | | See [Appearance & theming](./README.md#appearance--theming-shared). |
 
 ### Auto-hide & menu

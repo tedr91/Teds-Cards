@@ -329,13 +329,11 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
 
   private _barType(): "snap" | "float" {
     // The card's YAML `bar_type` wins; the per-device `navbar_float` setting is the
-    // fallback when the card doesn't set one.
+    // fallback when the card doesn't set one. Float applies to every alignment: a
+    // horizontal bar centers/hugs its width, a vertical bar centers/hugs its height.
     const cfg = this._config?.bar_type;
-    let float: boolean;
-    if (cfg === "float" || cfg === "snap") float = cfg === "float";
-    else float = this._settingOverride("navbar_float") === true;
-    // Float is horizontal-only; a vertical bar is always snap.
-    return !this._isVertical() && float ? "float" : "snap";
+    if (cfg === "float" || cfg === "snap") return cfg;
+    return this._settingOverride("navbar_float") === true ? "float" : "snap";
   }
 
   /** Unread notifications for this device (house-wide + this device's area), from the
@@ -1064,8 +1062,12 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
       blur: this._config.blur,
     });
     if (this._barType() === "float") {
-      cardStyle["min-width"] = `${this._minWidth()}px`;
-      cardStyle["max-width"] = `${this._maxWidth()}px`;
+      // The configured min/max bound the bar's LENGTH: width for a horizontal bar,
+      // height for a vertical (left/right) one.
+      const minKey = this._isVertical() ? "min-height" : "min-width";
+      const maxKey = this._isVertical() ? "max-height" : "max-width";
+      cardStyle[minKey] = `${this._minWidth()}px`;
+      cardStyle[maxKey] = `${this._maxWidth()}px`;
     }
     // Direction a ringed (active-view launcher) button lifts: toward the content, away
     // from the bar's edge. Inherited by the embedded button cards' `--ted-ring-lift`.
@@ -1160,7 +1162,6 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
     const exitPath = this._config?.exit_path || "/lovelace";
     const autoHide = this._autoHide();
     const isFloat = this._barType() === "float";
-    const vertical = this._isVertical();
     const pos = this._alignment();
     // A control is locked when the card's YAML pins that option (it takes precedence
     // over the per-device setting, so the menu can't change it here).
@@ -1203,12 +1204,8 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
                 class="nav-menu-row"
                 role="switch"
                 aria-checked=${isFloat ? "true" : "false"}
-                ?disabled=${vertical || floatLocked}
-                title=${floatLocked
-                  ? "Set by the dashboard"
-                  : vertical
-                    ? "Float applies to top/bottom bars only"
-                    : nothing}
+                ?disabled=${floatLocked}
+                title=${floatLocked ? "Set by the dashboard" : nothing}
                 @click=${() => this._setNavbarSetting("navbar_float", !isFloat)}
               >
                 <ha-icon icon="mdi:dock-window"></ha-icon>
@@ -1554,6 +1551,14 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
       .navbar.collapsed.right .navbar-card {
         transform: translateX(100%);
       }
+      /* Float bars sit 8px in from the edge (container padding), so slide the extra 8px
+         too or a sliver stays visible when collapsed. */
+      .navbar.float.collapsed.left .navbar-card {
+        transform: translateX(calc(-100% - 8px));
+      }
+      .navbar.float.collapsed.right .navbar-card {
+        transform: translateX(calc(100% + 8px));
+      }
       /* The pill handle: a small rounded bar centered on the aligned edge, drawn as a
          ::before inside a larger transparent hit surface (the button) so it's easy to
          tap without a big visible target. */
@@ -1736,26 +1741,45 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
         flex-direction: column;
       }
       .navbar.float .navbar-card {
-        margin: 0 auto;
         border-radius: var(--ted-style-radius, 12px);
       }
-      /* Center-only float bars hug their content (just wider than the buttons),
-         still capped by the configured min/max width. With left/right items the
-         bar stays full width so those items can pin to the edges. */
+      /* Center the floating bar along its length: a horizontal bar centers left/right,
+         a vertical (left/right) bar centers top/bottom. */
+      .navbar.float:not(.vertical) .navbar-card {
+        margin: 0 auto;
+      }
+      .navbar.float.vertical .navbar-card {
+        margin: auto 0;
+      }
+      /* Center-only float bars hug their content (just larger than the buttons),
+         still capped by the configured min/max length. With edge items (left/right on a
+         horizontal bar, top/bottom on a vertical one) the bar keeps its full length so
+         those items can pin to the edges. */
       .navbar.float .navbar-card.hug {
         display: flex;
         align-items: center;
         justify-content: center;
+      }
+      .navbar.float:not(.vertical) .navbar-card.hug {
         width: fit-content;
         padding: 0 12px;
+      }
+      .navbar.float.vertical .navbar-card.hug {
+        height: fit-content;
+        padding: 12px 0;
       }
       .navbar.float .navbar-card.hug .zone.left,
       .navbar.float .navbar-card.hug .zone.right {
         display: none;
       }
-      .navbar.float .navbar-card.hug .zone.center {
+      .navbar.float:not(.vertical) .navbar-card.hug .zone.center {
         position: static;
         transform: none;
+      }
+      /* Vertical center zone is already static (flex column); just stop it growing so
+         the bar hugs the buttons instead of stretching to the full height. */
+      .navbar.float.vertical .navbar-card.hug .zone.center {
+        flex: 0 0 auto;
       }
 
       /* Three zones: side zones pin to opposite edges, center is a grid so the

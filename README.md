@@ -942,6 +942,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.26
+
+- **Floating side navbars.** The navbar's **Float** mode now works when the bar is aligned **Left** or **Right**, not just top/bottom. A floating vertical bar detaches from the edge with rounded corners, centers along its height, and hugs its content (with top/bottom items pinned it keeps full height). The **Min/Max width** bounds become **length** (height) bounds for a vertical float, and the hold-menu **Float** toggle is now available on side bars.
+
 ### v0.9.25
 
 - **Room-scoping fix.** A device with no room assigned now only sees and receives house-wide timers and notifications, instead of every room's — matching how the timer list itself already filtered.
