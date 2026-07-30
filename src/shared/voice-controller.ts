@@ -15,9 +15,10 @@ import type { ReactiveController, ReactiveControllerHost } from "lit";
 import type { HomeAssistant } from "custom-card-helpers";
 
 import { voicePipeline, isVoiceSupported, type VoiceSnapshot } from "./voice-pipeline";
-import { voiceOverlay, type VoiceOverlayView } from "./assist-overlay";
+import { voiceOverlay, type VoiceOverlayView, type VoiceTurn } from "./assist-overlay";
 import { settingsStore } from "./settings";
 import { resolveDeviceId } from "./device-id";
+import { resolveDeviceHaId } from "./device-area";
 import { asDeviceType, DEVICE_TYPE_PRESETS } from "./device-types";
 
 const DOMAIN = "teds_dashboard_system";
@@ -66,6 +67,10 @@ class VoiceManager {
   private _answerRouted = false;
   private _lingerTimer?: number;
   private _redraw = new Set<() => void>();
+  /** The running conversation transcript shown in the single overlay box. */
+  private _turns: VoiceTurn[] = [];
+  private _conversationActive = false;
+  private _lastStt?: string;
   /** Continuous wake word wanted (from settings) + a user gesture has unlocked audio. */
   private _wakeEnabled = false;
   private _gestured = false;
@@ -109,7 +114,12 @@ class VoiceManager {
       voicePipeline.stop();
       if (s.stage !== "wake_word") return;
     }
-    void voicePipeline.start({ stage: "stt", pipelineId: configuredPipeline() });
+    void voicePipeline.start({
+      stage: "stt",
+      pipelineId: configuredPipeline(),
+      deviceId: this._deviceId(),
+      conversationId: voicePipeline.conversationId,
+    });
   }
 
   /** Enable/disable continuous wake-word listening (from settings). */
@@ -132,7 +142,17 @@ class VoiceManager {
     if (!this._wakeEnabled || !this._gestured) return;
     if (!this._hass || !isVoiceSupported()) return;
     if (voicePipeline.active) return;
-    void voicePipeline.start({ stage: "wake_word", pipelineId: configuredPipeline() });
+    void voicePipeline.start({
+      stage: "wake_word",
+      pipelineId: configuredPipeline(),
+      deviceId: this._deviceId(),
+      conversationId: voicePipeline.conversationId,
+    });
+  }
+
+  /** The HA device id for this panel (browser_mod dashboard device), for area/device intents. */
+  private _deviceId(): string | undefined {
+    return resolveDeviceHaId(this._hass);
   }
 
   private _scheduleWake(): void {
@@ -159,21 +179,34 @@ class VoiceManager {
 
   private _onSnap(s: VoiceSnapshot): void {
     if (s.active && !this._wasActive) {
-      // New run — reset per-run routing.
+      // New run — reset per-run routing; start a fresh transcript unless we're
+      // continuing an open conversation (a quick follow-up).
       this._answerRouted = false;
       this._clearLinger();
+      if (!this._conversationActive) {
+        this._turns = [];
+        this._lastStt = undefined;
+        this._conversationActive = true;
+      }
     }
     this._wasActive = s.active;
     const fs = prefersFullscreen();
 
-    // Route the answer to the full-screen view once, on preferring devices.
+    // Append the recognized user speech as a turn (once per utterance).
+    if (s.sttText && s.sttText !== this._lastStt) {
+      this._lastStt = s.sttText;
+      this._turns.push({ role: "user", text: s.sttText });
+    }
+    // Append the assistant answer once + reflect it onto the Assist-Response view.
     if (s.answer && !this._answerRouted) {
       this._answerRouted = true;
-      if (fs) this._pushFullscreen(s.answer);
+      this._turns.push({ role: "assistant", text: s.answer });
+      this._pushResponse(s.answer, fs);
     }
 
     if (fs && this._answerRouted) {
-      // The Assist-Response view owns the answer on full-screen devices.
+      // The full-screen Assist-Response view owns the answer on these devices; the
+      // compact overlay still shows during listening/thinking (before the answer lands).
       voiceOverlay.hide();
     } else {
       const view = this._viewFor(s);
@@ -181,11 +214,13 @@ class VoiceManager {
       else voiceOverlay.hide();
     }
 
-    if (!s.active) {
-      // Run finished — decide how the overlay clears.
-      if (s.state === "error") this._lingerHide(2600);
-      else if (!fs && this._answerRouted && s.answer) this._lingerHide(4200);
-      else if (!(fs && this._answerRouted)) voiceOverlay.hide();
+    // Clear only once the run has finished AND the spoken answer has stopped playing,
+    // so a long response stays on screen a little past the end of the TTS.
+    if (!s.active && !s.ttsActive) {
+      if (s.state === "error") this._endConversation(2600);
+      else if (fs && this._answerRouted) this._endConversation(0);
+      else if (this._turns.length) this._endConversation(3500);
+      else this._endConversation(0);
       // Resume the wake-word loop after any run ends (PTT or a completed conversation).
       if (this._wakeEnabled) this._scheduleWake();
     }
@@ -193,51 +228,53 @@ class VoiceManager {
     for (const cb of this._redraw) cb();
   }
 
-  /** Build the toast view for a state, or null when nothing should show. */
+  /** Build the overlay view (transcript + live status), or null when nothing shows. */
   private _viewFor(s: VoiceSnapshot): VoiceOverlayView | null {
+    const turns = this._turns;
     switch (s.state) {
       case "wake":
-        return { message: "Say the wake word…", icon: ICON.wake, accent: ACCENT.wake, pulsing: true };
+        return { turns, status: "Say the wake word…", icon: ICON.wake, accent: ACCENT.wake, pulsing: true };
       case "listening":
-        return {
-          message: s.sttText || "Listening…",
-          icon: ICON.listening,
-          accent: ACCENT.listening,
-          pulsing: true,
-        };
+        return { turns, status: "Listening…", icon: ICON.listening, accent: ACCENT.listening, pulsing: true };
       case "thinking":
-        return { message: s.sttText || "Thinking…", icon: ICON.thinking, accent: ACCENT.thinking };
+        return { turns, status: "Thinking…", icon: ICON.thinking, accent: ACCENT.thinking };
       case "responding":
-        return { message: s.answer || "…", icon: ICON.responding, accent: ACCENT.responding };
+        return { turns, icon: ICON.responding, accent: ACCENT.responding };
       case "error":
-        return { message: s.error || "Voice error", icon: ICON.error, accent: ACCENT.error };
+        return { turns, status: s.error || "Voice error", icon: ICON.error, accent: ACCENT.error };
       case "idle":
-        // Keep the answer visible during its linger window.
-        return s.answer
-          ? { message: s.answer, icon: ICON.responding, accent: ACCENT.responding }
-          : null;
+        return turns.length ? { turns, icon: ICON.responding, accent: ACCENT.responding } : null;
     }
   }
 
-  /** Push the answer to the Assist-Response view (targets this device precisely). */
-  private _pushFullscreen(answer: string): void {
+  /** Reflect the answer onto the Assist-Response view (targets this device precisely).
+   *  Full-screen devices navigate there; compact devices update it silently so a manual
+   *  visit shows the latest answer. */
+  private _pushResponse(answer: string, fullscreen: boolean): void {
     try {
       this._hass?.callService?.(DOMAIN, "assist_response", {
         message: answer,
         devices: [resolveDeviceId()],
-        navigate: true,
+        navigate: fullscreen,
       });
     } catch {
-      /* fall back to nothing — the toast path still works elsewhere */
+      /* the overlay still shows the answer */
     }
   }
 
-  private _lingerHide(ms: number): void {
+  /** Dismiss the overlay after `ms` and end the conversation thread. */
+  private _endConversation(ms: number): void {
     this._clearLinger();
-    this._lingerTimer = window.setTimeout(() => {
+    const finish = (): void => {
       this._lingerTimer = undefined;
       voiceOverlay.hide();
-    }, ms);
+      this._turns = [];
+      this._lastStt = undefined;
+      this._conversationActive = false;
+      voicePipeline.resetConversation();
+    };
+    if (ms <= 0) finish();
+    else this._lingerTimer = window.setTimeout(finish, ms);
   }
 
   private _clearLinger(): void {

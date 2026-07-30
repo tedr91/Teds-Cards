@@ -40,6 +40,8 @@ export interface VoiceSnapshot {
   error?: string;
   /** The stage the current/last run was started with. */
   stage?: VoiceStage;
+  /** True while the TTS answer audio is still playing in the browser. */
+  ttsActive?: boolean;
 }
 
 export interface VoiceStartOptions {
@@ -48,6 +50,10 @@ export interface VoiceStartOptions {
   pipelineId?: string;
   /** wake_word only: seconds to wait for the wake word before the run ends. */
   wakeTimeout?: number;
+  /** HA device id to attribute the request to (drives area scoping + device intents). */
+  deviceId?: string;
+  /** Conversation id to continue an existing conversation thread. */
+  conversationId?: string;
 }
 
 type Listener = (snap: VoiceSnapshot) => void;
@@ -62,6 +68,7 @@ interface ConnLike {
 interface PipelineEvent {
   type: string;
   data?: {
+    conversation_id?: string;
     runner_data?: { stt_binary_handler_id?: number | null };
     stt_output?: { text?: string };
     intent_output?: {
@@ -103,6 +110,8 @@ export class VoicePipeline {
   private _handlerId: number | null = null;
   private _audio?: HTMLAudioElement;
   private _starting = false;
+  private _conversationId?: string;
+  private _beeped = false;
 
   public setHass(hass: HomeAssistant | undefined): void {
     this._hass = hass;
@@ -114,6 +123,16 @@ export class VoicePipeline {
 
   public get active(): boolean {
     return this._snap.active;
+  }
+
+  /** The id of the current/last conversation (for threaded follow-ups). */
+  public get conversationId(): string | undefined {
+    return this._conversationId;
+  }
+
+  /** Forget the conversation thread so the next run starts fresh. */
+  public resetConversation(): void {
+    this._conversationId = undefined;
   }
 
   public subscribe(listener: Listener): () => void {
@@ -151,7 +170,7 @@ export class VoicePipeline {
 
       // 3) Subscribe to the pipeline run.
       const input: Record<string, unknown> = { sample_rate: TARGET_RATE };
-      if (opts.stage === "wake_word") input.timeout = opts.wakeTimeout ?? 0;
+      if (opts.stage === "wake_word" && opts.wakeTimeout) input.timeout = opts.wakeTimeout;
       const sub: Record<string, unknown> = {
         type: "assist_pipeline/run",
         start_stage: opts.stage,
@@ -159,8 +178,11 @@ export class VoicePipeline {
         input,
       };
       if (opts.pipelineId) sub.pipeline = opts.pipelineId;
+      if (opts.deviceId) sub.device_id = opts.deviceId;
+      if (opts.conversationId) sub.conversation_id = opts.conversationId;
 
       this._handlerId = null;
+      this._beeped = false;
       this._set({
         state: opts.stage === "wake_word" ? "wake" : "listening",
         active: true,
@@ -170,6 +192,8 @@ export class VoicePipeline {
         answerTitle: undefined,
         error: undefined,
       });
+      // Push-to-talk: we're listening immediately, so chime now (the tap is the gesture).
+      if (opts.stage === "stt") this._beep();
 
       const conn = this._hass.connection as unknown as ConnLike;
       this._unsub = await conn.subscribeMessage<PipelineEvent>(
@@ -205,10 +229,12 @@ export class VoicePipeline {
       case "run-start": {
         const id = ev.data?.runner_data?.stt_binary_handler_id;
         this._handlerId = typeof id === "number" ? id : null;
+        if (ev.data?.conversation_id) this._conversationId = ev.data.conversation_id;
         break;
       }
       case "wake_word-end":
-        // Wake word heard — the pipeline flows into speech capture.
+        // Wake word heard — the pipeline flows into speech capture; chime to confirm.
+        this._beep();
         this._set({ ...this._snap, state: "listening" });
         break;
       case "stt-start":
@@ -297,9 +323,42 @@ export class VoicePipeline {
       this._audio?.pause();
       const audio = new Audio(url);
       this._audio = audio;
-      void audio.play().catch(() => undefined);
+      this._set({ ...this._snap, ttsActive: true });
+      const done = () => {
+        if (this._audio !== audio) return;
+        this._set({ ...this._snap, ttsActive: false });
+      };
+      audio.addEventListener("ended", done, { once: true });
+      audio.addEventListener("error", done, { once: true });
+      void audio.play().catch(() => done());
     } catch {
-      /* autoplay may be blocked without a gesture (continuous mode) */
+      // autoplay may be blocked without a gesture (continuous mode)
+      this._set({ ...this._snap, ttsActive: false });
+    }
+  }
+
+  /** Short rising chime to confirm the mic is listening. Uses the capture context. */
+  private _beep(): void {
+    if (this._beeped) return;
+    this._beeped = true;
+    const ctx = this._ctx;
+    if (!ctx) return;
+    try {
+      const now = ctx.currentTime;
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.exponentialRampToValueAtTime(0.16, now + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.2);
+      gain.connect(ctx.destination);
+      const osc = ctx.createOscillator();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(660, now);
+      osc.frequency.exponentialRampToValueAtTime(990, now + 0.13);
+      osc.connect(gain);
+      osc.start(now);
+      osc.stop(now + 0.22);
+    } catch {
+      /* audio may be unavailable */
     }
   }
 

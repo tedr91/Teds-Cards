@@ -942,6 +942,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.23
+
+- **Voice Assist fixes.** Voice requests now send the panel's device id, so room-aware commands work: **"show the cameras"** navigates to the Cameras view, timers create a Ted's timer on the panel (no more "unexpected error"), and the correct room is used. The mic now plays a short chime when it starts listening. The overlay shows the conversation as a single box that accumulates each turn (You → Assistant) and stays up until a little after the spoken answer finishes (long answers no longer vanish early). Every answer is also mirrored to the Assist-Response view so opening it shows the latest response.
+
 ### v0.9.22
 
 - **New: browser-based voice Assist.** A device can now run the Home Assistant Assist pipeline in the dashboard itself and show its own self-dismissing voice overlay, instead of the Companion app's native Assist dialog. Adds a push-to-talk microphone button in the navbar (mid-right) and an experimental continuous wake word mode (off by default). The overlay shows the live state (listening → your words → the answer) and clears itself when the answer finishes; nightstands/handhelds show the full-screen Assist-Response view while wall panels show a compact toast. New **Voice** settings group. Requires the dashboard to be served over HTTPS (browser microphone requirement) — see the [Voice Assist docs](documentation/voice-assist.md).

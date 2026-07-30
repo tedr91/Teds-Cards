@@ -1,23 +1,29 @@
 /**
- * Voice overlay toast — the compact wake-word UI TDS renders itself (replacing the
- * Companion app's native Assist dialog). It shows the pipeline's live state
- * ("Listening…" → recognized speech → the spoken answer) using the same frosted
- * assist surface as the full-screen Assist-Response view, and auto-dismisses when the
- * run ends.
+ * Voice overlay — the compact wake-word UI TDS renders itself (replacing the Companion
+ * app's native Assist dialog). It shows the running conversation as a single box that
+ * accumulates turns (You → Assistant), plus a live status line ("Listening…"), and
+ * auto-dismisses a little after the spoken answer finishes.
  *
- * On devices that prefer full-screen (nightstand / handheld), the controller routes
- * the final answer to the Assist-Response view instead of this toast — see
- * voice-controller.ts.
+ * On devices that prefer full-screen (nightstand / handheld), the controller routes the
+ * final answer to the Assist-Response view instead — see voice-controller.ts.
  */
 import { LitElement, css, html, nothing, type TemplateResult } from "lit";
 import { customElement, property } from "lit/decorators.js";
 
-import { renderAssistSurface, assistSurfaceStyles } from "./assist-surface";
+import { assistSurfaceStyles } from "./assist-surface";
 import { tedStyleTheme } from "./theme";
 
+export interface VoiceTurn {
+  role: "user" | "assistant";
+  text: string;
+}
+
 export interface VoiceOverlayView {
-  message: string;
-  title?: string;
+  /** The conversation so far (rendered top-to-bottom in one box). */
+  turns?: VoiceTurn[];
+  /** Live status under the transcript (e.g. "Listening…", "Thinking…"). */
+  status?: string;
+  /** Resolved icon string. */
   icon?: string;
   /** Accent color for the stripe/icon (state-dependent). */
   accent?: string;
@@ -35,20 +41,33 @@ export class TedVoiceOverlay extends LitElement {
   protected render(): TemplateResult | typeof nothing {
     const v = this.view;
     if (!this.visible || !v) return nothing;
-    const boxVars: Record<string, string> = { "--ar-msg-size": "clamp(15px, 1.8vw, 22px)" };
-    if (v.accent) boxVars["--ar-accent"] = v.accent;
+    const turns = v.turns ?? [];
+    if (!turns.length && !v.status) return nothing;
+    const boxStyle = `${v.accent ? `--ar-accent:${v.accent};` : ""}--ar-msg-size:clamp(15px,1.8vw,21px);`;
     return html`
       <div class="vo-root${v.pulsing ? " pulsing" : ""}">
-        ${renderAssistSurface({
-          message: v.message,
-          title: v.title,
-          icon: v.icon,
-          wide: true,
-          boxVars,
-          boxClass: "ar-compact",
-        })}
+        <div class="ar-box ar-shadow ar-compact" style=${boxStyle} role="log" aria-live="polite">
+          ${v.icon ? html`<ha-icon class="ar-icon" .icon=${v.icon}></ha-icon>` : nothing}
+          <div class="ar-content vo-thread">
+            ${turns.map(
+              (t) => html`
+                <div class="vo-turn vo-${t.role}">
+                  <span class="vo-role">${t.role === "user" ? "You" : "Assistant"}</span>
+                  <span class="vo-text">${t.text}</span>
+                </div>
+              `,
+            )}
+            ${v.status ? html`<div class="vo-status">${v.status}</div>` : nothing}
+          </div>
+        </div>
       </div>
     `;
+  }
+
+  protected updated(): void {
+    // Keep the newest turn in view as the conversation grows.
+    const thread = this.renderRoot?.querySelector?.(".vo-thread") as HTMLElement | null;
+    if (thread) thread.scrollTop = thread.scrollHeight;
   }
 
   static styles = [
@@ -61,19 +80,49 @@ export class TedVoiceOverlay extends LitElement {
         bottom: calc(var(--ted-navbar-bottom-reserve, 0px) + 24px);
         transform: translateX(-50%);
         z-index: 100001;
-        width: min(560px, 92vw);
+        width: min(600px, 94vw);
         pointer-events: none;
       }
       .vo-root {
         display: flex;
         animation: vo-in 0.28s ease-out both;
       }
-      /* Compact variant of the shared assist surface: vertically centered, tighter. */
+      /* Compact variant of the shared assist surface. */
       .ar-box.ar-compact {
-        align-items: center;
+        align-items: flex-start;
         gap: 12px;
         padding: 12px 16px;
-        max-height: 32vh;
+      }
+      .vo-thread {
+        gap: 8px;
+        max-height: 42vh;
+        overflow-y: auto;
+      }
+      .vo-turn {
+        display: flex;
+        flex-direction: column;
+        gap: 1px;
+      }
+      .vo-role {
+        font-size: 0.72em;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        opacity: 0.72;
+      }
+      .vo-user .vo-role {
+        color: var(--ar-accent);
+      }
+      .vo-text {
+        font-size: var(--ar-msg-size);
+        line-height: 1.3;
+        overflow-wrap: anywhere;
+        white-space: pre-wrap;
+      }
+      .vo-status {
+        font-size: 0.82em;
+        font-style: italic;
+        opacity: 0.7;
       }
       .vo-root.pulsing .ar-icon {
         animation: vo-pulse 1.4s ease-in-out infinite;
