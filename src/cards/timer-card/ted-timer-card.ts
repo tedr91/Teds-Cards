@@ -31,8 +31,6 @@ interface ActiveTimer {
   remaining: number;
   paused: boolean;
   location?: string;
-  /** Mirrored from a Home Assistant voice timer — read-only (controlled by voice). */
-  external?: boolean;
 }
 interface RecentTimer {
   name: string;
@@ -445,25 +443,17 @@ export class TedTimerCard extends LitElement implements LovelaceCard {
           </div>
         </div>
         <div class="tile-ctrl">
-          ${t.external
-            ? html`<ha-icon
-                icon="mdi:microphone"
-                title="Voice timer — add time or cancel it with your voice"
-                style="--mdc-icon-size:18px;color:var(--ted-style-muted,#888);align-self:center;"
-              ></ha-icon>`
-            : html`
-                <ted-icon-button
-                  tone=${t.paused ? "caution" : "muted"}
-                  icon=${t.paused ? "mdi:play" : "mdi:pause"}
-                  .label=${t.paused ? `Resume ${t.name}` : `Pause ${t.name}`}
-                  @click=${() => this._togglePause(t)}
-                ></ted-icon-button>
-                <ted-icon-button
-                  icon="mdi:cog"
-                  .label=${`Edit ${t.name}`}
-                  @click=${() => this._openEdit(t)}
-                ></ted-icon-button>
-              `}
+          <ted-icon-button
+            tone=${t.paused ? "caution" : "muted"}
+            icon=${t.paused ? "mdi:play" : "mdi:pause"}
+            .label=${t.paused ? `Resume ${t.name}` : `Pause ${t.name}`}
+            @click=${() => this._togglePause(t)}
+          ></ted-icon-button>
+          <ted-icon-button
+            icon="mdi:cog"
+            .label=${`Edit ${t.name}`}
+            @click=${() => this._openEdit(t)}
+          ></ted-icon-button>
         </div>
       </div>
     `;

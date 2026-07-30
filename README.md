@@ -942,6 +942,11 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.19
+
+- **Voice timers on your dashboard.** On a Ted's Dashboard panel, "set a timer for 10 minutes" now creates a timer with a live countdown on the Timers view — and you can cancel, pause, resume, or add/remove time by voice. Phones and other devices keep Home Assistant's native timers.
+- **Room‑aware setup helper.** If a panel isn't assigned to a room (so voice commands can't tell which room you mean), it now prompts you with a one‑tap "Set the room" fix. New General → Advanced option controls whether wall‑panel accounts may set their own room.
+
 ### v0.9.18
 
 - **Full voice control (with Ted's Dashboard System).** Speak to play music, make announcements, set or adjust the thermostat, and ask for your next alarm, active timers, or next calendar appointment — spoken answers also appear on the Assist-Response screen, and voice-started timers now show on the Timers view.

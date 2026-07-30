@@ -157,6 +157,7 @@ export const SETTINGS_DEFAULTS: SettingsMap = {
   launcher_highlight_color: "accent",
   do_not_disturb: false,
   debug_mode: false,
+  allow_device_area_self_assign: true,
   auto_refresh_on_update: true,
   dashboard_auto_update: true,
   use_kiosk_mode: false,
@@ -250,7 +251,6 @@ export const SETTINGS_FIELDS: SettingField[] = [
   { key: "timer_alert_repeat", label: "Repeat alert", group: "Alarms/Timers", subsection: "Timers", kind: "boolean", help: "Loop the sound until dismissed (or the notification times out)." },
   { key: "timer_snooze_enabled", label: "Enable snoozing", group: "Alarms/Timers", subsection: "Timers", kind: "boolean" },
   { key: "timer_snooze_minutes", label: "Snooze duration", group: "Alarms/Timers", subsection: "Timers", kind: "number", min: 1, max: 60, unit: "min" },
-  { key: "timer_bridge_enabled", label: "Voice timers", group: "Alarms/Timers", subsection: "Timers", kind: "boolean", help: "Show timers started by Home Assistant voice commands on this dashboard's Timers view." },
   // Announce
   { key: "announce_messages", label: "Predefined messages", group: "Announce", kind: "announce-messages", help: "The global list of ready-made announcements shown in the Announce view." },
   { key: "announce_tts_engine", label: "Voice (TTS engine)", group: "Announce", subsection: "Voice", kind: "entity", entityDomain: "tts", help: "Text-to-speech engine used to speak announcements. Leave empty to use Home Assistant's default." },
@@ -367,6 +367,7 @@ export const SETTINGS_FIELDS: SettingField[] = [
   { key: "night_mode", label: "Automatic night mode", group: "General", kind: "nightmode", help: "Automatically dims the background, lowers screen brightness, and switches to a night font color on a nightly schedule, restoring day values in the morning." },
   { key: "background", label: "Background Wallpaper", group: "General", kind: "background", help: "Dashboard background painted by the invisible ted-background-card." },
   { key: "debug_mode", label: "Debug mode", group: "General", kind: "boolean", subsection: "Advanced", help: "Publishes the --ted-debug CSS variable so dashboards can show layout debug outlines." },
+  { key: "allow_device_area_self_assign", label: "Allow un-scoped devices to set their own Area", group: "General", kind: "boolean", subsection: "Advanced", help: "Let a wall-panel (non-admin) account assign its own device to a room when it has none, so voice commands become room-aware. Only applies to devices that currently have no area." },
   { key: "auto_refresh_on_update", label: "Auto-refresh on update", group: "General", kind: "boolean", subsection: "Advanced", help: "Reload this device once automatically when the dashboard is updated, so the new files take effect without a manual refresh." },
   { key: "dashboard_auto_update", label: "Auto-update dashboard files", group: "General", kind: "boolean", subsection: "Advanced", help: "When on, Ted's Dashboard System keeps the installed Ted's Dashboard files up to date automatically. Turn off to pin the current version and manage updates yourself." },
   { key: "use_kiosk_mode", label: "Kiosk mode", group: "General", kind: "boolean", deviceOnly: true, help: "Hide Home Assistant's sidebar, header and edit UI on this device for a clean wall-panel look, using Home Assistant's built-in kiosk mode. Set per-device." },
