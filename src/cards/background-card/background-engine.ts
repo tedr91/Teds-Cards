@@ -282,7 +282,9 @@ class BackgroundEngine {
       if (sig === this._imageSig && this._lastUrl !== null) return;
       this._imageSig = sig;
       void this._resolveRef(ref).then((url) => {
-        if (gen === this.gen) void this._paint(s, url, gen);
+        // Fade the image in on first load / when it changes (unchanged navigation is
+        // guarded above); a plain re-paint of the same url is skipped by _paint.
+        if (gen === this.gen) void this._paint(s, url, gen, true);
       });
       return;
     }
@@ -298,7 +300,7 @@ class BackgroundEngine {
     const doXfade =
       crossfade &&
       String(s.photos_slideshow_transition ?? "crossfade") !== "none" &&
-      !!this._lastUrl &&
+      !!url &&
       this._lastUrl !== url;
     this._lastS = s;
     this._lastUrl = url;
@@ -460,7 +462,9 @@ class BackgroundEngine {
       return;
     }
     if (this.slideIdx >= this.slideUrls.length) this.slideIdx = 0;
-    await this._paint(s, this.slideUrls[this.slideIdx], gen);
+    // Crossfade the image in (album switch / first load / re-resolved url); an
+    // unchanged image on a plain navigation is skipped by _paint's guard.
+    await this._paint(s, this.slideUrls[this.slideIdx], gen, true);
 
     // Long-running-kiosk freshness: while the Bing album is active, re-poll the
     // feed daily so a new "Photo of the Day" swaps in without navigation.

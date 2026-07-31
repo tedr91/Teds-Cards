@@ -35,9 +35,12 @@ export function findHuiRoot(): HTMLElement | null {
  * Paint (or update) the view background. Pass `null` to remove our style and
  * defer to the active HA theme (used by the "HA Theme" mode / on disconnect).
  *
- * When `opts.crossfade` is set (a slideshow advance), the OUTGOING image is
- * painted onto a short-lived overlay above the wallpaper and faded out over
- * `opts.seconds`, so the new image crossfades in — mirroring the Photos view.
+ * When `opts.crossfade` is set (a slideshow advance, an album switch, or the first
+ * load) the change is animated over `opts.seconds`:
+ *  - if a previous image exists, it is painted onto a short-lived overlay above the
+ *    new wallpaper and faded OUT (the new image crossfades in beneath it);
+ *  - on the first paint (no previous image), the NEW image is faded IN over the
+ *    theme background, so it no longer snaps in.
  */
 export function applyBackground(
   layer: BackgroundLayer | null,
@@ -45,16 +48,33 @@ export function applyBackground(
 ): void {
   const huiRoot = findHuiRoot();
   if (!huiRoot?.shadowRoot) return;
-  if (opts?.crossfade && _lastLayer && layer) {
-    startCrossfade(huiRoot, _lastLayer, Math.max(0, opts.seconds ?? 2));
-  }
-  let styleEl = huiRoot.shadowRoot.querySelector<HTMLStyleElement>(`#${BACKGROUND_STYLE_ID}`);
   if (!layer) {
-    styleEl?.remove();
+    huiRoot.shadowRoot.querySelector<HTMLStyleElement>(`#${BACKGROUND_STYLE_ID}`)?.remove();
     _lastLayer = null;
     removeCrossfade();
     return;
   }
+  const seconds = Math.max(0, opts?.seconds ?? 2);
+  if (opts?.crossfade && seconds > 0) {
+    if (_lastLayer) {
+      // Previous image exists: paint the new base now and fade the OLD out over it.
+      startCrossfade(huiRoot, _lastLayer, seconds);
+      paintBaseStyle(huiRoot, layer);
+      _lastLayer = layer;
+      return;
+    }
+    // No previous image (first load / cleared): fade the NEW image in over the theme.
+    startFadeIn(huiRoot, layer, seconds);
+    _lastLayer = layer;
+    return;
+  }
+  paintBaseStyle(huiRoot, layer);
+  _lastLayer = layer;
+}
+
+/** Inject/update the wallpaper `<style>` on `hui-root` (the persistent base layer). */
+function paintBaseStyle(huiRoot: HTMLElement, layer: BackgroundLayer): void {
+  if (!huiRoot.shadowRoot) return;
   const css = `:not(.edit-mode) > hui-view {
     background-image: ${layer.image} !important;
     background-size: ${layer.size} !important;
@@ -63,13 +83,49 @@ export function applyBackground(
     background-attachment: ${layer.attachment} !important;
     background-color: ${layer.color} !important;
   }`;
+  let styleEl = huiRoot.shadowRoot.querySelector<HTMLStyleElement>(`#${BACKGROUND_STYLE_ID}`);
   if (!styleEl) {
     styleEl = document.createElement("style");
     styleEl.id = BACKGROUND_STYLE_ID;
     huiRoot.shadowRoot.appendChild(styleEl);
   }
   if (styleEl.textContent !== css) styleEl.textContent = css;
-  _lastLayer = layer;
+}
+
+/** First-load fade-in: paint the NEW image onto an overlay at opacity 0 and fade it
+ *  IN over the theme background, committing it to the base once the fade completes. */
+function startFadeIn(huiRoot: HTMLElement, newLayer: BackgroundLayer, seconds: number): void {
+  const view = huiRoot.shadowRoot?.querySelector("hui-view") as HTMLElement | null;
+  if (!view) {
+    paintBaseStyle(huiRoot, newLayer);
+    return;
+  }
+  removeCrossfade();
+  const el = document.createElement("div");
+  el.id = CROSSFADE_ID;
+  el.style.cssText = [
+    "position:absolute",
+    "inset:0",
+    "z-index:-1",
+    "pointer-events:none",
+    `background-image:${newLayer.image}`,
+    `background-size:${newLayer.size}`,
+    `background-position:${newLayer.position}`,
+    `background-repeat:${newLayer.repeat}`,
+    "opacity:0",
+    `transition:opacity ${seconds}s ease`,
+  ].join(";");
+  view.style.isolation = "isolate";
+  view.appendChild(el);
+  // Commit the initial opacity:0 before flipping to 1 so the transition runs.
+  void el.offsetWidth;
+  el.style.opacity = "1";
+  _crossfadeTimer = window.setTimeout(() => {
+    // Commit the image to the base (identical, behind the fully-opaque overlay),
+    // then drop the overlay — a seamless hand-off.
+    paintBaseStyle(huiRoot, newLayer);
+    removeCrossfade();
+  }, seconds * 1000 + 120);
 }
 
 /** Paint the outgoing image onto an overlay above the wallpaper (but behind the

@@ -942,6 +942,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.33
+
+- **Wallpaper fades in instead of snapping.** The background now crossfades when a view first loads and when you switch albums (not just on manual next / cycle transitions): the first image fades in over the theme background, and album/image changes crossfade. Plain view-to-view navigation with the same wallpaper still repaints instantly. Respects the Slideshow transition setting (set it to “none” to keep hard cuts).
+
 ### v0.9.32
 
 - **Nightstand profile trims the navbar.** Picking the **Nightstand** device type now also limits the launcher to **Home**, **Music**, and **Alarms/Timers**, and shows only the Center (launcher) navbar section — for a minimal bedside bar.
