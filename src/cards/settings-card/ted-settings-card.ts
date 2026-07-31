@@ -2508,7 +2508,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
   private _addTrigger(id: string, type = ""): void {
     const cfg = this._visionCam(id);
     const trigs = [...this._visionTriggers(id)];
-    trigs.push({ type, severities: [], cooldown_seconds: 60, actions: [] });
+    trigs.push({ type, severities: [], cooldown_seconds: 60, actions: [{ type: "toast", areas: [] }, { type: "live_feed", areas: [] }] });
     cfg.triggers = trigs;
     this._writeVisionCam(id, cfg);
     this._visTrigPanelOpen = new Set(this._visTrigPanelOpen).add(id);
@@ -2770,12 +2770,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
   private _renderTrigger(id: string, i: number, trig: Record<string, unknown>): TemplateResult {
     const key = `${id}#${i}`;
     const open = this._visTrigOpen.has(key);
-    const detectors = this._visionDetectors[id];
-    const avail = detectors ? Object.keys(detectors) : [];
-    const types = avail.length ? avail : ["motion", "person", "animal", "car", "package"];
-    const typeOptions = types.map((t) => ({ value: t, label: VISION_DET_LABEL[t] ?? t }));
     const data = {
-      type: (trig.type as string) ?? "",
       severities: Array.isArray(trig.severities) ? trig.severities : [],
       cooldown_seconds: (trig.cooldown_seconds as number) ?? 60,
     };
@@ -2798,17 +2793,6 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
         </div>
         ${open
           ? html`<div class="vis-ibody">
-              ${avail.length === 0
-                ? html`<div class="help">No detection sensors were found on this camera's device; the
-                    standard types are offered as a fallback.</div>`
-                : nothing}
-              <ha-form
-                .hass=${this.hass}
-                .data=${{ type: data.type }}
-                .schema=${[{ name: "type", selector: { select: { mode: "dropdown", options: typeOptions } } }]}
-                .computeLabel=${this._triggerLabel}
-                @value-changed=${onChange}
-              ></ha-form>
               <div class="vis-field">
                 <div class="vis-field-label">Severity level filter</div>
                 <div class="help">Only take action if the event is one of these severities (leave empty for any).</div>
@@ -5003,9 +4987,6 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
         border-radius: 8px;
         overflow: hidden;
       }
-      .vis-actitem {
-        border-style: dashed;
-      }
       .vis-ihead {
         display: flex;
         align-items: center;
@@ -5078,12 +5059,13 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
         display: flex;
         align-items: center;
         gap: 8px;
-        min-height: 32px;
+        min-height: 40px;
       }
       .vis-custom-head > ha-icon {
         --mdc-icon-size: 18px;
         color: var(--ted-style-muted, var(--secondary-text-color));
       }
+      .vis-chev {
         --mdc-icon-size: 20px;
         color: var(--ted-style-muted, var(--secondary-text-color));
       }
