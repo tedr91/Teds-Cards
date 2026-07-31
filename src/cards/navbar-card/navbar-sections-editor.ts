@@ -33,9 +33,9 @@ export const NAVBAR_SECTIONS_EDITOR_TYPE = "ted-navbar-sections-editor";
 // mdi:drag — reorder handle
 const GRIP_ICON_PATH =
   "M7,19V17H9V19H7M11,19V17H13V19H11M15,19V17H17V19H15M7,15V13H9V15H7M11,15V13H13V15H11M15,15V13H17V15H15M7,11V9H9V11H7M11,11V9H13V11H11M15,11V9H17V11H15M7,7V5H9V7H7M11,7V5H13V7H11M15,7V5H17V7H15Z";
-// mdi:close (delete item)
-const CLOSE_ICON_PATH =
-  "M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z";
+// mdi:delete-outline (delete item)
+const DELETE_ICON_PATH =
+  "M9,3V4H4V6H5V19A2,2 0 0,0 7,21H17A2,2 0 0,0 19,19V6H20V4H15V3H9M7,6H17V19H7V6M9,8V17H11V8H9M13,8V17H15V8H13Z";
 // mdi:chevron-down / chevron-up (row expand indicator)
 const CHEVRON_DOWN_PATH = "M7.41,8.58L12,13.17L16.59,8.58L18,10L12,16L6,10L7.41,8.58Z";
 const CHEVRON_UP_PATH = "M7.41,15.41L12,10.83L16.59,15.41L18,14L12,8L6,14L7.41,15.41Z";
@@ -307,13 +307,13 @@ export class TedNavbarSectionsEditor extends LitElement {
           <ha-icon class="row-icon" icon=${button.icon || "mdi:gesture-tap-button"}></ha-icon>
           <span class="row-title">${isPopupMenu ? "Popup menu" : "Button"}</span>
           ${button.name ? html`<span class="row-subtitle">${button.name}</span>` : nothing}
-          <ha-svg-icon class="item-chev" .path=${expanded ? CHEVRON_UP_PATH : CHEVRON_DOWN_PATH}></ha-svg-icon>
           <ha-icon-button
             class="item-del"
             label="Delete button"
-            .path=${CLOSE_ICON_PATH}
+            .path=${DELETE_ICON_PATH}
             @click=${(ev: Event) => this._removeItem(containerPath, idx, ev)}
           ></ha-icon-button>
+          <ha-svg-icon class="item-chev" .path=${expanded ? CHEVRON_UP_PATH : CHEVRON_DOWN_PATH}></ha-svg-icon>
         </div>
         <div class="item-body" ?hidden=${!expanded}>
           <ha-form
@@ -363,13 +363,13 @@ export class TedNavbarSectionsEditor extends LitElement {
           <ha-icon class="row-icon" icon=${STATUS_ITEM_DEFAULT_ICON[item.type]}></ha-icon>
           <span class="row-title">${STATUS_ITEM_LABEL[item.type]}</span>
           ${subtitle ? html`<span class="row-subtitle">${subtitle}</span>` : nothing}
-          <ha-svg-icon class="item-chev" .path=${expanded ? CHEVRON_UP_PATH : CHEVRON_DOWN_PATH}></ha-svg-icon>
           <ha-icon-button
             class="item-del"
             label="Delete item"
-            .path=${CLOSE_ICON_PATH}
+            .path=${DELETE_ICON_PATH}
             @click=${(ev: Event) => this._removeItem(containerPath, idx, ev)}
           ></ha-icon-button>
+          <ha-svg-icon class="item-chev" .path=${expanded ? CHEVRON_UP_PATH : CHEVRON_DOWN_PATH}></ha-svg-icon>
         </div>
         <div class="item-body" ?hidden=${!expanded}>
           <ha-form

@@ -943,6 +943,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.44
+
+- **Settings UX polish.** Collapsible list rows now put the expand chevron at the far right with the delete button (a trash-can icon) immediately to its left, consistently across the Settings and Navbar editors. The Settings, Announce, and Notification Center cards are also hidden from the “Add card” chooser (they're configured through the dashboard, not added by hand).
+
 ### v0.9.43
 
 - **Vision Analysis: false-alarm filtering, real video, and two-pass analysis.** The AI now flags likely false alarms — a new “Filter out false alarms” setting (Off / Log only / Drop) can skip a trigger's actions for them, and the Vision card shows a “False alarm” tag and filter. Capture defaults to recording the real camera stream (falls back to stitched frames), and an optional two-pass mode does a fast first analysis then a detailed refine, with separate AI Task entities for each pass (smart defaults by provider). Capture window default is now 10s.

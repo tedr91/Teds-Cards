@@ -135,6 +135,7 @@ const VISION_ACTION_ICON: Record<string, string> = {
 const UI_ICONS = {
   add: { fluent: "fluent:add-24-regular", mdi: "mdi:plus" },
   close: { fluent: "fluent:dismiss-24-regular", mdi: "mdi:close" },
+  delete: { fluent: "fluent:delete-24-regular", mdi: "mdi:delete-outline" },
   drag: { fluent: "fluent:re-order-dots-vertical-24-regular", mdi: "mdi:drag" },
   chevronUp: { fluent: "fluent:chevron-up-24-regular", mdi: "mdi:chevron-up" },
   chevronDown: { fluent: "fluent:chevron-down-24-regular", mdi: "mdi:chevron-down" },
@@ -1687,15 +1688,15 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
             title=${enabled ? "Enabled" : "Disabled"}
             @change=${(e: Event) => this._setNavEnabled(i, (e.target as HTMLInputElement).checked)}
           ></ha-switch>
+          <button class="dash-iconbtn" title="Delete" @click=${() => this._removeNavItem(i)}>
+            <ha-icon .icon=${this._ui("delete")}></ha-icon>
+          </button>
           <button
             class="dash-iconbtn"
             title=${open ? "Collapse" : "Expand"}
             @click=${() => this._toggleNavOpen(i)}
           >
             <ha-icon .icon=${this._ui(open ? "chevronUp" : "chevronDown")}></ha-icon>
-          </button>
-          <button class="dash-iconbtn" title="Delete" @click=${() => this._removeNavItem(i)}>
-            <ha-icon .icon=${this._ui("close")}></ha-icon>
           </button>
         </div>
         ${open
@@ -1916,7 +1917,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
                           title="Remove"
                           ?disabled=${!admin}
                           @click=${() => this._removeClimateAlias(a.gi)}
-                          ><ha-icon .icon=${this._ui("close")}></ha-icon
+                          ><ha-icon .icon=${this._ui("delete")}></ha-icon
                         ></ha-icon-button>
                       </div>`,
                     )
@@ -2199,6 +2200,11 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
                 title=${rowPersonMuted ? "Person available (badge source is Icon)" : "Person badge"}
               />`
             : nothing}
+          ${readonly || locked
+            ? nothing
+            : html`<button class="cam-del" title="Remove" @click=${() => onRemove(idx)}>
+                <ha-icon .icon=${this._ui("delete")}></ha-icon>
+              </button>`}
           ${!readonly && options && !optHidden
             ? html`<button
                 class="cam-opt ${options.isOpen(id) ? "on" : ""}"
@@ -2208,11 +2214,6 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
                 <ha-icon .icon=${this._ui(options.isOpen(id) ? "chevronUp" : "chevronDown")}></ha-icon>
               </button>`
             : nothing}
-          ${readonly || locked
-            ? nothing
-            : html`<button class="cam-del" title="Remove" @click=${() => onRemove(idx)}>
-                <ha-icon .icon=${this._ui("close")}></ha-icon>
-              </button>`}
         </div>
       `;
       if (!options) return row;
@@ -2798,13 +2799,13 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
         <div class="vis-ihead" @click=${() => (this._visTrigOpen = this._toggleSet(this._visTrigOpen, key))}>
           <ha-icon icon=${VISION_DET_ICON[trig.type as string] ?? "mdi:motion-sensor"}></ha-icon>
           <span class="vis-iname">${label}</span>
-          <ha-icon class="vis-chev" .icon=${this._ui(open ? "chevronUp" : "chevronDown")}></ha-icon>
           <ha-icon-button
             class="hdr-btn"
             @click=${(e: Event) => { e.stopPropagation(); this._removeTrigger(id, i); }}
             title="Remove"
-            ><ha-icon .icon=${this._ui("close")}></ha-icon
+            ><ha-icon .icon=${this._ui("delete")}></ha-icon
           ></ha-icon-button>
+          <ha-icon class="vis-chev" .icon=${this._ui(open ? "chevronUp" : "chevronDown")}></ha-icon>
         </div>
         ${open
           ? html`<div class="vis-ibody">
@@ -2893,7 +2894,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
             class="hdr-btn"
             title="Remove"
             @click=${() => this._removeActionListItem(id, i, type, key as "areas" | "services", idx)}
-            ><ha-icon .icon=${this._ui("close")}></ha-icon
+            ><ha-icon .icon=${this._ui("delete")}></ha-icon
           ></ha-icon-button>
         </div>`,
       )}
@@ -2926,7 +2927,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
               class="hdr-btn"
               title="Remove"
               @click=${() => this._removeCustomItem(id, i, k)}
-              ><ha-icon .icon=${this._ui("close")}></ha-icon
+              ><ha-icon .icon=${this._ui("delete")}></ha-icon
             ></ha-icon-button>
           </div>
           <ha-form
