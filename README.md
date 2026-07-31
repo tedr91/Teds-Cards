@@ -943,6 +943,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.41
+
+- **Vision trigger actions reworked into four fixed on/off sections.** Each camera trigger now always shows Display live feed, Toast notification, Push notification, and Custom action sections, each with an on/off toggle in its header — no more adding, removing, or picking action types. New triggers default to Live feed and Toast on. Also fixed a chevron sizing regression and made the nested rows use the consistent 40px height.
+
 ### v0.9.40
 
 - **Vision “Additional actions” reworked into consistent collapsible lists.** Each action is now a collapsible whose header shows its targets at a glance; the action type is chosen from the “+” popup (no in-item type picker). Toast and Live feed actions add target **areas**, Push actions add **notify services** (shown by their friendly name), and Custom actions add Automation / Script / Scene / Action items. An empty target list means everywhere.

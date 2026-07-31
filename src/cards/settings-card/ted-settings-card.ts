@@ -118,12 +118,8 @@ const VISION_SEVERITY_OPTIONS = [
   { value: "harmless", label: "Harmless" },
   { value: "unknown", label: "Unknown" },
 ];
-const VISION_ACTION_OPTIONS = [
-  { value: "toast", label: "Toast notification" },
-  { value: "push", label: "Push notification" },
-  { value: "live_feed", label: "Display live feed" },
-  { value: "custom", label: "Custom action" },
-];
+/** The four fixed action sections a trigger always has, in display order. */
+const VISION_ACTION_ORDER = ["live_feed", "toast", "push", "custom"];
 const VISION_ACTION_LABEL: Record<string, string> = {
   toast: "Toast notification", push: "Push notification",
   live_feed: "Display live feed", custom: "Custom action",
@@ -407,9 +403,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
   @state() private _visTrigPanelOpen = new Set<string>();
   /** Which individual triggers are open (keyed `${cameraId}#${triggerIndex}`). */
   @state() private _visTrigOpen = new Set<string>();
-  /** Which triggers' "Additional actions" panels are open (same key form). */
-  @state() private _visActPanelOpen = new Set<string>();
-  /** Which action items are expanded (keyed `${cam}#${trigIdx}#${actIdx}`). */
+  /** Which action sections are expanded (keyed `${cam}#${trigIdx}#${actionType}`). */
   @state() private _visActItemOpen = new Set<string>();
   /** Which thermostat rows have their body (Aliases) expanded. */
   @state() private _climateOpen = new Set<string>();
@@ -2508,7 +2502,17 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
   private _addTrigger(id: string, type = ""): void {
     const cfg = this._visionCam(id);
     const trigs = [...this._visionTriggers(id)];
-    trigs.push({ type, severities: [], cooldown_seconds: 60, actions: [{ type: "toast", areas: [] }, { type: "live_feed", areas: [] }] });
+    trigs.push({
+      type,
+      severities: [],
+      cooldown_seconds: 60,
+      actions: [
+        { type: "live_feed", enabled: true, areas: [] },
+        { type: "toast", enabled: true, areas: [] },
+        { type: "push", enabled: false, services: [] },
+        { type: "custom", enabled: false, items: [] },
+      ],
+    });
     cfg.triggers = trigs;
     this._writeVisionCam(id, cfg);
     this._visTrigPanelOpen = new Set(this._visTrigPanelOpen).add(id);
@@ -2537,16 +2541,6 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     trigs[i] = { ...(trigs[i] || {}), ...patch };
     cfg.triggers = trigs;
     this._writeVisionCam(id, cfg);
-  }
-
-  private _addAction(id: string, i: number, type = "toast"): void {
-    const acts = [...this._triggerActions(id, i)];
-    const act: Record<string, unknown> =
-      type === "custom" ? { type, items: [] } : type === "push" ? { type, services: [] } : { type, areas: [] };
-    acts.push(act);
-    this._updateTrigger(id, i, { actions: acts });
-    this._visActPanelOpen = new Set(this._visActPanelOpen).add(`${id}#${i}`);
-    this._visActItemOpen = new Set(this._visActItemOpen).add(`${id}#${i}#${acts.length - 1}`);
   }
 
   private _openTypePicker(
@@ -2585,15 +2579,19 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     `;
   }
 
-  private _removeAction(id: string, i: number, j: number): void {
-    const acts = [...this._triggerActions(id, i)];
-    acts.splice(j, 1);
-    this._updateTrigger(id, i, { actions: acts });
+  /** The stored config for one of a trigger's fixed action types (default when absent). */
+  private _triggerAction(id: string, i: number, type: string): Record<string, unknown> {
+    return this._triggerActions(id, i).find((a) => (a.type as string) === type) ?? { type };
   }
 
-  private _updateAction(id: string, i: number, j: number, patch: Record<string, unknown>): void {
+  private _updateActionByType(id: string, i: number, type: string, patch: Record<string, unknown>): void {
     const acts = [...this._triggerActions(id, i)];
-    acts[j] = { ...(acts[j] || {}), ...patch };
+    let idx = acts.findIndex((a) => (a.type as string) === type);
+    if (idx === -1) {
+      acts.push({ type });
+      idx = acts.length - 1;
+    }
+    acts[idx] = { ...acts[idx], ...patch };
     this._updateTrigger(id, i, { actions: acts });
   }
 
@@ -2631,15 +2629,15 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     return names.slice(0, 3).join(", ") + (names.length > 3 ? ` +${names.length - 3}` : "");
   }
 
-  private _openActionAdd(id: string, i: number, j: number, act: Record<string, unknown>): void {
-    const type = act.type as string;
+  private _openActionAdd(id: string, i: number, type: string): void {
+    const act = this._triggerAction(id, i, type);
     if (type === "push") {
       const have = new Set(Array.isArray(act.services) ? (act.services as string[]) : []);
       const options = this._notifyEntities()
         .filter((e) => !have.has(e))
         .map((e) => ({ value: e, label: this._notifyName(e), icon: "mdi:cellphone-message" }));
       this._openTypePicker("Add a notify service", options, (v) =>
-        this._addActionListItem(id, i, j, "services", v),
+        this._addActionListItem(id, i, type, "services", v),
       );
     } else if (type === "custom") {
       this._openTypePicker(
@@ -2650,7 +2648,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
           { value: "scene", label: "Scene", icon: "mdi:palette-outline" },
           { value: "action", label: "Action", icon: "mdi:flash-outline" },
         ],
-        (kind) => this._addCustomItem(id, i, j, kind),
+        (kind) => this._addCustomItem(id, i, kind),
       );
     } else {
       const have = new Set(Array.isArray(act.areas) ? (act.areas as string[]) : []);
@@ -2659,54 +2657,54 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
         .map((a) => ({ value: a.area_id, label: a.name, icon: "mdi:texture-box" }))
         .sort((a, b) => a.label.localeCompare(b.label));
       this._openTypePicker("Add a target area", options, (v) =>
-        this._addActionListItem(id, i, j, "areas", v),
+        this._addActionListItem(id, i, type, "areas", v),
       );
     }
   }
 
   private _addActionListItem(
-    id: string, i: number, j: number, key: "areas" | "services", value: string,
+    id: string, i: number, type: string, key: "areas" | "services", value: string,
   ): void {
-    const act = this._triggerActions(id, i)[j] ?? {};
+    const act = this._triggerAction(id, i, type);
     const list = Array.isArray(act[key]) ? [...(act[key] as string[])] : [];
     if (!list.includes(value)) list.push(value);
-    this._updateAction(id, i, j, { [key]: list });
-    this._visActItemOpen = new Set(this._visActItemOpen).add(`${id}#${i}#${j}`);
+    this._updateActionByType(id, i, type, { [key]: list });
+    this._visActItemOpen = new Set(this._visActItemOpen).add(`${id}#${i}#${type}`);
   }
 
   private _removeActionListItem(
-    id: string, i: number, j: number, key: "areas" | "services", idx: number,
+    id: string, i: number, type: string, key: "areas" | "services", idx: number,
   ): void {
-    const act = this._triggerActions(id, i)[j] ?? {};
+    const act = this._triggerAction(id, i, type);
     const list = Array.isArray(act[key]) ? [...(act[key] as string[])] : [];
     list.splice(idx, 1);
-    this._updateAction(id, i, j, { [key]: list });
+    this._updateActionByType(id, i, type, { [key]: list });
   }
 
-  private _customItems(id: string, i: number, j: number): Record<string, unknown>[] {
-    const items = this._triggerActions(id, i)[j]?.items;
+  private _customItems(id: string, i: number): Record<string, unknown>[] {
+    const items = this._triggerAction(id, i, "custom").items;
     return Array.isArray(items) ? (items as Record<string, unknown>[]) : [];
   }
 
-  private _addCustomItem(id: string, i: number, j: number, kind: string): void {
-    const items = [...this._customItems(id, i, j)];
+  private _addCustomItem(id: string, i: number, kind: string): void {
+    const items = [...this._customItems(id, i)];
     items.push({ kind });
-    this._updateAction(id, i, j, { items });
-    this._visActItemOpen = new Set(this._visActItemOpen).add(`${id}#${i}#${j}`);
+    this._updateActionByType(id, i, "custom", { items });
+    this._visActItemOpen = new Set(this._visActItemOpen).add(`${id}#${i}#custom`);
   }
 
-  private _removeCustomItem(id: string, i: number, j: number, k: number): void {
-    const items = [...this._customItems(id, i, j)];
+  private _removeCustomItem(id: string, i: number, k: number): void {
+    const items = [...this._customItems(id, i)];
     items.splice(k, 1);
-    this._updateAction(id, i, j, { items });
+    this._updateActionByType(id, i, "custom", { items });
   }
 
   private _updateCustomItem(
-    id: string, i: number, j: number, k: number, patch: Record<string, unknown>,
+    id: string, i: number, k: number, patch: Record<string, unknown>,
   ): void {
-    const items = [...this._customItems(id, i, j)];
+    const items = [...this._customItems(id, i)];
     items[k] = { ...(items[k] || {}), ...patch };
-    this._updateAction(id, i, j, { items });
+    this._updateActionByType(id, i, "custom", { items });
   }
 
   private _triggerLabel = (s: { name: string }): string =>
@@ -2819,59 +2817,44 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
   }
 
   private _renderActionsPanel(id: string, i: number): TemplateResult {
-    const key = `${id}#${i}`;
-    const acts = this._triggerActions(id, i);
-    const open = this._visActPanelOpen.has(key);
-    return html`
-      <div class="vis-panel">
-        <div class="vis-phead" @click=${() => (this._visActPanelOpen = this._toggleSet(this._visActPanelOpen, key))}>
-          <ha-icon class="vis-sec-ico" icon="mdi:flash-outline"></ha-icon>
-          <span class="vis-ptitle">Additional actions</span>
-          <span class="hdr-pill">${acts.length}</span>
-          <ha-icon-button class="hdr-btn" title="Add an action"
-            @click=${(e: Event) => { e.stopPropagation(); this._openTypePicker("Add an action", VISION_ACTION_OPTIONS.map((o) => ({ ...o, icon: VISION_ACTION_ICON[o.value] })), (t) => this._addAction(id, i, t)); }}
-            ><ha-icon .icon=${this._ui("add")}></ha-icon
-          ></ha-icon-button>
-          <ha-icon class="vis-chev" .icon=${this._ui(open ? "chevronUp" : "chevronDown")}></ha-icon>
-        </div>
-        ${open
-          ? html`<div class="vis-pbody">${acts.map((a, j) => this._renderAction(id, i, j, a))}</div>`
-          : nothing}
-      </div>
-    `;
+    return html`${VISION_ACTION_ORDER.map((type) => this._renderActionSection(id, i, type))}`;
   }
 
-  private _renderAction(id: string, i: number, j: number, act: Record<string, unknown>): TemplateResult {
-    const type = (act.type as string) ?? "toast";
-    const key = `${id}#${i}#${j}`;
+  private _renderActionSection(id: string, i: number, type: string): TemplateResult {
+    const act = this._triggerAction(id, i, type);
+    const enabled = act.enabled === true;
+    const key = `${id}#${i}#${type}`;
     const open = this._visActItemOpen.has(key);
-    const isTargeted = type === "toast" || type === "push" || type === "live_feed";
+    const isCustom = type === "custom";
     return html`
-      <div class="vis-item vis-actitem">
-        <div class="vis-ihead" @click=${() => (this._visActItemOpen = this._toggleSet(this._visActItemOpen, key))}>
-          <ha-icon icon=${VISION_ACTION_ICON[type] ?? "mdi:flash-outline"}></ha-icon>
-          <span class="vis-iname">${VISION_ACTION_LABEL[type] ?? "Action"}</span>
-          <span class="vis-hint">${this._actionTargetsHint(act)}</span>
-          <ha-icon-button
-            class="hdr-btn"
-            title=${type === "custom" ? "Add" : type === "push" ? "Add a notify service" : "Add a target area"}
-            @click=${(e: Event) => { e.stopPropagation(); this._openActionAdd(id, i, j, act); }}
-            ><ha-icon .icon=${this._ui("add")}></ha-icon
-          ></ha-icon-button>
+      <div class="vis-panel">
+        <div class="vis-phead" @click=${() => (this._visActItemOpen = this._toggleSet(this._visActItemOpen, key))}>
+          <ha-icon class="vis-sec-ico" .icon=${VISION_ACTION_ICON[type] ?? "mdi:flash-outline"}></ha-icon>
+          <span class="vis-ptitle">${VISION_ACTION_LABEL[type] ?? "Action"}</span>
+          ${enabled ? html`<span class="vis-hint">${this._actionTargetsHint(act)}</span>` : nothing}
+          ${enabled
+            ? html`<ha-icon-button
+                class="hdr-btn"
+                title=${isCustom ? "Add" : type === "push" ? "Add a notify service" : "Add a target area"}
+                @click=${(e: Event) => { e.stopPropagation(); this._openActionAdd(id, i, type); }}
+                ><ha-icon .icon=${this._ui("add")}></ha-icon
+              ></ha-icon-button>`
+            : nothing}
+          <ha-switch
+            .checked=${enabled}
+            @click=${(e: Event) => e.stopPropagation()}
+            @change=${(e: Event) => this._updateActionByType(id, i, type, { enabled: (e.target as unknown as { checked: boolean }).checked })}
+          ></ha-switch>
           <ha-icon class="vis-chev" .icon=${this._ui(open ? "chevronUp" : "chevronDown")}></ha-icon>
-          <ha-icon-button
-            class="hdr-btn"
-            title="Remove"
-            @click=${(e: Event) => { e.stopPropagation(); this._removeAction(id, i, j); }}
-            ><ha-icon .icon=${this._ui("close")}></ha-icon
-          ></ha-icon-button>
         </div>
         ${open
-          ? html`<div class="vis-ibody">
-              ${isTargeted
-                ? html`<div class="help">An empty list targets everywhere.</div>
-                    ${this._renderTargetList(id, i, j, act, type)}`
-                : this._renderCustomItems(id, i, j)}
+          ? html`<div class="vis-pbody">
+              ${!enabled
+                ? html`<div class="help">Turn on to configure.</div>`
+                : isCustom
+                  ? this._renderCustomItems(id, i)
+                  : html`<div class="help">An empty list targets everywhere.</div>
+                      ${this._renderTargetList(id, i, type, act)}`}
             </div>`
           : nothing}
       </div>
@@ -2879,7 +2862,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
   }
 
   private _renderTargetList(
-    id: string, i: number, j: number, act: Record<string, unknown>, type: string,
+    id: string, i: number, type: string, act: Record<string, unknown>,
   ): TemplateResult {
     const key = type === "push" ? "services" : "areas";
     const list = Array.isArray(act[key]) ? (act[key] as string[]) : [];
@@ -2892,7 +2875,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
           <ha-icon-button
             class="hdr-btn"
             title="Remove"
-            @click=${() => this._removeActionListItem(id, i, j, key as "areas" | "services", idx)}
+            @click=${() => this._removeActionListItem(id, i, type, key as "areas" | "services", idx)}
             ><ha-icon .icon=${this._ui("close")}></ha-icon
           ></ha-icon-button>
         </div>`,
@@ -2900,8 +2883,8 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     </div>`;
   }
 
-  private _renderCustomItems(id: string, i: number, j: number): TemplateResult {
-    const items = this._customItems(id, i, j);
+  private _renderCustomItems(id: string, i: number): TemplateResult {
+    const items = this._customItems(id, i);
     if (!items.length) return html`<div class="help">Nothing yet — tap Add to choose a type.</div>`;
     const kindLabel: Record<string, string> = {
       automation: "Automation", script: "Script", scene: "Scene", action: "Action",
@@ -2925,7 +2908,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
             <ha-icon-button
               class="hdr-btn"
               title="Remove"
-              @click=${() => this._removeCustomItem(id, i, j, k)}
+              @click=${() => this._removeCustomItem(id, i, k)}
               ><ha-icon .icon=${this._ui("close")}></ha-icon
             ></ha-icon-button>
           </div>
@@ -2934,7 +2917,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
             .data=${data}
             .schema=${schema}
             .computeLabel=${() => ""}
-            @value-changed=${(e: CustomEvent) => this._updateCustomItem(id, i, j, k, e.detail.value)}
+            @value-changed=${(e: CustomEvent) => this._updateCustomItem(id, i, k, e.detail.value)}
           ></ha-form>
         </div>`;
       })}
