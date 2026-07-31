@@ -409,6 +409,8 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
   @state() private _visTrigOpen = new Set<string>();
   /** Which triggers' "Additional actions" panels are open (same key form). */
   @state() private _visActPanelOpen = new Set<string>();
+  /** Which action items are expanded (keyed `${cam}#${trigIdx}#${actIdx}`). */
+  @state() private _visActItemOpen = new Set<string>();
   /** Which thermostat rows have their body (Aliases) expanded. */
   @state() private _climateOpen = new Set<string>();
   /** Which thermostats' "Aliases" panels are open (keyed by thermostat id). */
@@ -2539,9 +2541,12 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
 
   private _addAction(id: string, i: number, type = "toast"): void {
     const acts = [...this._triggerActions(id, i)];
-    acts.push({ type });
+    const act: Record<string, unknown> =
+      type === "custom" ? { type, items: [] } : type === "push" ? { type, services: [] } : { type, areas: [] };
+    acts.push(act);
     this._updateTrigger(id, i, { actions: acts });
     this._visActPanelOpen = new Set(this._visActPanelOpen).add(`${id}#${i}`);
+    this._visActItemOpen = new Set(this._visActItemOpen).add(`${id}#${i}#${acts.length - 1}`);
   }
 
   private _openTypePicker(
@@ -2592,23 +2597,116 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     this._updateTrigger(id, i, { actions: acts });
   }
 
-  private _notifyServiceOptions(): { value: string; label: string }[] {
-    const svc = (this.hass?.services as Record<string, Record<string, unknown>> | undefined)?.notify ?? {};
-    return Object.keys(svc).map((k) => ({ value: `notify.${k}`, label: `notify.${k}` }));
+  // Action targets: each action item is a collapsible list of targets (areas / notify
+  // services / custom sub-items), added via the "+" popup.
+  private _areaMap(): Record<string, { area_id: string; name: string }> {
+    return (this.hass as unknown as { areas?: Record<string, { area_id: string; name: string }> }).areas ?? {};
   }
 
-  private _actionSettingsSchema(type: string): { name: string; selector: unknown }[] {
-    switch (type) {
-      case "push":
-        return [{ name: "service", selector: { select: { mode: "dropdown", options: this._notifyServiceOptions() } } }];
-      case "custom":
-        return [{ name: "script", selector: { entity: { domain: ["script", "scene", "automation"] } } }];
-      case "toast":
-      case "live_feed":
-        return [{ name: "areas", selector: { area: { multiple: true } } }];
-      default:
-        return [];
+  private _areaName(id: string): string {
+    return this._areaMap()[id]?.name ?? id;
+  }
+
+  private _notifyName(entityId: string): string {
+    const fn = this.hass?.states[entityId]?.attributes?.friendly_name;
+    return typeof fn === "string" && fn ? fn : entityId;
+  }
+
+  private _notifyEntities(): string[] {
+    return Object.keys(this.hass?.states ?? {})
+      .filter((e) => e.startsWith("notify."))
+      .sort();
+  }
+
+  private _actionTargetsHint(act: Record<string, unknown>): string {
+    const type = act.type as string;
+    if (type === "custom") {
+      const n = Array.isArray(act.items) ? act.items.length : 0;
+      return n ? `${n} action${n === 1 ? "" : "s"}` : "None";
     }
+    const key = type === "push" ? "services" : "areas";
+    const list = act[key];
+    if (!Array.isArray(list) || list.length === 0) return "Everywhere";
+    const names = (list as string[]).map((v) => (type === "push" ? this._notifyName(v) : this._areaName(v)));
+    return names.slice(0, 3).join(", ") + (names.length > 3 ? ` +${names.length - 3}` : "");
+  }
+
+  private _openActionAdd(id: string, i: number, j: number, act: Record<string, unknown>): void {
+    const type = act.type as string;
+    if (type === "push") {
+      const have = new Set(Array.isArray(act.services) ? (act.services as string[]) : []);
+      const options = this._notifyEntities()
+        .filter((e) => !have.has(e))
+        .map((e) => ({ value: e, label: this._notifyName(e), icon: "mdi:cellphone-message" }));
+      this._openTypePicker("Add a notify service", options, (v) =>
+        this._addActionListItem(id, i, j, "services", v),
+      );
+    } else if (type === "custom") {
+      this._openTypePicker(
+        "Add",
+        [
+          { value: "automation", label: "Automation", icon: "mdi:robot-outline" },
+          { value: "script", label: "Script", icon: "mdi:script-text-outline" },
+          { value: "scene", label: "Scene", icon: "mdi:palette-outline" },
+          { value: "action", label: "Action", icon: "mdi:flash-outline" },
+        ],
+        (kind) => this._addCustomItem(id, i, j, kind),
+      );
+    } else {
+      const have = new Set(Array.isArray(act.areas) ? (act.areas as string[]) : []);
+      const options = Object.values(this._areaMap())
+        .filter((a) => !have.has(a.area_id))
+        .map((a) => ({ value: a.area_id, label: a.name, icon: "mdi:texture-box" }))
+        .sort((a, b) => a.label.localeCompare(b.label));
+      this._openTypePicker("Add a target area", options, (v) =>
+        this._addActionListItem(id, i, j, "areas", v),
+      );
+    }
+  }
+
+  private _addActionListItem(
+    id: string, i: number, j: number, key: "areas" | "services", value: string,
+  ): void {
+    const act = this._triggerActions(id, i)[j] ?? {};
+    const list = Array.isArray(act[key]) ? [...(act[key] as string[])] : [];
+    if (!list.includes(value)) list.push(value);
+    this._updateAction(id, i, j, { [key]: list });
+    this._visActItemOpen = new Set(this._visActItemOpen).add(`${id}#${i}#${j}`);
+  }
+
+  private _removeActionListItem(
+    id: string, i: number, j: number, key: "areas" | "services", idx: number,
+  ): void {
+    const act = this._triggerActions(id, i)[j] ?? {};
+    const list = Array.isArray(act[key]) ? [...(act[key] as string[])] : [];
+    list.splice(idx, 1);
+    this._updateAction(id, i, j, { [key]: list });
+  }
+
+  private _customItems(id: string, i: number, j: number): Record<string, unknown>[] {
+    const items = this._triggerActions(id, i)[j]?.items;
+    return Array.isArray(items) ? (items as Record<string, unknown>[]) : [];
+  }
+
+  private _addCustomItem(id: string, i: number, j: number, kind: string): void {
+    const items = [...this._customItems(id, i, j)];
+    items.push({ kind });
+    this._updateAction(id, i, j, { items });
+    this._visActItemOpen = new Set(this._visActItemOpen).add(`${id}#${i}#${j}`);
+  }
+
+  private _removeCustomItem(id: string, i: number, j: number, k: number): void {
+    const items = [...this._customItems(id, i, j)];
+    items.splice(k, 1);
+    this._updateAction(id, i, j, { items });
+  }
+
+  private _updateCustomItem(
+    id: string, i: number, j: number, k: number, patch: Record<string, unknown>,
+  ): void {
+    const items = [...this._customItems(id, i, j)];
+    items[k] = { ...(items[k] || {}), ...patch };
+    this._updateAction(id, i, j, { items });
   }
 
   private _triggerLabel = (s: { name: string }): string =>
@@ -2617,12 +2715,6 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
       severities: "Severity level filter",
       cooldown_seconds: "Cooldown (seconds)",
     })[s.name] ?? s.name;
-
-  private _actionLabel = (s: { name: string }): string =>
-    ({ areas: "Areas", service: "Notify service", script: "Run (script/scene/automation)" })[s.name] ?? s.name;
-
-  private _actionHelper = (s: { name: string }): string =>
-    s.name === "areas" ? "Leave empty to use the camera's room." : "";
 
   /** Disclosure body for a camera row in the Cameras list. */
   private _renderCameraVisionBody(id: string): TemplateResult {
@@ -2767,37 +2859,102 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
 
   private _renderAction(id: string, i: number, j: number, act: Record<string, unknown>): TemplateResult {
     const type = (act.type as string) ?? "toast";
-    const settingsSchema = this._actionSettingsSchema(type);
+    const key = `${id}#${i}#${j}`;
+    const open = this._visActItemOpen.has(key);
+    const isTargeted = type === "toast" || type === "push" || type === "live_feed";
     return html`
       <div class="vis-item vis-actitem">
-        <div class="vis-ihead static">
-          <ha-icon icon="mdi:flash-outline"></ha-icon>
+        <div class="vis-ihead" @click=${() => (this._visActItemOpen = this._toggleSet(this._visActItemOpen, key))}>
+          <ha-icon icon=${VISION_ACTION_ICON[type] ?? "mdi:flash-outline"}></ha-icon>
           <span class="vis-iname">${VISION_ACTION_LABEL[type] ?? "Action"}</span>
-          <ha-icon-button class="hdr-btn" @click=${() => this._removeAction(id, i, j)} title="Remove"
+          <span class="vis-hint">${this._actionTargetsHint(act)}</span>
+          <ha-icon-button
+            class="hdr-btn"
+            title=${type === "custom" ? "Add" : type === "push" ? "Add a notify service" : "Add a target area"}
+            @click=${(e: Event) => { e.stopPropagation(); this._openActionAdd(id, i, j, act); }}
+            ><ha-icon .icon=${this._ui("add")}></ha-icon
+          ></ha-icon-button>
+          <ha-icon class="vis-chev" .icon=${this._ui(open ? "chevronUp" : "chevronDown")}></ha-icon>
+          <ha-icon-button
+            class="hdr-btn"
+            title="Remove"
+            @click=${(e: Event) => { e.stopPropagation(); this._removeAction(id, i, j); }}
             ><ha-icon .icon=${this._ui("close")}></ha-icon
           ></ha-icon-button>
         </div>
-        <div class="vis-ibody">
-          <ha-form
-            .hass=${this.hass}
-            .data=${{ type }}
-            .schema=${[{ name: "type", selector: { select: { mode: "dropdown", options: VISION_ACTION_OPTIONS } } }]}
-            .computeLabel=${() => "Action type"}
-            @value-changed=${(e: CustomEvent) => this._updateAction(id, i, j, { type: e.detail.value.type })}
-          ></ha-form>
-          ${settingsSchema.length
-            ? html`<ha-form
-                .hass=${this.hass}
-                .data=${act}
-                .schema=${settingsSchema}
-                .computeLabel=${this._actionLabel}
-                .computeHelper=${this._actionHelper}
-                @value-changed=${(e: CustomEvent) => this._updateAction(id, i, j, e.detail.value)}
-              ></ha-form>`
-            : nothing}
-        </div>
+        ${open
+          ? html`<div class="vis-ibody">
+              ${isTargeted
+                ? html`<div class="help">An empty list targets everywhere.</div>
+                    ${this._renderTargetList(id, i, j, act, type)}`
+                : this._renderCustomItems(id, i, j)}
+            </div>`
+          : nothing}
       </div>
     `;
+  }
+
+  private _renderTargetList(
+    id: string, i: number, j: number, act: Record<string, unknown>, type: string,
+  ): TemplateResult {
+    const key = type === "push" ? "services" : "areas";
+    const list = Array.isArray(act[key]) ? (act[key] as string[]) : [];
+    if (!list.length) return html`<div class="help">No targets yet — tap Add.</div>`;
+    return html`<div class="vis-targets">
+      ${list.map(
+        (v, idx) => html`<div class="vis-target">
+          <ha-icon icon=${type === "push" ? "mdi:cellphone-message" : "mdi:texture-box"}></ha-icon>
+          <span class="vis-target-name">${type === "push" ? this._notifyName(v) : this._areaName(v)}</span>
+          <ha-icon-button
+            class="hdr-btn"
+            title="Remove"
+            @click=${() => this._removeActionListItem(id, i, j, key as "areas" | "services", idx)}
+            ><ha-icon .icon=${this._ui("close")}></ha-icon
+          ></ha-icon-button>
+        </div>`,
+      )}
+    </div>`;
+  }
+
+  private _renderCustomItems(id: string, i: number, j: number): TemplateResult {
+    const items = this._customItems(id, i, j);
+    if (!items.length) return html`<div class="help">Nothing yet — tap Add to choose a type.</div>`;
+    const kindLabel: Record<string, string> = {
+      automation: "Automation", script: "Script", scene: "Scene", action: "Action",
+    };
+    const kindIcon: Record<string, string> = {
+      automation: "mdi:robot-outline", script: "mdi:script-text-outline",
+      scene: "mdi:palette-outline", action: "mdi:flash-outline",
+    };
+    return html`<div class="vis-targets">
+      ${items.map((it, k) => {
+        const kind = (it.kind as string) ?? "action";
+        const schema =
+          kind === "action"
+            ? [{ name: "sequence", selector: { action: {} } }]
+            : [{ name: "entity", selector: { entity: { domain: kind } } }];
+        const data = kind === "action" ? { sequence: it.sequence } : { entity: it.entity };
+        return html`<div class="vis-custom">
+          <div class="vis-custom-head">
+            <ha-icon icon=${kindIcon[kind] ?? "mdi:flash-outline"}></ha-icon>
+            <span class="vis-iname">${kindLabel[kind] ?? kind}</span>
+            <ha-icon-button
+              class="hdr-btn"
+              title="Remove"
+              @click=${() => this._removeCustomItem(id, i, j, k)}
+              ><ha-icon .icon=${this._ui("close")}></ha-icon
+            ></ha-icon-button>
+          </div>
+          <ha-form
+            .hass=${this.hass}
+            .data=${data}
+            .schema=${schema}
+            .computeLabel=${() => ""}
+            @value-changed=${(e: CustomEvent) => this._updateCustomItem(id, i, j, k, e.detail.value)}
+          ></ha-form>
+        </div>`;
+      })}
+    </div>`;
   }
 
   private _renderCamerasGlobal(field: SettingField): TemplateResult {
@@ -4873,7 +5030,60 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
         text-overflow: ellipsis;
         white-space: nowrap;
       }
-      .vis-chev {
+      .vis-hint {
+        flex: 0 1 auto;
+        min-width: 0;
+        max-width: 55%;
+        color: var(--ted-style-muted, var(--secondary-text-color));
+        font-size: 12px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .vis-targets {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      .vis-target {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 40px;
+        box-sizing: border-box;
+        padding: 4px 8px;
+        border-radius: 8px;
+        border: 1px solid var(--ted-style-divider);
+        background: var(--ted-style-surface-2, rgba(120, 120, 120, 0.06));
+      }
+      .vis-target > ha-icon {
+        --mdc-icon-size: 18px;
+        color: var(--ted-style-muted, var(--secondary-text-color));
+      }
+      .vis-target-name {
+        flex: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .vis-custom {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        padding: 6px 8px 8px;
+        border-radius: 8px;
+        border: 1px solid var(--ted-style-divider);
+      }
+      .vis-custom-head {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 32px;
+      }
+      .vis-custom-head > ha-icon {
+        --mdc-icon-size: 18px;
+        color: var(--ted-style-muted, var(--secondary-text-color));
+      }
         --mdc-icon-size: 20px;
         color: var(--ted-style-muted, var(--secondary-text-color));
       }

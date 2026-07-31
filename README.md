@@ -943,6 +943,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.40
+
+- **Vision “Additional actions” reworked into consistent collapsible lists.** Each action is now a collapsible whose header shows its targets at a glance; the action type is chosen from the “+” popup (no in-item type picker). Toast and Live feed actions add target **areas**, Push actions add **notify services** (shown by their friendly name), and Custom actions add Automation / Script / Scene / Action items. An empty target list means everywhere.
+
 ### v0.9.39
 
 - **Thermostat voice aliases moved into the Thermostats list.** The separate “Voice zone names” section is gone — expand a thermostat in Settings → Thermostats and add its spoken names under a collapsible “Aliases” section.
