@@ -942,6 +942,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.34
+
+- **Assist mic auto-disables over HTTP.** When a device loads the dashboard over an insecure (HTTP) connection — where the browser can't use the microphone — the navbar mic button now shows disabled, and tapping it explains that voice needs an HTTPS connection (e.g. your Nabu Casa URL) instead of silently failing.
+
 ### v0.9.33
 
 - **Wallpaper fades in instead of snapping.** The background now crossfades when a view first loads and when you switch albums (not just on manual next / cycle transitions): the first image fades in over the theme background, and album/image changes crossfade. Plain view-to-view navigation with the same wallpaper still repaints instantly. Respects the Slideshow transition setting (set it to “none” to keep hard cuts).
