@@ -13,6 +13,7 @@ picker, where most have a visual editor).
 | [Light](./light-card.md) | `custom:ted-light-card` | Tap-to-toggle + dual-zone brightness control for a light. |
 | [Cover](./cover-card.md) | `custom:ted-cover-card` | Tap-to-control card for blinds, shades, garage doors. |
 | [Camera](./camera-card.md) | `custom:ted-camera-card` | One or more camera feeds (thumbnail or live). |
+| [Vision](./vision-card.md) | `custom:ted-vision-card` | Timeline of AI-analyzed camera events (severity + summaries + thumbnail/clip). |
 | [Music](./music-card.md) | `custom:ted-music-card` | Music Assistant player for this device (wraps mass-player-card). |
 | [Calendar](./calendar-card.md) | `custom:ted-calendar-card` | Calendar for this device (wraps daylight-calendar-card). |
 | [Remote](./remote-card.md) | `custom:ted-remote-card` | Remote control for Apple TV / Kaleidescape. |

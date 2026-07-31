@@ -34,6 +34,7 @@ export type SettingKind =
   | "folder"
   | "select"
   | "entity-list"
+  | "vision-cameras"
   | "announce-messages"
   | "climate-aliases"
   | "navbar-menu-items"
@@ -78,6 +79,7 @@ export const SETTINGS_GROUPS = [
   "Sounds",
   "Voice",
   "Cameras",
+  "Vision",
   "Thermostats",
   "Calendars",
   "Alarms/Timers",
@@ -96,6 +98,7 @@ export const SETTINGS_GROUP_ICONS: Record<string, { fluent: string; mdi: string 
   "Alarms/Timers": { fluent: "fluent:clock-alarm-24-regular", mdi: "mdi:alarm" },
   Announce: { fluent: "fluent:megaphone-loud-24-regular", mdi: "mdi:bullhorn" },
   Cameras: { fluent: "fluent:video-24-regular", mdi: "mdi:cctv" },
+  Vision: { fluent: "fluent:eye-24-regular", mdi: "mdi:cctv" },
   Thermostats: { fluent: "fluent:temperature-24-regular", mdi: "mdi:thermometer" },
   Calendars: { fluent: "fluent:calendar-ltr-24-regular", mdi: "mdi:calendar" },
   Photos: { fluent: "fluent:image-24-regular", mdi: "mdi:image-multiple" },
@@ -166,6 +169,13 @@ export const SETTINGS_DEFAULTS: SettingsMap = {
   calendar_view: "month",
   calendar_emphasize_weekdays: true,
   cameras_layout: "big-small",
+  vision_enabled: false,
+  vision_ai_task_entity: null,
+  vision_cameras: {},
+  vision_capture_mode: "clip",
+  vision_clip_seconds: 6,
+  vision_frame_count: 3,
+  vision_retention_max: 200,
   climate_list: [],
   climate_layout: "auto",
   climate_aliases: [],
@@ -251,6 +261,7 @@ export const SETTINGS_DEFAULTS: SettingsMap = {
   weather_dashboard: "[root]/weather",
   calendar_dashboard: "[root]/calendar-month",
   cameras_dashboard: "[root]/cameras",
+  vision_dashboard: "[root]/vision",
   climate_dashboard: "[root]/climate",
   music_dashboard: "[root]/music",
   photos_dashboard: "[root]/photos",
@@ -308,6 +319,25 @@ export const SETTINGS_FIELDS: SettingField[] = [
     help: "How this device arranges its cameras on the Cameras view.",
   },
   { key: "cameras_list", label: "Cameras", group: "Cameras", kind: "entity-list", entityDomain: "camera", help: "Global lists the available cameras; each device curates its own subset." },
+  // Vision Analysis
+  { key: "vision_enabled", label: "Enable Vision Analysis", group: "Vision", kind: "boolean", help: "AI-analyze camera detection events (motion/person/animal/car) and log them to the Vision timeline." },
+  { key: "vision_ai_task_entity", label: "AI Task entity", group: "Vision", kind: "entity", entityDomain: "ai_task", help: "AI Task entity used for analysis. Leave empty to use Home Assistant's preferred AI Task entity." },
+  {
+    key: "vision_capture_mode",
+    label: "Capture",
+    group: "Vision",
+    kind: "select",
+    options: [
+      { value: "clip", label: "Clip (frames + video)" },
+      { value: "burst", label: "Burst snapshots" },
+      { value: "snapshot", label: "Single snapshot" },
+    ],
+    help: "How the event is captured for analysis. Clip records frames across the window and stitches a short video.",
+  },
+  { key: "vision_clip_seconds", label: "Capture window", group: "Vision", kind: "number", min: 1, max: 30, unit: "s", help: "Length of the capture window for clip/burst modes." },
+  { key: "vision_frame_count", label: "Frames analyzed", group: "Vision", kind: "number", min: 1, max: 8, help: "How many stills across the window are sent to the AI." },
+  { key: "vision_retention_max", label: "Keep events", group: "Vision", kind: "number", min: 10, max: 1000, help: "Maximum number of analyzed events kept (older ones and their files are pruned)." },
+  { key: "vision_cameras", label: "Camera opt-in", group: "Vision", kind: "vision-cameras", help: "Choose which cameras are watched, which detections trigger analysis, and what happens." },
   // Thermostats
   {
     key: "climate_layout",
@@ -421,6 +451,7 @@ export const SETTINGS_FIELDS: SettingField[] = [
   { key: "weather_dashboard", label: "Weather dashboard", group: "Dashboards", kind: "text", rootRelative: true },
   { key: "calendar_dashboard", label: "Calendar dashboard", group: "Dashboards", kind: "text", rootRelative: true },
   { key: "cameras_dashboard", label: "Cameras dashboard", group: "Dashboards", kind: "text", rootRelative: true },
+  { key: "vision_dashboard", label: "Vision dashboard", group: "Dashboards", kind: "text", rootRelative: true },
   { key: "climate_dashboard", label: "Climate dashboard", group: "Dashboards", kind: "text", rootRelative: true },
   { key: "music_dashboard", label: "Music dashboard", group: "Dashboards", kind: "text", rootRelative: true },
   { key: "photos_dashboard", label: "Photos dashboard", group: "Dashboards", kind: "text", rootRelative: true },

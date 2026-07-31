@@ -373,6 +373,10 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
   @state() private _addViewTitle = "";
   /** Which navbar custom-menu-item rows are expanded (by index). */
   @state() private _navMenuOpen = new Set<number>();
+  /** Which Vision-opt-in camera panels are expanded. */
+  @state() private _visionOpen = new Set<string>();
+  /** Discovered detection sensors per camera (fetched from the backend on demand). */
+  @state() private _visionDetectors: Record<string, Record<string, string[]>> = {};
   /** True while a "Create MA player" request is in flight. */
   @state() private _maBusy = false;
   /** Error from the last failed "Create MA player" attempt, if any. */
@@ -1659,6 +1663,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
 
   private _renderGlobalRow(field: SettingField): TemplateResult {
     if (field.kind === "entity-list") return this._renderCamerasGlobal(field);
+    if (field.kind === "vision-cameras") return this._renderVisionCameras();
     if (field.kind === "announce-messages") return this._renderAnnounceMessages("global");
     if (field.kind === "climate-aliases") return this._renderClimateAliases("global");
     if (field.kind === "background") return this._renderBackground(field, "global");
@@ -1700,6 +1705,9 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
 
   private _renderDeviceRow(field: SettingField): TemplateResult {
     if (field.kind === "entity-list") return this._renderCamerasDevice(field);
+    if (field.kind === "vision-cameras")
+      return html`<div class="row"><div class="row-label"><span>${field.label}</span>
+        <span class="help">Vision Analysis is configured on the Global tab.</span></div></div>`;
     if (field.kind === "announce-messages") return this._renderAnnounceMessages("device");
     if (field.kind === "climate-aliases") return this._renderClimateAliases("device");
     if (field.kind === "background") return this._renderBackground(field, "device");
@@ -2376,6 +2384,181 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     if (Object.keys(opt).length) map[id] = opt;
     else delete map[id];
     this._setGlobal("calendar_options", map);
+  }
+
+  // ── Vision Analysis camera opt-in ───────────────────────
+  private _visionCameras(): Record<string, Record<string, unknown>> {
+    const v = this._globalValue("vision_cameras");
+    return v && typeof v === "object" && !Array.isArray(v)
+      ? { ...(v as Record<string, Record<string, unknown>>) }
+      : {};
+  }
+
+  private _visionCameraPool(): string[] {
+    const list = this._globalValue("cameras_list");
+    const ids = Array.isArray(list) ? (list as string[]) : [];
+    return ids.length ? ids : this._allCameras("camera");
+  }
+
+  private async _loadVisionDetectors(camera: string): Promise<void> {
+    if (camera in this._visionDetectors) return;
+    const hass = this.hass as unknown as {
+      callWS?: <T>(msg: Record<string, unknown>) => Promise<T>;
+    };
+    let detectors: Record<string, string[]> = {};
+    try {
+      if (!hass.callWS) throw new Error("no ws");
+      const res = await hass.callWS<{ detectors: Record<string, string[]> }>({
+        type: "teds_dashboard_system/list_camera_detectors",
+        camera_entity: camera,
+      });
+      detectors = res.detectors ?? {};
+    } catch {
+      detectors = {};
+    }
+    this._visionDetectors = { ...this._visionDetectors, [camera]: detectors };
+  }
+
+  private _toggleVisionOpen(camera: string): void {
+    const next = new Set(this._visionOpen);
+    if (next.has(camera)) next.delete(camera);
+    else {
+      next.add(camera);
+      void this._loadVisionDetectors(camera);
+    }
+    this._visionOpen = next;
+  }
+
+  private _addVisionCamera(camera: string): void {
+    if (!camera) return;
+    const map = this._visionCameras();
+    if (!map[camera])
+      map[camera] = { event_types: [], severity_threshold: "harmless", cooldown_seconds: 60, notify: true };
+    this._setGlobal("vision_cameras", map as unknown as SettingsValue);
+    this._toggleVisionOpen(camera);
+  }
+
+  private _removeVisionCamera(camera: string): void {
+    const map = this._visionCameras();
+    delete map[camera];
+    this._setGlobal("vision_cameras", map as unknown as SettingsValue);
+  }
+
+  private _updateVisionCamera(camera: string, patch: Record<string, unknown>): void {
+    const map = this._visionCameras();
+    const cur = { ...(map[camera] || {}) };
+    for (const [k, val] of Object.entries(patch)) {
+      if (val === undefined || val === "" || (Array.isArray(val) && val.length === 0)) delete cur[k];
+      else cur[k] = val;
+    }
+    map[camera] = cur;
+    this._setGlobal("vision_cameras", map as unknown as SettingsValue);
+  }
+
+  private _visionLabel = (s: { name: string }): string =>
+    ({
+      event_types: "Trigger on",
+      severity_threshold: "Notify/act when",
+      cooldown_seconds: "Cooldown (seconds)",
+      notify: "Send a notification",
+      script: "Also run (script/scene/automation)",
+    })[s.name] ?? s.name;
+
+  private _renderVisionCameras(): TemplateResult {
+    if (!this._isAdmin()) {
+      return html`<div class="row"><div class="row-label"><span>Camera opt-in</span>
+        <span class="help">Only admins can change Vision Analysis.</span></div></div>`;
+    }
+    const map = this._visionCameras();
+    const opted = Object.keys(map);
+    const remaining = this._visionCameraPool().filter((id) => !opted.includes(id));
+    const severityOptions = [
+      { value: "harmless", label: "Harmless or higher (all)" },
+      { value: "suspicious", label: "Suspicious or higher" },
+      { value: "critical", label: "Critical only" },
+    ];
+    const detectorLabel: Record<string, string> = {
+      motion: "Motion", person: "Person", animal: "Animal", car: "Vehicle", package: "Package",
+    };
+    return html`
+      <div class="vision-opt">
+        ${opted.length === 0
+          ? html`<div class="help">No cameras opted in yet. Add one below to start analyzing its detections.</div>`
+          : nothing}
+        ${opted.map((cam) => {
+          const cfg = map[cam] as Record<string, unknown>;
+          const open = this._visionOpen.has(cam);
+          const detectors = this._visionDetectors[cam];
+          const availTypes = detectors ? Object.keys(detectors) : [];
+          const typeOptions = availTypes.map((t) => ({ value: t, label: detectorLabel[t] ?? t }));
+          const data = {
+            event_types: Array.isArray(cfg.event_types) ? cfg.event_types : [],
+            severity_threshold: (cfg.severity_threshold as string) ?? "harmless",
+            cooldown_seconds: (cfg.cooldown_seconds as number) ?? 60,
+            notify: cfg.notify !== false,
+            script: (cfg.script as string) ?? undefined,
+          };
+          const schema = [
+            ...(typeOptions.length
+              ? [{ name: "event_types", selector: { select: { multiple: true, options: typeOptions } } }]
+              : []),
+            { name: "severity_threshold", selector: { select: { mode: "dropdown", options: severityOptions } } },
+            {
+              type: "grid",
+              name: "",
+              schema: [
+                { name: "cooldown_seconds", selector: { number: { min: 0, max: 3600, mode: "box" } } },
+                { name: "notify", selector: { boolean: {} } },
+              ],
+            },
+            { name: "script", selector: { entity: { domain: ["script", "scene", "automation"] } } },
+          ];
+          return html`
+            <div class="vision-cam">
+              <div class="vision-cam-head" @click=${() => this._toggleVisionOpen(cam)}>
+                <ha-icon icon="mdi:cctv"></ha-icon>
+                <span class="vision-cam-name">${this._cameraName(cam)}</span>
+                <ha-icon-button
+                  @click=${(e: Event) => {
+                    e.stopPropagation();
+                    this._removeVisionCamera(cam);
+                  }}
+                  title="Remove"
+                  ><ha-icon icon="mdi:delete"></ha-icon
+                ></ha-icon-button>
+                <ha-icon class="vision-chev" icon=${open ? "mdi:chevron-up" : "mdi:chevron-down"}></ha-icon>
+              </div>
+              ${open
+                ? html`<div class="vision-cam-body">
+                    ${typeOptions.length === 0
+                      ? html`<div class="help">No motion/person/animal/vehicle sensors were found on this
+                          camera's device. You can still analyze it manually with the analyze_camera service.</div>`
+                      : nothing}
+                    <ha-form
+                      .hass=${this.hass}
+                      .data=${data}
+                      .schema=${schema}
+                      .computeLabel=${this._visionLabel}
+                      @value-changed=${(e: CustomEvent) => this._updateVisionCamera(cam, e.detail.value)}
+                    ></ha-form>
+                  </div>`
+                : nothing}
+            </div>
+          `;
+        })}
+        ${remaining.length
+          ? html`<div class="vision-add">
+              <ha-selector
+                .hass=${this.hass}
+                .selector=${{ entity: { include_entities: remaining } }}
+                @value-changed=${(e: CustomEvent) => this._addVisionCamera(e.detail.value)}
+              ></ha-selector>
+            </div>`
+          : this._visionCameraPool().length === 0
+            ? html`<div class="help">Add cameras to the Cameras list first, then opt them in here.</div>`
+            : nothing}
+      </div>
+    `;
   }
 
   private _renderCamerasGlobal(field: SettingField): TemplateResult {
@@ -4343,6 +4526,41 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
         display: flex;
         flex-direction: column;
         gap: 6px;
+      }
+      .vision-opt {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .vision-cam {
+        border: 1px solid var(--ted-style-divider);
+        border-radius: 10px;
+        overflow: hidden;
+      }
+      .vision-cam-head {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 8px;
+        cursor: pointer;
+        background: var(--ted-style-surface-2, rgba(120, 120, 120, 0.08));
+      }
+      .vision-cam-name {
+        flex: 1;
+        font-weight: 600;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .vision-chev {
+        --mdc-icon-size: 20px;
+        color: var(--ted-style-muted, var(--secondary-text-color));
+      }
+      .vision-cam-body {
+        padding: 8px 10px 10px;
+      }
+      .vision-add {
+        margin-top: 2px;
       }
       .cam-item {
         display: flex;

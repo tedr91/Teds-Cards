@@ -23,6 +23,7 @@ import "./cards/messagebox-card/ted-messagebox-card";
 import "./cards/room-card/ted-room-card";
 import "./cards/spacer-card/ted-spacer-card";
 import "./cards/camera-card/ted-camera-card";
+import "./cards/vision-card/ted-vision-card";
 import "./cards/climate-card/ted-climate-card";
 import "./cards/music-card/ted-music-card";
 import "./cards/calendar-card/ted-calendar-card";

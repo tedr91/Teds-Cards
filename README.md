@@ -30,6 +30,7 @@ After spending months attempting to find an "on/off/brightness" switch that I li
 | Remote Card | `custom:ted-remote-card` | Remote control for media devices (e.g. Apple TV and Kaleidescape). |
 | Room Card | `custom:ted-room-card` | Overview card for a Home Assistant area. |
 | Camera Card | `custom:ted-camera-card` | One or more camera feeds (auto thumbnail or live stream) in single, quad, or multi layouts. |
+| Vision Card | `custom:ted-vision-card` | Timeline of AI-analyzed camera events (severity + summaries + thumbnail/clip) via HA's native AI Task. |
 | Music Card | `custom:ted-music-card` | Music Assistant player for the current device (wraps droans/mass-player-card; requires it + `mass_queue`). |
 | Calendar Card | `custom:ted-calendar-card` | Calendar for the current device (wraps superdingo101/daylight-calendar-card; requires it). |
 | Navbar Card | `custom:ted-navbar-card` | Navigation bar pinned to the top or bottom, with buttons and status items in left/center/right zones. |
@@ -941,6 +942,10 @@ options as the Alarm card apply.
 
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
+
+### v0.9.35
+
+- **New: Vision Card + AI camera event analysis.** Opt a camera into Vision Analysis (Settings → Vision) and its motion / person / animal / vehicle detections are captured and analyzed by Home Assistant's built-in AI Task — producing a severity, a one-line and a detailed summary, and a best-frame thumbnail (plus a short clip). The new Vision card shows a live timeline of events with severity filtering, a detail view, and mark-reviewed / delete. No third-party vision integration required — it works with any AI provider that offers an AI Task entity (e.g. OpenAI or Ollama).
 
 ### v0.9.34
 
