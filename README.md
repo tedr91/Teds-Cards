@@ -943,6 +943,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.42
+
+- **Vision “Display live feed” now opens the camera live.** When a trigger fires this action, targeted screens navigate to the Cameras view and the triggering camera is made the primary feed and switched to a live stream. Also fixed the Settings list rows (trigger and action items) that were rendering taller than the standard 40px height.
+
 ### v0.9.41
 
 - **Vision trigger actions reworked into four fixed on/off sections.** Each camera trigger now always shows Display live feed, Toast notification, Push notification, and Custom action sections, each with an on/off toggle in its header — no more adding, removing, or picking action types. New triggers default to Live feed and Toast on. Also fixed a chevron sizing regression and made the nested rows use the consistent 40px height.
