@@ -942,25 +942,6 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
-### v0.9.31
-
-- **Vertical navbars never overlap.** On a left/right (vertical) bar, the sections are now laid out in normal flow (weather top · launcher middle · status bottom), so no section's content can ever land on another's — fixes the Assist mic overlapping the launcher buttons.
-- **Sections always keep at least one item.** Auto-collapse now folds trailing items into the chevron but never hides a section's last item (e.g. the launcher's Home button stays), and it no longer collapses spacers.
-
-### v0.9.30
-
-- **Navbar sections never overlap.** Fixed a bug where a wide centered group (e.g. the view launcher) could overlap a side section's items (like the Assist mic). The auto-collapse now correctly accounts for the centered layout and folds the launcher's trailing buttons into its chevron so every section keeps its own space.
-- Added small **spacers** beside the centered section on the default bar, and spacers now work on vertical bars too.
-
-### v0.9.29
-
-- **Vertical navbar layout fixes.** A **floating** left/right navbar now hugs its content (only as tall as its items) and centers vertically on the screen, even when the Left/Right sections are enabled. A **non-floating** (snap) side bar goes back to spanning the full height with its content spread top → center → bottom (fixes a regression from v0.9.28).
-- **Nightstand profile trims the navbar.** Picking the **Nightstand** device type now also limits the launcher to **Home**, **Music**, and **Alarms/Timers**, and shows only the Center (launcher) navbar section — for a minimal bedside bar.
-
-### v0.9.28
-
-- **Vertical navbars center their content.** A left/right (vertical) navbar now clusters its items and centers them vertically on the screen instead of stretching from the top, so a side bar looks balanced regardless of how many buttons it has.
-
 ### v0.9.27
 
 - **Edit the navbar from Settings.** The navbar's five sections and their items (weather, date/time, the view launcher, status icons, buttons) are now managed in **Settings → Navbar → Navbar sections** — global, with an optional per-device override — instead of being hard-coded in the dashboard YAML. Don't want the weather or clock? Just remove them. The bar comes pre-populated to match the previous layout, so nothing changes until you edit it.

@@ -1039,9 +1039,6 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
    */
   private _measureOverflow(): void {
     if (this._editMode || !this._config) return;
-    // A vertical float bar hugs its content (fit-content height) and centers — it grows
-    // to fit rather than collapsing items into a chevron, so skip overflow entirely.
-    if (this._barType() === "float" && this._isVertical()) return;
     if (this._visible.size > 0) return; // already computed this cycle; wait for a reset
     const root = this.renderRoot as ShadowRoot | undefined;
     const card = root?.querySelector?.(".navbar-card") as HTMLElement | null;
@@ -1088,71 +1085,40 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
       return ex.length ? ex.reduce((a, b) => a + b, 0) + (ex.length - 1) * gap : 0;
     });
 
-    // Visible extent of a section given any collapse already applied to it (first N items
-    // + the chevron trigger).
-    const visExtent = (i: number): number => {
-      const el = sectionEl(i);
-      if (!el) return 0;
+    // Total space the sections consume along the bar (they can't overlap without colliding).
+    const occupied = natural.map((n, i) => ({ n, i })).filter((s) => s.n > 0);
+    const total = occupied.reduce((sum, s, k) => sum + s.n + (k > 0 ? gap : 0), 0);
+    // Reserve a half-bar of breathing room on each side of the Center section (index 2)
+    // so the centered buttons never run flush to the bar's ends — this collapses one item
+    // into the chevron sooner. Only applied when the Center section actually has items.
+    const centerReserve = natural[2] > 0 ? this._thickness() : 0;
+    const avail = cardInner - centerReserve;
+    if (total <= avail) return; // everything fits
+
+    let reclaim = total - avail;
+    // Collapse highest-priority sections first (ties by index); skip non-collapsible ones.
+    const order = occupied
+      .map((s) => s.i)
+      .filter((i) => sections[i].overflow !== false)
+      .sort((a, b) => (sections[b].priority ?? 3) - (sections[a].priority ?? 3) || a - b);
+
+    for (const s of order) {
+      if (reclaim <= 0) break;
+      const el = sectionEl(s);
+      if (!el) continue;
       const ex = childExtents(el);
       const items = ex.length;
-      const vis = this._visible.get(i) ?? items;
-      if (vis >= items) return natural[i];
-      let w = 0;
-      for (let k = 0; k < vis; k++) w += ex[k] + (k > 0 ? gap : 0);
-      return w + (vis > 0 ? gap : 0) + triggerW;
-    };
-
-    // Number of REAL (non-spacer) items a section shows — spacers are layout, not content.
-    const realCount = (i: number): number =>
-      this._sectionItems(sections[i]).filter((it) => it.type !== "spacer").length;
-
-    // Collapse trailing items from `candidates` (highest priority first, ties by index)
-    // into their chevron until `reclaim` px are recovered. A section ALWAYS keeps at least
-    // one real item (never collapses down to only the chevron), and spacer-only sections
-    // are never collapsed.
-    const collapseSections = (candidates: number[], reclaim: number): void => {
-      const order = candidates
-        .filter((i) => natural[i] > 0 && sections[i].overflow !== false && realCount(i) > 0)
-        .sort((a, b) => (sections[b].priority ?? 3) - (sections[a].priority ?? 3) || a - b);
-      for (const s of order) {
-        if (reclaim <= 0) break;
-        const el = sectionEl(s);
-        if (!el) continue;
-        const ex = childExtents(el);
-        const items = ex.length;
-        if (items <= 1) continue; // nothing to trim while keeping one item
-        let vis = this._visible.get(s) ?? items;
-        while (vis > 1 && reclaim > 0) {
-          const firstHide = vis === items;
-          const itemW = ex[vis - 1] + (vis > 1 ? gap : 0);
-          reclaim -= itemW - (firstHide ? triggerW : 0);
-          vis -= 1;
-        }
-        if (vis < items) this._visible.set(s, Math.max(1, vis));
+      if (items === 0) continue;
+      // Trim trailing items until enough is reclaimed (the chevron trigger costs triggerW
+      // the first time an item is hidden).
+      let vis = items;
+      while (vis > 0 && reclaim > 0) {
+        const firstHide = vis === items;
+        const itemW = ex[vis - 1] + (vis > 1 ? gap : 0);
+        reclaim -= itemW - (firstHide ? triggerW : 0);
+        vis -= 1;
       }
-    };
-
-    if (vert) {
-      // Vertical bars stack their sections in normal flow (no overlap possible) — just
-      // collapse enough to fit the available height.
-      const count = natural.filter((n) => n > 0).length;
-      const total = natural.reduce((sum, n) => sum + n, 0) + Math.max(0, count - 1) * gap;
-      if (total > cardInner) collapseSections([0, 1, 2, 3, 4], total - cardInner);
-    } else {
-      // Horizontal: the Center zone (mid-left · center · mid-right = sections 1/2/3) is
-      // DEAD-CENTERED between the two pinned side zones (0 = left, 4 = right). For the
-      // centered Center section to never overlap a side, it must fit within
-      // `cardInner - 2*max(L,R)` (minus the mid spacers + a breathing gap). When the
-      // launcher is wider than that, its trailing buttons collapse into the chevron.
-      const sideMax = Math.max(natural[0], natural[4]);
-      const midMax = Math.max(natural[1], natural[3]);
-      const centerBudget = cardInner - 2 * sideMax - 2 * midMax - 2 * gap;
-      if (natural[2] > centerBudget) collapseSections([2], natural[2] - centerBudget);
-      // Fallback: keep an oversized side zone from crossing into the (now-fitted) center.
-      const centerVis = visExtent(2);
-      const sideBudget = Math.max(0, (cardInner - centerVis) / 2 - midMax - gap);
-      if (natural[0] > sideBudget) collapseSections([0], natural[0] - sideBudget);
-      if (natural[4] > sideBudget) collapseSections([4], natural[4] - sideBudget);
+      if (vis < items) this._visible.set(s, Math.max(0, vis));
     }
 
     if (this._visible.size > 0) this.requestUpdate();
@@ -1203,9 +1169,7 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
       byZone.left.some(({ section }) => this._sectionItems(section).length > 0) ||
       byZone.right.some(({ section }) => this._sectionItems(section).length > 0);
     const hug = this._barType() === "float" && !hasSides;
-    // A vertical float bar also sizes to its content (fit-content height) — treat it like
-    // a hug bar for the resize auto-heal so its content-driven box can't oscillate.
-    this._hugBar = hug || (this._barType() === "float" && this._isVertical());
+    this._hugBar = hug;
 
     const navClasses = {
       navbar: true,
@@ -1848,48 +1812,47 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
         height: 100%;
         display: flex;
         flex-direction: column;
-        /* Distribute the three content-sized zones in normal flow (top · center · bottom),
-           so they can NEVER overlap each other. When they don't fill the height they
-           spread (weather top, launcher middle, status bottom); overflow-collapse keeps
-           the total within the height. */
-        justify-content: space-between;
       }
       .navbar.float .navbar-card {
         border-radius: var(--ted-style-radius, 12px);
       }
-      /* Horizontal float: center the bar left/right in normal block flow. */
+      /* Center the floating bar along its length: a horizontal bar centers left/right,
+         a vertical (left/right) bar centers top/bottom. */
       .navbar.float:not(.vertical) .navbar-card {
         margin: 0 auto;
       }
-      /* Vertical float: the fixed container is a centered flex column, so the card hugs
-         its content HEIGHT (only as tall as its items) and sits vertically centered on
-         screen — regardless of which sections are enabled. (margin:auto can't center a
-         block vertically, so use flex.) */
-      .navbar.float.vertical {
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-      }
       .navbar.float.vertical .navbar-card {
-        height: fit-content;
-        padding: 12px 0;
+        margin: auto 0;
       }
-      /* Horizontal center-only float hugs its width and hides the (empty) side zones so
-         it wraps just the centered buttons. */
-      .navbar.float:not(.vertical) .navbar-card.hug {
+      /* Center-only float bars hug their content (just larger than the buttons),
+         still capped by the configured min/max length. With edge items (left/right on a
+         horizontal bar, top/bottom on a vertical one) the bar keeps its full length so
+         those items can pin to the edges. */
+      .navbar.float .navbar-card.hug {
         display: flex;
         align-items: center;
         justify-content: center;
+      }
+      .navbar.float:not(.vertical) .navbar-card.hug {
         width: fit-content;
         padding: 0 12px;
       }
-      .navbar.float:not(.vertical) .navbar-card.hug .zone.left,
-      .navbar.float:not(.vertical) .navbar-card.hug .zone.right {
+      .navbar.float.vertical .navbar-card.hug {
+        height: fit-content;
+        padding: 12px 0;
+      }
+      .navbar.float .navbar-card.hug .zone.left,
+      .navbar.float .navbar-card.hug .zone.right {
         display: none;
       }
       .navbar.float:not(.vertical) .navbar-card.hug .zone.center {
         position: static;
         transform: none;
+      }
+      /* Vertical center zone is already static (flex column); just stop it growing so
+         the bar hugs the buttons instead of stretching to the full height. */
+      .navbar.float.vertical .navbar-card.hug .zone.center {
+        flex: 0 0 auto;
       }
 
       /* Three zones: side zones pin to opposite edges, center is a grid so the
@@ -1959,14 +1922,9 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
         padding-bottom: 10px;
       }
       .navbar.vertical .zone.center {
-        /* Content-sized (never grows to fill), so its buttons can't overflow the zone box
-           into the neighbouring top/bottom zones. Its position between them is handled by
-           the card's space-between; overflow-collapse trims the launcher into its chevron
-           when the column would exceed the height. */
-        flex: 0 0 auto;
-        min-height: 0;
+        flex: 1;
         display: grid;
-        grid-template-rows: auto auto auto;
+        grid-template-rows: 1fr auto 1fr;
         justify-items: center;
         pointer-events: none;
       }
