@@ -2483,6 +2483,18 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     this._writeVisionCam(id, cfg);
   }
 
+  private _visionCamName(id: string): string {
+    const n = this._visionCam(id).name;
+    return typeof n === "string" && n ? n : this._cameraName(id);
+  }
+
+  private _setVisionName(id: string, name: string): void {
+    const cfg = this._visionCam(id);
+    if (name) cfg.name = name;
+    else delete cfg.name;
+    this._writeVisionCam(id, cfg);
+  }
+
   private _addTrigger(id: string): void {
     const cfg = this._visionCam(id);
     const trigs = [...this._visionTriggers(id)];
@@ -2571,6 +2583,13 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     const enabled = cfg.enabled === true;
     return html`
       <div class="vis-body">
+        <ha-form
+          .hass=${this.hass}
+          .data=${{ name: (cfg.name as string) ?? "" }}
+          .schema=${[{ name: "name", selector: { text: { placeholder: this._cameraName(id) } } }]}
+          .computeLabel=${() => "Name"}
+          @value-changed=${(e: CustomEvent) => this._setVisionName(id, e.detail.value.name ?? "")}
+        ></ha-form>
         <ha-form
           .hass=${this.hass}
           .data=${{ enabled }}
@@ -2786,6 +2805,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
                         isOpen: (id) => this._visionOpen.has(id),
                         toggle: (id) => this._toggleCamVision(id),
                         body: (id) => this._renderCameraVisionBody(id),
+                        name: (id) => this._visionCamName(id),
                         badge: (id) => this._visionCam(id).enabled === true,
                         badgeIcon: "mdi:eye",
                       }

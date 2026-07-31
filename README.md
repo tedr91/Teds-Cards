@@ -943,6 +943,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.36
+
+- **Vision Analysis moved into the Cameras list.** Each camera in Settings → Cameras is now an expandable row where you set a **Name**, toggle **Enable vision analysis**, and add one or more **triggers** — each with a detection **type** (Motion / Person / Animal / Vehicle …), a **severity level filter** (multi-select: critical, suspicious, harmless, unknown), a **cooldown**, and a list of **Additional actions** (Toast notification, Push notification, Display live feed, or a Custom action). The separate Vision settings tab has been removed.
+
 ### v0.9.35
 
 - **New: Vision Card + AI camera event analysis.** Opt a camera into Vision Analysis (Settings → Vision) and its motion / person / animal / vehicle detections are captured and analyzed by Home Assistant's built-in AI Task — producing a severity, a one-line and a detailed summary, and a best-frame thumbnail (plus a short clip). The new Vision card shows a live timeline of events with severity filtering, a detail view, and mark-reviewed / delete. No third-party vision integration required — it works with any AI provider that offers an AI Task entity (e.g. OpenAI or Ollama).
