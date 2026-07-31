@@ -108,9 +108,9 @@ export const SETTINGS_GROUP_ICONS: Record<string, { fluent: string; mdi: string 
  *  backend `SETTINGS_DEFAULTS["navbar_sections"]`. */
 export const DEFAULT_NAVBAR_SECTIONS = [
   { items: [{ type: "weather", tap_action: { action: "navigate-dashboard", dashboard: "weather_dashboard" } }] },
+  { align: "right", items: [{ type: "spacer", size: 24 }] },
   { items: [] },
-  { items: [] },
-  { items: [] },
+  { align: "left", items: [{ type: "spacer", size: 24 }] },
   {
     items: [
       { type: "assist" },

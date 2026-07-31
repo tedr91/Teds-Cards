@@ -212,7 +212,12 @@ function renderSensorItem(item: SensorStatusItem, ctx: StatusItemContext): Templ
 
 function renderSpacerItem(item: SpacerStatusItem): TemplateResult {
   const size = typeof item.size === "number" ? item.size : DEFAULT_SPACER_SIZE;
-  return html`<div class="status-spacer" style=${styleMap({ width: `${size}px` })}></div>`;
+  // Square so it spaces along whichever axis the bar runs (width on a horizontal bar,
+  // height on a vertical one); the cross-axis is stretched by the flex container anyway.
+  return html`<div
+    class="status-spacer"
+    style=${styleMap({ width: `${size}px`, height: `${size}px` })}
+  ></div>`;
 }
 
 function renderLedItem(item: LedStatusItem, ctx: StatusItemContext): TemplateResult {

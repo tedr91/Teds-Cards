@@ -1088,40 +1088,65 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
       return ex.length ? ex.reduce((a, b) => a + b, 0) + (ex.length - 1) * gap : 0;
     });
 
-    // Total space the sections consume along the bar (they can't overlap without colliding).
-    const occupied = natural.map((n, i) => ({ n, i })).filter((s) => s.n > 0);
-    const total = occupied.reduce((sum, s, k) => sum + s.n + (k > 0 ? gap : 0), 0);
-    // Reserve a half-bar of breathing room on each side of the Center section (index 2)
-    // so the centered buttons never run flush to the bar's ends — this collapses one item
-    // into the chevron sooner. Only applied when the Center section actually has items.
-    const centerReserve = natural[2] > 0 ? this._thickness() : 0;
-    const avail = cardInner - centerReserve;
-    if (total <= avail) return; // everything fits
-
-    let reclaim = total - avail;
-    // Collapse highest-priority sections first (ties by index); skip non-collapsible ones.
-    const order = occupied
-      .map((s) => s.i)
-      .filter((i) => sections[i].overflow !== false)
-      .sort((a, b) => (sections[b].priority ?? 3) - (sections[a].priority ?? 3) || a - b);
-
-    for (const s of order) {
-      if (reclaim <= 0) break;
-      const el = sectionEl(s);
-      if (!el) continue;
+    // Visible extent of a section given any collapse already applied to it (first N items
+    // + the chevron trigger).
+    const visExtent = (i: number): number => {
+      const el = sectionEl(i);
+      if (!el) return 0;
       const ex = childExtents(el);
       const items = ex.length;
-      if (items === 0) continue;
-      // Trim trailing items until enough is reclaimed (the chevron trigger costs triggerW
-      // the first time an item is hidden).
-      let vis = items;
-      while (vis > 0 && reclaim > 0) {
-        const firstHide = vis === items;
-        const itemW = ex[vis - 1] + (vis > 1 ? gap : 0);
-        reclaim -= itemW - (firstHide ? triggerW : 0);
-        vis -= 1;
+      const vis = this._visible.get(i) ?? items;
+      if (vis >= items) return natural[i];
+      let w = 0;
+      for (let k = 0; k < vis; k++) w += ex[k] + (k > 0 ? gap : 0);
+      return w + (vis > 0 ? gap : 0) + triggerW;
+    };
+
+    // Collapse trailing items from `candidates` (highest priority first, ties by index)
+    // into their chevron until `reclaim` px are recovered.
+    const collapseSections = (candidates: number[], reclaim: number): void => {
+      const order = candidates
+        .filter((i) => natural[i] > 0 && sections[i].overflow !== false)
+        .sort((a, b) => (sections[b].priority ?? 3) - (sections[a].priority ?? 3) || a - b);
+      for (const s of order) {
+        if (reclaim <= 0) break;
+        const el = sectionEl(s);
+        if (!el) continue;
+        const ex = childExtents(el);
+        const items = ex.length;
+        if (items === 0) continue;
+        let vis = this._visible.get(s) ?? items;
+        while (vis > 0 && reclaim > 0) {
+          const firstHide = vis === items;
+          const itemW = ex[vis - 1] + (vis > 1 ? gap : 0);
+          reclaim -= itemW - (firstHide ? triggerW : 0);
+          vis -= 1;
+        }
+        if (vis < items) this._visible.set(s, Math.max(0, vis));
       }
-      if (vis < items) this._visible.set(s, Math.max(0, vis));
+    };
+
+    if (vert) {
+      // Vertical bars stack their sections in normal flow (no overlap possible) — just
+      // collapse enough to fit the available height.
+      const count = natural.filter((n) => n > 0).length;
+      const total = natural.reduce((sum, n) => sum + n, 0) + Math.max(0, count - 1) * gap;
+      if (total > cardInner) collapseSections([0, 1, 2, 3, 4], total - cardInner);
+    } else {
+      // Horizontal: the Center zone (mid-left · center · mid-right = sections 1/2/3) is
+      // DEAD-CENTERED between the two pinned side zones (0 = left, 4 = right). For the
+      // centered Center section to never overlap a side, it must fit within
+      // `cardInner - 2*max(L,R)` (minus the mid spacers + a breathing gap). When the
+      // launcher is wider than that, its trailing buttons collapse into the chevron.
+      const sideMax = Math.max(natural[0], natural[4]);
+      const midMax = Math.max(natural[1], natural[3]);
+      const centerBudget = cardInner - 2 * sideMax - 2 * midMax - 2 * gap;
+      if (natural[2] > centerBudget) collapseSections([2], natural[2] - centerBudget);
+      // Fallback: keep an oversized side zone from crossing into the (now-fitted) center.
+      const centerVis = visExtent(2);
+      const sideBudget = Math.max(0, (cardInner - centerVis) / 2 - midMax - gap);
+      if (natural[0] > sideBudget) collapseSections([0], natural[0] - sideBudget);
+      if (natural[4] > sideBudget) collapseSections([4], natural[4] - sideBudget);
     }
 
     if (this._visible.size > 0) this.requestUpdate();

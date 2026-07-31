@@ -942,6 +942,11 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.30
+
+- **Navbar sections never overlap.** Fixed a bug where a wide centered group (e.g. the view launcher) could overlap a side section's items (like the Assist mic). The auto-collapse now correctly accounts for the centered layout and folds the launcher's trailing buttons into its chevron so every section keeps its own space.
+- Added small **spacers** beside the centered section on the default bar, and spacers now work on vertical bars too.
+
 ### v0.9.29
 
 - **Vertical navbar layout fixes.** A **floating** left/right navbar now hugs its content (only as tall as its items) and centers vertically on the screen, even when the Left/Right sections are enabled. A **non-floating** (snap) side bar goes back to spanning the full height with its content spread top → center → bottom (fixes a regression from v0.9.28).
