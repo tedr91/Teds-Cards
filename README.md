@@ -943,6 +943,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.39
+
+- **Thermostat voice aliases moved into the Thermostats list.** The separate “Voice zone names” section is gone — expand a thermostat in Settings → Thermostats and add its spoken names under a collapsible “Aliases” section.
+
 ### v0.9.38
 
 - **Settings polish for the list editors.** Collapsible list rows now share one consistent height and button style across the Cameras, Vision, Announce, and Navbar editors. “+ Add” buttons for items that have a type (Vision triggers/actions, navbar items) open a type-picker popup instead of creating a blank item, and the Navbar “Items” rows adopt the same drag / icon / name / chevron / delete layout. The Vision trigger’s severity-filter description now sits directly under its label, above the checkboxes.

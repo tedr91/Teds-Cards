@@ -264,9 +264,6 @@ const NIGHT_ENTITY_SCHEMA = [
 /** ha-form schema for a predefined-announcement icon (HA's searchable icon picker). */
 const ANNOUNCE_ICON_SCHEMA = [{ name: "icon", selector: { icon: {} } }];
 
-/** ha-form schema for picking the climate entity of a voice zone-name alias. */
-const CLIMATE_ALIAS_SCHEMA = [{ name: "entity", selector: { entity: { domain: "climate" } } }];
-
 /** A spoken-zone-name → climate entity mapping (global `climate_aliases` list). */
 interface ClimateAlias {
   name: string;
@@ -412,6 +409,10 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
   @state() private _visTrigOpen = new Set<string>();
   /** Which triggers' "Additional actions" panels are open (same key form). */
   @state() private _visActPanelOpen = new Set<string>();
+  /** Which thermostat rows have their body (Aliases) expanded. */
+  @state() private _climateOpen = new Set<string>();
+  /** Which thermostats' "Aliases" panels are open (keyed by thermostat id). */
+  @state() private _climateAliasOpen = new Set<string>();
   /** Discovered detection sensors per camera (fetched from the backend on demand). */
   @state() private _visionDetectors: Record<string, Record<string, string[]>> = {};
   /** Open "pick a type" popup for an Add button whose child item has a type. */
@@ -1708,7 +1709,6 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
   private _renderGlobalRow(field: SettingField): TemplateResult {
     if (field.kind === "entity-list") return this._renderCamerasGlobal(field);
     if (field.kind === "announce-messages") return this._renderAnnounceMessages("global");
-    if (field.kind === "climate-aliases") return this._renderClimateAliases("global");
     if (field.kind === "background") return this._renderBackground(field, "global");
     if (field.kind === "nightmode") return this._renderNightMode(field, "global");
     if (field.kind === "launcher") return this._renderLauncher("global");
@@ -1749,7 +1749,6 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
   private _renderDeviceRow(field: SettingField): TemplateResult {
     if (field.kind === "entity-list") return this._renderCamerasDevice(field);
     if (field.kind === "announce-messages") return this._renderAnnounceMessages("device");
-    if (field.kind === "climate-aliases") return this._renderClimateAliases("device");
     if (field.kind === "background") return this._renderBackground(field, "device");
     if (field.kind === "nightmode") return this._renderNightMode(field, "device");
     if (field.kind === "launcher") return this._renderLauncher("device");
@@ -1851,83 +1850,73 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     this._commitClimateAliases(list);
   }
 
-  private _updateClimateAliasEntity(i: number, ev: CustomEvent): void {
-    const entity = (ev.detail?.value as { entity?: string } | undefined)?.entity ?? "";
-    const list = this._climateAliases().map((a) => ({ ...a }));
-    if (!list[i] || (list[i].entity ?? "") === entity) return;
-    list[i].entity = entity;
-    this._commitClimateAliases(list);
+  private _aliasesFor(id: string): { name: string; gi: number }[] {
+    const out: { name: string; gi: number }[] = [];
+    this._climateAliases().forEach((a, gi) => {
+      if ((a.entity ?? "") === id) out.push({ name: a.name ?? "", gi });
+    });
+    return out;
   }
 
-  private _addClimateAlias(): void {
+  private _addAliasFor(id: string): void {
     if (!this._isAdmin()) return;
-    this._commitClimateAliases([...this._climateAliases(), { name: "", entity: "" }]);
+    this._commitClimateAliases([...this._climateAliases(), { name: "", entity: id }]);
+    this._climateAliasOpen = new Set(this._climateAliasOpen).add(id);
   }
 
   private _removeClimateAlias(i: number): void {
     this._commitClimateAliases(this._climateAliases().filter((_, idx) => idx !== i));
   }
 
-  private _renderClimateAliases(scope: "global" | "device"): TemplateResult {
-    if (scope === "device") {
-      return html`
-        <div class="row">
-          <div class="row-label">
-            <span>Voice zone names</span>
-            <span class="help">Managed globally — edit them on the “Global” tab.</span>
-          </div>
-        </div>
-      `;
-    }
+  /** Disclosure body for a thermostat row: a collapsible "Aliases" section. */
+  private _renderThermostatBody(id: string): TemplateResult {
     const admin = this._isAdmin();
-    const aliases = this._climateAliases();
+    const aliases = this._aliasesFor(id);
+    const open = this._climateAliasOpen.has(id);
     return html`
-      <div class="cam-row">
-        <div class="cam-head">
-          <div class="row-label">
-            <span>Voice zone names</span>
-            <span class="help">Map spoken names (e.g. “First Floor”) to a thermostat, for voice climate control.</span>
+      <div class="vis-body">
+        <div class="vis-panel">
+          <div class="vis-phead" @click=${() => (this._climateAliasOpen = this._toggleSet(this._climateAliasOpen, id))}>
+            <ha-icon class="vis-sec-ico" icon="mdi:rename-box-outline"></ha-icon>
+            <span class="vis-ptitle">Aliases</span>
+            <span class="hdr-pill">${aliases.length}</span>
+            ${admin
+              ? html`<ha-icon-button
+                  class="hdr-btn"
+                  title="Add an alias"
+                  @click=${(e: Event) => { e.stopPropagation(); this._addAliasFor(id); }}
+                  ><ha-icon .icon=${this._ui("add")}></ha-icon
+                ></ha-icon-button>`
+              : nothing}
+            <ha-icon class="vis-chev" .icon=${this._ui(open ? "chevronUp" : "chevronDown")}></ha-icon>
           </div>
+          ${open
+            ? html`<div class="vis-pbody">
+                <div class="help">Spoken names voice commands can use for this thermostat (e.g. “First Floor”).</div>
+                ${aliases.length
+                  ? aliases.map(
+                      (a) => html`<div class="alias-row">
+                        <input
+                          class="ann-input alias-input"
+                          type="text"
+                          .value=${a.name}
+                          placeholder="First Floor"
+                          ?disabled=${!admin}
+                          @change=${(e: Event) => this._updateClimateAliasName(a.gi, e)}
+                        />
+                        <ha-icon-button
+                          class="hdr-btn"
+                          title="Remove"
+                          ?disabled=${!admin}
+                          @click=${() => this._removeClimateAlias(a.gi)}
+                          ><ha-icon .icon=${this._ui("close")}></ha-icon
+                        ></ha-icon-button>
+                      </div>`,
+                    )
+                  : html`<div class="help">No aliases yet — tap Add.</div>`}
+              </div>`
+            : nothing}
         </div>
-        ${admin
-          ? html`<button class="cam-btn add-list-btn" @click=${() => this._addClimateAlias()}>
-              <ha-icon .icon=${this._ui("add")}></ha-icon><span>Add a zone name</span>
-            </button>`
-          : nothing}
-        ${aliases.length
-          ? aliases.map(
-              (a, i) => html`
-                <div class="alias-row" style="display:flex;gap:8px;align-items:center;margin-top:8px;">
-                  <input
-                    class="ann-input"
-                    style="flex:1 1 40%;min-width:110px;"
-                    type="text"
-                    .value=${a.name ?? ""}
-                    placeholder="First Floor"
-                    ?disabled=${!admin}
-                    @change=${(e: Event) => this._updateClimateAliasName(i, e)}
-                  />
-                  <ha-form
-                    style="flex:1 1 60%;--ha-form-padding:0;"
-                    .hass=${this.hass}
-                    .schema=${CLIMATE_ALIAS_SCHEMA}
-                    .data=${{ entity: a.entity ?? "" }}
-                    .computeLabel=${() => ""}
-                    .disabled=${!admin}
-                    @value-changed=${(e: CustomEvent) => this._updateClimateAliasEntity(i, e)}
-                  ></ha-form>
-                  <button
-                    style="background:none;border:none;cursor:pointer;padding:4px;color:var(--ted-style-muted,#888);"
-                    title="Remove"
-                    ?disabled=${!admin}
-                    @click=${() => this._removeClimateAlias(i)}
-                  >
-                    <ha-icon icon="mdi:delete-outline"></ha-icon>
-                  </button>
-                </div>
-              `,
-            )
-          : html`<div class="help">No zone names yet — add one above.</div>`}
       </div>
     `;
   }
@@ -2890,7 +2879,17 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
                         badge: (id) => this._visionCam(id).enabled === true,
                         badgeIcon: "mdi:eye",
                       }
-                    : undefined,
+                    : admin && domain === "climate"
+                      ? {
+                          isOpen: (id) => this._climateOpen.has(id),
+                          toggle: (id) => {
+                            this._climateOpen = this._toggleSet(this._climateOpen, id);
+                          },
+                          body: (id) => this._renderThermostatBody(id),
+                          badge: (id) => this._aliasesFor(id).length > 0,
+                          badgeIcon: "mdi:rename-box-outline",
+                        }
+                      : undefined,
               )
             : html`<div class="help">No ${meta.nounPlural} yet — use the Auto-populate or Add buttons in the header.</div>`}
         </div>
@@ -4896,6 +4895,15 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
       }
       .vis-field .help {
         margin-bottom: 2px;
+      }
+      .alias-row {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .alias-input {
+        flex: 1 1 auto;
+        min-width: 0;
       }
       .cam-item {
         display: flex;

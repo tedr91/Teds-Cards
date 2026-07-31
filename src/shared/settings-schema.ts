@@ -35,7 +35,6 @@ export type SettingKind =
   | "select"
   | "entity-list"
   | "announce-messages"
-  | "climate-aliases"
   | "navbar-menu-items"
   | "navbar-sections"
   | "background"
@@ -349,8 +348,7 @@ export const SETTINGS_FIELDS: SettingField[] = [
     ],
     help: "How this device arranges its thermostats on the Climate view.",
   },
-  { key: "climate_list", label: "Thermostats", group: "Thermostats", kind: "entity-list", entityDomain: "climate", help: "Global lists the available thermostats; each device curates its own subset." },
-  { key: "climate_aliases", label: "Voice zone names", group: "Thermostats", kind: "climate-aliases", help: "Map spoken names (e.g. \u201cFirst Floor\u201d) to a thermostat, so voice climate commands can target it." },
+  { key: "climate_list", label: "Thermostats", group: "Thermostats", kind: "entity-list", entityDomain: "climate", help: "Global lists the available thermostats; each device curates its own subset. Expand a thermostat to add voice aliases." },
   { key: "climate_auto_on", label: "Auto turn on", group: "Thermostats", kind: "boolean", help: "When a voice climate request targets a thermostat that's off, turn it on automatically instead of asking first." },
   { key: "climate_min_delta", label: "Min heat/cool gap", group: "Thermostats", kind: "number", min: 1, max: 15, unit: "\u00b0", help: "Smallest gap kept between the heat and cool setpoints on heat/cool thermostats." },
   // Photos
