@@ -2569,65 +2569,68 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     const remaining = this._allCameras(domain).filter((id) => !ids.includes(id));
     const setList = (next: string[]): void => this._setGlobal(field.key, next);
     return html`
-      <div class="cam-row">
-        <div class="cam-head">
-          <div class="row-label">
-            <span>${field.label} — available list and settings</span>
-          </div>
-          ${admin
-            ? html`<button class="cam-btn" @click=${() => this._autoPopulateGlobal(field)}>
-                <ha-icon .icon=${this._ui("autoFix")}></ha-icon><span>Auto-populate</span>
-              </button>`
-            : nothing}
+      <ha-expansion-panel outlined class="sub-panel">
+        <div slot="header" class="sub-head">
+          <span class="sub-head-label">${field.label} — available list and settings</span>
+          <span class="sub-head-value">${ids.length}</span>
         </div>
-        ${ids.length
-          ? this._renderCameraChips(
-              ids,
-              meta.icon,
-              (idx) => {
-                if (!admin) return;
-                const n = [...ids];
-                n.splice(idx, 1);
-                setList(n);
-              },
-              (from, to) => {
-                if (!admin) return;
-                const n = [...ids];
-                n.splice(to, 0, n.splice(from, 1)[0]);
-                // Keep virtual children directly under their parent when a parent moves.
-                if (domain === "calendar") {
-                  const map = this._calendarOptionsMap();
-                  const items = n.map((e) => ({ entity: e, ...(map[e] ?? {}) }) as CalendarItemConfig);
-                  setList(reorderVirtualGroupIds(n, items));
-                } else {
+        <div class="sub-body cam-panel">
+          ${admin
+            ? html`<div class="cam-head-actions">
+                <button class="cam-btn" @click=${() => this._autoPopulateGlobal(field)}>
+                  <ha-icon .icon=${this._ui("autoFix")}></ha-icon><span>Auto-populate</span>
+                </button>
+                ${remaining.length
+                  ? html`<button class="cam-btn" @click=${() => this._openAddList(field)}>
+                      <ha-icon .icon=${this._ui("add")}></ha-icon><span>Add a ${meta.noun}</span>
+                    </button>`
+                  : nothing}
+              </div>`
+            : nothing}
+          ${ids.length
+            ? this._renderCameraChips(
+                ids,
+                meta.icon,
+                (idx) => {
+                  if (!admin) return;
+                  const n = [...ids];
+                  n.splice(idx, 1);
                   setList(n);
-                }
-              },
-              false,
-              admin && domain === "calendar"
-                ? {
-                    isOpen: (id) => this._calOptOpen.has(id),
-                    toggle: (id) => this._toggleCalOpt(id),
-                    body: (id) => this._renderCalendarOptions(id),
-                    icon: (id) => this._calendarRowIcon(id),
-                    name: (id) => this._calendarRowName(id),
-                    color: (id) => this._calendarRowColor(id),
-                    person: (id) => this._calendarRowPersonPicture(id),
-                    personMuted: (id) => this._calendarRowPersonMuted(id),
-                    badge: (id) => this._calendarOptionsMap()[id]?.virtual === true,
-                    tag: (id) => virtualGroupNameFor(this.hass, id, this._calendarItems()),
-                    optionsHidden: (id) =>
-                      !!virtualGroupNameFor(this.hass, id, this._calendarItems()),
+                },
+                (from, to) => {
+                  if (!admin) return;
+                  const n = [...ids];
+                  n.splice(to, 0, n.splice(from, 1)[0]);
+                  // Keep virtual children directly under their parent when a parent moves.
+                  if (domain === "calendar") {
+                    const map = this._calendarOptionsMap();
+                    const items = n.map((e) => ({ entity: e, ...(map[e] ?? {}) }) as CalendarItemConfig);
+                    setList(reorderVirtualGroupIds(n, items));
+                  } else {
+                    setList(n);
                   }
-                : undefined,
-            )
-          : html`<div class="help">No ${meta.nounPlural} yet — add one below or tap “Auto-populate”.</div>`}
-        ${admin && remaining.length
-          ? html`<button class="cam-btn add-list-btn" @click=${() => this._openAddList(field)}>
-              <ha-icon .icon=${this._ui("add")}></ha-icon><span>Add a ${meta.noun}</span>
-            </button>`
-          : nothing}
-      </div>
+                },
+                false,
+                admin && domain === "calendar"
+                  ? {
+                      isOpen: (id) => this._calOptOpen.has(id),
+                      toggle: (id) => this._toggleCalOpt(id),
+                      body: (id) => this._renderCalendarOptions(id),
+                      icon: (id) => this._calendarRowIcon(id),
+                      name: (id) => this._calendarRowName(id),
+                      color: (id) => this._calendarRowColor(id),
+                      person: (id) => this._calendarRowPersonPicture(id),
+                      personMuted: (id) => this._calendarRowPersonMuted(id),
+                      badge: (id) => this._calendarOptionsMap()[id]?.virtual === true,
+                      tag: (id) => virtualGroupNameFor(this.hass, id, this._calendarItems()),
+                      optionsHidden: (id) =>
+                        !!virtualGroupNameFor(this.hass, id, this._calendarItems()),
+                    }
+                  : undefined,
+              )
+            : html`<div class="help">No ${meta.nounPlural} yet — tap “Auto-populate” or “Add a ${meta.noun}” above.</div>`}
+        </div>
+      </ha-expansion-panel>
     `;
   }
 
@@ -4491,6 +4494,11 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
         gap: 10px;
         padding: 8px 0;
         border-bottom: 1px solid color-mix(in srgb, var(--ted-style-divider) 60%, transparent);
+      }
+      .cam-panel {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
       }
       .cam-head {
         display: flex;
