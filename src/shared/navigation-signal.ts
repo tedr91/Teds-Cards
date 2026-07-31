@@ -16,6 +16,7 @@
  */
 import type { HomeAssistant } from "custom-card-helpers";
 
+import { requestCameraFocus } from "./camera-focus";
 import { resolveDeviceArea, resolveDeviceHaId } from "./device-area";
 import { resolveDeviceId } from "./device-id";
 import { resolveDashboardPath } from "./settings";
@@ -28,6 +29,8 @@ interface NavigateSignal {
   area?: string | null;
   /** Target HA device id (navigate only that device), or null. */
   device_id?: string | null;
+  /** A camera entity to focus on arrival (Vision "Display live feed" → primary + live). */
+  camera?: string | null;
 }
 
 class NavigationSignal {
@@ -67,6 +70,9 @@ class NavigationSignal {
       !!sig.device_id &&
       (sig.device_id === resolveDeviceHaId(hass) || sig.device_id === resolveDeviceId());
     if (!areaMatch && !deviceMatch) return;
+
+    // Vision "Display live feed": focus the triggering camera once we're on the view.
+    if (sig.camera) requestCameraFocus(sig.camera);
 
     const path = resolveDashboardPath(sig.dashboard);
     if (!path) return;

@@ -12,6 +12,7 @@ import {
 } from "custom-card-helpers";
 
 import { ensureHuiImage, type CameraView } from "../../shared/camera";
+import { pendingCameraFocus, subscribeCameraFocus } from "../../shared/camera-focus";
 import { registerCustomCard } from "../../shared/register-card";
 import { appearanceStyle, cssColor } from "../../shared/appearance";
 import { brushedOverlay, tedStyleTheme } from "../../shared/theme";
@@ -92,6 +93,7 @@ export class TedCameraCard extends LitElement implements LovelaceCard {
   private _longPressTimer?: number;
   private _longPressFired = false;
   private _io?: IntersectionObserver;
+  private _unsubFocus?: () => void;
 
   private _helpers?: CardHelpers;
   /** The empty-state messagebox child (built once via loadCardHelpers, json-guarded). */
@@ -158,6 +160,10 @@ export class TedCameraCard extends LitElement implements LovelaceCard {
     }
     this._tabVisible = document.visibilityState !== "hidden";
     document.addEventListener("visibilitychange", this._onVisibilityChange);
+    // Vision "Display live feed" nudges this card to focus a camera (primary + live).
+    this._unsubFocus = subscribeCameraFocus(this._focusCamera);
+    const pending = pendingCameraFocus();
+    if (pending) this._focusCamera(pending);
   }
 
   public disconnectedCallback(): void {
@@ -166,7 +172,15 @@ export class TedCameraCard extends LitElement implements LovelaceCard {
     this._io?.disconnect();
     this._popup = undefined;
     document.removeEventListener("visibilitychange", this._onVisibilityChange);
+    this._unsubFocus?.();
+    this._unsubFocus = undefined;
   }
+
+  /** Focus a camera on request: make it primary and switch it to a live stream. */
+  private _focusCamera = (entity: string): void => {
+    this._primaryEntity = entity;
+    this._viewOverride = { ...this._viewOverride, [entity]: "live" };
+  };
 
   private _onVisibilityChange = (): void => {
     this._tabVisible = document.visibilityState !== "hidden";

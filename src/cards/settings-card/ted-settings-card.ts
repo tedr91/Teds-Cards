@@ -5407,7 +5407,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
       }
       .hdr-btn {
         flex: 0 0 auto;
-        --mdc-icon-button-size: 28px;
+        --ha-icon-button-size: 28px;
         --mdc-icon-size: 20px;
         color: var(--ted-style-muted, var(--secondary-text-color));
       }
