@@ -319,13 +319,15 @@ export const SETTINGS_FIELDS: SettingField[] = [
     help: "How this device arranges its cameras on the Cameras view.",
   },
   { key: "cameras_list", label: "Cameras", group: "Cameras", kind: "entity-list", entityDomain: "camera", help: "Global lists the available cameras; each device curates its own subset." },
-  // Vision Analysis
-  { key: "vision_enabled", label: "Enable Vision Analysis", group: "Vision", kind: "boolean", help: "AI-analyze camera detection events (motion/person/animal/car) and log them to the Vision timeline." },
-  { key: "vision_ai_task_entity", label: "AI Task entity", group: "Vision", kind: "entity", entityDomain: "ai_task", help: "AI Task entity used for analysis. Leave empty to use Home Assistant's preferred AI Task entity." },
+  // Vision Analysis — a collapsible subsection at the bottom of the Cameras tab.
+  { key: "vision_enabled", label: "Enable Vision Analysis", group: "Cameras", subsection: "Vision Analysis", kind: "boolean", help: "AI-analyze camera detection events (motion/person/animal/car) and log them to the Vision timeline." },
+  { key: "vision_ai_task_entity", label: "AI Task entity", group: "Cameras", subsection: "Vision Analysis", kind: "entity", entityDomain: "ai_task", help: "AI Task entity used for analysis. Leave empty to use Home Assistant's preferred AI Task entity." },
+  { key: "vision_retention_max", label: "Keep events", group: "Cameras", subsection: "Vision Analysis", kind: "number", min: 10, max: 1000, help: "Maximum number of analyzed events kept (older ones and their files are pruned)." },
   {
     key: "vision_capture_mode",
     label: "Capture",
-    group: "Vision",
+    group: "Cameras",
+    subsection: "Vision Analysis",
     kind: "select",
     options: [
       { value: "clip", label: "Clip (frames + video)" },
@@ -334,9 +336,8 @@ export const SETTINGS_FIELDS: SettingField[] = [
     ],
     help: "How the event is captured for analysis. Clip records frames across the window and stitches a short video.",
   },
-  { key: "vision_clip_seconds", label: "Capture window", group: "Vision", kind: "number", min: 1, max: 30, unit: "s", help: "Length of the capture window for clip/burst modes." },
-  { key: "vision_frame_count", label: "Frames analyzed", group: "Vision", kind: "number", min: 1, max: 8, help: "How many stills across the window are sent to the AI." },
-  { key: "vision_retention_max", label: "Keep events", group: "Vision", kind: "number", min: 10, max: 1000, help: "Maximum number of analyzed events kept (older ones and their files are pruned)." },
+  { key: "vision_clip_seconds", label: "Capture window", group: "Cameras", subsection: "Vision Analysis", kind: "number", min: 1, max: 30, unit: "s", help: "Length of the capture window for clip/burst modes." },
+  { key: "vision_frame_count", label: "Frames analyzed", group: "Cameras", subsection: "Vision Analysis", kind: "number", min: 1, max: 8, help: "How many stills across the window are sent to the AI." },
   { key: "vision_cameras", label: "Camera opt-in", group: "Vision", kind: "vision-cameras", help: "Choose which cameras are watched, which detections trigger analysis, and what happens." },
   // Thermostats
   {

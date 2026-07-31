@@ -99,6 +99,7 @@ const SUBSECTION_ICONS: Record<string, { fluent: string; mdi: string }> = {
   Notifications: { fluent: "fluent:alert-24-regular", mdi: "mdi:bell-outline" },
   Alarms: { fluent: "fluent:clock-alarm-24-regular", mdi: "mdi:alarm" },
   Timers: { fluent: "fluent:timer-24-regular", mdi: "mdi:timer-outline" },
+  "Vision Analysis": { fluent: "fluent:eye-24-regular", mdi: "mdi:cctv" },
   Advanced: { fluent: "fluent:options-24-regular", mdi: "mdi:tune" },
 };
 
