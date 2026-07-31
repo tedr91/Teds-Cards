@@ -107,6 +107,10 @@ const SUBSECTION_ICONS: Record<string, { fluent: string; mdi: string }> = {
 const VISION_DET_LABEL: Record<string, string> = {
   motion: "Motion", person: "Person", animal: "Animal", car: "Vehicle", package: "Package",
 };
+const VISION_DET_ICON: Record<string, string> = {
+  motion: "mdi:motion-sensor", person: "mdi:account", animal: "mdi:paw",
+  car: "mdi:car", package: "mdi:package-variant-closed",
+};
 // Severities listed high → low so the multi-select reads in order of severity.
 const VISION_SEVERITY_OPTIONS = [
   { value: "critical", label: "Critical" },
@@ -123,6 +127,10 @@ const VISION_ACTION_OPTIONS = [
 const VISION_ACTION_LABEL: Record<string, string> = {
   toast: "Toast notification", push: "Push notification",
   live_feed: "Display live feed", custom: "Custom action",
+};
+const VISION_ACTION_ICON: Record<string, string> = {
+  toast: "mdi:message-text", push: "mdi:cellphone-message",
+  live_feed: "mdi:cctv", custom: "mdi:flash-outline",
 };
 
 /** Every chrome icon used across the Settings UI, as { fluent, mdi } pairs so they all
@@ -406,6 +414,12 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
   @state() private _visActPanelOpen = new Set<string>();
   /** Discovered detection sensors per camera (fetched from the backend on demand). */
   @state() private _visionDetectors: Record<string, Record<string, string[]>> = {};
+  /** Open "pick a type" popup for an Add button whose child item has a type. */
+  @state() private _typePicker?: {
+    title: string;
+    options: { value: string; label: string; icon?: string }[];
+    onPick: (value: string) => void;
+  };
   /** True while a "Create MA player" request is in flight. */
   @state() private _maBusy = false;
   /** Error from the last failed "Create MA player" attempt, if any. */
@@ -2500,14 +2514,22 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     this._writeVisionCam(id, cfg);
   }
 
-  private _addTrigger(id: string): void {
+  private _addTrigger(id: string, type = ""): void {
     const cfg = this._visionCam(id);
     const trigs = [...this._visionTriggers(id)];
-    trigs.push({ type: "", severities: [], cooldown_seconds: 60, actions: [] });
+    trigs.push({ type, severities: [], cooldown_seconds: 60, actions: [] });
     cfg.triggers = trigs;
     this._writeVisionCam(id, cfg);
     this._visTrigPanelOpen = new Set(this._visTrigPanelOpen).add(id);
     this._visTrigOpen = new Set(this._visTrigOpen).add(`${id}#${trigs.length - 1}`);
+  }
+
+  /** Trigger types the camera can offer (discovered detectors, else the standard set). */
+  private _triggerTypeOptions(id: string): { value: string; label: string; icon?: string }[] {
+    const detectors = this._visionDetectors[id];
+    const avail = detectors ? Object.keys(detectors) : [];
+    const types = avail.length ? avail : ["motion", "person", "animal", "car", "package"];
+    return types.map((t) => ({ value: t, label: VISION_DET_LABEL[t] ?? t, icon: VISION_DET_ICON[t] }));
   }
 
   private _removeTrigger(id: string, i: number): void {
@@ -2526,11 +2548,47 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     this._writeVisionCam(id, cfg);
   }
 
-  private _addAction(id: string, i: number): void {
+  private _addAction(id: string, i: number, type = "toast"): void {
     const acts = [...this._triggerActions(id, i)];
-    acts.push({ type: "toast" });
+    acts.push({ type });
     this._updateTrigger(id, i, { actions: acts });
     this._visActPanelOpen = new Set(this._visActPanelOpen).add(`${id}#${i}`);
+  }
+
+  private _openTypePicker(
+    title: string,
+    options: { value: string; label: string; icon?: string }[],
+    onPick: (value: string) => void,
+  ): void {
+    this._typePicker = { title, options, onPick };
+  }
+
+  private _renderTypePickerModal(): TemplateResult | typeof nothing {
+    const p = this._typePicker;
+    if (!p) return nothing;
+    const themeClass = tedCardThemeClass(this._config?.theme === "ted-style" ? "ted-style" : "ha");
+    return html`
+      <div class="ted-modal ${themeClass}" @click=${() => (this._typePicker = undefined)}>
+        <div class="ted-sheet add-sheet" @click=${(e: Event) => e.stopPropagation()}>
+          <div class="ted-sheet-head">${p.title}</div>
+          <div class="add-list">
+            ${p.options.map(
+              (o) => html`<button
+                class="add-item"
+                @click=${() => {
+                  const pick = p.onPick;
+                  this._typePicker = undefined;
+                  pick(o.value);
+                }}
+              >
+                ${o.icon ? html`<ha-icon class="cam-ico" .icon=${o.icon}></ha-icon>` : nothing}
+                <span class="add-item-name">${o.label}</span>
+              </button>`,
+            )}
+          </div>
+        </div>
+      </div>
+    `;
   }
 
   private _removeAction(id: string, i: number, j: number): void {
@@ -2570,11 +2628,6 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
       severities: "Severity level filter",
       cooldown_seconds: "Cooldown (seconds)",
     })[s.name] ?? s.name;
-
-  private _triggerHelper = (s: { name: string }): string =>
-    s.name === "severities"
-      ? "Only take action if the event is one of these severities (leave empty for any)."
-      : "";
 
   private _actionLabel = (s: { name: string }): string =>
     ({ areas: "Areas", service: "Notify service", script: "Run (script/scene/automation)" })[s.name] ?? s.name;
@@ -2618,7 +2671,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
           <span class="vis-ptitle">Trigger on</span>
           <span class="hdr-pill">${trigs.length}</span>
           <ha-icon-button class="hdr-btn" title="Add a trigger"
-            @click=${(e: Event) => { e.stopPropagation(); this._addTrigger(id); }}
+            @click=${(e: Event) => { e.stopPropagation(); this._openTypePicker("Add a trigger", this._triggerTypeOptions(id), (t) => this._addTrigger(id, t)); }}
             ><ha-icon .icon=${this._ui("add")}></ha-icon
           ></ha-icon-button>
           <ha-icon class="vis-chev" .icon=${this._ui(open ? "chevronUp" : "chevronDown")}></ha-icon>
@@ -2645,14 +2698,10 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
       severities: Array.isArray(trig.severities) ? trig.severities : [],
       cooldown_seconds: (trig.cooldown_seconds as number) ?? 60,
     };
-    const schema = [
-      { name: "type", selector: { select: { mode: "dropdown", options: typeOptions } } },
-      { name: "severities", selector: { select: { multiple: true, options: VISION_SEVERITY_OPTIONS } } },
-      { name: "cooldown_seconds", selector: { number: { min: 0, max: 3600, mode: "box" } } },
-    ];
     const label = trig.type
       ? VISION_DET_LABEL[trig.type as string] ?? String(trig.type)
       : "New trigger";
+    const onChange = (e: CustomEvent): void => this._updateTrigger(id, i, e.detail.value);
     return html`
       <div class="vis-item">
         <div class="vis-ihead" @click=${() => (this._visTrigOpen = this._toggleSet(this._visTrigOpen, key))}>
@@ -2674,11 +2723,28 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
                 : nothing}
               <ha-form
                 .hass=${this.hass}
-                .data=${data}
-                .schema=${schema}
+                .data=${{ type: data.type }}
+                .schema=${[{ name: "type", selector: { select: { mode: "dropdown", options: typeOptions } } }]}
                 .computeLabel=${this._triggerLabel}
-                .computeHelper=${this._triggerHelper}
-                @value-changed=${(e: CustomEvent) => this._updateTrigger(id, i, e.detail.value)}
+                @value-changed=${onChange}
+              ></ha-form>
+              <div class="vis-field">
+                <div class="vis-field-label">Severity level filter</div>
+                <div class="help">Only take action if the event is one of these severities (leave empty for any).</div>
+                <ha-form
+                  .hass=${this.hass}
+                  .data=${{ severities: data.severities }}
+                  .schema=${[{ name: "severities", selector: { select: { multiple: true, options: VISION_SEVERITY_OPTIONS } } }]}
+                  .computeLabel=${() => ""}
+                  @value-changed=${onChange}
+                ></ha-form>
+              </div>
+              <ha-form
+                .hass=${this.hass}
+                .data=${{ cooldown_seconds: data.cooldown_seconds }}
+                .schema=${[{ name: "cooldown_seconds", selector: { number: { min: 0, max: 3600, mode: "box" } } }]}
+                .computeLabel=${this._triggerLabel}
+                @value-changed=${onChange}
               ></ha-form>
               ${this._renderActionsPanel(id, i)}
             </div>`
@@ -2698,7 +2764,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
           <span class="vis-ptitle">Additional actions</span>
           <span class="hdr-pill">${acts.length}</span>
           <ha-icon-button class="hdr-btn" title="Add an action"
-            @click=${(e: Event) => { e.stopPropagation(); this._addAction(id, i); }}
+            @click=${(e: Event) => { e.stopPropagation(); this._openTypePicker("Add an action", VISION_ACTION_OPTIONS.map((o) => ({ ...o, icon: VISION_ACTION_ICON[o.value] })), (t) => this._addAction(id, i, t)); }}
             ><ha-icon .icon=${this._ui("add")}></ha-icon
           ></ha-icon-button>
           <ha-icon class="vis-chev" .icon=${this._ui(open ? "chevronUp" : "chevronDown")}></ha-icon>
@@ -3438,15 +3504,21 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     return html`
       ${this._renderLauncherSettingsForm("global")}
       ${this._renderLauncherCombineBlock("global")}
-      <div class="cam-row">
-        <div class="cam-head">
-          <div class="row-label"><span>Buttons — available views &amp; settings</span></div>
+      <ha-expansion-panel outlined class="sub-panel">
+        <div slot="header" class="sub-head">
+          <ha-icon class="sub-head-ico" icon="mdi:gesture-tap-button"></ha-icon>
+          <span class="sub-head-label">Buttons</span>
+          <span class="hdr-pill">${displayPaths.length}</span>
           ${admin
-            ? html`<button class="cam-btn" @click=${() => this._autoPopulateLauncher(discovered)}>
-                <ha-icon .icon=${this._ui("autoFix")}></ha-icon><span>Auto-populate</span>
-              </button>`
+            ? html`<ha-icon-button
+                class="hdr-btn"
+                title="Auto-populate"
+                @click=${(e: Event) => { e.stopPropagation(); this._autoPopulateLauncher(discovered); }}
+                ><ha-icon .icon=${this._ui("autoFix")}></ha-icon
+              ></ha-icon-button>`
             : nothing}
         </div>
+        <div class="sub-body cam-panel">
         ${!discovered.length
           ? html`<div class="help">No dashboard views found.</div>`
           : displayPaths.length
@@ -3497,7 +3569,8 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
               ${remaining.map((v) => html`<option value=${v.path}>${v.title}</option>`)}
             </select>`
           : nothing}
-      </div>
+        </div>
+      </ha-expansion-panel>
     `;
   }
 
@@ -4019,7 +4092,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
                 </div>
               `}
         </ha-card>
-        ${this._renderAddListModal()}${this._renderLinkModal()}
+        ${this._renderAddListModal()}${this._renderLinkModal()}${this._renderTypePickerModal()}
       `;
     }
 
@@ -4071,7 +4144,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
               </div>
             `}
       </ha-card>
-      ${this._renderAddListModal()}${this._renderLinkModal()}
+      ${this._renderAddListModal()}${this._renderLinkModal()}${this._renderTypePickerModal()}
     `;
   }
 
@@ -4748,7 +4821,9 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
         display: flex;
         align-items: center;
         gap: 8px;
-        padding: 6px 8px;
+        min-height: 48px;
+        box-sizing: border-box;
+        padding: 4px 8px;
         cursor: pointer;
         background: var(--ted-style-surface-2, rgba(120, 120, 120, 0.08));
       }
@@ -4779,7 +4854,9 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
         display: flex;
         align-items: center;
         gap: 8px;
-        padding: 5px 8px;
+        min-height: 40px;
+        box-sizing: border-box;
+        padding: 4px 8px;
         cursor: pointer;
         background: var(--ted-style-surface-2, rgba(120, 120, 120, 0.06));
       }
@@ -4807,11 +4884,26 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
         gap: 10px;
         padding: 8px 10px 10px;
       }
+      /* A hand-laid form field so the description can sit under the label, above the
+         checkboxes (ha-form always renders its helper below the input). */
+      .vis-field {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+      .vis-field-label {
+        color: var(--ted-style-text, var(--primary-text-color));
+      }
+      .vis-field .help {
+        margin-bottom: 2px;
+      }
       .cam-item {
         display: flex;
         align-items: center;
         gap: 8px;
-        padding: 6px 8px;
+        min-height: 40px;
+        box-sizing: border-box;
+        padding: 4px 8px;
         border-radius: 8px;
         border: 1px solid var(--ted-style-divider);
         background: var(--ted-style-surface-2);
@@ -5132,7 +5224,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
       }
       .hdr-btn {
         flex: 0 0 auto;
-        --mdc-icon-button-size: 34px;
+        --mdc-icon-button-size: 28px;
         --mdc-icon-size: 20px;
         color: var(--ted-style-muted, var(--secondary-text-color));
       }

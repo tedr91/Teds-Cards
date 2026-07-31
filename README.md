@@ -943,6 +943,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.38
+
+- **Settings polish for the list editors.** Collapsible list rows now share one consistent height and button style across the Cameras, Vision, Announce, and Navbar editors. “+ Add” buttons for items that have a type (Vision triggers/actions, navbar items) open a type-picker popup instead of creating a blank item, and the Navbar “Items” rows adopt the same drag / icon / name / chevron / delete layout. The Vision trigger’s severity-filter description now sits directly under its label, above the checkboxes.
+
 ### v0.9.37
 
 - **Consistent collapsible-section headers across Settings.** Every collapsible section now follows one layout: drag handle and section icon and name on the left; indicator icons, a count pill, icon-only action buttons (Auto-populate, Add — with hover tooltips), the chevron, and the delete “X” on the right. Applied to the Cameras / Calendars / Thermostats lists, the per-camera Vision triggers and actions, and the Announce tab’s Predefined messages.

@@ -33,8 +33,12 @@ export const NAVBAR_SECTIONS_EDITOR_TYPE = "ted-navbar-sections-editor";
 // mdi:drag — reorder handle
 const GRIP_ICON_PATH =
   "M7,19V17H9V19H7M11,19V17H13V19H11M15,19V17H17V19H15M7,15V13H9V15H7M11,15V13H13V15H11M15,15V13H17V15H15M7,11V9H9V11H7M11,11V9H13V11H11M15,11V9H17V11H15M7,7V5H9V7H7M11,7V5H13V7H11M15,7V5H17V7H15Z";
-// mdi:delete
-const DELETE_ICON_PATH = "M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z";
+// mdi:close (delete item)
+const CLOSE_ICON_PATH =
+  "M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z";
+// mdi:chevron-down / chevron-up (row expand indicator)
+const CHEVRON_DOWN_PATH = "M7.41,8.58L12,13.17L16.59,8.58L18,10L12,16L6,10L7.41,8.58Z";
+const CHEVRON_UP_PATH = "M7.41,15.41L12,10.83L16.59,15.41L18,14L12,8L6,14L7.41,15.41Z";
 
 interface ButtonEditorEntry {
   el: LovelaceCardEditor;
@@ -69,8 +73,8 @@ export class TedNavbarSectionsEditor extends LitElement {
 
   /** Keys (`sec-<i>` / `btn-<s>-<b>` / `item-<s>-<i>`) of currently expanded panels. */
   @state() private _expanded = new Set<string>();
-  /** Key of the currently open "add item" menu, if any. */
-  @state() private _openMenu?: string;
+  /** The container awaiting an item-type choice from the Add popup, if any. */
+  @state() private _addPicker?: { path: number[]; allowPopup: boolean };
 
   private _buttonEditors = new Map<string, ButtonEditorEntry>();
   private _creatingEditors = new Set<string>();
@@ -87,6 +91,7 @@ export class TedNavbarSectionsEditor extends LitElement {
       <div class="sec-list">
         ${this._sectionsPadded().map((section, sIdx) => this._renderSectionRow(section, sIdx))}
       </div>
+      ${this._renderAddPickerModal()}
     `;
   }
 
@@ -152,6 +157,13 @@ export class TedNavbarSectionsEditor extends LitElement {
     const next = new Set(this._expanded);
     if (open) next.add(key);
     else next.delete(key);
+    this._expanded = next;
+  }
+
+  private _toggleExpanded(key: string): void {
+    const next = new Set(this._expanded);
+    if (next.has(key)) next.delete(key);
+    else next.add(key);
     this._expanded = next;
   }
 
@@ -287,27 +299,23 @@ export class TedNavbarSectionsEditor extends LitElement {
     const entry = this._buttonEditors.get(path.join(":"));
     const isPopupMenu = button.type === `custom:${EXPANDABLE_BUTTON_CARD_TYPE}`;
     return html`
-      <ha-expansion-panel
-        outlined
-        class="row"
-        .expanded=${expanded}
-        @expanded-changed=${(ev: CustomEvent) => this._onPanelToggle(key, ev)}
-      >
-        <div slot="header" class="row-header">
+      <div class="item">
+        <div class="item-head" @click=${() => this._toggleExpanded(key)}>
           <div class="drag-handle ${this._handleClass(containerPath)}" @click=${this._stop} title="Drag to reorder">
             <ha-svg-icon .path=${GRIP_ICON_PATH}></ha-svg-icon>
           </div>
           <ha-icon class="row-icon" icon=${button.icon || "mdi:gesture-tap-button"}></ha-icon>
           <span class="row-title">${isPopupMenu ? "Popup menu" : "Button"}</span>
           ${button.name ? html`<span class="row-subtitle">${button.name}</span>` : nothing}
+          <ha-svg-icon class="item-chev" .path=${expanded ? CHEVRON_UP_PATH : CHEVRON_DOWN_PATH}></ha-svg-icon>
           <ha-icon-button
-            class="warning"
+            class="item-del"
             label="Delete button"
-            .path=${DELETE_ICON_PATH}
+            .path=${CLOSE_ICON_PATH}
             @click=${(ev: Event) => this._removeItem(containerPath, idx, ev)}
           ></ha-icon-button>
         </div>
-        <div class="row-body">
+        <div class="item-body" ?hidden=${!expanded}>
           <ha-form
             .hass=${this.hass}
             .data=${{ nav_button_size: button.nav_button_size ?? "normal", visible: button.visible !== false }}
@@ -337,7 +345,7 @@ export class TedNavbarSectionsEditor extends LitElement {
           ></ha-form>
           ${entry ? entry.el : html`<div class="loading">Loading…</div>`}
         </div>
-      </ha-expansion-panel>
+      </div>
     `;
   }
 
@@ -347,27 +355,23 @@ export class TedNavbarSectionsEditor extends LitElement {
     const expanded = this._expanded.has(key);
     const subtitle = statusItemSubtitle(item, this.hass);
     return html`
-      <ha-expansion-panel
-        outlined
-        class="row"
-        .expanded=${expanded}
-        @expanded-changed=${(ev: CustomEvent) => this._onPanelToggle(key, ev)}
-      >
-        <div slot="header" class="row-header">
+      <div class="item">
+        <div class="item-head" @click=${() => this._toggleExpanded(key)}>
           <div class="drag-handle ${this._handleClass(containerPath)}" @click=${this._stop} title="Drag to reorder">
             <ha-svg-icon .path=${GRIP_ICON_PATH}></ha-svg-icon>
           </div>
           <ha-icon class="row-icon" icon=${STATUS_ITEM_DEFAULT_ICON[item.type]}></ha-icon>
           <span class="row-title">${STATUS_ITEM_LABEL[item.type]}</span>
           ${subtitle ? html`<span class="row-subtitle">${subtitle}</span>` : nothing}
+          <ha-svg-icon class="item-chev" .path=${expanded ? CHEVRON_UP_PATH : CHEVRON_DOWN_PATH}></ha-svg-icon>
           <ha-icon-button
-            class="warning"
+            class="item-del"
             label="Delete item"
-            .path=${DELETE_ICON_PATH}
+            .path=${CLOSE_ICON_PATH}
             @click=${(ev: Event) => this._removeItem(containerPath, idx, ev)}
           ></ha-icon-button>
         </div>
-        <div class="row-body">
+        <div class="item-body" ?hidden=${!expanded}>
           <ha-form
             .hass=${this.hass}
             .data=${statusItemData(item)}
@@ -377,50 +381,54 @@ export class TedNavbarSectionsEditor extends LitElement {
             @value-changed=${(ev: CustomEvent) => this._onStatusItemChanged(containerPath, idx, item.type, ev)}
           ></ha-form>
         </div>
-      </ha-expansion-panel>
+      </div>
     `;
   }
 
-  private _toggleAddMenu = (key: string, ev: Event): void => {
-    ev.stopPropagation();
-    this._openMenu = this._openMenu === key ? undefined : key;
-  };
-
   private _renderAddMenu(containerPath: number[], allowPopup: boolean): TemplateResult {
-    const key = `add-${containerPath.join("-")}`;
-    const open = this._openMenu === key;
-    const options: Array<{ value: string; label: string }> = [
-      { value: "button", label: "Button" },
-      ...(allowPopup ? [{ value: "popup", label: "Popup menu" }] : []),
-      ...NAVBAR_STATUS_ITEM_TYPES.map((type) => ({ value: type, label: STATUS_ITEM_LABEL[type] })),
-    ];
     return html`
-      <div class="add-menu">
-        <button
-          type="button"
-          class="add-btn ${open ? "open" : ""}"
-          aria-expanded=${open ? "true" : "false"}
-          @click=${(ev: Event) => this._toggleAddMenu(key, ev)}
-        >
-          + Add item
-        </button>
-        ${open
-          ? html`
-              <div class="add-menu-list" @click=${this._stop}>
-                ${options.map(
-                  (option) => html`
-                    <button
-                      type="button"
-                      class="add-menu-item"
-                      @click=${() => this._addItem(containerPath, option.value)}
-                    >
-                      ${option.label}
-                    </button>
-                  `,
-                )}
-              </div>
-            `
-          : nothing}
+      <button
+        type="button"
+        class="add-btn"
+        @click=${() => (this._addPicker = { path: containerPath, allowPopup })}
+      >
+        + Add item
+      </button>
+    `;
+  }
+
+  /** Item types the Add popup offers (buttons/popup + all status items), with icons. */
+  private _addItemOptions(allowPopup: boolean): { value: string; label: string; icon: string }[] {
+    return [
+      { value: "button", label: "Button", icon: "mdi:gesture-tap-button" },
+      ...(allowPopup ? [{ value: "popup", label: "Popup menu", icon: "mdi:dots-horizontal-circle-outline" }] : []),
+      ...NAVBAR_STATUS_ITEM_TYPES.map((type) => ({
+        value: type as string,
+        label: STATUS_ITEM_LABEL[type],
+        icon: STATUS_ITEM_DEFAULT_ICON[type],
+      })),
+    ];
+  }
+
+  private _renderAddPickerModal(): TemplateResult | typeof nothing {
+    const p = this._addPicker;
+    if (!p) return nothing;
+    return html`
+      <div class="picker-modal" @click=${() => (this._addPicker = undefined)}>
+        <div class="picker-sheet" @click=${this._stop}>
+          <div class="picker-head">Add item</div>
+          <div class="picker-list">
+            ${this._addItemOptions(p.allowPopup).map(
+              (o) => html`<button
+                type="button"
+                class="picker-item"
+                @click=${() => this._addItem(p.path, o.value)}
+              >
+                <ha-icon icon=${o.icon}></ha-icon><span>${o.label}</span>
+              </button>`,
+            )}
+          </div>
+        </div>
       </div>
     `;
   }
@@ -491,7 +499,7 @@ export class TedNavbarSectionsEditor extends LitElement {
 
   /** Dispatch the add-menu pick: a button, a popup, or a status item. */
   private _addItem(containerPath: number[], value: string): void {
-    this._openMenu = undefined;
+    this._addPicker = undefined;
     if (value === "button") this._addButton(containerPath);
     else if (value === "popup") this._addPopup(containerPath);
     else this._addStatusItem(containerPath, value as StatusItemType);
@@ -722,6 +730,103 @@ export class TedNavbarSectionsEditor extends LitElement {
       color: var(--secondary-text-color);
       margin-top: 4px;
     }
+    /* Canonical item rows: drag, icon, name (left); chevron, X-delete (right); 40px tall. */
+    .item {
+      border: 1px solid var(--divider-color, rgba(255, 255, 255, 0.12));
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .item-head {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      min-height: 40px;
+      box-sizing: border-box;
+      padding: 2px 4px;
+      cursor: pointer;
+      background: var(--secondary-background-color, rgba(120, 120, 120, 0.06));
+    }
+    .item-chev {
+      flex: none;
+      color: var(--secondary-text-color);
+      --mdc-icon-size: 20px;
+    }
+    .item-del {
+      flex: none;
+      --mdc-icon-button-size: 28px;
+      --mdc-icon-size: 20px;
+      color: var(--secondary-text-color);
+    }
+    .item-del:hover {
+      color: var(--error-color, #db4437);
+    }
+    .item-body {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 8px 10px 12px;
+    }
+    .item-body[hidden] {
+      display: none;
+    }
+    /* Add-item type-picker popup. */
+    .picker-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      background: rgba(0, 0, 0, 0.45);
+    }
+    .picker-sheet {
+      width: min(360px, 100%);
+      max-height: min(70vh, 520px);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      background: var(--card-background-color, #1c1c1c);
+      border: 1px solid var(--divider-color, rgba(255, 255, 255, 0.12));
+      border-radius: 12px;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+    }
+    .picker-head {
+      font-size: 1.1rem;
+      font-weight: 600;
+      padding: 16px 18px 8px;
+    }
+    .picker-list {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      overflow: auto;
+      padding: 4px 8px 12px;
+    }
+    .picker-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+      box-sizing: border-box;
+      text-align: left;
+      font: inherit;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid transparent;
+      background: none;
+      color: inherit;
+      cursor: pointer;
+    }
+    .picker-item:hover {
+      background: var(--secondary-background-color, rgba(120, 120, 120, 0.12));
+      border-color: var(--divider-color, rgba(255, 255, 255, 0.12));
+    }
+    .picker-item ha-icon {
+      flex: none;
+      color: var(--secondary-text-color);
+      --mdc-icon-size: 20px;
+    }
     .add-btn {
       align-self: flex-start;
       background: none;
@@ -731,40 +836,6 @@ export class TedNavbarSectionsEditor extends LitElement {
       font: inherit;
       padding: 6px 12px;
       cursor: pointer;
-    }
-    .add-menu {
-      position: relative;
-      align-self: flex-start;
-    }
-    .add-menu-list {
-      position: absolute;
-      z-index: 10;
-      top: calc(100% + 4px);
-      left: 0;
-      display: flex;
-      flex-direction: column;
-      min-width: 160px;
-      padding: 4px;
-      background: var(--card-background-color, #1c1c1c);
-      border: 1px solid var(--divider-color, rgba(255, 255, 255, 0.12));
-      border-radius: 6px;
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
-    }
-    .add-menu-item {
-      background: none;
-      border: none;
-      border-radius: 4px;
-      color: inherit;
-      font: inherit;
-      text-align: left;
-      padding: 8px 10px;
-      cursor: pointer;
-    }
-    .add-menu-item:hover {
-      background: var(--secondary-background-color, rgba(255, 255, 255, 0.08));
-    }
-    .warning {
-      color: var(--error-color, #db4437);
     }
     .loading {
       color: var(--secondary-text-color);
