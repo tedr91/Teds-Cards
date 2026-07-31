@@ -414,7 +414,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
   /** Open "pick a type" popup for an Add button whose child item has a type. */
   @state() private _typePicker?: {
     title: string;
-    options: { value: string; label: string; icon?: string }[];
+    options: { value: string; label: string; icon?: string; disabled?: boolean }[];
     onPick: (value: string) => void;
   };
   /** True while a "Create MA player" request is in flight. */
@@ -1182,6 +1182,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
   private _renderFields(fields: SettingField[], scope: "global" | "device"): TemplateResult {
     const row = (f: SettingField): TemplateResult =>
       scope === "global" ? this._renderGlobalRow(f) : this._renderDeviceRow(f);
+    fields = fields.filter((f) => this._fieldVisible(f));
     const inline = fields.filter((f) => !f.subsection);
     const order: string[] = [];
     for (const f of fields) {
@@ -1201,6 +1202,16 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
         </ha-expansion-panel>`,
       )}
     `;
+  }
+
+  /** Whether a field's `showWhen` condition is met by the effective settings. */
+  private _fieldVisible(f: SettingField): boolean {
+    const cond = f.showWhen;
+    if (!cond) return true;
+    const v = settingsStore.effective()[cond.key];
+    if (cond.truthy !== undefined) return cond.truthy ? !!v : !v;
+    if ("equals" in cond) return v === cond.equals;
+    return true;
   }
 
   /** Icon for a collapsible subsection header, following the configured icon set. */
@@ -2520,11 +2531,14 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
   }
 
   /** Trigger types the camera can offer (discovered detectors, else the standard set). */
-  private _triggerTypeOptions(id: string): { value: string; label: string; icon?: string }[] {
+  private _triggerTypeOptions(id: string): { value: string; label: string; icon?: string; disabled?: boolean }[] {
     const detectors = this._visionDetectors[id];
     const avail = detectors ? Object.keys(detectors) : [];
     const types = avail.length ? avail : ["motion", "person", "animal", "car", "package"];
-    return types.map((t) => ({ value: t, label: VISION_DET_LABEL[t] ?? t, icon: VISION_DET_ICON[t] }));
+    const used = new Set(this._visionTriggers(id).map((t) => t.type as string));
+    return types.map((t) => ({
+      value: t, label: VISION_DET_LABEL[t] ?? t, icon: VISION_DET_ICON[t], disabled: used.has(t),
+    }));
   }
 
   private _removeTrigger(id: string, i: number): void {
@@ -2545,7 +2559,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
 
   private _openTypePicker(
     title: string,
-    options: { value: string; label: string; icon?: string }[],
+    options: { value: string; label: string; icon?: string; disabled?: boolean }[],
     onPick: (value: string) => void,
   ): void {
     this._typePicker = { title, options, onPick };
@@ -2563,7 +2577,10 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
             ${p.options.map(
               (o) => html`<button
                 class="add-item"
+                ?disabled=${o.disabled}
+                title=${o.disabled ? "Already added" : nothing}
                 @click=${() => {
+                  if (o.disabled) return;
                   const pick = p.onPick;
                   this._typePicker = undefined;
                   pick(o.value);
@@ -2779,7 +2796,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     return html`
       <div class="vis-item">
         <div class="vis-ihead" @click=${() => (this._visTrigOpen = this._toggleSet(this._visTrigOpen, key))}>
-          <ha-icon icon="mdi:motion-sensor"></ha-icon>
+          <ha-icon icon=${VISION_DET_ICON[trig.type as string] ?? "mdi:motion-sensor"}></ha-icon>
           <span class="vis-iname">${label}</span>
           <ha-icon class="vis-chev" .icon=${this._ui(open ? "chevronUp" : "chevronDown")}></ha-icon>
           <ha-icon-button
@@ -5322,6 +5339,14 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
       .add-item:hover {
         background: var(--ted-style-surface-2);
         border-color: var(--ted-style-divider);
+      }
+      .add-item:disabled {
+        opacity: 0.4;
+        cursor: default;
+      }
+      .add-item:disabled:hover {
+        background: none;
+        border-color: transparent;
       }
       .add-item .cam-ico {
         flex: none;

@@ -943,6 +943,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.43
+
+- **Vision Analysis: false-alarm filtering, real video, and two-pass analysis.** The AI now flags likely false alarms — a new “Filter out false alarms” setting (Off / Log only / Drop) can skip a trigger's actions for them, and the Vision card shows a “False alarm” tag and filter. Capture defaults to recording the real camera stream (falls back to stitched frames), and an optional two-pass mode does a fast first analysis then a detailed refine, with separate AI Task entities for each pass (smart defaults by provider). Capture window default is now 10s.
+
 ### v0.9.42
 
 - **Vision “Display live feed” now opens the camera live.** When a trigger fires this action, targeted screens navigate to the Cameras view and the triggering camera is made the primary feed and switched to a live stream. Also fixed the Settings list rows (trigger and action items) that were rendering taller than the standard 40px height.

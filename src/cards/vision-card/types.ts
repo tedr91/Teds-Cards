@@ -21,6 +21,8 @@ export interface VisionEvent {
   clip_url?: string | null;
   reviewed?: boolean;
   trigger_entity?: string | null;
+  /** The AI flagged this event as a likely false alarm. */
+  false_alarm?: boolean;
 }
 
 export interface VisionCardConfig extends LovelaceCardConfig {

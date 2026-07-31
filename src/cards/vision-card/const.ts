@@ -23,3 +23,7 @@ export const SEVERITY_LABEL: Record<VisionSeverity, string> = {
   harmless: "Harmless",
   unknown: "Unknown",
 };
+
+// "False alarm" tag/filter styling (the AI flagged the event as a likely false positive).
+export const FALSE_ALARM_LABEL = "False alarm";
+export const FALSE_ALARM_COLOR = "var(--info-color, #4285f4)";

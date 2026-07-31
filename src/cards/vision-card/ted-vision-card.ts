@@ -14,6 +14,8 @@ import { themedIcon } from "../../shared/icons";
 import { showConfirmation, modalStyles } from "../../shared/dialogs";
 import { SettingsController, settingsStore } from "../../shared/settings";
 import {
+  FALSE_ALARM_COLOR,
+  FALSE_ALARM_LABEL,
   SEVERITY_COLOR,
   SEVERITY_LABEL,
   VISION_CARD_DESCRIPTION,
@@ -63,6 +65,8 @@ export class TedVisionCard extends LitElement implements LovelaceCard {
   @state() private _config?: VisionCardConfig;
   @state() private _events: VisionEvent[] = [];
   @state() private _severityFilter?: VisionSeverity;
+  /** When on, show only events the AI flagged as false alarms. */
+  @state() private _falseAlarmOnly = false;
   @state() private _detailId?: string;
   /** ai_task availability: undefined = not checked, true/false once known. */
   @state() private _aiTaskOk?: boolean;
@@ -169,6 +173,7 @@ export class TedVisionCard extends LitElement implements LovelaceCard {
     let list = this._events;
     if (cams && cams.length) list = list.filter((e) => cams.includes(e.camera_id));
     if (this._severityFilter) list = list.filter((e) => e.severity === this._severityFilter);
+    if (this._falseAlarmOnly) list = list.filter((e) => e.false_alarm);
     return list.slice(0, max);
   }
 
@@ -220,6 +225,14 @@ export class TedVisionCard extends LitElement implements LovelaceCard {
           ${SEVERITY_LABEL[s]}
         </button>`,
       )}
+      <button
+        class="chip ${this._falseAlarmOnly ? "on" : ""}"
+        style="--chip: ${FALSE_ALARM_COLOR}"
+        title="Show only likely false alarms"
+        @click=${() => (this._falseAlarmOnly = !this._falseAlarmOnly)}
+      >
+        ${FALSE_ALARM_LABEL}
+      </button>
     </div>`;
   }
 
@@ -243,6 +256,9 @@ export class TedVisionCard extends LitElement implements LovelaceCard {
               <span class="badge" style="--sev: ${SEVERITY_COLOR[e.severity]}"
                 >${SEVERITY_LABEL[e.severity]}</span
               >
+              ${e.false_alarm
+                ? html`<span class="fa-tag" style="--sev: ${FALSE_ALARM_COLOR}">${FALSE_ALARM_LABEL}</span>`
+                : nothing}
               <span class="cam">${e.camera_name}</span>
               <span class="time">${this._relTime(e.ts_start)}</span>
             </div>
@@ -263,6 +279,9 @@ export class TedVisionCard extends LitElement implements LovelaceCard {
           <span class="badge" style="--sev: ${SEVERITY_COLOR[e.severity]}"
             >${SEVERITY_LABEL[e.severity]}</span
           >
+          ${e.false_alarm
+            ? html`<span class="fa-tag" style="--sev: ${FALSE_ALARM_COLOR}">${FALSE_ALARM_LABEL}</span>`
+            : nothing}
           ${e.camera_name}
         </div>
         <div class="ted-sheet-body">
@@ -508,6 +527,17 @@ export class TedVisionCard extends LitElement implements LovelaceCard {
         background: var(--sev, var(--primary-color));
         border-radius: 999px;
         padding: 1px 8px;
+      }
+      .fa-tag {
+        font-size: 0.62rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+        color: var(--sev, var(--info-color, #4285f4));
+        border: 1px solid var(--sev, var(--info-color, #4285f4));
+        border-radius: 999px;
+        padding: 0 6px;
+        flex: 0 0 auto;
       }
       .cam {
         font-weight: 600;
