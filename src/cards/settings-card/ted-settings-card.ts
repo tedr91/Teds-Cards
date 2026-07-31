@@ -103,6 +103,28 @@ const SUBSECTION_ICONS: Record<string, { fluent: string; mdi: string }> = {
   Advanced: { fluent: "fluent:options-24-regular", mdi: "mdi:tune" },
 };
 
+// Per-camera Vision Analysis editor option lists (inline in the Cameras list).
+const VISION_DET_LABEL: Record<string, string> = {
+  motion: "Motion", person: "Person", animal: "Animal", car: "Vehicle", package: "Package",
+};
+// Severities listed high → low so the multi-select reads in order of severity.
+const VISION_SEVERITY_OPTIONS = [
+  { value: "critical", label: "Critical" },
+  { value: "suspicious", label: "Suspicious" },
+  { value: "harmless", label: "Harmless" },
+  { value: "unknown", label: "Unknown" },
+];
+const VISION_ACTION_OPTIONS = [
+  { value: "toast", label: "Toast notification" },
+  { value: "push", label: "Push notification" },
+  { value: "live_feed", label: "Display live feed" },
+  { value: "custom", label: "Custom action" },
+];
+const VISION_ACTION_LABEL: Record<string, string> = {
+  toast: "Toast notification", push: "Push notification",
+  live_feed: "Display live feed", custom: "Custom action",
+};
+
 /** Every chrome icon used across the Settings UI, as { fluent, mdi } pairs so they all
  *  follow the configured icon set consistently (Fluent when installed, MDI otherwise).
  *  Entity/view/user-chosen icons are NOT here — those stay as authored. */
@@ -374,8 +396,14 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
   @state() private _addViewTitle = "";
   /** Which navbar custom-menu-item rows are expanded (by index). */
   @state() private _navMenuOpen = new Set<number>();
-  /** Which Vision-opt-in camera panels are expanded. */
+  /** Which camera rows have their Vision Analysis body expanded. */
   @state() private _visionOpen = new Set<string>();
+  /** Which cameras' "Trigger on" panels are open (keyed by camera id). */
+  @state() private _visTrigPanelOpen = new Set<string>();
+  /** Which individual triggers are open (keyed `${cameraId}#${triggerIndex}`). */
+  @state() private _visTrigOpen = new Set<string>();
+  /** Which triggers' "Additional actions" panels are open (same key form). */
+  @state() private _visActPanelOpen = new Set<string>();
   /** Discovered detection sensors per camera (fetched from the backend on demand). */
   @state() private _visionDetectors: Record<string, Record<string, string[]>> = {};
   /** True while a "Create MA player" request is in flight. */
@@ -1664,7 +1692,6 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
 
   private _renderGlobalRow(field: SettingField): TemplateResult {
     if (field.kind === "entity-list") return this._renderCamerasGlobal(field);
-    if (field.kind === "vision-cameras") return this._renderVisionCameras();
     if (field.kind === "announce-messages") return this._renderAnnounceMessages("global");
     if (field.kind === "climate-aliases") return this._renderClimateAliases("global");
     if (field.kind === "background") return this._renderBackground(field, "global");
@@ -1706,9 +1733,6 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
 
   private _renderDeviceRow(field: SettingField): TemplateResult {
     if (field.kind === "entity-list") return this._renderCamerasDevice(field);
-    if (field.kind === "vision-cameras")
-      return html`<div class="row"><div class="row-label"><span>${field.label}</span>
-        <span class="help">Vision Analysis is configured on the Global tab.</span></div></div>`;
     if (field.kind === "announce-messages") return this._renderAnnounceMessages("device");
     if (field.kind === "climate-aliases") return this._renderClimateAliases("device");
     if (field.kind === "background") return this._renderBackground(field, "device");
@@ -2387,7 +2411,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     this._setGlobal("calendar_options", map);
   }
 
-  // ── Vision Analysis camera opt-in ───────────────────────
+  // ── Vision Analysis (per-camera, inline in the Cameras list) ─────────────
   private _visionCameras(): Record<string, Record<string, unknown>> {
     const v = this._globalValue("vision_cameras");
     return v && typeof v === "object" && !Array.isArray(v)
@@ -2395,10 +2419,25 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
       : {};
   }
 
-  private _visionCameraPool(): string[] {
-    const list = this._globalValue("cameras_list");
-    const ids = Array.isArray(list) ? (list as string[]) : [];
-    return ids.length ? ids : this._allCameras("camera");
+  private _visionCam(id: string): Record<string, unknown> {
+    const c = this._visionCameras()[id];
+    return c && typeof c === "object" ? { ...c } : {};
+  }
+
+  private _writeVisionCam(id: string, cfg: Record<string, unknown>): void {
+    const map = this._visionCameras();
+    map[id] = cfg;
+    this._setGlobal("vision_cameras", map as unknown as SettingsValue);
+  }
+
+  private _visionTriggers(id: string): Record<string, unknown>[] {
+    const t = this._visionCam(id).triggers;
+    return Array.isArray(t) ? (t as Record<string, unknown>[]) : [];
+  }
+
+  private _triggerActions(id: string, i: number): Record<string, unknown>[] {
+    const a = this._visionTriggers(id)[i]?.actions;
+    return Array.isArray(a) ? (a as Record<string, unknown>[]) : [];
   }
 
   private async _loadVisionDetectors(camera: string): Promise<void> {
@@ -2420,7 +2459,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     this._visionDetectors = { ...this._visionDetectors, [camera]: detectors };
   }
 
-  private _toggleVisionOpen(camera: string): void {
+  private _toggleCamVision(camera: string): void {
     const next = new Set(this._visionOpen);
     if (next.has(camera)) next.delete(camera);
     else {
@@ -2430,134 +2469,249 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     this._visionOpen = next;
   }
 
-  private _addVisionCamera(camera: string): void {
-    if (!camera) return;
-    const map = this._visionCameras();
-    if (!map[camera])
-      map[camera] = { event_types: [], severity_threshold: "harmless", cooldown_seconds: 60, notify: true };
-    this._setGlobal("vision_cameras", map as unknown as SettingsValue);
-    this._toggleVisionOpen(camera);
+  private _toggleSet(set: Set<string>, key: string): Set<string> {
+    const next = new Set(set);
+    if (next.has(key)) next.delete(key);
+    else next.add(key);
+    return next;
   }
 
-  private _removeVisionCamera(camera: string): void {
-    const map = this._visionCameras();
-    delete map[camera];
-    this._setGlobal("vision_cameras", map as unknown as SettingsValue);
+  private _setVisionEnabled(id: string, on: boolean): void {
+    const cfg = this._visionCam(id);
+    cfg.enabled = on;
+    if (!Array.isArray(cfg.triggers)) cfg.triggers = [];
+    this._writeVisionCam(id, cfg);
   }
 
-  private _updateVisionCamera(camera: string, patch: Record<string, unknown>): void {
-    const map = this._visionCameras();
-    const cur = { ...(map[camera] || {}) };
-    for (const [k, val] of Object.entries(patch)) {
-      if (val === undefined || val === "" || (Array.isArray(val) && val.length === 0)) delete cur[k];
-      else cur[k] = val;
+  private _addTrigger(id: string): void {
+    const cfg = this._visionCam(id);
+    const trigs = [...this._visionTriggers(id)];
+    trigs.push({ type: "", severities: [], cooldown_seconds: 60, actions: [] });
+    cfg.triggers = trigs;
+    this._writeVisionCam(id, cfg);
+    this._visTrigPanelOpen = new Set(this._visTrigPanelOpen).add(id);
+    this._visTrigOpen = new Set(this._visTrigOpen).add(`${id}#${trigs.length - 1}`);
+  }
+
+  private _removeTrigger(id: string, i: number): void {
+    const cfg = this._visionCam(id);
+    const trigs = [...this._visionTriggers(id)];
+    trigs.splice(i, 1);
+    cfg.triggers = trigs;
+    this._writeVisionCam(id, cfg);
+  }
+
+  private _updateTrigger(id: string, i: number, patch: Record<string, unknown>): void {
+    const cfg = this._visionCam(id);
+    const trigs = [...this._visionTriggers(id)];
+    trigs[i] = { ...(trigs[i] || {}), ...patch };
+    cfg.triggers = trigs;
+    this._writeVisionCam(id, cfg);
+  }
+
+  private _addAction(id: string, i: number): void {
+    const acts = [...this._triggerActions(id, i)];
+    acts.push({ type: "toast" });
+    this._updateTrigger(id, i, { actions: acts });
+    this._visActPanelOpen = new Set(this._visActPanelOpen).add(`${id}#${i}`);
+  }
+
+  private _removeAction(id: string, i: number, j: number): void {
+    const acts = [...this._triggerActions(id, i)];
+    acts.splice(j, 1);
+    this._updateTrigger(id, i, { actions: acts });
+  }
+
+  private _updateAction(id: string, i: number, j: number, patch: Record<string, unknown>): void {
+    const acts = [...this._triggerActions(id, i)];
+    acts[j] = { ...(acts[j] || {}), ...patch };
+    this._updateTrigger(id, i, { actions: acts });
+  }
+
+  private _notifyServiceOptions(): { value: string; label: string }[] {
+    const svc = (this.hass?.services as Record<string, Record<string, unknown>> | undefined)?.notify ?? {};
+    return Object.keys(svc).map((k) => ({ value: `notify.${k}`, label: `notify.${k}` }));
+  }
+
+  private _actionSettingsSchema(type: string): { name: string; selector: unknown }[] {
+    switch (type) {
+      case "push":
+        return [{ name: "service", selector: { select: { mode: "dropdown", options: this._notifyServiceOptions() } } }];
+      case "custom":
+        return [{ name: "script", selector: { entity: { domain: ["script", "scene", "automation"] } } }];
+      case "toast":
+      case "live_feed":
+        return [{ name: "areas", selector: { area: { multiple: true } } }];
+      default:
+        return [];
     }
-    map[camera] = cur;
-    this._setGlobal("vision_cameras", map as unknown as SettingsValue);
   }
 
-  private _visionLabel = (s: { name: string }): string =>
+  private _triggerLabel = (s: { name: string }): string =>
     ({
-      event_types: "Trigger on",
-      severity_threshold: "Notify/act when",
+      type: "Trigger type",
+      severities: "Severity level filter",
       cooldown_seconds: "Cooldown (seconds)",
-      notify: "Send a notification",
-      script: "Also run (script/scene/automation)",
     })[s.name] ?? s.name;
 
-  private _renderVisionCameras(): TemplateResult {
-    if (!this._isAdmin()) {
-      return html`<div class="row"><div class="row-label"><span>Camera opt-in</span>
-        <span class="help">Only admins can change Vision Analysis.</span></div></div>`;
-    }
-    const map = this._visionCameras();
-    const opted = Object.keys(map);
-    const remaining = this._visionCameraPool().filter((id) => !opted.includes(id));
-    const severityOptions = [
-      { value: "harmless", label: "Harmless or higher (all)" },
-      { value: "suspicious", label: "Suspicious or higher" },
-      { value: "critical", label: "Critical only" },
-    ];
-    const detectorLabel: Record<string, string> = {
-      motion: "Motion", person: "Person", animal: "Animal", car: "Vehicle", package: "Package",
-    };
+  private _triggerHelper = (s: { name: string }): string =>
+    s.name === "severities"
+      ? "Only take action if the event is one of these severities (leave empty for any)."
+      : "";
+
+  private _actionLabel = (s: { name: string }): string =>
+    ({ areas: "Areas", service: "Notify service", script: "Run (script/scene/automation)" })[s.name] ?? s.name;
+
+  private _actionHelper = (s: { name: string }): string =>
+    s.name === "areas" ? "Leave empty to use the camera's room." : "";
+
+  /** Disclosure body for a camera row in the Cameras list. */
+  private _renderCameraVisionBody(id: string): TemplateResult {
+    const cfg = this._visionCam(id);
+    const enabled = cfg.enabled === true;
     return html`
-      <div class="vision-opt">
-        ${opted.length === 0
-          ? html`<div class="help">No cameras opted in yet. Add one below to start analyzing its detections.</div>`
-          : nothing}
-        ${opted.map((cam) => {
-          const cfg = map[cam] as Record<string, unknown>;
-          const open = this._visionOpen.has(cam);
-          const detectors = this._visionDetectors[cam];
-          const availTypes = detectors ? Object.keys(detectors) : [];
-          const typeOptions = availTypes.map((t) => ({ value: t, label: detectorLabel[t] ?? t }));
-          const data = {
-            event_types: Array.isArray(cfg.event_types) ? cfg.event_types : [],
-            severity_threshold: (cfg.severity_threshold as string) ?? "harmless",
-            cooldown_seconds: (cfg.cooldown_seconds as number) ?? 60,
-            notify: cfg.notify !== false,
-            script: (cfg.script as string) ?? undefined,
-          };
-          const schema = [
-            ...(typeOptions.length
-              ? [{ name: "event_types", selector: { select: { multiple: true, options: typeOptions } } }]
-              : []),
-            { name: "severity_threshold", selector: { select: { mode: "dropdown", options: severityOptions } } },
-            {
-              type: "grid",
-              name: "",
-              schema: [
-                { name: "cooldown_seconds", selector: { number: { min: 0, max: 3600, mode: "box" } } },
-                { name: "notify", selector: { boolean: {} } },
-              ],
-            },
-            { name: "script", selector: { entity: { domain: ["script", "scene", "automation"] } } },
-          ];
-          return html`
-            <div class="vision-cam">
-              <div class="vision-cam-head" @click=${() => this._toggleVisionOpen(cam)}>
-                <ha-icon icon="mdi:cctv"></ha-icon>
-                <span class="vision-cam-name">${this._cameraName(cam)}</span>
-                <ha-icon-button
-                  @click=${(e: Event) => {
-                    e.stopPropagation();
-                    this._removeVisionCamera(cam);
-                  }}
-                  title="Remove"
-                  ><ha-icon icon="mdi:delete"></ha-icon
-                ></ha-icon-button>
-                <ha-icon class="vision-chev" icon=${open ? "mdi:chevron-up" : "mdi:chevron-down"}></ha-icon>
-              </div>
-              ${open
-                ? html`<div class="vision-cam-body">
-                    ${typeOptions.length === 0
-                      ? html`<div class="help">No motion/person/animal/vehicle sensors were found on this
-                          camera's device. You can still analyze it manually with the analyze_camera service.</div>`
-                      : nothing}
-                    <ha-form
-                      .hass=${this.hass}
-                      .data=${data}
-                      .schema=${schema}
-                      .computeLabel=${this._visionLabel}
-                      @value-changed=${(e: CustomEvent) => this._updateVisionCamera(cam, e.detail.value)}
-                    ></ha-form>
-                  </div>`
-                : nothing}
-            </div>
-          `;
-        })}
-        ${remaining.length
-          ? html`<div class="vision-add">
-              <ha-selector
-                .hass=${this.hass}
-                .selector=${{ entity: { include_entities: remaining } }}
-                @value-changed=${(e: CustomEvent) => this._addVisionCamera(e.detail.value)}
-              ></ha-selector>
+      <div class="vis-body">
+        <ha-form
+          .hass=${this.hass}
+          .data=${{ enabled }}
+          .schema=${[{ name: "enabled", selector: { boolean: {} } }]}
+          .computeLabel=${() => "Enable vision analysis"}
+          .computeHelper=${() => "Capture and analyze events from this camera."}
+          @value-changed=${(e: CustomEvent) => this._setVisionEnabled(id, !!e.detail.value.enabled)}
+        ></ha-form>
+        ${enabled ? this._renderTriggerPanel(id) : nothing}
+      </div>
+    `;
+  }
+
+  private _renderTriggerPanel(id: string): TemplateResult {
+    const trigs = this._visionTriggers(id);
+    const open = this._visTrigPanelOpen.has(id);
+    return html`
+      <div class="vis-panel">
+        <div class="vis-phead" @click=${() => (this._visTrigPanelOpen = this._toggleSet(this._visTrigPanelOpen, id))}>
+          <ha-icon .icon=${this._ui(open ? "chevronUp" : "chevronDown")}></ha-icon>
+          <span class="vis-ptitle">Trigger on</span>
+          <span class="vis-count">${trigs.length}</span>
+          <button class="cam-btn vis-addbtn" @click=${(e: Event) => { e.stopPropagation(); this._addTrigger(id); }}>
+            <ha-icon .icon=${this._ui("add")}></ha-icon><span>Add</span>
+          </button>
+        </div>
+        ${open
+          ? html`<div class="vis-pbody">
+              ${trigs.length === 0 ? html`<div class="help">No triggers yet — tap “Add”.</div>` : nothing}
+              ${trigs.map((t, i) => this._renderTrigger(id, i, t))}
             </div>`
-          : this._visionCameraPool().length === 0
-            ? html`<div class="help">Add cameras to the Cameras list first, then opt them in here.</div>`
+          : nothing}
+      </div>
+    `;
+  }
+
+  private _renderTrigger(id: string, i: number, trig: Record<string, unknown>): TemplateResult {
+    const key = `${id}#${i}`;
+    const open = this._visTrigOpen.has(key);
+    const detectors = this._visionDetectors[id];
+    const avail = detectors ? Object.keys(detectors) : [];
+    const types = avail.length ? avail : ["motion", "person", "animal", "car", "package"];
+    const typeOptions = types.map((t) => ({ value: t, label: VISION_DET_LABEL[t] ?? t }));
+    const data = {
+      type: (trig.type as string) ?? "",
+      severities: Array.isArray(trig.severities) ? trig.severities : [],
+      cooldown_seconds: (trig.cooldown_seconds as number) ?? 60,
+    };
+    const schema = [
+      { name: "type", selector: { select: { mode: "dropdown", options: typeOptions } } },
+      { name: "severities", selector: { select: { multiple: true, options: VISION_SEVERITY_OPTIONS } } },
+      { name: "cooldown_seconds", selector: { number: { min: 0, max: 3600, mode: "box" } } },
+    ];
+    const label = trig.type
+      ? VISION_DET_LABEL[trig.type as string] ?? String(trig.type)
+      : "New trigger";
+    return html`
+      <div class="vis-item">
+        <div class="vis-ihead" @click=${() => (this._visTrigOpen = this._toggleSet(this._visTrigOpen, key))}>
+          <ha-icon icon="mdi:motion-sensor"></ha-icon>
+          <span class="vis-iname">${label}</span>
+          <ha-icon-button
+            @click=${(e: Event) => { e.stopPropagation(); this._removeTrigger(id, i); }}
+            title="Remove"
+            ><ha-icon icon="mdi:delete"></ha-icon
+          ></ha-icon-button>
+          <ha-icon class="vis-chev" .icon=${this._ui(open ? "chevronUp" : "chevronDown")}></ha-icon>
+        </div>
+        ${open
+          ? html`<div class="vis-ibody">
+              ${avail.length === 0
+                ? html`<div class="help">No detection sensors were found on this camera's device; the
+                    standard types are offered as a fallback.</div>`
+                : nothing}
+              <ha-form
+                .hass=${this.hass}
+                .data=${data}
+                .schema=${schema}
+                .computeLabel=${this._triggerLabel}
+                .computeHelper=${this._triggerHelper}
+                @value-changed=${(e: CustomEvent) => this._updateTrigger(id, i, e.detail.value)}
+              ></ha-form>
+              ${this._renderActionsPanel(id, i)}
+            </div>`
+          : nothing}
+      </div>
+    `;
+  }
+
+  private _renderActionsPanel(id: string, i: number): TemplateResult {
+    const key = `${id}#${i}`;
+    const acts = this._triggerActions(id, i);
+    const open = this._visActPanelOpen.has(key);
+    return html`
+      <div class="vis-panel">
+        <div class="vis-phead" @click=${() => (this._visActPanelOpen = this._toggleSet(this._visActPanelOpen, key))}>
+          <ha-icon .icon=${this._ui(open ? "chevronUp" : "chevronDown")}></ha-icon>
+          <span class="vis-ptitle">Additional actions</span>
+          <span class="vis-count">${acts.length}</span>
+          <button class="cam-btn vis-addbtn" @click=${(e: Event) => { e.stopPropagation(); this._addAction(id, i); }}>
+            <ha-icon .icon=${this._ui("add")}></ha-icon><span>Add</span>
+          </button>
+        </div>
+        ${open
+          ? html`<div class="vis-pbody">${acts.map((a, j) => this._renderAction(id, i, j, a))}</div>`
+          : nothing}
+      </div>
+    `;
+  }
+
+  private _renderAction(id: string, i: number, j: number, act: Record<string, unknown>): TemplateResult {
+    const type = (act.type as string) ?? "toast";
+    const settingsSchema = this._actionSettingsSchema(type);
+    return html`
+      <div class="vis-item vis-actitem">
+        <div class="vis-ihead static">
+          <ha-icon icon="mdi:flash-outline"></ha-icon>
+          <span class="vis-iname">${VISION_ACTION_LABEL[type] ?? "Action"}</span>
+          <ha-icon-button @click=${() => this._removeAction(id, i, j)} title="Remove"
+            ><ha-icon icon="mdi:delete"></ha-icon
+          ></ha-icon-button>
+        </div>
+        <div class="vis-ibody">
+          <ha-form
+            .hass=${this.hass}
+            .data=${{ type }}
+            .schema=${[{ name: "type", selector: { select: { mode: "dropdown", options: VISION_ACTION_OPTIONS } } }]}
+            .computeLabel=${() => "Action type"}
+            @value-changed=${(e: CustomEvent) => this._updateAction(id, i, j, { type: e.detail.value.type })}
+          ></ha-form>
+          ${settingsSchema.length
+            ? html`<ha-form
+                .hass=${this.hass}
+                .data=${act}
+                .schema=${settingsSchema}
+                .computeLabel=${this._actionLabel}
+                .computeHelper=${this._actionHelper}
+                @value-changed=${(e: CustomEvent) => this._updateAction(id, i, j, e.detail.value)}
+              ></ha-form>`
             : nothing}
+        </div>
       </div>
     `;
   }
@@ -2627,7 +2781,15 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
                       optionsHidden: (id) =>
                         !!virtualGroupNameFor(this.hass, id, this._calendarItems()),
                     }
-                  : undefined,
+                  : admin && domain === "camera"
+                    ? {
+                        isOpen: (id) => this._visionOpen.has(id),
+                        toggle: (id) => this._toggleCamVision(id),
+                        body: (id) => this._renderCameraVisionBody(id),
+                        badge: (id) => this._visionCam(id).enabled === true,
+                        badgeIcon: "mdi:eye",
+                      }
+                    : undefined,
               )
             : html`<div class="help">No ${meta.nounPlural} yet — tap “Auto-populate” or “Add a ${meta.noun}” above.</div>`}
         </div>
@@ -4536,17 +4698,18 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
         flex-direction: column;
         gap: 6px;
       }
-      .vision-opt {
+      /* Per-camera Vision Analysis inline editor (in a Cameras-list row body). */
+      .vis-body {
         display: flex;
         flex-direction: column;
-        gap: 8px;
+        gap: 10px;
       }
-      .vision-cam {
+      .vis-panel {
         border: 1px solid var(--ted-style-divider);
         border-radius: 10px;
         overflow: hidden;
       }
-      .vision-cam-head {
+      .vis-phead {
         display: flex;
         align-items: center;
         gap: 8px;
@@ -4554,22 +4717,72 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
         cursor: pointer;
         background: var(--ted-style-surface-2, rgba(120, 120, 120, 0.08));
       }
-      .vision-cam-name {
+      .vis-phead > ha-icon {
+        --mdc-icon-size: 20px;
+        color: var(--ted-style-muted, var(--secondary-text-color));
+      }
+      .vis-ptitle {
+        font-weight: 600;
+      }
+      .vis-count {
+        min-width: 20px;
+        text-align: center;
+        padding: 0 6px;
+        border-radius: 999px;
+        font-size: 0.75rem;
+        color: var(--ted-style-muted, var(--secondary-text-color));
+        background: var(--ted-style-surface-3, rgba(120, 120, 120, 0.14));
+      }
+      .vis-addbtn {
+        margin-left: auto;
+        padding: 4px 10px;
+        font-size: 0.8rem;
+      }
+      .vis-pbody {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        padding: 8px;
+      }
+      .vis-item {
+        border: 1px solid var(--ted-style-divider);
+        border-radius: 8px;
+        overflow: hidden;
+      }
+      .vis-actitem {
+        border-style: dashed;
+      }
+      .vis-ihead {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 5px 8px;
+        cursor: pointer;
+        background: var(--ted-style-surface-2, rgba(120, 120, 120, 0.06));
+      }
+      .vis-ihead.static {
+        cursor: default;
+      }
+      .vis-ihead > ha-icon:first-child {
+        --mdc-icon-size: 18px;
+        color: var(--ted-style-muted, var(--secondary-text-color));
+      }
+      .vis-iname {
         flex: 1;
         font-weight: 600;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
       }
-      .vision-chev {
+      .vis-chev {
         --mdc-icon-size: 20px;
         color: var(--ted-style-muted, var(--secondary-text-color));
       }
-      .vision-cam-body {
+      .vis-ibody {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
         padding: 8px 10px 10px;
-      }
-      .vision-add {
-        margin-top: 2px;
       }
       .cam-item {
         display: flex;

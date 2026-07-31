@@ -19,19 +19,23 @@ System plus any AI provider that offers an AI Task entity with image-attachment 
   websocket API, sensor, and calendar).
 - An **AI Task** entity that supports attachments. Install an AI provider integration
   (OpenAI, Ollama, Google, Anthropic, …) and set it as your preferred AI Task entity in
-  **Settings → Voice assistants**, or pick one explicitly in **Settings → Vision**.
+  **Settings → Voice assistants**, or pick one explicitly in **Settings → Cameras →
+  Vision Analysis**.
 - Cameras that expose detection `binary_sensor`s (Frigate, Reolink, UniFi Protect, etc.).
   Cameras with no detection sensors can still be analyzed on demand via the
   `teds_dashboard_system.analyze_camera` service.
 
 ## Setup
 
-1. **Settings → Vision → Enable Vision Analysis.**
-2. Pick an **AI Task entity** (or leave blank to use your preferred one).
-3. Under **Camera opt-in**, add a camera and choose which detections trigger analysis,
-   the **severity threshold** for notifications/actions, a **cooldown**, whether to send a
-   notification, and optionally a **script/scene/automation** to run.
-4. Add the Vision view (or drop a `custom:ted-vision-card` on any dashboard).
+1. **Settings → Cameras → Vision Analysis → Enable Vision Analysis** and pick an **AI Task
+   entity** (or leave blank to use your preferred one).
+2. In the **Cameras** list, expand a camera and turn on **Enable vision analysis**.
+3. Add one or more **triggers** (what to trigger on): pick a **trigger type** (Motion,
+   Person, Animal, …), a **severity level filter** (only act when the analyzed event is one
+   of the selected severities), and a **cooldown**.
+4. Under a trigger's **Additional actions**, add actions — **Toast notification**, **Push
+   notification**, **Display live feed**, or a **Custom action** — each with its own settings.
+5. Add the Vision view (or drop a `custom:ted-vision-card` on any dashboard) to see the timeline.
 
 ## Options
 
@@ -50,9 +54,13 @@ System plus any AI provider that offers an AI Task entity with image-attachment 
 | `critical` | Active threat, break-in, or emergency. |
 | `suspicious` | Unexpected or concerning activity worth a human review. |
 | `harmless` | Routine/expected activity (residents, pets, deliveries, passing cars). |
-| `unknown` | Frames too unclear to judge — always passes the notification threshold. |
+| `unknown` | Frames too unclear to judge. |
 
-## Capture modes (Settings → Vision)
+Each trigger has a **severity level filter** (a multi-select of the above). Its actions run
+only when the analyzed event matches one of the selected severities; leave the filter empty
+to act on every event.
+
+## Capture modes (Settings → Cameras → Vision Analysis)
 
 - **Clip** — grabs several frames across the capture window and stitches a short video
   (frames are analyzed; the clip is for viewing). Best context.

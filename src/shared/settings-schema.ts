@@ -34,7 +34,6 @@ export type SettingKind =
   | "folder"
   | "select"
   | "entity-list"
-  | "vision-cameras"
   | "announce-messages"
   | "climate-aliases"
   | "navbar-menu-items"
@@ -79,7 +78,6 @@ export const SETTINGS_GROUPS = [
   "Sounds",
   "Voice",
   "Cameras",
-  "Vision",
   "Thermostats",
   "Calendars",
   "Alarms/Timers",
@@ -98,7 +96,6 @@ export const SETTINGS_GROUP_ICONS: Record<string, { fluent: string; mdi: string 
   "Alarms/Timers": { fluent: "fluent:clock-alarm-24-regular", mdi: "mdi:alarm" },
   Announce: { fluent: "fluent:megaphone-loud-24-regular", mdi: "mdi:bullhorn" },
   Cameras: { fluent: "fluent:video-24-regular", mdi: "mdi:cctv" },
-  Vision: { fluent: "fluent:eye-24-regular", mdi: "mdi:cctv" },
   Thermostats: { fluent: "fluent:temperature-24-regular", mdi: "mdi:thermometer" },
   Calendars: { fluent: "fluent:calendar-ltr-24-regular", mdi: "mdi:calendar" },
   Photos: { fluent: "fluent:image-24-regular", mdi: "mdi:image-multiple" },
@@ -338,7 +335,6 @@ export const SETTINGS_FIELDS: SettingField[] = [
   },
   { key: "vision_clip_seconds", label: "Capture window", group: "Cameras", subsection: "Vision Analysis", kind: "number", min: 1, max: 30, unit: "s", help: "Length of the capture window for clip/burst modes." },
   { key: "vision_frame_count", label: "Frames analyzed", group: "Cameras", subsection: "Vision Analysis", kind: "number", min: 1, max: 8, help: "How many stills across the window are sent to the AI." },
-  { key: "vision_cameras", label: "Camera opt-in", group: "Vision", kind: "vision-cameras", help: "Choose which cameras are watched, which detections trigger analysis, and what happens." },
   // Thermostats
   {
     key: "climate_layout",
