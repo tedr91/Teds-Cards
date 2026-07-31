@@ -1307,6 +1307,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     return html`
       <ha-expansion-panel outlined class="sub-panel">
         <div slot="header" class="sub-head">
+          <ha-icon icon="mdi:view-dashboard-outline"></ha-icon>
           <span class="sub-head-label">Dashboard views</span>
           <span class="sub-head-value">${summary}</span>
         </div>
@@ -1998,36 +1999,40 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     const ids = messages.map((m) => m.id);
     const byId = (id: string): AnnounceMessage | undefined => messages.find((m) => m.id === id);
     return html`
-      <div class="cam-row">
-        <div class="cam-head">
-          <div class="row-label">
-            <span>Predefined messages</span>
-            <span class="help">Ready-made announcements shown in the Announce view.</span>
-          </div>
+      <ha-expansion-panel outlined class="sub-panel">
+        <div slot="header" class="sub-head">
+          <ha-icon class="sub-head-ico" icon="mdi:bullhorn"></ha-icon>
+          <span class="sub-head-label">Predefined messages</span>
+          <span class="hdr-pill">${ids.length}</span>
+          ${admin
+            ? html`<ha-icon-button
+                class="hdr-btn"
+                title="Add a message"
+                @click=${(e: Event) => { e.stopPropagation(); this._addAnnounceMessage(); }}
+                ><ha-icon .icon=${this._ui("add")}></ha-icon
+              ></ha-icon-button>`
+            : nothing}
         </div>
-        ${admin
-          ? html`<button class="cam-btn add-list-btn" @click=${() => this._addAnnounceMessage()}>
-              <ha-icon .icon=${this._ui("add")}></ha-icon><span>Add a message</span>
-            </button>`
-          : nothing}
-        ${ids.length
-          ? this._renderCameraChips(
-              ids,
-              "mdi:bullhorn",
-              (idx) => this._removeAnnounceMessage(idx),
-              (from, to) => this._moveAnnounceMessage(from, to),
-              !admin,
-              {
-                isOpen: (id) => this._annOptOpen.has(id),
-                toggle: (id) => this._toggleAnnOpt(id),
-                body: (id) => this._renderAnnounceMessageBody(id),
-                icon: (id) => byId(id)?.icon || "mdi:bullhorn",
-                name: (id) =>
-                  (byId(id)?.label || "").trim() || (byId(id)?.text || "").trim() || "Untitled message",
-              },
-            )
-          : html`<div class="help">No predefined messages yet — add one above.</div>`}
-      </div>
+        <div class="sub-body cam-panel">
+          ${ids.length
+            ? this._renderCameraChips(
+                ids,
+                "mdi:bullhorn",
+                (idx) => this._removeAnnounceMessage(idx),
+                (from, to) => this._moveAnnounceMessage(from, to),
+                !admin,
+                {
+                  isOpen: (id) => this._annOptOpen.has(id),
+                  toggle: (id) => this._toggleAnnOpt(id),
+                  body: (id) => this._renderAnnounceMessageBody(id),
+                  icon: (id) => byId(id)?.icon || "mdi:bullhorn",
+                  name: (id) =>
+                    (byId(id)?.label || "").trim() || (byId(id)?.text || "").trim() || "Untitled message",
+                },
+              )
+            : html`<div class="help">No predefined messages yet — use the Add button in the header.</div>`}
+        </div>
+      </ha-expansion-panel>
     `;
   }
 
@@ -2609,12 +2614,14 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     return html`
       <div class="vis-panel">
         <div class="vis-phead" @click=${() => (this._visTrigPanelOpen = this._toggleSet(this._visTrigPanelOpen, id))}>
-          <ha-icon .icon=${this._ui(open ? "chevronUp" : "chevronDown")}></ha-icon>
+          <ha-icon class="vis-sec-ico" icon="mdi:motion-sensor"></ha-icon>
           <span class="vis-ptitle">Trigger on</span>
-          <span class="vis-count">${trigs.length}</span>
-          <button class="cam-btn vis-addbtn" @click=${(e: Event) => { e.stopPropagation(); this._addTrigger(id); }}>
-            <ha-icon .icon=${this._ui("add")}></ha-icon><span>Add</span>
-          </button>
+          <span class="hdr-pill">${trigs.length}</span>
+          <ha-icon-button class="hdr-btn" title="Add a trigger"
+            @click=${(e: Event) => { e.stopPropagation(); this._addTrigger(id); }}
+            ><ha-icon .icon=${this._ui("add")}></ha-icon
+          ></ha-icon-button>
+          <ha-icon class="vis-chev" .icon=${this._ui(open ? "chevronUp" : "chevronDown")}></ha-icon>
         </div>
         ${open
           ? html`<div class="vis-pbody">
@@ -2651,12 +2658,13 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
         <div class="vis-ihead" @click=${() => (this._visTrigOpen = this._toggleSet(this._visTrigOpen, key))}>
           <ha-icon icon="mdi:motion-sensor"></ha-icon>
           <span class="vis-iname">${label}</span>
+          <ha-icon class="vis-chev" .icon=${this._ui(open ? "chevronUp" : "chevronDown")}></ha-icon>
           <ha-icon-button
+            class="hdr-btn"
             @click=${(e: Event) => { e.stopPropagation(); this._removeTrigger(id, i); }}
             title="Remove"
-            ><ha-icon icon="mdi:delete"></ha-icon
+            ><ha-icon .icon=${this._ui("close")}></ha-icon
           ></ha-icon-button>
-          <ha-icon class="vis-chev" .icon=${this._ui(open ? "chevronUp" : "chevronDown")}></ha-icon>
         </div>
         ${open
           ? html`<div class="vis-ibody">
@@ -2686,12 +2694,14 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     return html`
       <div class="vis-panel">
         <div class="vis-phead" @click=${() => (this._visActPanelOpen = this._toggleSet(this._visActPanelOpen, key))}>
-          <ha-icon .icon=${this._ui(open ? "chevronUp" : "chevronDown")}></ha-icon>
+          <ha-icon class="vis-sec-ico" icon="mdi:flash-outline"></ha-icon>
           <span class="vis-ptitle">Additional actions</span>
-          <span class="vis-count">${acts.length}</span>
-          <button class="cam-btn vis-addbtn" @click=${(e: Event) => { e.stopPropagation(); this._addAction(id, i); }}>
-            <ha-icon .icon=${this._ui("add")}></ha-icon><span>Add</span>
-          </button>
+          <span class="hdr-pill">${acts.length}</span>
+          <ha-icon-button class="hdr-btn" title="Add an action"
+            @click=${(e: Event) => { e.stopPropagation(); this._addAction(id, i); }}
+            ><ha-icon .icon=${this._ui("add")}></ha-icon
+          ></ha-icon-button>
+          <ha-icon class="vis-chev" .icon=${this._ui(open ? "chevronUp" : "chevronDown")}></ha-icon>
         </div>
         ${open
           ? html`<div class="vis-pbody">${acts.map((a, j) => this._renderAction(id, i, j, a))}</div>`
@@ -2708,8 +2718,8 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
         <div class="vis-ihead static">
           <ha-icon icon="mdi:flash-outline"></ha-icon>
           <span class="vis-iname">${VISION_ACTION_LABEL[type] ?? "Action"}</span>
-          <ha-icon-button @click=${() => this._removeAction(id, i, j)} title="Remove"
-            ><ha-icon icon="mdi:delete"></ha-icon
+          <ha-icon-button class="hdr-btn" @click=${() => this._removeAction(id, i, j)} title="Remove"
+            ><ha-icon .icon=${this._ui("close")}></ha-icon
           ></ha-icon-button>
         </div>
         <div class="vis-ibody">
@@ -2745,22 +2755,27 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     return html`
       <ha-expansion-panel outlined class="sub-panel">
         <div slot="header" class="sub-head">
-          <span class="sub-head-label">${field.label} — available list and settings</span>
-          <span class="sub-head-value">${ids.length}</span>
+          <ha-icon class="sub-head-ico" .icon=${meta.icon}></ha-icon>
+          <span class="sub-head-label">${field.label}</span>
+          <span class="hdr-pill">${ids.length}</span>
+          ${admin
+            ? html`<ha-icon-button
+                  class="hdr-btn"
+                  title="Auto-populate"
+                  @click=${(e: Event) => { e.stopPropagation(); this._autoPopulateGlobal(field); }}
+                  ><ha-icon .icon=${this._ui("autoFix")}></ha-icon
+                ></ha-icon-button>
+                ${remaining.length
+                  ? html`<ha-icon-button
+                      class="hdr-btn"
+                      title="Add a ${meta.noun}"
+                      @click=${(e: Event) => { e.stopPropagation(); this._openAddList(field); }}
+                      ><ha-icon .icon=${this._ui("add")}></ha-icon
+                    ></ha-icon-button>`
+                  : nothing}`
+            : nothing}
         </div>
         <div class="sub-body cam-panel">
-          ${admin
-            ? html`<div class="cam-head-actions">
-                <button class="cam-btn" @click=${() => this._autoPopulateGlobal(field)}>
-                  <ha-icon .icon=${this._ui("autoFix")}></ha-icon><span>Auto-populate</span>
-                </button>
-                ${remaining.length
-                  ? html`<button class="cam-btn" @click=${() => this._openAddList(field)}>
-                      <ha-icon .icon=${this._ui("add")}></ha-icon><span>Add a ${meta.noun}</span>
-                    </button>`
-                  : nothing}
-              </div>`
-            : nothing}
           ${ids.length
             ? this._renderCameraChips(
                 ids,
@@ -2811,7 +2826,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
                       }
                     : undefined,
               )
-            : html`<div class="help">No ${meta.nounPlural} yet — tap “Auto-populate” or “Add a ${meta.noun}” above.</div>`}
+            : html`<div class="help">No ${meta.nounPlural} yet — use the Auto-populate or Add buttons in the header.</div>`}
         </div>
       </ha-expansion-panel>
     `;
@@ -4742,21 +4757,9 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
         color: var(--ted-style-muted, var(--secondary-text-color));
       }
       .vis-ptitle {
+        flex: 1 1 auto;
+        min-width: 0;
         font-weight: 600;
-      }
-      .vis-count {
-        min-width: 20px;
-        text-align: center;
-        padding: 0 6px;
-        border-radius: 999px;
-        font-size: 0.75rem;
-        color: var(--ted-style-muted, var(--secondary-text-color));
-        background: var(--ted-style-surface-3, rgba(120, 120, 120, 0.14));
-      }
-      .vis-addbtn {
-        margin-left: auto;
-        padding: 4px 10px;
-        font-size: 0.8rem;
       }
       .vis-pbody {
         display: flex;
@@ -5110,6 +5113,31 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
         color: var(--ted-style-muted);
         font-size: 0.9em;
         font-weight: 400;
+      }
+      /* Canonical collapsible-header chrome: section icon (left), then a right-justified
+         cluster of count pill → icon-only action buttons → chevron → delete. */
+      .sub-head-ico {
+        flex: 0 0 auto;
+      }
+      .hdr-pill {
+        flex: 0 0 auto;
+        min-width: 20px;
+        text-align: center;
+        padding: 1px 8px;
+        border-radius: 999px;
+        font-size: 0.75rem;
+        font-weight: 500;
+        color: var(--ted-style-muted, var(--secondary-text-color));
+        background: var(--ted-style-surface-3, rgba(120, 120, 120, 0.14));
+      }
+      .hdr-btn {
+        flex: 0 0 auto;
+        --mdc-icon-button-size: 34px;
+        --mdc-icon-size: 20px;
+        color: var(--ted-style-muted, var(--secondary-text-color));
+      }
+      .hdr-btn:hover {
+        color: var(--primary-color, #3f7cf0);
       }
       .sub-body {
         display: flex;

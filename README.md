@@ -943,6 +943,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.37
+
+- **Consistent collapsible-section headers across Settings.** Every collapsible section now follows one layout: drag handle and section icon and name on the left; indicator icons, a count pill, icon-only action buttons (Auto-populate, Add — with hover tooltips), the chevron, and the delete “X” on the right. Applied to the Cameras / Calendars / Thermostats lists, the per-camera Vision triggers and actions, and the Announce tab’s Predefined messages.
+
 ### v0.9.36
 
 - **Vision Analysis moved into the Cameras list.** Each camera in Settings → Cameras is now an expandable row where you set a **Name**, toggle **Enable vision analysis**, and add one or more **triggers** — each with a detection **type** (Motion / Person / Animal / Vehicle …), a **severity level filter** (multi-select: critical, suspicious, harmless, unknown), a **cooldown**, and a list of **Additional actions** (Toast notification, Push notification, Display live feed, or a Custom action). The separate Vision settings tab has been removed.
