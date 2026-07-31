@@ -1102,11 +1102,17 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
       return w + (vis > 0 ? gap : 0) + triggerW;
     };
 
+    // Number of REAL (non-spacer) items a section shows — spacers are layout, not content.
+    const realCount = (i: number): number =>
+      this._sectionItems(sections[i]).filter((it) => it.type !== "spacer").length;
+
     // Collapse trailing items from `candidates` (highest priority first, ties by index)
-    // into their chevron until `reclaim` px are recovered.
+    // into their chevron until `reclaim` px are recovered. A section ALWAYS keeps at least
+    // one real item (never collapses down to only the chevron), and spacer-only sections
+    // are never collapsed.
     const collapseSections = (candidates: number[], reclaim: number): void => {
       const order = candidates
-        .filter((i) => natural[i] > 0 && sections[i].overflow !== false)
+        .filter((i) => natural[i] > 0 && sections[i].overflow !== false && realCount(i) > 0)
         .sort((a, b) => (sections[b].priority ?? 3) - (sections[a].priority ?? 3) || a - b);
       for (const s of order) {
         if (reclaim <= 0) break;
@@ -1114,15 +1120,15 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
         if (!el) continue;
         const ex = childExtents(el);
         const items = ex.length;
-        if (items === 0) continue;
+        if (items <= 1) continue; // nothing to trim while keeping one item
         let vis = this._visible.get(s) ?? items;
-        while (vis > 0 && reclaim > 0) {
+        while (vis > 1 && reclaim > 0) {
           const firstHide = vis === items;
           const itemW = ex[vis - 1] + (vis > 1 ? gap : 0);
           reclaim -= itemW - (firstHide ? triggerW : 0);
           vis -= 1;
         }
-        if (vis < items) this._visible.set(s, Math.max(0, vis));
+        if (vis < items) this._visible.set(s, Math.max(1, vis));
       }
     };
 
@@ -1842,6 +1848,11 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
         height: 100%;
         display: flex;
         flex-direction: column;
+        /* Distribute the three content-sized zones in normal flow (top · center · bottom),
+           so they can NEVER overlap each other. When they don't fill the height they
+           spread (weather top, launcher middle, status bottom); overflow-collapse keeps
+           the total within the height. */
+        justify-content: space-between;
       }
       .navbar.float .navbar-card {
         border-radius: var(--ted-style-radius, 12px);
@@ -1862,10 +1873,6 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
       .navbar.float.vertical .navbar-card {
         height: fit-content;
         padding: 12px 0;
-      }
-      .navbar.float.vertical .zone.center {
-        flex: 0 0 auto;
-        grid-template-rows: auto auto auto;
       }
       /* Horizontal center-only float hugs its width and hides the (empty) side zones so
          it wraps just the centered buttons. */
@@ -1952,12 +1959,14 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
         padding-bottom: 10px;
       }
       .navbar.vertical .zone.center {
-        /* Snap bar: the center zone fills the space between the top and bottom zones and
-           keeps its own content vertically centered (1fr auto 1fr). Vertical FLOAT bars
-           override this (flex:0 / auto rows) to hug their content. */
-        flex: 1;
+        /* Content-sized (never grows to fill), so its buttons can't overflow the zone box
+           into the neighbouring top/bottom zones. Its position between them is handled by
+           the card's space-between; overflow-collapse trims the launcher into its chevron
+           when the column would exceed the height. */
+        flex: 0 0 auto;
+        min-height: 0;
         display: grid;
-        grid-template-rows: 1fr auto 1fr;
+        grid-template-rows: auto auto auto;
         justify-items: center;
         pointer-events: none;
       }
