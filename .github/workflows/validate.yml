@@ -27,3 +27,6 @@ jobs:
         uses: hacs/action@main
         with:
           category: plugin
+        env:
+          # Authenticated API calls avoid intermittent rate-limit "not loaded properly" failures.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
