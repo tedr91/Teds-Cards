@@ -147,8 +147,16 @@ export class TedVisionCard extends LitElement implements LovelaceCard {
       this._events = this._events.filter((e) => e.id !== ev.id);
       if (this._detailId === ev.id) this._detailId = undefined;
     } else if ("event" in ev) {
-      const rest = this._events.filter((e) => e.id !== ev.event.id);
-      this._events = [ev.event, ...rest];
+      // Update in place so a re-analysis / mark-reviewed keeps its chronological spot;
+      // only a genuinely new event goes to the top.
+      const idx = this._events.findIndex((e) => e.id === ev.event.id);
+      if (idx >= 0) {
+        const next = [...this._events];
+        next[idx] = ev.event;
+        this._events = next;
+      } else {
+        this._events = [ev.event, ...this._events];
+      }
     }
   }
 
@@ -209,6 +217,7 @@ export class TedVisionCard extends LitElement implements LovelaceCard {
 
   private _renderFilter(): TemplateResult | typeof nothing {
     if (!this._events.length) return nothing;
+    const admin = !!(this.hass as unknown as { user?: { is_admin?: boolean } })?.user?.is_admin;
     return html`<div class="vision-filter">
       <button
         class="chip ${this._severityFilter ? "" : "on"}"
@@ -233,8 +242,45 @@ export class TedVisionCard extends LitElement implements LovelaceCard {
       >
         ${FALSE_ALARM_LABEL}
       </button>
+      <div class="filter-actions">
+        <ha-icon-button class="filter-act" title="Mark all reviewed" @click=${this._markAllReviewed}>
+          <ha-icon icon="mdi:check-all"></ha-icon>
+        </ha-icon-button>
+        ${admin
+          ? html`<ha-icon-button class="filter-act" title="Clear all" @click=${this._clearAll}>
+              <ha-icon icon="mdi:delete-sweep-outline"></ha-icon>
+            </ha-icon-button>`
+          : nothing}
+      </div>
     </div>`;
   }
+
+  private _markAllReviewed = (): void => {
+    const hass = this.hass as unknown as {
+      callWS?: (msg: Record<string, unknown>) => Promise<unknown>;
+    };
+    if (!hass?.callWS) return;
+    for (const e of this._events) {
+      if (!e.reviewed) {
+        void hass.callWS({ type: `${DOMAIN}/mark_vision_reviewed`, event_id: e.id, reviewed: true });
+      }
+    }
+  };
+
+  private _clearAll = async (): Promise<void> => {
+    const ok = await showConfirmation(this, {
+      title: "Clear all events?",
+      text: "This permanently removes all analyzed events and their snapshots/clips.",
+      confirmText: "Clear all",
+      destructive: true,
+    });
+    if (!ok) return;
+    const hass = this.hass as unknown as {
+      callWS?: (msg: Record<string, unknown>) => Promise<unknown>;
+    };
+    void hass?.callWS?.({ type: `${DOMAIN}/clear_vision_events` });
+    this._detailId = undefined;
+  };
 
   private _renderList(events: VisionEvent[]): TemplateResult {
     return html`<div class="vision-list">
@@ -443,7 +489,21 @@ export class TedVisionCard extends LitElement implements LovelaceCard {
       .vision-filter {
         display: flex;
         flex-wrap: wrap;
+        align-items: center;
         gap: 6px;
+      }
+      .filter-actions {
+        margin-left: auto;
+        display: flex;
+        gap: 2px;
+      }
+      .filter-act {
+        --ha-icon-button-size: 32px;
+        --mdc-icon-size: 20px;
+        color: var(--ted-style-muted, var(--secondary-text-color));
+      }
+      .filter-act:hover {
+        color: var(--ted-style-text, var(--primary-text-color));
       }
       .chip {
         font: inherit;

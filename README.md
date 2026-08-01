@@ -942,6 +942,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.46
+
+- **Vision card: bulk actions + list-order fix.** The filter row now has right-aligned “mark all reviewed” and “clear all” buttons, and marking an old event reviewed no longer pops it to the top of the list — it keeps its chronological position.
+
 ### v0.9.45
 
 - **Vision false-alarm fixes.** Events are no longer all tagged as false alarms (a boolean-coercion bug), "Drop" now discards false alarms flagged during the detailed pass, and the global-only Vision Analysis settings are hidden from the "This device" tab.
