@@ -43,6 +43,13 @@ export interface TedNotification {
   snooze?: { kind: "timer" | "alarm"; name: string; area?: string | null };
   /** Set by the backend when a notification is dismissed/read elsewhere: close the toast here. */
   dismissed?: boolean;
+  /** Free-form context for custom click handlers (e.g. a vision clip to play on open). */
+  data?: {
+    vision_event_id?: string;
+    clip_url?: string | null;
+    thumbnail_url?: string | null;
+    camera_name?: string;
+  };
 }
 
 interface HassLike {

@@ -23,6 +23,12 @@ export interface NotifDetail {
   severity?: string;
   icon?: string;
   created?: string;
+  data?: {
+    vision_event_id?: string;
+    clip_url?: string | null;
+    thumbnail_url?: string | null;
+    camera_name?: string;
+  };
 }
 
 /** Reopen guard: ignore a volume re-open within this long after a close. */
@@ -56,6 +62,8 @@ export class StatusSliderController implements ReactiveController {
   active?: { key: string; value: number };
   /** The notification currently shown in the centered detail modal (if any). */
   notifDetail?: NotifDetail;
+  /** Resolved vision clip for the open notification detail (played on open). */
+  notifClip?: { clip_url?: string | null; thumbnail_url?: string | null };
   private volumeClickTimer?: number;
   private volumeClosedAt = 0;
   /** Long-press timer + "fired" flag for hold-to-open-options on count items. */
@@ -281,6 +289,10 @@ export class StatusSliderController implements ReactiveController {
   /** Open a notification in the centered detail modal (rendered after state updates). */
   openNotifDetail(row: NotifDetail, detailPopId: string): void {
     this.notifDetail = row;
+    // Use the clip embedded on the notification if present, else resolve it below.
+    this.notifClip = row.data?.clip_url
+      ? { clip_url: row.data.clip_url, thumbnail_url: row.data.thumbnail_url }
+      : undefined;
     this.host.requestUpdate();
     void this.host.updateComplete.then(() => {
       const pop = (this.host.renderRoot as ShadowRoot).getElementById?.(detailPopId) as
@@ -288,6 +300,24 @@ export class StatusSliderController implements ReactiveController {
         | null;
       if (pop && !pop.matches?.(":popover-open")) pop.showPopover?.();
     });
+    // A two-pass vision clip isn't ready when the toast fires — resolve it now by id.
+    const evId = row.data?.vision_event_id;
+    if (!this.notifClip?.clip_url && evId) {
+      const hass = this.host.hass as unknown as {
+        callWS?: <T>(m: Record<string, unknown>) => Promise<T>;
+      };
+      void hass?.callWS?.<{ events: { id: string; clip_url?: string | null; thumbnail_url?: string | null }[] }>({
+        type: "teds_dashboard_system/list_vision_events",
+      })
+        .then((res) => {
+          const ev = res?.events?.find((e) => e.id === evId);
+          if (ev && this.notifDetail?.id === row.id) {
+            this.notifClip = { clip_url: ev.clip_url, thumbnail_url: ev.thumbnail_url ?? row.data?.thumbnail_url };
+            this.host.requestUpdate();
+          }
+        })
+        .catch(() => undefined);
+    }
   }
 
   /** Close the detail modal (its `toggle` handler clears `notifDetail`). */
@@ -303,6 +333,7 @@ export class StatusSliderController implements ReactiveController {
     const newState = (ev as Event & { newState?: string }).newState;
     if (newState === "closed" && this.notifDetail) {
       this.notifDetail = undefined;
+      this.notifClip = undefined;
       this.host.requestUpdate();
     }
   };

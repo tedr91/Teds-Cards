@@ -414,6 +414,14 @@ export const statusItemStyles = css`
     overflow-wrap: anywhere;
     white-space: pre-wrap;
   }
+  .notif-detail-media {
+    display: block;
+    width: calc(100% - 24px);
+    margin: 8px 12px 0 12px;
+    max-height: 46vh;
+    border-radius: 8px;
+    background: #000;
+  }
 
   /* Slider popover (brightness / volume). Opt into the theme's card frost so on
      translucent themes the surface blurs the dashboard behind it instead of showing it

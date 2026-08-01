@@ -478,6 +478,12 @@ interface NotifRow {
   area?: string;
   read?: boolean;
   created?: string;
+  data?: {
+    vision_event_id?: string;
+    clip_url?: string | null;
+    thumbnail_url?: string | null;
+    camera_name?: string;
+  };
 }
 
 /** The icon to show for a notification: its own icon, else a severity default. */
@@ -779,6 +785,20 @@ function renderNotifDetail(ctx: StatusItemContext, detailPopId: string): Templat
         </button>
       </div>
       ${d?.created ? html`<div class="notif-detail-time">${notifTimeAgo(d.created)}</div>` : nothing}
+      ${(() => {
+        const clip = ctx.slider.notifClip?.clip_url ?? d?.data?.clip_url;
+        const poster = ctx.slider.notifClip?.thumbnail_url ?? d?.data?.thumbnail_url ?? "";
+        return clip
+          ? html`<video
+              class="notif-detail-media"
+              src=${clip}
+              poster=${poster}
+              autoplay
+              controls
+              playsinline
+            ></video>`
+          : nothing;
+      })()}
       <div class="notif-detail-msg">${d?.message ?? ""}</div>
     </div>
   `;
