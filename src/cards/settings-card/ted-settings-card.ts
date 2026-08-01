@@ -1184,6 +1184,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     const row = (f: SettingField): TemplateResult =>
       scope === "global" ? this._renderGlobalRow(f) : this._renderDeviceRow(f);
     fields = fields.filter((f) => this._fieldVisible(f));
+    if (scope === "device") fields = fields.filter((f) => !f.globalOnly);
     const inline = fields.filter((f) => !f.subsection);
     const order: string[] = [];
     for (const f of fields) {

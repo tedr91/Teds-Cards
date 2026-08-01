@@ -70,6 +70,8 @@ export interface SettingField {
   subsection?: string;
   /** Only render this field when another setting's effective value matches. */
   showWhen?: { key: string; equals?: unknown; truthy?: boolean };
+  /** Server-side (global) setting — hidden on the per-device ("This device") tab. */
+  globalOnly?: boolean;
 }
 
 export const SETTINGS_GROUPS = [
@@ -320,18 +322,19 @@ export const SETTINGS_FIELDS: SettingField[] = [
     help: "How this device arranges its cameras on the Cameras view.",
   },
   { key: "cameras_list", label: "Cameras", group: "Cameras", kind: "entity-list", entityDomain: "camera", help: "Global lists the available cameras; each device curates its own subset." },
-  // Vision Analysis — a collapsible subsection at the bottom of the Cameras tab.
-  { key: "vision_enabled", label: "Enable Vision Analysis", group: "Cameras", subsection: "Vision Analysis", kind: "boolean", help: "AI-analyze camera detection events (motion/person/animal/car) and log them to the Vision timeline." },
-  { key: "vision_two_pass", label: "Two-pass analysis", group: "Cameras", subsection: "Vision Analysis", kind: "boolean", help: "Run a fast first pass for an immediate result, then refine the details with a fuller second pass." },
-  { key: "vision_ai_task_entity", label: "AI Task entity — Quick pass", group: "Cameras", subsection: "Vision Analysis", kind: "entity", entityDomain: "ai_task", help: "AI Task entity for the quick pass. Leave empty to auto-pick an image-capable entity (Ollama, then OpenAI, then Gemini)." },
-  { key: "vision_ai_task_entity_detailed", label: "AI Task entity — Detailed pass", group: "Cameras", subsection: "Vision Analysis", kind: "entity", entityDomain: "ai_task", showWhen: { key: "vision_two_pass", truthy: true }, help: "AI Task entity for the detailed pass. Leave empty to reuse the quick entity when it supports video, else auto-pick a video-capable entity." },
-  { key: "vision_ai_task_entity", label: "AI Task entity", group: "Cameras", subsection: "Vision Analysis", kind: "entity", entityDomain: "ai_task", showWhen: { key: "vision_two_pass", equals: false }, help: "AI Task entity used for analysis. Leave empty to auto-pick an image-capable entity (Ollama, then OpenAI, then Gemini)." },
-  { key: "vision_retention_max", label: "Keep events", group: "Cameras", subsection: "Vision Analysis", kind: "number", min: 10, max: 1000, help: "Maximum number of analyzed events kept (older ones and their files are pruned)." },
+  // Vision Analysis — a global-only collapsible subsection at the bottom of the Cameras tab.
+  { key: "vision_enabled", label: "Enable Vision Analysis", group: "Cameras", subsection: "Vision Analysis", globalOnly: true, kind: "boolean", help: "AI-analyze camera detection events (motion/person/animal/car) and log them to the Vision timeline." },
+  { key: "vision_two_pass", label: "Two-pass analysis", group: "Cameras", subsection: "Vision Analysis", globalOnly: true, kind: "boolean", help: "Run a fast first pass for an immediate result, then refine the details with a fuller second pass." },
+  { key: "vision_ai_task_entity", label: "AI Task entity — Quick pass", group: "Cameras", subsection: "Vision Analysis", globalOnly: true, kind: "entity", entityDomain: "ai_task", help: "AI Task entity for the quick pass. Leave empty to auto-pick an image-capable entity (Ollama, then OpenAI, then Gemini)." },
+  { key: "vision_ai_task_entity_detailed", label: "AI Task entity — Detailed pass", group: "Cameras", subsection: "Vision Analysis", globalOnly: true, kind: "entity", entityDomain: "ai_task", showWhen: { key: "vision_two_pass", truthy: true }, help: "AI Task entity for the detailed pass. Leave empty to reuse the quick entity when it supports video, else auto-pick a video-capable entity." },
+  { key: "vision_ai_task_entity", label: "AI Task entity", group: "Cameras", subsection: "Vision Analysis", globalOnly: true, kind: "entity", entityDomain: "ai_task", showWhen: { key: "vision_two_pass", equals: false }, help: "AI Task entity used for analysis. Leave empty to auto-pick an image-capable entity (Ollama, then OpenAI, then Gemini)." },
+  { key: "vision_retention_max", label: "Keep events", group: "Cameras", subsection: "Vision Analysis", globalOnly: true, kind: "number", min: 10, max: 1000, help: "Maximum number of analyzed events kept (older ones and their files are pruned)." },
   {
     key: "vision_capture_mode",
     label: "Capture",
     group: "Cameras",
     subsection: "Vision Analysis",
+    globalOnly: true,
     kind: "select",
     options: [
       { value: "video", label: "Video (record stream)" },
@@ -341,13 +344,14 @@ export const SETTINGS_FIELDS: SettingField[] = [
     ],
     help: "How the event is captured. Video records the real camera stream (falls back to stitched frames if unavailable); clip stitches the captured stills into a short slideshow.",
   },
-  { key: "vision_clip_seconds", label: "Capture window", group: "Cameras", subsection: "Vision Analysis", kind: "number", min: 1, max: 30, unit: "s", help: "Length of the capture window for video/clip/burst modes." },
-  { key: "vision_frame_count", label: "Frames analyzed", group: "Cameras", subsection: "Vision Analysis", kind: "number", min: 1, max: 8, help: "How many stills across the window are sent to the AI." },
+  { key: "vision_clip_seconds", label: "Capture window", group: "Cameras", subsection: "Vision Analysis", globalOnly: true, kind: "number", min: 1, max: 30, unit: "s", help: "Length of the capture window for video/clip/burst modes." },
+  { key: "vision_frame_count", label: "Frames analyzed", group: "Cameras", subsection: "Vision Analysis", globalOnly: true, kind: "number", min: 1, max: 8, help: "How many stills across the window are sent to the AI." },
   {
     key: "vision_false_alarm_mode",
     label: "Filter out false alarms",
     group: "Cameras",
     subsection: "Vision Analysis",
+    globalOnly: true,
     kind: "select",
     options: [
       { value: "off", label: "Off" },
