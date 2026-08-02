@@ -114,10 +114,13 @@ function pickMainLight(hass: HassReg, lights: string[], areaName?: string): stri
 
 /** Card `type` for an entity's domain (light/cover get their own card; everything else = button). */
 function buttonFor(entityId: string): RoomButtonConfig {
-  // Light/cover tiles show a compact name + icon + state (all at 75%).
-  const compact = { show_name: true, name_scale: 75, show_icon: true, icon_scale: 75, show_state: true, state_scale: 75 };
-  if (entityId.startsWith("light.")) return { type: `custom:${LIGHT_CARD_TYPE}`, entity: entityId, ...compact };
-  if (entityId.startsWith("cover.")) return { type: `custom:${COVER_CARD_TYPE}`, entity: entityId, ...compact };
+  // Light/cover tiles are double-height with default name/icon/state styling.
+  if (entityId.startsWith("light.")) {
+    return { type: `custom:${LIGHT_CARD_TYPE}`, entity: entityId, ted_button_height: "2x" };
+  }
+  if (entityId.startsWith("cover.")) {
+    return { type: `custom:${COVER_CARD_TYPE}`, entity: entityId, ted_button_height: "2x" };
+  }
   // Generic buttons read cleaner as name + state (no icon) with a smaller name.
   return {
     type: `custom:${BUTTON_CARD_TYPE}`,

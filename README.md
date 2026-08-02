@@ -942,6 +942,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.51
+
+- **Room Card auto-populate: taller light/cover tiles.** Auto-populated light and cover tiles are now double-height with default name/icon/state styling.
+
 ### v0.9.50
 
 - **Clock: system-aware custom hour.** With `time_format: custom`, the hour token now follows Home Assistant's 12/24-hour setting — `h:MM` renders as `h:MM` (12-hour) or `H:MM` (24-hour) automatically, keeping your leading-zero/separator style.
