@@ -18,9 +18,10 @@ export interface ConfirmationParams {
  * `dialog-box` is lazy-loaded, and firing `show-dialog` with
  * `whenDefined("dialog-box")` only *resolves* once HA has already loaded that
  * chunk — on a kiosk dashboard that never opened one, the confirmation never
- * appears (so e.g. an alarm "Delete" button looks dead). The overlay uses a very
- * high z-index so it sits above our own `.ted-modal` edit sheets, and theme
- * fallbacks (`--ha-card-background`, `--primary-text-color`, …) that resolve at
+ * appears (so e.g. an alarm "Delete" button looks dead). The overlay is promoted
+ * to the browser TOP LAYER (Popover API) so it sits above HA's own editor /
+ * more-info dialogs (a plain high z-index can't beat a top-layer dialog), and
+ * theme fallbacks (`--ha-card-background`, `--primary-text-color`, …) resolve at
  * document level. The `element` argument is unused (kept for call-site symmetry).
  */
 export function showConfirmation(_element: HTMLElement, params: ConfirmationParams): Promise<boolean> {
@@ -36,9 +37,11 @@ export function showConfirmation(_element: HTMLElement, params: ConfirmationPara
     const layer = document.createElement("div");
     layer.setAttribute("role", "dialog");
     layer.setAttribute("aria-modal", "true");
+    layer.setAttribute("popover", "manual");
     layer.style.cssText =
-      "position:fixed;inset:0;z-index:100000;display:flex;align-items:center;" +
-      "justify-content:center;padding:16px;background:rgba(0,0,0,.45);";
+      "position:fixed;inset:0;margin:0;width:100%;height:100%;max-width:100%;max-height:100%;" +
+      "border:none;z-index:100000;display:flex;align-items:center;justify-content:center;" +
+      "padding:16px;background:rgba(0,0,0,.45);";
 
     const sheet = document.createElement("div");
     sheet.style.cssText =
@@ -104,6 +107,7 @@ export function showConfirmation(_element: HTMLElement, params: ConfirmationPara
     sheet.append(actions);
     layer.append(sheet);
     document.body.append(layer);
+    (layer as HTMLElement & { showPopover?: () => void }).showPopover?.();
     okBtn.focus();
   });
 }
@@ -141,9 +145,11 @@ export function showPrompt(_element: HTMLElement, params: PromptParams): Promise
     const layer = document.createElement("div");
     layer.setAttribute("role", "dialog");
     layer.setAttribute("aria-modal", "true");
+    layer.setAttribute("popover", "manual");
     layer.style.cssText =
-      "position:fixed;inset:0;z-index:100000;display:flex;align-items:center;" +
-      "justify-content:center;padding:16px;background:rgba(0,0,0,.45);";
+      "position:fixed;inset:0;margin:0;width:100%;height:100%;max-width:100%;max-height:100%;" +
+      "border:none;z-index:100000;display:flex;align-items:center;justify-content:center;" +
+      "padding:16px;background:rgba(0,0,0,.45);";
 
     const sheet = document.createElement("div");
     sheet.style.cssText =
@@ -221,6 +227,7 @@ export function showPrompt(_element: HTMLElement, params: PromptParams): Promise
     sheet.append(actions);
     layer.append(sheet);
     document.body.append(layer);
+    (layer as HTMLElement & { showPopover?: () => void }).showPopover?.();
     field.focus();
   });
 }

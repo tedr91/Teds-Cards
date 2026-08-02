@@ -114,9 +114,19 @@ function pickMainLight(hass: HassReg, lights: string[], areaName?: string): stri
 
 /** Card `type` for an entity's domain (light/cover get their own card; everything else = button). */
 function buttonFor(entityId: string): RoomButtonConfig {
-  if (entityId.startsWith("light.")) return { type: `custom:${LIGHT_CARD_TYPE}`, entity: entityId };
-  if (entityId.startsWith("cover.")) return { type: `custom:${COVER_CARD_TYPE}`, entity: entityId };
-  return { type: `custom:${BUTTON_CARD_TYPE}`, entity: entityId };
+  // Light/cover tiles show a compact name + icon + state (all at 75%).
+  const compact = { show_name: true, name_scale: 75, show_icon: true, icon_scale: 75, show_state: true, state_scale: 75 };
+  if (entityId.startsWith("light.")) return { type: `custom:${LIGHT_CARD_TYPE}`, entity: entityId, ...compact };
+  if (entityId.startsWith("cover.")) return { type: `custom:${COVER_CARD_TYPE}`, entity: entityId, ...compact };
+  // Generic buttons read cleaner as name + state (no icon) with a smaller name.
+  return {
+    type: `custom:${BUTTON_CARD_TYPE}`,
+    entity: entityId,
+    show_name: true,
+    name_scale: 60,
+    show_icon: false,
+    show_state: true,
+  };
 }
 
 /**
@@ -178,7 +188,7 @@ export function autoPopulateRoom(
 
   const mediaPlayers = (byDomain.media_player ?? []).map(buttonFor);
   if (mediaPlayers.length) {
-    sections.push({ title: "Media", icon: "mdi:speaker", buttons: mediaPlayers });
+    sections.push({ title: "Media", icon: "mdi:speaker-multiple", buttons: mediaPlayers });
   }
 
   const others = OTHER_DOMAINS.flatMap((d) => byDomain[d] ?? []).map(buttonFor);
@@ -186,10 +196,9 @@ export function autoPopulateRoom(
     sections.push({ title: "Others", icon: "mdi:dots-horizontal-circle-outline", buttons: others });
   }
 
-  // One section reads cleaner with no redundant heading; 3+ go tabbed.
-  const section_layout: "stacked" | "tabbed" = sections.length >= 3 ? "tabbed" : "stacked";
+  // More than one section reads best as tabs; a lone section drops its redundant heading.
+  const section_layout: "stacked" | "tabbed" = sections.length > 1 ? "tabbed" : "stacked";
   if (sections.length === 1) sections[0].show_title = false;
-  else if (section_layout === "stacked") for (const s of sections) s.show_title = true;
 
   return { status_items: status, sections, section_layout };
 }
