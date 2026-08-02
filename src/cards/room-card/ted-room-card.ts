@@ -113,7 +113,7 @@ function num(value: unknown, fallback: number): number {
 }
 
 /** Number of half-unit grid tracks a button size occupies. */
-const SIZE_SPAN: Record<ButtonSize, number> = { half: 1, normal: 2, "2x": 4, "3x": 6, "4x": 8, full: 10 };
+const SIZE_SPAN: Record<ButtonSize, number> = { half: 1, normal: 2, "1.5x": 3, "2x": 4, "3x": 6, "4x": 8, full: 10 };
 /** Width of the section grid in half-unit columns (5 normal buttons across). */
 const GRID_COLS = 10;
 
@@ -1181,6 +1181,7 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
       .status-bar {
         position: relative;
         z-index: 1;
+        flex: 0 0 auto;
         display: flex;
         align-items: stretch;
         justify-content: space-between;
@@ -1250,13 +1251,34 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
         gap: 10px;
         min-width: 0;
       }
-      /* Button sections. */
+      /* Button sections. Grow to fill the card; only this area scrolls (the
+         status strip above stays put) when the card is a fixed size. */
       .sections {
         position: relative;
         z-index: 1;
         display: flex;
         flex-direction: column;
         gap: 12px;
+        flex: 1 1 auto;
+        min-height: 0;
+        scrollbar-width: thin;
+      }
+      /* Stacked: the whole list of sections scrolls. */
+      .sections:not(.tabbed) {
+        overflow-y: auto;
+      }
+      /* Tabbed: the tab bar stays put; only the active section's buttons scroll. */
+      .sections.tabbed {
+        overflow: hidden;
+      }
+      .sections.tabbed .section-tabs {
+        flex: 0 0 auto;
+      }
+      .sections.tabbed .button-section {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow-y: auto;
+        scrollbar-width: thin;
       }
       .button-section {
         display: flex;

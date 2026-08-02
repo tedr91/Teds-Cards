@@ -66,6 +66,7 @@ const BUTTON_TYPE_META: Record<string, { label: string; icon: string }> = {
 const BUTTON_SIZE_BASE = [
   { value: "half", label: "Half" },
   { value: "normal", label: "Normal (default)" },
+  { value: "1.5x", label: "1.5x" },
   { value: "2x", label: "2x" },
   { value: "3x", label: "3x" },
   { value: "4x", label: "4x" },
