@@ -980,6 +980,16 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
     return !!this._resolvePhotoUrl() && !this._photoError;
   }
 
+  /** True when the header sits over a photo darkened by a top scrim (→ use light text). */
+  private _headerOverScrim(): boolean {
+    const c = this._config;
+    if (!c || !this._photoIsShown()) return false;
+    const placement = this._photoPlacement();
+    if (placement !== "top" && placement !== "fill") return false;
+    const edges = c.photo_edge_gradient ?? defaultEdgeGradient(placement);
+    return edges.includes("top");
+  }
+
   /** Watermark: a large room icon flush against the card's top-left corner. */
   private _renderWatermark(): TemplateResult {
     const cfg = this._config!;
@@ -1085,7 +1095,7 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
         ${this._renderPhoto()}
         ${watermark ? this._renderWatermark() : nothing}
         <div
-          class="status-bar align-${statusAlign} header-align-${headerAlign} header-h-${headerHAlign}${headerDivider ? "" : " no-divider"}"
+          class="status-bar align-${statusAlign} header-align-${headerAlign} header-h-${headerHAlign}${headerDivider ? "" : " no-divider"}${this._headerOverScrim() ? " over-scrim" : ""}"
           style=${styleMap({
             "--ted-status-icon-size": `calc(16px * ${statusIconSize} / 100)`,
             ...(watermarkHeaderH ? { minHeight: `${watermarkHeaderH}px` } : {}),
@@ -1202,6 +1212,14 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
       .status-bar.no-divider {
         border-bottom: none;
         padding-bottom: 0;
+      }
+      /* Header over a top-scrimmed photo: force the dark-mode (light) text/icon
+         colors so it stays legible on any theme. */
+      .status-bar.over-scrim {
+        --ted-style-text: #ffffff;
+        --ted-style-muted: rgba(255, 255, 255, 0.786);
+        color: #ffffff;
+        text-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
       }
       /* The heading and the status items each stretch to the strip's height and
          align their own content independently (header_align vs status_align). */
