@@ -52,6 +52,7 @@ const VIEW_OPTIONS = [
 const THEME_OPTIONS = [
   { value: "ha", label: "Home Assistant Theme" },
   { value: "ted-style", label: "Ted's Theme" },
+  { value: "superdingo", label: "SuperDingo's Style" },
 ];
 
 @customElement(CALENDAR_CARD_EDITOR_TYPE)

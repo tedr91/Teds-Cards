@@ -942,6 +942,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.53
+
+- **Calendar Card: consistent theming + a third option.** The theme styling now has three choices — **Home Assistant** (a cohesive HA-card surface), **Ted's** (a dark frosted, translucent surface), and **SuperDingo's** (the native Daylight Calendar look). Previously “Ted's Style” looked like a plain HA card and “HA Theme” looked like the raw Daylight card; both now match the rest of Ted's cards by making Daylight's own body/header transparent behind the chosen surface.
+
 ### v0.9.52
 
 - **Room Card:** added a `1.5x` button height, and the button sections now scroll on their own so the status header stays visible on a fixed-size card.

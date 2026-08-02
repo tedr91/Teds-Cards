@@ -402,8 +402,9 @@ export const SETTINGS_FIELDS: SettingField[] = [
     options: [
       { value: "ha", label: "Home Assistant Theme" },
       { value: "ted-style", label: "Ted's Theme" },
+      { value: "superdingo", label: "SuperDingo's Style" },
     ],
-    help: "Ted's Theme adds a frosted, translucent surface behind the calendar.",
+    help: "Ted's Theme adds a frosted, translucent surface behind the calendar. SuperDingo's Style uses the native Daylight Calendar look.",
   },
   {
     key: "calendar_view",

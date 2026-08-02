@@ -5,6 +5,9 @@ import type { TedStyleTheme } from "../../shared/types";
 /** How a calendar's badge is chosen: its person's avatar, or a static icon. */
 export type CalendarIconSource = "person" | "icon";
 
+/** Visual style: `ha` (HA card), `ted-style` (dark frosted), or `superdingo` (native daylight look). */
+export type CalendarTheme = TedStyleTheme | "superdingo";
+
 /** Which event field a "hidden events" rule matches against. */
 export type HiddenEventField = "title" | "description" | "location";
 
@@ -71,7 +74,7 @@ export interface CalendarCardConfig extends LovelaceCardConfig {
   /** Show the title/name. Default true. */
   show_name?: boolean;
   /** Surface styling: `ha` (Home Assistant theme, default) or `ted` (Ted's frosted theme). */
-  theme?: TedStyleTheme;
+  theme?: CalendarTheme;
   /** Slightly dim weekends so weekdays stand out (adds a daylight `day_styles` rule). */
   emphasize_weekdays?: boolean;
   /** Card background color (hex). Overrides the theme surface. */

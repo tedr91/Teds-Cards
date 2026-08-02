@@ -11,6 +11,7 @@ import {
 import { themedIcon } from "../../shared/icons";
 import { appearanceStyle, cssColor, fadeColor } from "../../shared/appearance";
 import { registerCustomCard } from "../../shared/register-card";
+import { tedStyleTheme } from "../../shared/theme";
 import { SettingsController, settingsStore } from "../../shared/settings";
 import { ensureMdiNames } from "../../shared/mdi-names";
 import {
@@ -250,6 +251,12 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
       if (typeof v === "string" && v) return v;
     }
     return undefined;
+  }
+
+  /** The effective theme name, normalized (unset → `ha`). */
+  private _themeName(): "ha" | "ted-style" | "superdingo" {
+    const t = this._resolvedTheme();
+    return t === "ted-style" || t === "superdingo" ? t : "ha";
   }
 
   /** Resolved default view: the card's YAML wins, else (settings mode) the
@@ -497,20 +504,26 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
       appearance.hide_calendars = cfg.allow_calendar_toggling === false;
       appearance.hide_controls = cfg.show_controls === false;
     }
-    if (cfg.header_color) appearance.header_color = cssColor(cfg.header_color);
-    // Header transparency defaults from the theme (like the body): `ted-style` seeds a
-    // translucent header so the frosted look is cohesive out of the box.
-    let headerTransparency = cfg.header_transparency;
-    if (headerTransparency === undefined && this._resolvedTheme() === "ted-style") headerTransparency = 30;
-    if (typeof headerTransparency === "number") {
-      appearance.header_background_opacity = Math.max(0, Math.min(100, headerTransparency));
+    // --- Theme surface integration ---
+    // `superdingo` = the native daylight look (no Ted surface, no overrides). `ha` and
+    // `ted-style` paint our own frosted surface, so daylight's body + header are made
+    // transparent to show it, with a color scheme picked for readable contrast.
+    const themeName = this._themeName();
+    if (themeName === "superdingo") {
+      if (cfg.header_color) appearance.header_color = cssColor(cfg.header_color);
+      if (typeof cfg.header_transparency === "number") {
+        appearance.header_background_opacity = Math.max(0, Math.min(100, cfg.header_transparency));
+      }
+    } else {
+      appearance.background_opacity = 100;
+      appearance.color_scheme = themeName === "ted-style" ? "dark" : "auto";
+      appearance.header_color = cfg.header_color ? cssColor(cfg.header_color) : "match-card-background";
+      appearance.header_background_opacity =
+        typeof cfg.header_transparency === "number"
+          ? Math.max(0, Math.min(100, cfg.header_transparency))
+          : 100;
     }
     if (cfg.weather_sensor) appearance.header_weather_sensor = cfg.weather_sensor;
-    // When we paint our own frosted surface behind the (shadow-DOM) calendar, make
-    // daylight's own body fully transparent so that surface shows through. Use the
-    // NATIVE `background_opacity` (100) — daylight ignores the legacy
-    // `background_transparent` boolean whenever `background_opacity` is present.
-    if (this._surfaceStyle()) appearance.background_opacity = 100;
 
     // Emphasize weekdays: dim the weekend cells so the work week stands out. Appended
     // to any baked/config day_styles; an explicit `calendar_config.day_styles` overrides.
@@ -567,26 +580,23 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
     };
   }
 
-  /** Inline style for the frosted surface painted behind the calendar, or null when
-   *  no appearance override is active. `theme: ted-style` seeds a translucent blur. */
+  /** Inline style for the frosted surface painted behind the calendar, or null for the
+   *  native (`superdingo`) look. `ted-style` = dark frosted; `ha` = the HA card surface. */
   private _surfaceStyle(): Record<string, string> | null {
     const cfg = this._config;
     if (!cfg) return null;
-    const ted = this._resolvedTheme() === "ted-style";
+    const theme = this._themeName();
+    if (theme === "superdingo") return null;
+    const ted = theme === "ted-style";
     let transparency = cfg.transparency;
     let blur = cfg.blur;
     if (ted) {
       if (transparency === undefined) transparency = 30;
       if (blur === undefined) blur = 40;
     }
-    const hasColor = typeof cfg.background_color === "string" && cfg.background_color.length > 0;
-    const active =
-      hasColor ||
-      ted ||
-      (typeof transparency === "number" && transparency > 0) ||
-      (typeof blur === "number" && blur > 0);
-    if (!active) return null;
-    const background = cssColor(cfg.background_color) ?? "var(--ha-card-background)";
+    // The surface color comes from the shared theme token (resolved by the wrapper's
+    // theme class): ted-style = dark #2b2b2b, ha = the HA card background.
+    const background = cssColor(cfg.background_color) ?? "var(--ted-style-surface)";
     return appearanceStyle({ background, transparency, blur });
   }
 
@@ -916,7 +926,10 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
     if (this._childKind === "message")
       return html`<div class="msg-wrap"><div class="msg">${this._child.el}</div></div>`;
     const surf = this._surfaceStyle();
-    const cls = `calendar ${this._config.fill ? "fill" : "natural"}${surf ? " styled" : ""}`;
+    // The theme class resolves --ted-style-surface for the frosted surface (ted-style = dark).
+    const themeClass =
+      this._themeName() === "ted-style" ? "ted-card--theme-ted-style" : "ted-card--theme-ha";
+    const cls = `calendar ${this._config.fill ? "fill" : "natural"}${surf ? " styled" : ""} ${themeClass}`;
     return html`<div class=${cls} style=${styleMap(this._calendarStyle())}>
       ${surf ? html`<div class="surface" style=${styleMap(surf)}></div>` : nothing}
       ${this._child.el}
@@ -937,7 +950,9 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
     return style;
   }
 
-  static styles = css`
+  static styles = [
+    tedStyleTheme,
+    css`
     :host {
       display: block;
       height: 100%;
@@ -1049,5 +1064,5 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
     .msg {
       width: min(560px, 96%);
     }
-  `;
+  `];
 }
