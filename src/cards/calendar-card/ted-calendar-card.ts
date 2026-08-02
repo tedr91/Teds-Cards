@@ -582,6 +582,10 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
       // default on first render.
       default_view: this._runtimeView() ?? this._resolvedView(),
       ...(cfg.calendar_config ?? {}),
+      // Evening lookahead: from 5pm, extend the agenda through tomorrow (1 extra day).
+      ...(cfg.agenda_evening_lookahead
+        ? { rolling_days_agenda: new Date().getHours() >= 17 ? 1 : 0 }
+        : {}),
     };
   }
 

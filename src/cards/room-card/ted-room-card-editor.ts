@@ -1292,6 +1292,11 @@ export class TedRoomCardEditor extends LitElement implements LovelaceCardEditor 
     const music = resolveMusicPlayer(this.hass);
     const volume = music.state === "ok" ? music.entity : undefined;
     const res = autoPopulateRoom(this.hass, this._config.area, volume);
+    // Auto-populate replaces every status item and section, so drop the cached
+    // embedded button editors and panel open/closed state and rebuild fresh
+    // (otherwise index-keyed child editors show the previous entities' fields).
+    this._buttonEditors.clear();
+    this._expanded = {};
     this._commit({
       ...this._config,
       type: this._type(),
@@ -1299,6 +1304,7 @@ export class TedRoomCardEditor extends LitElement implements LovelaceCardEditor 
       sections: res.sections,
       section_layout: res.section_layout,
     });
+    this.requestUpdate();
   };
 
   private _commit(next: RoomCardConfig): void {

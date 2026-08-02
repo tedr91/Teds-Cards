@@ -942,9 +942,13 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
-### v0.9.58
+### v0.9.59
 
-- **Light & Cover cards:** the Neumorphic rocker effect now defaults **off**.
+- **Room Card:** the editor now refreshes after **Auto-populate**, so it no longer shows stale fields from the previously configured entities.
+- **Music card (mini):** the playback progress is now a thin, non-interactive strip pinned to the card's bottom edge (no seek thumb).
+- **Calendar card:** new `agenda_evening_lookahead` option — the agenda shows 0 extra days before 5pm and 1 extra day (through tomorrow) from 5pm on.
+
+### v0.9.58
 - **Room Card:** the light-name header text stays legible when it sits over a top-scrimmed header photo.
 - **Room Card auto-populate:** **Controls** and **Scenes** item names now have the room's area name stripped out (e.g. in a “Kitchen” room, “Kitchen Ceiling Lights” becomes “Ceiling Lights”).
 

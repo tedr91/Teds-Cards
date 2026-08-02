@@ -1316,6 +1316,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
         <ha-card class="ted-card ${themeClass}" style="--music-fg:${fg}">
           <div class="bg-clip">${this._renderBackground(mode)}${this._renderFrost(mode)}</div>
           <div class="content mini-content">${this._renderMini()}</div>
+          ${this._renderMiniProgress()}
         </ha-card>
       `;
     }
@@ -1494,8 +1495,6 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
     const art = this._artUrl();
     const title = this._title() ?? "Not playing";
     const artist = this._attr<string>("media_artist") ?? "";
-    const dur = this._duration();
-    const pct = dur ? (this._elapsed() / dur) * 100 : 0;
     const shuffle = !!this._attr<boolean>("shuffle");
     const repeat = this._attr<string>("repeat") ?? "off";
     const playing = this._isPlaying();
@@ -1534,17 +1533,16 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
         </div>
         <div class="mini-right">${this._renderVolumeControl(volPct, muted)}</div>
       </div>
-      <input
-        class="seek mini-seek"
-        type="range"
-        min="0"
-        max="100"
-        style="--seek-fill:${Math.min(100, Math.max(0, pct))}%"
-        .value=${String(pct)}
-        @change=${this._onSeek}
-        aria-label="Seek"
-      />
     `;
+  }
+
+  /** Non-interactive playback progress: a thin strip pinned to the card's bottom edge. */
+  private _renderMiniProgress(): TemplateResult {
+    const dur = this._duration();
+    const pct = dur ? Math.min(100, Math.max(0, (this._elapsed() / dur) * 100)) : 0;
+    return html`<div class="mini-progress" aria-hidden="true">
+      <div class="mini-progress-fill" style="width:${pct}%"></div>
+    </div>`;
   }
 
   /** A single control button. `active` = accent tint; `disabled` greys it; `primary`
@@ -2985,6 +2983,23 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
       .mini-seek {
         margin-top: 8px;
         height: 3px;
+      }
+      /* Playback progress: a thin, non-interactive strip along the card's bottom edge. */
+      .mini-progress {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: 3px;
+        z-index: 2;
+        pointer-events: none;
+        background: rgba(127, 127, 127, 0.35);
+        border-radius: 0 0 var(--ha-card-border-radius, 12px) var(--ha-card-border-radius, 12px);
+        overflow: hidden;
+      }
+      .mini-progress-fill {
+        height: 100%;
+        background: var(--ted-style-accent);
       }
       @container (max-width: 620px) {
         .mini-meta {

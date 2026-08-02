@@ -103,6 +103,10 @@ export interface CalendarCardConfig extends LovelaceCardConfig {
   /** Extra options merged into the embedded `daylight-calendar-card` config
    *  (wins over everything this card sets; `type`/`entities` are managed by this card). */
   calendar_config?: Record<string, unknown>;
+  /** Make the agenda's rolling day count follow the time of day: show 0 extra days
+   *  before 5pm and 1 extra day (through tomorrow) from 5pm on. Overrides any
+   *  `calendar_config.rolling_days_agenda`. */
+  agenda_evening_lookahead?: boolean;
   /** Fill the parent container (e.g. a dashboard view area) instead of sizing to
    *  content. Off (default) lets the calendar size itself. */
   fill?: boolean;
