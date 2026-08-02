@@ -598,7 +598,7 @@ export class TedRoomCardEditor extends LitElement implements LovelaceCardEditor 
         ? "watermark"
         : "standard";
     const data = {
-      theme: "ted-style",
+      theme: this._config?.theme ?? "ha",
       brushed: false,
       transparency: undefined,
       blur: undefined,
@@ -1235,7 +1235,10 @@ export class TedRoomCardEditor extends LitElement implements LovelaceCardEditor 
     } catch {
       stub = {};
     }
-    const button = { type, ...stub } as RoomButtonConfig;
+    // A freshly added button leaves Name + Icon empty so it inherits the entity's name/icon.
+    const { name: _seededName, ...restStub } = stub;
+    void _seededName;
+    const button = { type, ...restStub } as RoomButtonConfig;
     const sections = [...(this._config?.sections ?? [])];
     const section = sections[sIdx];
     if (!section) return;
@@ -1305,7 +1308,7 @@ export class TedRoomCardEditor extends LitElement implements LovelaceCardEditor 
 
   private _clean(config: RoomCardConfig): RoomCardConfig {
     const next: RoomCardConfig = { ...config };
-    if (next.theme === "ted-style") delete next.theme;
+    if (next.theme === "ha") delete next.theme;
     if (!next.brushed) delete next.brushed;
     if (!next.background) delete next.background;
     if (typeof next.transparency !== "number") delete next.transparency;

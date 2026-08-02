@@ -242,13 +242,13 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
     return settingsStore.effective()[key];
   }
 
-  /** Resolved theme: the card's YAML wins, else (settings mode) the `calendar_theme`
-   *  setting, else undefined (Home Assistant theme). */
+  /** Resolved theme: the card's YAML wins, else (dashboard integration) the global
+   *  `theme` setting, else undefined (Home Assistant theme). */
   private _resolvedTheme(): string | undefined {
     if (this._config?.theme) return this._config.theme;
     if (this._settingsMode()) {
-      const v = this._calendarSetting("calendar_theme");
-      if (typeof v === "string" && v) return v;
+      const v = this._calendarSetting("theme");
+      if (v === "ha" || v === "ted-style") return v;
     }
     return undefined;
   }

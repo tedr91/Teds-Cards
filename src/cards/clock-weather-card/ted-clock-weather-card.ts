@@ -635,7 +635,18 @@ export class TedClockWeatherCard extends LitElement implements LovelaceCard {
   protected render(): TemplateResult | typeof nothing {
     if (!this._config || !this.hass) return nothing;
 
-    const theme = this._config.theme === "ha" ? "ha" : "ted-style";
+    // Explicit config wins; else dashboard integration follows the global `theme` setting;
+    // else the card's own default (ted-style).
+    const theme: "ha" | "ted-style" =
+      this._config.theme === "ha"
+        ? "ha"
+        : this._config.theme === "ted-style"
+          ? "ted-style"
+          : this._dashboardIntegration()
+            ? settingsStore.effective().theme === "ted-style"
+              ? "ted-style"
+              : "ha"
+            : "ted-style";
     const brushed = this._config.brushed === true;
     const shadow = this._config.shadow !== false; // default true
 

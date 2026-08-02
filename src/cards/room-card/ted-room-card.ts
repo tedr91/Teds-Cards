@@ -14,7 +14,7 @@ import { ensureHuiImage } from "../../shared/camera";
 import { resolveDeviceArea } from "../../shared/device-area";
 import { resolveMusicPlayer } from "../../shared/music-player";
 import { registerCustomCard } from "../../shared/register-card";
-import { SettingsController } from "../../shared/settings";
+import { SettingsController, settingsStore } from "../../shared/settings";
 import { brushedOverlay, tedStyleTheme } from "../../shared/theme";
 import { renderStatusItem, type StatusItemContext } from "../../shared/status-items/render";
 import { StatusSliderController } from "../../shared/status-items/slider-controller";
@@ -520,6 +520,15 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
     return this._config?.dashboard_integration === true;
   }
 
+  /** Effective theme: the card's YAML wins, else (dashboard integration) the global
+   *  `theme` setting, else the HA theme. */
+  private _resolvedThemeMode(): "ha" | "ted-style" {
+    if (this._config?.theme === "ted-style") return "ted-style";
+    if (this._config?.theme === "ha") return "ha";
+    if (this._dashboardIntegration() && settingsStore.effective().theme === "ted-style") return "ted-style";
+    return "ha";
+  }
+
   /** The room this card represents: explicit `area`, else the device's area when integrated. */
   private _effectiveArea(): string | undefined {
     if (this._config?.area) return this._config.area;
@@ -1007,7 +1016,7 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
     if (!this._config || !this.hass) return nothing;
     if (this._shouldHide()) return nothing;
 
-    const themeMode = this._config.theme === "ha" ? "ha" : "ted-style";
+    const themeMode = this._resolvedThemeMode();
     const themeClasses = {
       "ted-card": true,
       "ted-card--theme-ted-style": themeMode === "ted-style",

@@ -165,7 +165,6 @@ export const SETTINGS_DEFAULTS: SettingsMap = {
   calendars_list: [],
   calendar_options: {},
   calendar_name: "Family Calendar",
-  calendar_theme: "ted-style",
   calendar_view: "month",
   calendar_emphasize_weekdays: true,
   cameras_layout: "big-small",
@@ -229,6 +228,8 @@ export const SETTINGS_DEFAULTS: SettingsMap = {
   // Per-device profile ({undefined|nightstand|tablet-landscape|tablet-portrait|handheld}).
   // Picking one cascades a preset of navbar/home/fullscreen device settings.
   device_type: null,
+  // Visual style for Ted's cards with dashboard_integration (ha | ted-style).
+  theme: "ha",
   // Internal (no Settings field): default maximized state for content Fullscreen
   // cards on this device, seeded by the device type. Whitelisted for writes.
   fullscreen_default: false,
@@ -395,18 +396,6 @@ export const SETTINGS_FIELDS: SettingField[] = [
   // Calendars
   { key: "calendar_name", label: "Name", group: "Calendars", kind: "text", help: "Title shown at the top of the calendar. Leave empty for no title." },
   {
-    key: "calendar_theme",
-    label: "Theme",
-    group: "Calendars",
-    kind: "select",
-    options: [
-      { value: "ha", label: "Home Assistant Theme" },
-      { value: "ted-style", label: "Ted's Theme" },
-      { value: "superdingo", label: "SuperDingo's Style" },
-    ],
-    help: "Ted's Theme adds a frosted, translucent surface behind the calendar. SuperDingo's Style uses the native Daylight Calendar look.",
-  },
-  {
     key: "calendar_view",
     label: "Default view",
     group: "Calendars",
@@ -440,6 +429,7 @@ export const SETTINGS_FIELDS: SettingField[] = [
   { key: "navbar_sections", label: "Navbar sections", group: "Navbar", kind: "navbar-sections", help: "The bar's five positional sections and their items (status items + buttons). Shown on navbars with dashboard_integration." },
   // General
   { key: "device_type", label: "Device type", group: "General", kind: "device-type", deviceOnly: true, help: "A profile for this device that seeds a coherent home view, navbar layout, and fullscreen default in one step." },
+  { key: "theme", label: "Theme", group: "General", kind: "select", options: [{ value: "ha", label: "HA Theme" }, { value: "ted-style", label: "Ted's Style" }], help: "Visual style for Ted's cards that have dashboard integration enabled (clock, room, calendar, ...)." },
   { key: "weather_entity", label: "Weather entity", group: "General", kind: "entity", entityDomain: "weather", help: "Default weather entity used by Ted's weather/clock cards that opt in via `dashboard_integration: true`." },
   {
     key: "icon_set",

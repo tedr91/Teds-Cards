@@ -23,7 +23,7 @@ interface RegEntity {
 type HassReg = HomeAssistant & {
   areas?: Record<string, { name?: string }>;
   entities?: Record<string, RegEntity>;
-  devices?: Record<string, { area_id?: string | null }>;
+  devices?: Record<string, { area_id?: string | null; identifiers?: [string, string][] }>;
 };
 
 export interface AutoPopulateResult {
@@ -32,8 +32,15 @@ export interface AutoPopulateResult {
   section_layout: "stacked" | "tabbed";
 }
 
-/** Domains grouped into the "Controls" section, in render order. */
-const CONTROL_DOMAINS = ["light", "switch", "cover", "fan", "valve"];
+/** Non-light domains grouped into "Controls" (lights are prepended, in a smart order). */
+const CONTROL_NON_LIGHT_DOMAINS = ["switch", "cover", "fan", "valve"];
+/** Light-name → priority buckets for ordering within Controls (lower index = shown first). */
+const LIGHT_ORDER_RULES: RegExp[] = [
+  /ceiling|main|overhead|primary/, // 0: the room's main light
+  /pendant/, // 1
+  /lamp|table|desk|work/, // 2
+  /cabinet|accent|strip|led|under|bias|sconce|night|closet/, // 3
+];
 /** Domains grouped into the "Others" section, in render order. */
 const OTHER_DOMAINS = [
   "lock",
@@ -65,6 +72,25 @@ function isExcluded(reg: RegEntity | undefined): boolean {
   if (!reg) return true;
   if (reg.hidden_by || reg.disabled_by) return true;
   return reg.entity_category === "config" || reg.entity_category === "diagnostic";
+}
+
+/** True when the entity belongs to a Browser Mod device (e.g. the tablet's own "screen" light). */
+function isBrowserModEntity(hass: HassReg, entityId: string): boolean {
+  const deviceId = hass.entities?.[entityId]?.device_id;
+  if (!deviceId) return false;
+  const ids = hass.devices?.[deviceId]?.identifiers;
+  return Array.isArray(ids) && ids.some((i) => Array.isArray(i) && i[0] === "browser_mod");
+}
+
+/** Order lights by name-keyword priority: ceiling/main → pendant → lamp/desk → accent → other. */
+function orderLights(hass: HassReg, lights: string[]): string[] {
+  const rank = (id: string): number => {
+    const hay = `${id} ${String(hass.states[id]?.attributes?.friendly_name ?? "")}`.toLowerCase();
+    const i = LIGHT_ORDER_RULES.findIndex((re) => re.test(hay));
+    return i === -1 ? LIGHT_ORDER_RULES.length : i;
+  };
+  // Stable sort keeps the existing by-name order within each priority bucket.
+  return [...lights].sort((a, b) => rank(a) - rank(b));
 }
 
 /** All non-excluded entity ids assigned to `areaId`, grouped by domain (sorted by name). */
@@ -132,6 +158,19 @@ function buttonFor(entityId: string): RoomButtonConfig {
   };
 }
 
+/** Scene buttons: icon + name (no state), so they read as tappable actions. */
+function sceneButtonFor(entityId: string): RoomButtonConfig {
+  return {
+    type: `custom:${BUTTON_CARD_TYPE}`,
+    entity: entityId,
+    show_icon: true,
+    icon_scale: 75,
+    show_state: false,
+    show_name: true,
+    name_scale: 60,
+  };
+}
+
 /**
  * Build the auto-populated status items + sections for `areaId`.
  * `deviceMediaPlayer` (this device's player) drives the Volume status item when present.
@@ -145,7 +184,12 @@ export function autoPopulateRoom(
   const byDomain = entitiesByDomain(h, areaId);
   const areaName = h.areas?.[areaId]?.name;
 
-  const lights = byDomain.light ?? [];
+  // Browser Mod device entities (e.g. the tablet's own "screen" light / media player) go to
+  // "Others", not the room's Controls/Media. Room lights are ordered by keyword priority.
+  const roomLights = orderLights(h, (byDomain.light ?? []).filter((id) => !isBrowserModEntity(h, id)));
+  const bmLights = (byDomain.light ?? []).filter((id) => isBrowserModEntity(h, id));
+  const roomMedia = (byDomain.media_player ?? []).filter((id) => !isBrowserModEntity(h, id));
+  const bmMedia = (byDomain.media_player ?? []).filter((id) => isBrowserModEntity(h, id));
   const climates = byDomain.climate ?? [];
   const binarySensors = byDomain.binary_sensor ?? [];
   const sensors = byDomain.sensor ?? [];
@@ -170,7 +214,7 @@ export function autoPopulateRoom(
   const occupancy = firstByDeviceClass(h, binarySensors, ["occupancy", "motion", "presence"]);
   if (occupancy) status.push({ type: "occupancy", entity: occupancy });
 
-  const mainLight = pickMainLight(h, lights, areaName);
+  const mainLight = pickMainLight(h, roomLights, areaName);
   if (mainLight) status.push({ type: "brightness", entity: mainLight });
 
   if (deviceMediaPlayer) status.push({ type: "volume", entity: deviceMediaPlayer });
@@ -178,10 +222,14 @@ export function autoPopulateRoom(
   // --- Sections -------------------------------------------------------------
   const sections: RoomButtonSection[] = [];
 
-  const controls = CONTROL_DOMAINS.flatMap((d) => byDomain[d] ?? []).map(buttonFor);
+  // Controls: ordered room lights first, then switches/covers/fans/valves (grouped by type).
+  const controls = [
+    ...roomLights,
+    ...CONTROL_NON_LIGHT_DOMAINS.flatMap((d) => byDomain[d] ?? []),
+  ].map(buttonFor);
   if (controls.length) sections.push({ title: "Controls", icon: "mdi:tune", buttons: controls });
 
-  const scenes = (byDomain.scene ?? []).map(buttonFor);
+  const scenes = (byDomain.scene ?? []).map(sceneButtonFor);
   if (scenes.length) sections.push({ title: "Scenes", icon: "mdi:palette", buttons: scenes });
 
   // A single climate is controlled from the header temperature item, so no section for it.
@@ -189,12 +237,17 @@ export function autoPopulateRoom(
     sections.push({ title: "Thermostats", icon: "mdi:thermostat", buttons: climates.map(buttonFor) });
   }
 
-  const mediaPlayers = (byDomain.media_player ?? []).map(buttonFor);
-  if (mediaPlayers.length) {
-    sections.push({ title: "Media", icon: "mdi:speaker-multiple", buttons: mediaPlayers });
+  const media = roomMedia.map(buttonFor);
+  if (media.length) {
+    sections.push({ title: "Media", icon: "mdi:speaker-multiple", buttons: media });
   }
 
-  const others = OTHER_DOMAINS.flatMap((d) => byDomain[d] ?? []).map(buttonFor);
+  // Others: misc controllable domains + any Browser Mod screen light / media player.
+  const others = [
+    ...OTHER_DOMAINS.flatMap((d) => byDomain[d] ?? []),
+    ...bmLights,
+    ...bmMedia,
+  ].map(buttonFor);
   if (others.length) {
     sections.push({ title: "Others", icon: "mdi:dots-horizontal-circle-outline", buttons: others });
   }
