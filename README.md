@@ -942,6 +942,11 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.50
+
+- **Clock: system-aware custom hour.** With `time_format: custom`, the hour token now follows Home Assistant's 12/24-hour setting — `h:MM` renders as `h:MM` (12-hour) or `H:MM` (24-hour) automatically, keeping your leading-zero/separator style.
+- **Confirmation dialogs work over the card editor.** The self-contained confirmation and prompt dialogs (e.g. the Room Card “Auto-populate” overwrite warning) are now native modal dialogs, so they appear above the card editor **and** are interactive instead of passing clicks through to it.
+
 ### v0.9.49
 
 - **Room Card auto-populate refinements.** Auto-populated light/cover tiles now show a compact name + icon + state (at 75%), generic buttons show a name (60%) + state without an icon, the Media section uses a multi-speaker icon, and the section layout switches to tabs whenever there is more than one section. The editor's “Auto-populate” overwrite confirmation now appears above the card editor instead of behind it.

@@ -121,6 +121,15 @@ function autoHour12(timeFormat: string | undefined): boolean | undefined {
   }
 }
 
+/** 12/24-hour preference for a language when HA's setting doesn't pin it. */
+function localeHour12(lang: string): boolean | undefined {
+  try {
+    return new Intl.DateTimeFormat(lang, { hour: "numeric" }).resolvedOptions().hour12;
+  } catch {
+    return undefined;
+  }
+}
+
 /** Split the formatted time into its main part and the AM/PM suffix (empty if none). */
 function formatTimeParts(
   d: Date,
@@ -130,7 +139,13 @@ function formatTimeParts(
   localeTimeFormat: string | undefined,
 ): { main: string; suffix: string } {
   if (fmt === "custom") {
-    return { main: formatTimeTokens(d, custom || "H:MM"), suffix: "" };
+    // The hour token (h/H) follows HA's 12/24-hour system setting, keeping the
+    // rest of the pattern (leading zeros, separators) as written.
+    const h12 = autoHour12(localeTimeFormat) ?? localeHour12(lang);
+    let f = custom || "H:MM";
+    if (h12 === true) f = f.replace(/H+/g, (t) => t.toLowerCase());
+    else if (h12 === false) f = f.replace(/h+/g, (t) => t.toUpperCase());
+    return { main: formatTimeTokens(d, f), suffix: "" };
   }
   let hour12: boolean | undefined;
   if (fmt === "12h") hour12 = true;
