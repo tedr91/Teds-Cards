@@ -517,11 +517,16 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
     } else {
       appearance.background_opacity = 100;
       appearance.color_scheme = themeName === "ted-style" ? "dark" : "auto";
-      appearance.header_color = cfg.header_color ? cssColor(cfg.header_color) : "match-card-background";
+      // A colored header bar matched to the surface (steel blue for Ted's, the theme's
+      // primary color for HA). An explicit `header_color` / `header_transparency` wins.
+      const defaultHeader = themeName === "ted-style" ? "#3399cc" : "var(--primary-color)";
+      appearance.header_color = cfg.header_color ? cssColor(cfg.header_color) : defaultHeader;
       appearance.header_background_opacity =
         typeof cfg.header_transparency === "number"
           ? Math.max(0, Math.min(100, cfg.header_transparency))
-          : 100;
+          : themeName === "ted-style"
+            ? 40
+            : 30;
     }
     if (cfg.weather_sensor) appearance.header_weather_sensor = cfg.weather_sensor;
 
