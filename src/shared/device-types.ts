@@ -47,6 +47,13 @@ const NIGHTSTAND_NAVBAR_SECTIONS = DEFAULT_NAVBAR_SECTIONS.map((section, i) =>
   i === 2 ? section : { ...section, visible: false },
 );
 
+/** The portrait-tablet navbar: the default bar with the weather and clock (datetime)
+ *  items removed, since the portrait Home view already shows a clock and calendar. */
+const TABLET_PORTRAIT_NAVBAR_SECTIONS = DEFAULT_NAVBAR_SECTIONS.map((section) => ({
+  ...section,
+  items: (section.items ?? []).filter((item) => item.type !== "weather" && item.type !== "datetime"),
+}));
+
 /** The preset values written when each type is applied. */
 export const DEVICE_TYPE_PRESETS: Record<DeviceType, DeviceTypePreset> = {
   nightstand: {
@@ -79,6 +86,7 @@ export const DEVICE_TYPE_PRESETS: Record<DeviceType, DeviceTypePreset> = {
     navbar_float: false,
     fullscreen_default: false,
     night_enabled: false,
+    navbar_sections: TABLET_PORTRAIT_NAVBAR_SECTIONS,
   },
   handheld: {
     home_dashboard: "[root]/home-handheld",

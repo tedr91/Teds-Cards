@@ -942,6 +942,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.60
+
+- **Device types:** the **Tablet — Portrait** profile's navbar now omits the weather and clock items by default (the portrait Home view already shows a clock and calendar).
+
 ### v0.9.59
 
 - **Room Card:** the editor now refreshes after **Auto-populate**, so it no longer shows stale fields from the previously configured entities.
