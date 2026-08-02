@@ -583,7 +583,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
   private _applyScopeFromUrl(): void {
     const s = this._scopeFromUrl();
     if (!s) return;
-    if (s === "global" && this._config?.show_global === false) return;
+    if (s === "global" && (this._config?.show_global === false || !this._isAdmin())) return;
     if (s === "device" && this._config?.show_device === false) return;
     if (this._usesSharedScope()) {
       if (getUiScope() !== s) setUiScope(s);
@@ -4088,6 +4088,8 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     const theme = cfg.theme === "ted-style" ? "ted-style" : "ha";
     const showGlobal = cfg.show_global !== false;
     const showDevice = cfg.show_device !== false;
+    // Non-admins can't edit Global settings, so the Global tab is hidden for them.
+    const canGlobal = showGlobal && this._isAdmin();
     const showHeader = cfg.show_header !== false;
     const scopeShared = cfg.scope === "shared";
     const isToggle = cfg.variant === "scope-toggle";
@@ -4117,23 +4119,22 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
 
     // Scope-toggle variant: just the Global / This device switch (drives shared scope).
     if (isToggle) {
-      const scope = getUiScope();
+      const scope = canGlobal ? getUiScope() : "device";
       return html`
         <ha-card class=${classMap(cardClasses)} style=${styleMap(cardStyle)}>
           ${cfg.brushed ? brushedOverlay : nothing} ${header}
           ${missing
             ? html`<div class="warn">Install the <b>Ted's Dashboard System</b> integration to use settings.</div>`
             : html`<div class="tabs" role="tablist">
-                <button class="tab ${scope === "global" ? "active" : ""}" @click=${() => setUiScope("global")}>
-                  Global
-                </button>
+                ${canGlobal
+                  ? html`<button class="tab ${scope === "global" ? "active" : ""}" @click=${() => setUiScope("global")}>
+                      Global
+                    </button>`
+                  : nothing}
                 <button class="tab ${scope === "device" ? "active" : ""}" @click=${() => setUiScope("device")}>
                   This device
                 </button>
-              </div>
-              ${scope === "global" && !this._isAdmin()
-                ? html`<div class="device-note">Global settings are read-only — administrator access required.</div>`
-                : nothing}`}
+              </div>`}
         </ha-card>
       `;
     }
@@ -4142,7 +4143,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     // toggle + a tab per group) that doesn't need an external tab card to compose the
     // categories. Honours a `?tab=<group>` deep link. On by default.
     if (cfg.section_tabs !== false) {
-      const scope = getUiScope();
+      const scope = canGlobal ? getUiScope() : "device";
       const groups = this._sectionGroups();
       const active = this._activeSection(groups);
       const activeGroup = groups.find((g) => g.group === active);
@@ -4168,21 +4169,21 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
           ${missing
             ? html`<div class="warn">Install the <b>Ted's Dashboard System</b> integration to use settings.</div>`
             : html`
-                <div class="tabs" role="tablist">
-                  <button class="tab ${scope === "global" ? "active" : ""}" @click=${() => setUiScope("global")}>
-                    Global
-                  </button>
-                  <button class="tab ${scope === "device" ? "active" : ""}" @click=${() => setUiScope("device")}>
-                    This device
-                  </button>
-                </div>
+                ${canGlobal
+                  ? html`<div class="tabs" role="tablist">
+                      <button class="tab ${scope === "global" ? "active" : ""}" @click=${() => setUiScope("global")}>
+                        Global
+                      </button>
+                      <button class="tab ${scope === "device" ? "active" : ""}" @click=${() => setUiScope("device")}>
+                        This device
+                      </button>
+                    </div>`
+                  : nothing}
                 ${scope === "device"
                   ? html`<div class="device-note">
                       Overrides apply to <b>this device only</b>. Un-overridden settings inherit the Global value.
                     </div>`
-                  : scope === "global" && !this._isAdmin()
-                    ? html`<div class="device-note">Global settings are read-only — administrator access required.</div>`
-                    : nothing}
+                  : nothing}
                 <div class="section-strip" role="tablist">
                   ${visible.map((idx) => this._renderSectionTab(groups[idx].group, active, this._sectionMode))}
                   ${overflow
@@ -4239,8 +4240,10 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     }
 
     const tab = scopeShared
-      ? getUiScope()
-      : !showGlobal
+      ? canGlobal
+        ? getUiScope()
+        : "device"
+      : !canGlobal
         ? "device"
         : !showDevice
           ? "global"
@@ -4256,7 +4259,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
         ${missing
           ? html`<div class="warn">Install the <b>Ted's Dashboard System</b> integration to use settings.</div>`
           : html`
-              ${!scopeShared && showGlobal && showDevice
+              ${!scopeShared && canGlobal && showDevice
                 ? html`<div class="tabs" role="tablist">
                     <button class="tab ${tab === "global" ? "active" : ""}" @click=${() => (this._tab = "global")}>
                       Global
@@ -4270,9 +4273,6 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
                 ? html`<div class="device-note">
                     Overrides apply to <b>this device only</b>. Un-overridden settings inherit the Global value.
                   </div>`
-                : nothing}
-              ${!scopeShared && tab === "global" && !this._isAdmin()
-                ? html`<div class="device-note">Global settings are read-only — administrator access required.</div>`
                 : nothing}
               <div class="groups">
                 ${groups.map(

@@ -942,6 +942,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.56
+
+- **Settings: hide Global tab from non-admins.** The Settings card now hides the “Global” tab for non-administrator users (and forces the “This device” scope), instead of showing it read-only.
+
 ### v0.9.55
 
 - **Global Theme setting.** Settings → General now has a **Theme** option (HA Theme / Ted's Style) that drives every Ted card with `dashboard_integration` enabled (clock, room, calendar, …). The old per-Calendars “Theme” setting was removed. An explicit `theme:` on a card still wins.
