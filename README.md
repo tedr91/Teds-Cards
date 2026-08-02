@@ -942,6 +942,12 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.55
+
+- **Global Theme setting.** Settings → General now has a **Theme** option (HA Theme / Ted's Style) that drives every Ted card with `dashboard_integration` enabled (clock, room, calendar, …). The old per-Calendars “Theme” setting was removed. An explicit `theme:` on a card still wins.
+- **Room Card:** now defaults to the HA theme, and a newly added section button leaves its Name empty so it inherits the entity's name and icon.
+- **Room Card auto-populate:** entities from Browser Mod devices (e.g. the tablet's own screen) go to the **Others** section instead of Controls/Media; Controls lights are ordered by role (ceiling/main → pendant → lamp/desk → accent → other); and Scenes render as icon + name.
+
 ### v0.9.54
 
 - **Calendar Card: matched header colors.** Ted's Style now has a steel-blue header and HA Style uses the theme's primary color, each with a lightly translucent header (Ted's 40%, HA 30%) over the themed surface. SuperDingo's Style keeps Daylight's native header.
