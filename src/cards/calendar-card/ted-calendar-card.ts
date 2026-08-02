@@ -51,7 +51,7 @@ registerCustomCard({
   documentationURL: "https://github.com/tedr91/Teds-Cards#calendar-card",
   getEntitySuggestion: (_hass, entityId) =>
     entityId.startsWith("calendar.")
-      ? { config: { type: `custom:${CALENDAR_CARD_TYPE}`, calendar_source: "config", entities: [entityId] } }
+      ? { config: { type: `custom:${CALENDAR_CARD_TYPE}`, entities: [entityId] } }
       : null,
 });
 
@@ -63,7 +63,7 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
   }
 
   public static getStubConfig(): Omit<CalendarCardConfig, "type"> {
-    return { calendar_source: "config" };
+    return {};
   }
 
   @property({ attribute: false }) public hass?: HomeAssistant;
@@ -94,8 +94,9 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
 
   public constructor() {
     super();
-    // Keep this device's settings live so `calendar_source: settings` stays in sync.
-    new SettingsController(this, () => this.hass);
+    // Keep settings live only when this card opts into the backend (YAML
+    // `dashboard_integration: true`); otherwise it never feeds hass to the store.
+    new SettingsController(this, () => (this._config?.dashboard_integration ? this.hass : undefined));
   }
 
   public connectedCallback(): void {
@@ -217,7 +218,7 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
   /** The calendars to show as item objects, in order — from config, or from this
    *  device's settings merged with the global per-calendar options. */
   private _items(): CalendarItemConfig[] {
-    if (this._config?.calendar_source === "settings") {
+    if (this._config?.dashboard_integration) {
       const opts = this._calendarOptionsMap();
       return this._settingsEntities().map((id) => ({ entity: id, ...(opts[id] ?? {}) }));
     }
@@ -232,7 +233,7 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
 
   /** Whether calendars are sourced from this device's Settings (vs. the card's config). */
   private _settingsMode(): boolean {
-    return this._config?.calendar_source === "settings";
+    return this._config?.dashboard_integration === true;
   }
 
   /** The effective card-level Calendar setting (device ⊕ global ⊕ default). */
@@ -492,7 +493,10 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
     else if (resolvedName) appearance.title = resolvedName;
     const showHeader = cfg.show_header !== false;
     appearance.hide_header = !showHeader;
-    if (showHeader) appearance.hide_calendars = cfg.allow_calendar_toggling === false;
+    if (showHeader) {
+      appearance.hide_calendars = cfg.allow_calendar_toggling === false;
+      appearance.hide_controls = cfg.show_controls === false;
+    }
     if (cfg.header_color) appearance.header_color = cssColor(cfg.header_color);
     // Header transparency defaults from the theme (like the body): `ted-style` seeds a
     // translucent header so the frosted look is cohesive out of the box.
@@ -879,21 +883,28 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
   }
 
   private _emptyMessageConfig(): LovelaceCardConfig {
+    // Only offer the Settings deep-link when this card is backend-integrated.
+    const integrated = this._settingsMode();
+    const actions = integrated
+      ? [
+          {
+            label: "Settings",
+            icon: themedIcon("settings"),
+            variant: "primary",
+            action: "navigate",
+            navigation_path: this._settingsPath(),
+          },
+        ]
+      : [];
     return this._messageConfig(
       "info",
       themedIcon("calendar"),
       this._config?.empty_title ?? "No calendars yet",
       this._config?.empty_message ??
-        "This device hasn't been given any calendars. Open Settings to choose which ones to show.",
-      [
-        {
-          label: "Settings",
-          icon: themedIcon("settings"),
-          variant: "primary",
-          action: "navigate",
-          navigation_path: this._settingsPath(),
-        },
-      ],
+        (integrated
+          ? "This device hasn't been given any calendars. Open Settings to choose which ones to show."
+          : "Add one or more calendar entities to this card."),
+      actions,
     );
   }
 

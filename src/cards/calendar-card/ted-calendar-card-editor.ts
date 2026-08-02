@@ -19,7 +19,6 @@ import {
 import type {
   CalendarCardConfig,
   CalendarItemConfig,
-  CalendarSource,
   HiddenEventRule,
 } from "./types";
 
@@ -42,11 +41,6 @@ const CHEVRON_UP_PATH = "M7.41,15.41L12,10.83L16.59,15.41L18,14L12,8L6,14L7.41,1
 // mdi:calendar-multiple — virtual group indicator
 const GROUP_ICON_PATH =
   "M21,17H7V3H21M21,1H7A2,2 0 0,0 5,3V17A2,2 0 0,0 7,19H21A2,2 0 0,0 23,17V3A2,2 0 0,0 21,1M3,5H1V21A2,2 0 0,0 3,23H19V21H3M15,9H9V11H15M19,7H9V9H19M17,11H9V13H17V11Z";
-
-const SOURCE_OPTIONS = [
-  { value: "config", label: "This card (choose below)" },
-  { value: "settings", label: "This device's Settings calendars" },
-];
 
 const VIEW_OPTIONS = [
   { value: "month", label: "Month" },
@@ -109,14 +103,11 @@ export class TedCalendarCardEditor extends LitElement implements LovelaceCardEdi
 
   protected render(): TemplateResult | typeof nothing {
     if (!this.hass || !this._config) return nothing;
-    const source: CalendarSource = this._config.calendar_source ?? "config";
     const topData = {
-      calendar_source: source,
       default_view: this._config.default_view ?? "month",
       fill: this._config.fill ?? false,
     };
     const topSchema = [
-      { name: "calendar_source", selector: { select: { mode: "dropdown", options: SOURCE_OPTIONS } } },
       { name: "default_view", selector: { select: { mode: "dropdown", options: VIEW_OPTIONS } } },
       { name: "fill", selector: { boolean: {} } },
     ];
@@ -132,7 +123,7 @@ export class TedCalendarCardEditor extends LitElement implements LovelaceCardEdi
           @value-changed=${this._valueChanged}
         ></ha-form>
         ${this._renderAppearance()}
-        ${source === "settings"
+        ${this._config.dashboard_integration
           ? html`<div class="settings-note">
               Calendars are chosen per-device in <b>Settings → Calendars</b>. Build the Global
               available list there, then curate each device's subset.
@@ -160,28 +151,36 @@ export class TedCalendarCardEditor extends LitElement implements LovelaceCardEdi
       show_name: cfg.show_name !== false,
       name: cfg.name ?? "",
       allow_calendar_toggling: cfg.allow_calendar_toggling !== false,
+      show_controls: cfg.show_controls !== false,
     };
+    // Every field below the master toggle is disabled while the header is hidden.
+    const off = !showHeader;
     const headerSchema = [
+      { name: "show_header", selector: { boolean: {} } },
       {
         type: "grid",
         name: "",
         column_min_width: "140px",
         schema: [
-          { name: "show_header", selector: { boolean: {} } },
-          { name: "header_color", selector: { ui_color: {} } },
+          { name: "header_color", selector: { ui_color: {} }, disabled: off },
+          {
+            name: "header_transparency",
+            selector: { number: { min: 0, max: 100, step: 1, mode: "box", unit_of_measurement: "%" } },
+            disabled: off,
+          },
         ],
       },
-      { name: "header_transparency", selector: { number: { min: 0, max: 100, step: 1, mode: "box", unit_of_measurement: "%" } } },
       {
         type: "grid",
         name: "",
         column_min_width: "140px",
         schema: [
-          { name: "show_name", selector: { boolean: {} } },
-          { name: "name", selector: { text: { placeholder: "Family Calendar" } } },
+          { name: "show_name", selector: { boolean: {} }, disabled: off },
+          { name: "name", selector: { text: { placeholder: "Family Calendar" } }, disabled: off },
         ],
       },
-      { name: "allow_calendar_toggling", selector: { boolean: {} } },
+      { name: "allow_calendar_toggling", selector: { boolean: {} }, disabled: off },
+      { name: "show_controls", selector: { boolean: {} }, disabled: off },
     ];
 
     const weatherData = { weather_sensor: cfg.weather_sensor ?? "" };
@@ -346,9 +345,6 @@ export class TedCalendarCardEditor extends LitElement implements LovelaceCardEdi
   }
 
   private _computeHelper = (schema: { name: string }): string | undefined => {
-    if (schema.name === "calendar_source") {
-      return "\"This card\" picks the calendars below. \"Settings calendars\" uses the per-device Calendars list.";
-    }
     if (schema.name === "default_view") {
       return "The Daylight Calendar view the card opens on.";
     }
@@ -379,6 +375,9 @@ export class TedCalendarCardEditor extends LitElement implements LovelaceCardEdi
     if (schema.name === "allow_calendar_toggling") {
       return "Show the calendar badge row you can tap to toggle each calendar's visibility.";
     }
+    if (schema.name === "show_controls") {
+      return "Show the header's navigation controls (previous / next / today).";
+    }
     if (schema.name === "header_transparency") {
       return "How see-through the header is (0 = solid). Empty follows the theme (Ted's Theme = translucent). A background blur frosts it too.";
     }
@@ -393,8 +392,6 @@ export class TedCalendarCardEditor extends LitElement implements LovelaceCardEdi
 
   private _computeLabel = (schema: { name: string }): string => {
     switch (schema.name) {
-      case "calendar_source":
-        return "Calendar source";
       case "default_view":
         return "Default view";
       case "fill":
@@ -415,6 +412,8 @@ export class TedCalendarCardEditor extends LitElement implements LovelaceCardEdi
         return "Emphasize weekdays";
       case "allow_calendar_toggling":
         return "Show calendar badges";
+      case "show_controls":
+        return "Show controls";
       case "header_color":
         return "Header color";
       case "header_transparency":
@@ -544,6 +543,7 @@ export class TedCalendarCardEditor extends LitElement implements LovelaceCardEdi
       patch.emphasize_weekdays = v.emphasize_weekdays === true ? true : undefined;
     if ("allow_calendar_toggling" in v)
       patch.allow_calendar_toggling = v.allow_calendar_toggling === false ? false : undefined;
+    if ("show_controls" in v) patch.show_controls = v.show_controls === false ? false : undefined;
     if ("header_color" in v) patch.header_color = (v.header_color as string) || undefined;
     if ("header_transparency" in v)
       patch.header_transparency =
@@ -587,10 +587,8 @@ export class TedCalendarCardEditor extends LitElement implements LovelaceCardEdi
     for (const k of Object.keys(config)) {
       if (config[k] === undefined) delete config[k];
     }
-    if (config.calendar_source === "config") delete config.calendar_source;
     if (config.default_view === "month") delete config.default_view;
     if (config.fill === false) delete config.fill;
-    if (config.calendar_source === "settings") delete config.entities;
     this._config = config as CalendarCardConfig;
     fireEvent(this, "config-changed", { config });
   }

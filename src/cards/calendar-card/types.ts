@@ -2,14 +2,6 @@ import type { LovelaceCardConfig } from "custom-card-helpers";
 
 import type { TedStyleTheme } from "../../shared/types";
 
-/**
- * Where the calendar entities come from.
- * - `config` (default) — the card's own `entities`.
- * - `settings`         — this device's `calendars_list` (Settings → Calendars).
- * If none resolve, the card shows its empty state (it doesn't invent calendars).
- */
-export type CalendarSource = "settings" | "config";
-
 /** How a calendar's badge is chosen: its person's avatar, or a static icon. */
 export type CalendarIconSource = "person" | "icon";
 
@@ -62,10 +54,14 @@ export interface CalendarItemConfig {
 
 export interface CalendarCardConfig extends LovelaceCardConfig {
   type: string;
-  /** The calendars shown (ids or per-calendar objects). Used when `calendar_source: config`. */
+  /** The calendars shown (ids or per-calendar objects). Used when NOT `dashboard_integration`. */
   entities?: (string | CalendarItemConfig)[];
-  /** Where the calendar entities come from. Defaults to `config`. */
-  calendar_source?: CalendarSource;
+  /**
+   * Opt into Ted's Dashboard backend (YAML-only). When true, the calendars +
+   * name/theme/view come from this device's Settings (Settings → Calendars)
+   * instead of the card's `entities`. Default false = card-only, no backend.
+   */
+  dashboard_integration?: boolean;
   /** The Daylight Calendar view to open on (`month`, `week`, `schedule`, `agenda`, …). */
   default_view?: string;
 
@@ -92,6 +88,8 @@ export interface CalendarCardConfig extends LovelaceCardConfig {
   header_transparency?: number;
   /** Allow toggling calendars on/off from the header. Default true (only when the header is shown). */
   allow_calendar_toggling?: boolean;
+  /** Show the header's navigation controls (prev/next/today). Default true (only when the header is shown). */
+  show_controls?: boolean;
   /** A `weather.*` entity shown in the header. */
   weather_sensor?: string;
   /** Fixed width in px. Only used when the card isn't a direct item in a grid (Sections) view. */

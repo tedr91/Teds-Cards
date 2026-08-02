@@ -942,6 +942,11 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.52
+
+- **Room Card:** added a `1.5x` button height, and the button sections now scroll on their own so the status header stays visible on a fixed-size card.
+- **Calendar Card:** replaced the “Calendar source” option with a yaml-only `dashboard_integration` flag (consistent with the other cards) — calendars come from Settings when it's on, otherwise from the card's own `entities`. A card-only calendar's empty state no longer points to Settings. The Header editor section was tidied (Show header on its own row, color + transparency paired), gained a **Show controls** toggle, and disables the rest when the header is hidden.
+
 ### v0.9.51
 
 - **Room Card auto-populate: taller light/cover tiles.** Auto-populated light and cover tiles are now double-height with default name/icon/state styling.

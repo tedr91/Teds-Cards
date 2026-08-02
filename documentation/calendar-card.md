@@ -4,8 +4,9 @@
 
 A full-featured calendar for the **current device**. It wraps the third-party
 [**Daylight Calendar Card**](https://github.com/superdingo101/daylight-calendar-card)
-(`custom:daylight-calendar-card`) and feeds it the calendars chosen for this device in
-**Settings → Calendars** — so one shared dashboard shows the right calendars on each
+(`custom:daylight-calendar-card`) and shows either the calendars you list on the card,
+or — with `dashboard_integration: true` — the calendars chosen for this device in
+**Settings → Calendars**, so one shared dashboard shows the right calendars on each
 device. Ted's styling defaults (colors, combined calendars, badges, etc.) are baked in,
 so a view only needs to place the card and pick a default view.
 
@@ -19,8 +20,8 @@ This card renders `custom:daylight-calendar-card`, which you install once via HA
    [`daylight-calendar-card`](https://github.com/superdingo101/daylight-calendar-card)
    Lovelace card (HACS → Frontend). This provides the `custom:daylight-calendar-card`
    element.
-2. **Ted's Dashboard System** (`teds_dashboard_system`) — needed for the per-device
-   **Settings → Calendars** list (this card's default source).
+2. **Ted's Dashboard System** (`teds_dashboard_system`) — only needed for the per-device
+   **Settings → Calendars** list (used when `dashboard_integration: true`).
 
 > If `custom:daylight-calendar-card` isn't installed, the card shows a **"Calendar card
 > not installed"** message with steps (and an **Open HACS** button when the HACS panel is
@@ -35,7 +36,7 @@ Drive the calendars from this device's Settings list (the recommended setup):
 
 ```yaml
 type: custom:ted-calendar-card
-calendar_source: settings
+dashboard_integration: true
 default_view: month
 fill: true
 ```
@@ -44,7 +45,6 @@ fill: true
 
 ```yaml
 type: custom:ted-calendar-card
-calendar_source: config
 entities:
   - calendar.family
   - entity: calendar.ted_outlook_calendar
@@ -64,7 +64,7 @@ card):
 
 ```yaml
 type: custom:ted-calendar-card
-calendar_source: settings
+dashboard_integration: true
 default_view: week
 fill: true
 calendar_config:
@@ -79,8 +79,8 @@ calendar_config:
 
 | Option | Default | Description |
 | --- | --- | --- |
-| `calendar_source` | `config` | Where the calendars come from: `config` (the card's `entities`) or `settings` (this device's Calendars list). |
-| `entities` | – | `calendar.*` entities to show when `calendar_source: config`. |
+| `dashboard_integration` | `false` | YAML-only. When true, calendars + name/theme/view come from this device's **Settings → Calendars** instead of the card's `entities`. |
+| `entities` | – | `calendar.*` entities to show (used when NOT `dashboard_integration`). |
 | `default_view` | `month` | The Daylight Calendar view to open on (`month`, `week`, `schedule`, `agenda`). |
 | `fill` | `false` | Fill the parent area (e.g. a dashboard view content cell) instead of sizing to content. |
 | `calendar_config` | `{}` | Extra options merged into the embedded Daylight Calendar card (wins over the baked-in defaults). |
@@ -124,10 +124,11 @@ In `config` mode each entry in `entities` may be an object with these keys (or a
 
 ## How the calendars are chosen
 
-In `settings` mode the card shows this device's per-device **Calendars** list from
-**Settings → Calendars**. The **Global** list defines the available calendars (the
+When `dashboard_integration: true`, the card shows this device's per-device **Calendars**
+list from **Settings → Calendars**. The **Global** list defines the available calendars (the
 allow-list); each device then curates its own subset. If a device hasn't customized its
 list, it shows the whole Global list. If no calendars are selected (the Global list is
-empty), the card shows an empty **"No calendars yet"** prompt with a Settings button
-rather than picking calendars for you. Ted's styling defaults (colors, names, combined
-calendars, badges, etc.) still apply to whichever calendars you choose.
+empty), the card shows an empty **"No calendars yet"** prompt with a Settings button.
+Without `dashboard_integration`, the card shows the `entities` you list on it, and the
+empty prompt simply asks you to add calendar entities (no Settings link). Ted's styling
+defaults (colors, names, combined calendars, badges, etc.) still apply either way.
