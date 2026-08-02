@@ -239,7 +239,7 @@ export class TedCoverCard extends LitElement implements LovelaceCard {
     const hintInset = showHint ? hintWidth : 0;
     // Neumorphic effect: rocker style splits into two paddles (one raised, one
     // pressed, flipping with state); button style is a single raised/pressed tile.
-    const neumorphic = this._config.rocker_effect !== false;
+    const neumorphic = this._config.rocker_effect === true;
     // With the neumorphic effect on, the paddles span the full card (no bar inset) so
     // their rounded corners fill the card's corners; the bars float faintly on top.
     const neuInd = neumorphic ? 0 : indInset;

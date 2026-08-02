@@ -138,7 +138,7 @@ export class TedCoverCardEditor extends LitElement implements LovelaceCardEditor
       transparency: undefined,
       blur: undefined,
       rocker: true,
-      rocker_effect: true,
+      rocker_effect: false,
       show_hint: true,
       up_tap: primary ? "open_step" : "open",
       up_double_tap: "open",

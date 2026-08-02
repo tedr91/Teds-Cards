@@ -120,7 +120,7 @@ export class TedLightCardEditor extends LitElement implements LovelaceCardEditor
       transparency: undefined,
       blur: undefined,
       rocker: true,
-      rocker_effect: true,
+      rocker_effect: false,
       up_tap: dimmable ? "increase" : "full_on",
       up_double_tap: "full_on",
       up_hold: "more_info",
