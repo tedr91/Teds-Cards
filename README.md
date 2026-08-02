@@ -942,9 +942,11 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
-### v0.9.62
+### v0.9.63
 
-- **Calendar card:** removed the experimental `agenda_evening_lookahead` and `agenda_day_height` / `agenda_evening_height` options (use `calendar_config.rolling_days_agenda` and a fixed card height instead).
+- **Room Card:** new `auto_max_rows` option — each section auto-limits its visible rows to what fits the card's height (measured in rows of 1.5x-height tiles) and overflows the rest into the “…” menu.
+
+### v0.9.62
 
 ### v0.9.61
 

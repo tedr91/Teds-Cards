@@ -97,6 +97,10 @@ export interface RoomCardConfig extends LovelaceCardConfig {
    * itself when the device has no resolvable area.
    */
   dashboard_integration?: boolean;
+  /** Auto-limit each section's visible rows to what fits the card's height (measured in
+   *  rows of 1.5x-height tiles), overflowing the rest into the "…" menu. Overrides each
+   *  section's `max_rows`. */
+  auto_max_rows?: boolean;
   /** Optional title override (defaults to the area's name). */
   name?: string;
   /** Optional icon shown in the header when `show_header_icon` is on. */

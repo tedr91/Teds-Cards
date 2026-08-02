@@ -265,6 +265,8 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
   @state() private _headerBottom = 0;
   /** Measured rendered height (px) of the photo layer, for the "shift buttons" pad. */
   @state() private _photoHeight = 0;
+  /** Auto-computed overflow budget in half-unit grid rows (0 = not measured yet). */
+  @state() private _autoRowBudget = 0;
   /** Index of the active section in the tabbed layout. */
   @state() private _activeTab = 0;
   private _layoutObserver?: ResizeObserver;
@@ -414,6 +416,18 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
       const gap = 8;
       const unit = (grid.clientWidth - gap * (GRID_COLS - 1)) / GRID_COLS;
       if (unit > 0) this.style.setProperty("--rc-btn-unit", `${unit}px`);
+      // Auto max-rows: how many rows of 1.5x-height tiles (3 half-unit rows each) fit in
+      // the space from the grid's top to the bounded sections container's bottom.
+      if (this._config?.auto_max_rows && unit > 0) {
+        const sectionsEl = root?.querySelector?.(".sections") as HTMLElement | null;
+        const bottom = (sectionsEl ?? grid).getBoundingClientRect().bottom;
+        const avail = bottom - grid.getBoundingClientRect().top;
+        if (avail > 0) {
+          const halfRows = Math.floor((avail + gap) / (unit + gap));
+          const budget = Math.max(1, Math.floor(halfRows / 3)) * 3;
+          if (budget !== this._autoRowBudget) this._autoRowBudget = budget;
+        }
+      }
     }
   }
 
@@ -768,20 +782,24 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
 
   private _renderSection(section: RoomButtonSection, sIdx: number): TemplateResult {
     const buttons = section.buttons ?? [];
-    const maxRows = num(section.max_rows, 0);
+    // Auto mode caps the visible rows to what fits the card; otherwise use the section's
+    // configured max_rows. Both budgets are expressed in half-unit rows (a normal row = 2).
+    const budgetHalf =
+      this._config?.auto_max_rows && this._autoRowBudget > 0
+        ? this._autoRowBudget
+        : num(section.max_rows, 0) * 2;
     const sizes: PlacedButton[] = buttons.map((button, bIdx) => {
       const { w, h } = buttonSpans(button);
       return { bIdx, w, h };
     });
-    // Size/row-aware overflow: a normal row is 2 half-unit rows tall, so the
-    // budget is maxRows × 2. When the densely-packed buttons exceed it, show the
+    // Size/row-aware overflow: when the densely-packed buttons exceed the budget, show the
     // largest in-order prefix that — together with the "…" cell — still fits.
     let visibleCount = buttons.length;
     let overflow = false;
     let overflowH = 2;
-    if (maxRows > 0 && packButtons(sizes).rows > maxRows * 2) {
+    if (budgetHalf > 0 && packButtons(sizes).rows > budgetHalf) {
       overflow = true;
-      const budget = maxRows * 2;
+      const budget = budgetHalf;
       // Reserve a normal-height "…" cell when choosing the visible set so the
       // result is stable regardless of the (cosmetic) overflow height below.
       const overflowCell: PlacedButton = { bIdx: -1, w: 2, h: 2 };
