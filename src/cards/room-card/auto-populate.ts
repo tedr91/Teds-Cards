@@ -171,6 +171,20 @@ function sceneButtonFor(entityId: string): RoomButtonConfig {
   };
 }
 
+/** Word-splitter for names (whitespace + common separators : _ - / and dashes). */
+const NAME_SPLIT = /[\s:_/\-\u2013\u2014]+/;
+
+/** Drop the room's area name from an entity name wherever it appears ("Kitchen Ceiling
+ *  Lights", "Ceiling Lights - Kitchen", "Ceiling Kitchen Lights" all → "Ceiling Lights").
+ *  Falls back to the original name if stripping would leave nothing. */
+function stripAreaName(name: string, areaName: string | undefined): string {
+  if (!name || !areaName) return name;
+  const areaTokens = new Set(areaName.toLowerCase().split(NAME_SPLIT).filter(Boolean));
+  if (!areaTokens.size) return name;
+  const kept = name.split(NAME_SPLIT).filter((p) => p && !areaTokens.has(p.toLowerCase()));
+  return kept.join(" ").trim() || name;
+}
+
 /**
  * Build the auto-populated status items + sections for `areaId`.
  * `deviceMediaPlayer` (this device's player) drives the Volume status item when present.
@@ -223,13 +237,20 @@ export function autoPopulateRoom(
   const sections: RoomButtonSection[] = [];
 
   // Controls: ordered room lights first, then switches/covers/fans/valves (grouped by type).
+  // Each item's name is the entity's name with the room's area name stripped out.
   const controls = [
     ...roomLights,
     ...CONTROL_NON_LIGHT_DOMAINS.flatMap((d) => byDomain[d] ?? []),
-  ].map(buttonFor);
+  ].map((id) => {
+    const name = stripAreaName(String(h.states[id]?.attributes?.friendly_name ?? ""), areaName);
+    return name ? { ...buttonFor(id), name } : buttonFor(id);
+  });
   if (controls.length) sections.push({ title: "Controls", icon: "mdi:tune", buttons: controls });
 
-  const scenes = (byDomain.scene ?? []).map(sceneButtonFor);
+  const scenes = (byDomain.scene ?? []).map((id) => {
+    const name = stripAreaName(String(h.states[id]?.attributes?.friendly_name ?? ""), areaName);
+    return name ? { ...sceneButtonFor(id), name } : sceneButtonFor(id);
+  });
   if (scenes.length) sections.push({ title: "Scenes", icon: "mdi:palette", buttons: scenes });
 
   // A single climate is controlled from the header temperature item, so no section for it.
