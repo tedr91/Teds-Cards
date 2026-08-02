@@ -942,6 +942,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.65
+
+- **Fixed a full-screen black overlay on some devices.** The Vision “Display live feed” overlay added in v0.9.64 could render as a permanent black screen on devices whose browser doesn’t support the Popover API (some companion-app webviews and wall tablets). The live view is now hidden by default and only appears when a feed is actually opened.
+
 ### v0.9.64
 
 - **Vision “Display live feed” opens a live camera view instantly.** When a trigger fires this action, targeted screens now pop open a muted, full-screen live stream of the camera (WebRTC-preferred for speed) instead of navigating to the Cameras view. It closes automatically after 60 seconds, or on a tap.

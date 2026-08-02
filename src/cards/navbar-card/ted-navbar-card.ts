@@ -1245,7 +1245,12 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
    *  after 60s; a tap anywhere closes it sooner. Rendered as a top-layer [popover]. */
   private _renderLiveOverlay(): TemplateResult {
     return html`
-      <div id="nav-live-overlay" class="live-overlay" popover="manual" @click=${this._closeLive}>
+      <div
+        id="nav-live-overlay"
+        class="live-overlay ${this._liveCamera ? "open" : ""}"
+        popover="manual"
+        @click=${this._closeLive}
+      >
         ${this._liveCamera
           ? html`<div class="live-frame">
                 <hui-image
@@ -2162,7 +2167,11 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
       .nav-menu-layer::backdrop {
         background: transparent;
       }
-      /* Muted full-screen live camera overlay (Vision "Display live feed"). */
+      /* Muted full-screen live camera overlay (Vision "Display live feed"). Default
+         hidden and shown via the .open state class so it never renders as a black
+         scrim on webviews that lack Popover API support (the [popover] UA display:none
+         rule is absent there). A very high z-index covers the screen when the overlay
+         cannot enter the top layer (no showPopover). */
       .live-overlay {
         position: fixed;
         inset: 0;
@@ -2175,11 +2184,15 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
         max-height: none;
         overflow: hidden;
         background: rgba(0, 0, 0, 0.92);
-        display: flex;
+        z-index: 2147483000;
         align-items: center;
         justify-content: center;
         pointer-events: auto;
         cursor: pointer;
+        display: none;
+      }
+      .live-overlay.open {
+        display: flex;
       }
       .live-overlay::backdrop {
         background: rgba(0, 0, 0, 0.92);
