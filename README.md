@@ -942,9 +942,11 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
-### v0.9.60
+### v0.9.61
 
-- **Device types:** the **Tablet — Portrait** profile's navbar now omits the weather and clock items by default (the portrait Home view already shows a clock and calendar).
+- **Calendar card:** new `agenda_day_height` / `agenda_evening_height` options — the card sets its own height by time of day (one value before 5pm, another from 5pm), pairing with `agenda_evening_lookahead` so the agenda is shorter before its evening 2-day view.
+
+### v0.9.60
 
 ### v0.9.59
 

@@ -107,6 +107,12 @@ export interface CalendarCardConfig extends LovelaceCardConfig {
    *  before 5pm and 1 extra day (through tomorrow) from 5pm on. Overrides any
    *  `calendar_config.rolling_days_agenda`. */
   agenda_evening_lookahead?: boolean;
+  /** When both are set, the card sets its own height by time of day: `agenda_day_height`
+   *  before 5pm and `agenda_evening_height` from 5pm on (any CSS length, e.g. `40vh`).
+   *  Lets a portrait layout give the agenda less height before its evening 2-day
+   *  lookahead kicks in. */
+  agenda_day_height?: string;
+  agenda_evening_height?: string;
   /** Fill the parent container (e.g. a dashboard view area) instead of sizing to
    *  content. Off (default) lets the calendar size itself. */
   fill?: boolean;

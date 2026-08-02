@@ -167,7 +167,18 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
   protected updated(changed: Map<string, unknown>): void {
     if (changed.has("hass")) this._propagateHass();
     this._ensureViewObserver();
+    this._applyTimeOfDayHeight();
     this._scheduleFitMeasure();
+  }
+
+  /** Set the host's height by time of day when `agenda_day_height`/`agenda_evening_height`
+   *  are configured, so a flex-column layout gives the agenda less height before 5pm. */
+  private _applyTimeOfDayHeight(): void {
+    const day = this._config?.agenda_day_height;
+    const evening = this._config?.agenda_evening_height;
+    if (!day || !evening) return;
+    this.style.flex = "0 0 auto";
+    this.style.height = new Date().getHours() >= 17 ? evening : day;
   }
 
   // --- Entity resolution -----------------------------------------------------
