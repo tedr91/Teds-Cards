@@ -942,9 +942,11 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
-### v0.9.47
+### v0.9.48
 
-- **Vision notifications open the clip.** Clicking a Camera Vision notification in the navbar notifications popover now plays the event's clip in the detail view (resolved by event id so it works with two-pass analysis), instead of just showing text.
+- **Room Card auto-populate.** The Room Card can now build itself from a room's entities. Standalone cards get an **Auto-populate from area** button in the editor (with an overwrite warning), and cards with `dashboard_integration: true` and no sections automatically adopt the device's area and populate live — hiding themselves when the device has no area. It adds occupancy, temperature (a single thermostat is shown and adjustable from the header), main-light brightness, and volume status items, and groups controls into Controls, Scenes, Thermostats, Media, and Others sections.
+
+### v0.9.47
 
 ### v0.9.46
 

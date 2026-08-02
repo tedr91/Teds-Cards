@@ -34,6 +34,30 @@ sections:
       - { type: custom:ted-light-card, entity: light.lamp }
 ```
 
+## Auto-populate from the device's area
+
+The card can build itself from the entities assigned to a room, two ways:
+
+- **Standalone** — set `area`, then click **Auto-populate from area** in the editor.
+  It fills the status strip + button sections; if the card already has items, it
+  first asks to confirm the overwrite. The generated config is fully editable.
+- **Dashboard-integrated** — set `dashboard_integration: true` (YAML-only). When the
+  card has **no** `sections`, it auto-resolves its room to *this device's* area and
+  auto-populates live. It hides itself (collapsing its layout cell) when the device
+  has no resolvable area — so one view can serve every wall panel.
+
+```yaml
+type: custom:ted-room-card
+dashboard_integration: true
+```
+
+Auto-populate adds status items for occupancy, temperature (a single thermostat is
+shown + adjustable from the header; tap opens its more-info), the room's *main* light
+brightness, and this device's media-player volume. It groups controls into
+**Controls** (lights, switches, covers, fans, valves), **Scenes**, **Thermostats**
+(only when the room has 2+), **Media**, and **Others** — empty groups are skipped, and
+the section layout is chosen automatically (tabbed for 3+ sections).
+
 ---
 
 ## Configuration
@@ -43,6 +67,7 @@ sections:
 | Option | Type | Default | Description |
 | --- | --- | --- | --- |
 | `area` | string | | The HA area this card represents (title default + entity auto-pull). |
+| `dashboard_integration` | boolean | false | YAML-only. When on and no `sections` are set, resolve the room to the device's area and auto-populate; hide when the device has no area. |
 | `name` | string | *(area name)* | Title override. |
 | `icon` | string | | Header icon (when `show_header_icon`). |
 | `show_header_icon` | boolean | false | Show the header icon. |

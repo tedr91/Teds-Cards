@@ -90,6 +90,13 @@ export interface RoomCardConfig extends LovelaceCardConfig {
   type: string;
   /** The Home Assistant area this card represents (title default + entity auto-pull). */
   area?: string;
+  /**
+   * Opt into Ted's Dashboard backend (YAML-only). When true AND no `sections` are
+   * configured, the card auto-resolves its room to the device's area and
+   * auto-populates its status items + sections from that area's entities. Hides
+   * itself when the device has no resolvable area.
+   */
+  dashboard_integration?: boolean;
   /** Optional title override (defaults to the area's name). */
   name?: string;
   /** Optional icon shown in the header when `show_header_icon` is on. */

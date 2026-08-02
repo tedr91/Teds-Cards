@@ -11,7 +11,10 @@ import {
 
 import { appearanceStyle, cssColor } from "../../shared/appearance";
 import { ensureHuiImage } from "../../shared/camera";
+import { resolveDeviceArea } from "../../shared/device-area";
+import { resolveMusicPlayer } from "../../shared/music-player";
 import { registerCustomCard } from "../../shared/register-card";
+import { SettingsController } from "../../shared/settings";
 import { brushedOverlay, tedStyleTheme } from "../../shared/theme";
 import { renderStatusItem, type StatusItemContext } from "../../shared/status-items/render";
 import { StatusSliderController } from "../../shared/status-items/slider-controller";
@@ -29,11 +32,13 @@ import {
   ROOM_CARD_NAME,
   ROOM_CARD_TYPE,
 } from "./const";
+import { autoPopulateRoom, type AutoPopulateResult } from "./auto-populate";
 import type {
   ButtonSize,
   RoomButtonConfig,
   RoomButtonSection,
   RoomCardConfig,
+  RoomStatusItem,
 } from "./types";
 
 /** Minimal shape of an area registry entry (not in custom-card-helpers' types). */
@@ -270,6 +275,12 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
   private _buttonEls = new Map<string, ButtonEntry>();
   /** Shared controller for the brightness/volume slider popovers. */
   private _slider = new StatusSliderController(this);
+  /** Whether the settings-store controller has been attached (once, on first connect). */
+  private _settingsAttached = false;
+  /** Auto-populated status/sections when running dashboard-integrated with no explicit sections. */
+  private _autoResult?: AutoPopulateResult;
+  /** The inputs the current `_autoResult` was built from, to skip needless recomputes. */
+  private _autoInputs?: { area: string; volume?: string; entities: unknown; devices: unknown };
 
   public setConfig(config: RoomCardConfig): void {
     if (!config) {
@@ -309,7 +320,7 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
   }
 
   public getCardSize(): number {
-    const sections = this._config?.sections?.length ?? 0;
+    const sections = this._effectiveSections().length;
     return 1 + sections * 2;
   }
 
@@ -329,6 +340,11 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
 
   public connectedCallback(): void {
     super.connectedCallback();
+    // Feed the settings store only when `dashboard_integration` is on (no backend dependency otherwise).
+    if (!this._settingsAttached) {
+      this._settingsAttached = true;
+      new SettingsController(this, () => (this._dashboardIntegration() ? this.hass : undefined));
+    }
     // Re-attach the size observer when the card returns to the DOM (e.g. after
     // leaving the dashboard editor) so the layout recomputes for the restored
     // width instead of waiting for the next reactive update.
@@ -359,15 +375,18 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
   }
 
   protected willUpdate(changed: PropertyValues): void {
-    if (changed.has("_config")) {
-      this._buildButtonElements();
+    const configChanged = changed.has("_config");
+    const autoChanged = this._computeAuto(configChanged);
+    if (configChanged) {
       // A new config may point at a different photo — give it another chance.
       this._photoError = false;
       if (this._config?.photo_source === "camera") void this._ensurePhotoImage();
     }
+    if (configChanged || autoChanged) this._buildButtonElements();
   }
 
   protected updated(): void {
+    this.toggleAttribute("hidden", this._shouldHide());
     if (!this._layoutObserver) this._observeHeader();
   }
 
@@ -431,7 +450,7 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
   private _buildButtonElements(): void {
     if (!this._helpers || !this._config) return;
     const next = new Map<string, ButtonEntry>();
-    (this._config.sections ?? []).forEach((section, sIdx) => {
+    this._effectiveSections().forEach((section, sIdx) => {
       (section.buttons ?? []).forEach((button, bIdx) => {
         const key = `${sIdx}:${bIdx}`;
         const cardConfig = this._buttonCardConfig(button);
@@ -474,7 +493,7 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
    *  photo state). Embedded button cards track their own entities. */
   private _ownEntities(): string[] {
     const ids: string[] = [];
-    for (const item of this._config?.status_items ?? []) {
+    for (const item of this._effectiveStatusItems()) {
       if (item.type === "spacer") continue;
       const explicit = (item as { entity?: string }).entity;
       const id =
@@ -495,11 +514,78 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
     return ids;
   }
 
+  // --- Dashboard integration + auto-populate --------------------------------
+
+  private _dashboardIntegration(): boolean {
+    return this._config?.dashboard_integration === true;
+  }
+
+  /** The room this card represents: explicit `area`, else the device's area when integrated. */
+  private _effectiveArea(): string | undefined {
+    if (this._config?.area) return this._config.area;
+    if (this._dashboardIntegration()) return resolveDeviceArea(this.hass).area;
+    return undefined;
+  }
+
+  /** True when the card should auto-build itself (integrated, no explicit sections, area resolved). */
+  private _autoActive(): boolean {
+    return (
+      this._dashboardIntegration() &&
+      (this._config?.sections?.length ?? 0) === 0 &&
+      !!this._effectiveArea()
+    );
+  }
+
+  /** Integrated but no resolvable area → hide the card entirely (collapse its cell). */
+  private _shouldHide(): boolean {
+    return this._dashboardIntegration() && !this._effectiveArea();
+  }
+
+  private _effectiveStatusItems(): RoomStatusItem[] {
+    return this._config?.status_items ?? this._autoResult?.status_items ?? [];
+  }
+
+  private _effectiveSections(): RoomButtonSection[] {
+    if (this._config?.sections?.length) return this._config.sections;
+    return this._autoResult?.sections ?? [];
+  }
+
+  private _effectiveSectionLayout(): "stacked" | "tabbed" {
+    return this._config?.section_layout ?? this._autoResult?.section_layout ?? "stacked";
+  }
+
+  /** (Re)compute the auto-populated result. Returns true when it changed. */
+  private _computeAuto(force = false): boolean {
+    if (!this.hass || !this._autoActive()) {
+      const had = !!this._autoResult;
+      this._autoResult = undefined;
+      this._autoInputs = undefined;
+      return had;
+    }
+    const area = this._effectiveArea()!;
+    const music = resolveMusicPlayer(this.hass);
+    const volume = music.state === "ok" ? music.entity : undefined;
+    const reg = this.hass as HassWithRegistries;
+    if (
+      !force &&
+      this._autoInputs &&
+      this._autoInputs.area === area &&
+      this._autoInputs.volume === volume &&
+      this._autoInputs.entities === reg.entities &&
+      this._autoInputs.devices === reg.devices
+    ) {
+      return false;
+    }
+    this._autoInputs = { area, volume, entities: reg.entities, devices: reg.devices };
+    this._autoResult = autoPopulateRoom(this.hass, area, volume);
+    return true;
+  }
+
   // --- Area entity resolution ----------------------------------------------
 
   /** Resolve the configured area's display name (falls back to the raw id). */
   private _areaName(): string | undefined {
-    const areaId = this._config?.area;
+    const areaId = this._effectiveArea();
     if (!areaId) return undefined;
     const areas = (this.hass as HassWithRegistries | undefined)?.areas;
     return areas?.[areaId]?.name ?? areaId;
@@ -507,7 +593,7 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
 
   /** Resolve the configured area's registry icon, if any. */
   private _areaIcon(): string | undefined {
-    const areaId = this._config?.area;
+    const areaId = this._effectiveArea();
     if (!areaId) return undefined;
     const areas = (this.hass as HassWithRegistries | undefined)?.areas;
     return areas?.[areaId]?.icon ?? undefined;
@@ -515,7 +601,7 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
 
   /** Find the first entity in the card's area matching the wanted device class(es). */
   private _resolveAreaEntity(kind: "temperature" | "occupancy"): string | undefined {
-    const area = this._config?.area;
+    const area = this._effectiveArea();
     if (!area || !this.hass) return undefined;
     const hass = this.hass as HassWithRegistries;
     const entities = hass.entities;
@@ -585,7 +671,7 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
 
   private _renderButtonCell(sIdx: number, bIdx: number, pos?: GridPos, cols = GRID_COLS): TemplateResult {
     const entry = this._buttonEls.get(`${sIdx}:${bIdx}`);
-    const button = this._config?.sections?.[sIdx]?.buttons?.[bIdx];
+    const button = this._effectiveSections()[sIdx]?.buttons?.[bIdx];
     const spans = buttonSpans(button);
     const w = Math.min(spans.w, cols);
     const h = spans.h;
@@ -611,7 +697,7 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
   ): TemplateResult {
     const anchorId = `rc-of-anchor-${sIdx}`;
     const popId = `rc-of-pop-${sIdx}`;
-    const buttons = this._config?.sections?.[sIdx]?.buttons ?? [];
+    const buttons = this._effectiveSections()[sIdx]?.buttons ?? [];
     // Pack the hidden buttons for the popover's (narrower, 8-col) grid.
     const hiddenSizes: { w: number; h: number }[] = [];
     for (let bIdx = fromIdx; bIdx < total; bIdx += 1) hiddenSizes.push(buttonSpans(buttons[bIdx]));
@@ -713,7 +799,7 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
 
     return html`
       <div class="button-section">
-        ${section.title && section.show_title === true && this._config?.section_layout !== "tabbed"
+        ${section.title && section.show_title === true && this._effectiveSectionLayout() !== "tabbed"
           ? html`<div class="section-title" style=${styleMap({ textAlign: section.title_align ?? "left" })}>${section.title}</div>`
           : nothing}
         <div class="button-grid">
@@ -919,6 +1005,7 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
 
   protected render(): TemplateResult | typeof nothing {
     if (!this._config || !this.hass) return nothing;
+    if (this._shouldHide()) return nothing;
 
     const themeMode = this._config.theme === "ha" ? "ha" : "ted-style";
     const themeClasses = {
@@ -951,8 +1038,8 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
         : "top";
     const statusIconSize =
       typeof this._config.status_icon_size === "number" ? this._config.status_icon_size : 100;
-    const statusItems = this._config.status_items ?? [];
-    const sections = this._config.sections ?? [];
+    const statusItems = this._effectiveStatusItems();
+    const sections = this._effectiveSections();
     const hasBody = sections.length > 0;
 
     // For a "top" or "below header" photo, optionally pad the body down so the
@@ -1017,7 +1104,7 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
           </div>
         </div>
         ${hasBody
-          ? this._config.section_layout === "tabbed"
+          ? this._effectiveSectionLayout() === "tabbed"
             ? this._renderTabbedSections(sections, bodyStyle)
             : html`<div class="sections" style=${styleMap(bodyStyle)}>
                 ${sections.map((section, sIdx) => this._renderSection(section, sIdx))}
@@ -1039,6 +1126,9 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
         /* Card content padding + header→body gap — read in JS for the photo "shift buttons" math. */
         --rc-card-padding: 12px;
         --rc-header-body-gap: 12px;
+      }
+      :host([hidden]) {
+        display: none !important;
       }
       ha-card {
         position: relative;

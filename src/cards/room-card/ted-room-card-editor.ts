@@ -28,8 +28,11 @@ import type {
   RoomStatusItemType,
 } from "./types";
 import { transparencyBlurSchema } from "../../shared/appearance";
+import { showConfirmation } from "../../shared/dialogs";
+import { resolveMusicPlayer } from "../../shared/music-player";
 import { ROOM_STATUS_ITEM_TYPES } from "../../shared/status-items/const";
 import { newStatusItem, statusItemData, statusItemSchema } from "../../shared/status-items/editor";
+import { autoPopulateRoom } from "./auto-populate";
 
 // mdi:texture-box — Room section
 const AREA_ICON_PATH =
@@ -631,6 +634,16 @@ export class TedRoomCardEditor extends LitElement implements LovelaceCardEditor 
           .computeLabel=${this._computeLabel}
           @value-changed=${this._onBaseChanged}
         ></ha-form>
+
+        ${this._config.dashboard_integration
+          ? html`<div class="autopop-hint">
+              This card auto-populates from the device's area (dashboard integration).
+            </div>`
+          : this._config.area
+            ? html`<button type="button" class="autopop-button" @click=${this._autoPopulate}>
+                <ha-icon icon="mdi:auto-fix"></ha-icon><span>Auto-populate from area</span>
+              </button>`
+            : html`<div class="autopop-hint">Set a Room (area) above to enable Auto-populate.</div>`}
 
         <ha-expansion-panel
           outlined
@@ -1257,6 +1270,33 @@ export class TedRoomCardEditor extends LitElement implements LovelaceCardEditor 
   }
 
   /** Store the working config and emit a cleaned copy to Home Assistant. */
+  /** Best-effort auto-populate: build status items + sections from the area's entities. */
+  private _autoPopulate = async (): Promise<void> => {
+    if (!this.hass || !this._config?.area) return;
+    const dirty =
+      (this._config.status_items?.length ?? 0) > 0 || (this._config.sections?.length ?? 0) > 0;
+    if (dirty) {
+      const ok = await showConfirmation(this, {
+        title: "Auto-populate room",
+        text: "Auto-populate will overwrite the current status items and button sections. Continue?",
+        confirmText: "Auto-populate",
+        dismissText: "Cancel",
+        destructive: true,
+      });
+      if (!ok) return;
+    }
+    const music = resolveMusicPlayer(this.hass);
+    const volume = music.state === "ok" ? music.entity : undefined;
+    const res = autoPopulateRoom(this.hass, this._config.area, volume);
+    this._commit({
+      ...this._config,
+      type: this._type(),
+      status_items: res.status_items,
+      sections: res.sections,
+      section_layout: res.section_layout,
+    });
+  };
+
   private _commit(next: RoomCardConfig): void {
     this._config = next;
     fireEvent(this, "config-changed", { config: this._clean(next) });
@@ -1454,6 +1494,27 @@ export class TedRoomCardEditor extends LitElement implements LovelaceCardEditor 
     }
     .add-button:hover {
       background: color-mix(in srgb, var(--primary-color) 10%, transparent);
+    }
+    .autopop-button {
+      align-self: flex-start;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      border: none;
+      border-radius: 6px;
+      background: var(--primary-color);
+      color: var(--text-primary-color, #fff);
+      cursor: pointer;
+      font: inherit;
+      font-weight: 500;
+    }
+    .autopop-button:hover {
+      background: color-mix(in srgb, var(--primary-color) 88%, black);
+    }
+    .autopop-hint {
+      color: var(--secondary-text-color);
+      font-size: 0.9em;
     }
     .loading {
       color: var(--secondary-text-color);

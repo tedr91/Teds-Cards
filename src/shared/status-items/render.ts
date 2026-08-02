@@ -219,7 +219,22 @@ function renderSensorItem(item: SensorStatusItem, ctx: StatusItemContext): Templ
   const icon = item.icon ?? STATUS_ITEM_DEFAULT_ICON[item.type];
   const label = String(item.name ?? stateObj?.attributes?.friendly_name ?? entityId ?? "");
   const show = itemDisplay(item);
-  const g = effectiveGestures(item, ctx);
+  // A temperature item pointing at a thermostat opens its more-info by default (to adjust the temp).
+  const climate = item.type === "temperature" && !!entityId && entityId.startsWith("climate.");
+  const builtins: Gestures | undefined =
+    climate && entityId
+      ? {
+          tap: () =>
+            runTedAction(
+              ctx.host,
+              ctx.hass,
+              { entity: entityId, tap_action: { action: "more-info" } },
+              "tap",
+              { dashboardIntegration: ctx.dashboardIntegration },
+            ),
+        }
+      : undefined;
+  const g = effectiveGestures(item, ctx, builtins);
   const h = gestureHandlers(ctx, g);
   return html`
     <div
@@ -233,7 +248,7 @@ function renderSensorItem(item: SensorStatusItem, ctx: StatusItemContext): Templ
     >
       ${show.icon ? html`<ha-icon class="status-icon" .icon=${icon}></ha-icon>` : nothing}
       ${show.state
-        ? html`<span class="status-text">${formatSensor(stateObj, item.type)}</span>`
+        ? html`<span class="status-text">${formatSensor(stateObj, item.type, ctx.hass)}</span>`
         : nothing}
     </div>
   `;

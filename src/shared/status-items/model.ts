@@ -66,11 +66,22 @@ export function volumeModel(hass: HomeAssistant | undefined, entityId: string): 
   return { min: 0, max: 100, step: 1, value: pct, unit: "%", kind: "volume", muted, available };
 }
 
-export function formatSensor(stateObj: StateObj, type: "temperature" | "occupancy"): string {
+export function formatSensor(
+  stateObj: StateObj,
+  type: "temperature" | "occupancy",
+  hass?: HomeAssistant,
+): string {
   if (!stateObj) return "—";
   if (type === "occupancy") {
     if (stateObj.state === "on") return "Detected";
     if (stateObj.state === "off") return "Clear";
+  }
+  // A climate/thermostat entity's state is its hvac mode — show its current temperature instead.
+  const current = stateObj.attributes?.current_temperature;
+  if (type === "temperature" && current != null) {
+    const unit = (hass?.config as { unit_system?: { temperature?: string } } | undefined)?.unit_system
+      ?.temperature;
+    return unit ? `${current} ${unit}` : String(current);
   }
   const unit = stateObj.attributes?.unit_of_measurement as string | undefined;
   return unit ? `${stateObj.state} ${unit}` : capitalize(stateObj.state);
