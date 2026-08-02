@@ -17,6 +17,8 @@ import { NotificationToastController } from "../../shared/notifications";
 import { type AnnounceTargets, notificationInScope, resolveDeviceArea } from "../../shared/device-area";
 import { SettingsController, settingsStore } from "../../shared/settings";
 import { navigationSignal } from "../../shared/navigation-signal";
+import { pendingCameraLive, subscribeCameraLive } from "../../shared/camera-live";
+import { ensureHuiImage } from "../../shared/camera";
 import type { SettingsValue } from "../../shared/settings-schema";
 import { AutoReturnController } from "../../shared/auto-return";
 import { HomeRedirectController } from "../../shared/home-redirect";
@@ -167,6 +169,11 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
   private _navBottom = 0;
   /** Auto-hide: whether the bar is currently collapsed into its edge (pill showing). */
   @state() private _collapsed = false;
+  /** A camera entity currently shown in the muted live overlay (Vision "Display live feed"). */
+  @state() private _liveCamera?: string;
+  /** Auto-close timer for the live overlay + its subscription. */
+  private _liveTimer?: number;
+  private _unsubLive?: () => void;
   /** Pending re-collapse timeout while an auto-hide bar is revealed. */
   private _hideTimer?: number;
   /** Unsubscribe from the shared settings store (per-device navbar overrides). */
@@ -255,6 +262,10 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
     this._settingsUnsub = settingsStore.subscribe(this._onSettingsChanged);
     // Primary activator for the shared navigation-signal listener (voice “show <view>”).
     navigationSignal.attach(this.hass, this._dashboardIntegration());
+    // Vision "Display live feed" pops a muted live overlay here.
+    this._unsubLive = subscribeCameraLive(this._openLive);
+    const pendingLive = pendingCameraLive();
+    if (pendingLive) this._openLive(pendingLive);
     this.addEventListener("pointerdown", this._guardTap, true);
     this.addEventListener("click", this._guardTap, true);
     window.addEventListener("resize", this._onResize);
@@ -270,6 +281,9 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
     setNavbarHeaderReserve(null);
     this._settingsUnsub?.();
     this._settingsUnsub = undefined;
+    this._unsubLive?.();
+    this._unsubLive = undefined;
+    this._closeLive();
     this.removeEventListener("pointerdown", this._guardTap, true);
     this.removeEventListener("click", this._guardTap, true);
     this._clearHold();
@@ -1222,9 +1236,56 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
           )}
         </ha-card>
         ${this._holdMenuEnabled() ? this._renderHoldMenu() : nothing}
+        ${this._renderLiveOverlay()}
       </div>
     `;
   }
+
+  /** Muted, full-screen live camera overlay (Vision "Display live feed"). Auto-closes
+   *  after 60s; a tap anywhere closes it sooner. Rendered as a top-layer [popover]. */
+  private _renderLiveOverlay(): TemplateResult {
+    return html`
+      <div id="nav-live-overlay" class="live-overlay" popover="manual" @click=${this._closeLive}>
+        ${this._liveCamera
+          ? html`<div class="live-frame">
+                <hui-image
+                  .hass=${this.hass}
+                  .cameraImage=${this._liveCamera}
+                  .cameraView=${"live"}
+                  .fitMode=${"contain"}
+                ></hui-image>
+              </div>
+              <div class="live-hint">Tap anywhere to close</div>`
+          : nothing}
+      </div>
+    `;
+  }
+
+  private _openLive = (entity: string): void => {
+    void ensureHuiImage();
+    this._liveCamera = entity;
+    if (this._liveTimer) window.clearTimeout(this._liveTimer);
+    // Auto-close after 60s so a background feed never streams indefinitely.
+    this._liveTimer = window.setTimeout(() => this._closeLive(), 60_000);
+    void this.updateComplete.then(() => {
+      const el = (this.renderRoot as ShadowRoot).getElementById("nav-live-overlay") as
+        | (HTMLElement & { showPopover?: () => void; matches?: (s: string) => boolean })
+        | null;
+      if (el && !el.matches?.(":popover-open")) el.showPopover?.();
+    });
+  };
+
+  private _closeLive = (): void => {
+    if (this._liveTimer) {
+      window.clearTimeout(this._liveTimer);
+      this._liveTimer = undefined;
+    }
+    const el = (this.renderRoot as ShadowRoot).getElementById("nav-live-overlay") as
+      | (HTMLElement & { hidePopover?: () => void })
+      | null;
+    el?.hidePopover?.();
+    this._liveCamera = undefined;
+  };
 
   /** The long-press settings menu (root list ⇄ position submenu). Rendered as a native
    *  [popover] so it light-dismisses and layers above the dashboard. */
@@ -2100,6 +2161,51 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
       }
       .nav-menu-layer::backdrop {
         background: transparent;
+      }
+      /* Muted full-screen live camera overlay (Vision "Display live feed"). */
+      .live-overlay {
+        position: fixed;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        border: none;
+        max-width: none;
+        max-height: none;
+        overflow: hidden;
+        background: rgba(0, 0, 0, 0.92);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        pointer-events: auto;
+        cursor: pointer;
+      }
+      .live-overlay::backdrop {
+        background: rgba(0, 0, 0, 0.92);
+      }
+      .live-frame {
+        width: min(96vw, calc(92vh * 16 / 9));
+        max-height: 92vh;
+        aspect-ratio: 16 / 9;
+        background: #000;
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 12px 48px rgba(0, 0, 0, 0.6);
+      }
+      .live-frame hui-image {
+        width: 100%;
+        height: 100%;
+      }
+      .live-hint {
+        position: fixed;
+        bottom: 6vh;
+        left: 0;
+        right: 0;
+        text-align: center;
+        color: rgba(255, 255, 255, 0.85);
+        font-size: 0.9rem;
+        pointer-events: none;
       }
       /* Long-press settings menu: a vertical list of rows inside the popover. */
       .nav-menu {

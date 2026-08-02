@@ -942,6 +942,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.64
+
+- **Vision “Display live feed” opens a live camera view instantly.** When a trigger fires this action, targeted screens now pop open a muted, full-screen live stream of the camera (WebRTC-preferred for speed) instead of navigating to the Cameras view. It closes automatically after 60 seconds, or on a tap.
+
 ### v0.9.63
 
 - **Room Card:** new `auto_max_rows` option — each section auto-limits its visible rows to what fits the card's height (measured in rows of 1.5x-height tiles) and overflows the rest into the “…” menu.

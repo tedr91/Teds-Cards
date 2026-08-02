@@ -17,6 +17,7 @@
 import type { HomeAssistant } from "custom-card-helpers";
 
 import { requestCameraFocus } from "./camera-focus";
+import { requestCameraLive } from "./camera-live";
 import { resolveDeviceArea, resolveDeviceHaId } from "./device-area";
 import { resolveDeviceId } from "./device-id";
 import { resolveDashboardPath } from "./settings";
@@ -31,6 +32,8 @@ interface NavigateSignal {
   device_id?: string | null;
   /** A camera entity to focus on arrival (Vision "Display live feed" → primary + live). */
   camera?: string | null;
+  /** A camera entity to open as a muted live overlay (no navigation). */
+  open_camera?: string | null;
 }
 
 class NavigationSignal {
@@ -61,7 +64,7 @@ class NavigationSignal {
   }
 
   private _onSignal(sig: NavigateSignal): void {
-    if (!sig?.dashboard) return;
+    if (!sig) return;
     const hass = this._hass;
     const areaMatch = !!sig.area && sig.area === resolveDeviceArea(hass, undefined).area;
     // Match either the HA device-registry id (voice-satellite nudges) or Ted's own
@@ -71,7 +74,12 @@ class NavigationSignal {
       (sig.device_id === resolveDeviceHaId(hass) || sig.device_id === resolveDeviceId());
     if (!areaMatch && !deviceMatch) return;
 
-    // Vision "Display live feed": focus the triggering camera once we're on the view.
+    // Vision "Display live feed": pop a muted live overlay for the camera (no navigation).
+    if (sig.open_camera) {
+      requestCameraLive(sig.open_camera);
+      return;
+    }
+    if (!sig.dashboard) return;
     if (sig.camera) requestCameraFocus(sig.camera);
 
     const path = resolveDashboardPath(sig.dashboard);
