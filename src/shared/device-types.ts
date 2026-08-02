@@ -65,7 +65,7 @@ export const DEVICE_TYPE_PRESETS: Record<DeviceType, DeviceTypePreset> = {
   "tablet-landscape": {
     home_dashboard: "[root]/home-wallpanel-h",
     navbar_position: "bottom",
-    navbar_auto_hide: false,
+    navbar_auto_hide: true,
     navbar_size: 52,
     navbar_float: false,
     fullscreen_default: false,
@@ -74,7 +74,7 @@ export const DEVICE_TYPE_PRESETS: Record<DeviceType, DeviceTypePreset> = {
   "tablet-portrait": {
     home_dashboard: "[root]/home-wallpanel-v",
     navbar_position: "bottom",
-    navbar_auto_hide: true,
+    navbar_auto_hide: false,
     navbar_size: 52,
     navbar_float: false,
     fullscreen_default: false,
