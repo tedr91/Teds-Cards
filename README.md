@@ -942,6 +942,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.66
+
+- **Music Player “mini” mode: new “…” menu.** The compact mini player’s volume button is now a “…” button that opens a menu with **Media**, **Queue**, and **Volume**. Media and Queue open a pop-up window with the full player’s Media or Queue tab, and Volume opens a compact slider (tap the speaker to mute).
+
 ### v0.9.65
 
 - **Fixed a full-screen black overlay on some devices.** The Vision “Display live feed” overlay added in v0.9.64 could render as a permanent black screen on devices whose browser doesn’t support the Popover API (some companion-app webviews and wall tablets). The live view is now hidden by default and only appears when a feed is actually opened.

@@ -111,6 +111,9 @@ const IC = {
   playlist: { fluent: "music-note-2-24-regular", mdi: "playlist-music" },
   playlistRemove: { fluent: "text-bullet-list-dismiss-20-filled", mdi: "playlist-remove" },
   playSmall: { fluent: "play-24-filled", mdi: "play" },
+  queue: { fluent: "apps-list-24-regular", mdi: "playlist-play" },
+  more: { fluent: "more-horizontal-24-filled", mdi: "dots-horizontal" },
+  close: { fluent: "dismiss-24-regular", mdi: "close" },
   menu: { fluent: "more-vertical-24-filled", mdi: "dots-vertical" },
   drag: { fluent: "re-order-dots-vertical-24-regular", mdi: "drag-vertical" },
   playOutline: { fluent: "play-circle-24-regular", mdi: "play-circle-outline" },
@@ -184,6 +187,14 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
   @state() private _volOpen = false;
   private _volHoldTimer?: number;
   private _volHeld = false;
+  /** Mini bar "..." menu open state. */
+  @state() private _miniMenuOpen = false;
+  @state() private _miniMenuUp = true;
+  /** Mini bar volume flyout open state. */
+  @state() private _miniVolOpen = false;
+  @state() private _miniVolUp = true;
+  /** Which tab body (if any) the mini modal window is showing. */
+  @state() private _miniPopup: "media" | "queue" | null = null;
   /** Debounce for persisting this device's "Music volume" setting on slider drags. */
   private _musicVolWriteTimer?: number;
   private _volClickTimer?: number;
@@ -257,7 +268,14 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
 
   /** Close the cast / volume popups when the user interacts outside them. */
   private _onDocDown = (e: Event): void => {
-    if (!this._castOpen && !this._volOpen && !this._shuffleMenuOpen) return;
+    if (
+      !this._castOpen &&
+      !this._volOpen &&
+      !this._shuffleMenuOpen &&
+      !this._miniMenuOpen &&
+      !this._miniVolOpen
+    )
+      return;
     const path = e.composedPath();
     if (this._castOpen) {
       const w = this.renderRoot?.querySelector?.(".cast-wrap");
@@ -270,6 +288,13 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
     if (this._shuffleMenuOpen) {
       const w = this.renderRoot?.querySelector?.(".shuffle-wrap");
       if (w && !path.includes(w)) this._shuffleMenuOpen = false;
+    }
+    if (this._miniMenuOpen || this._miniVolOpen) {
+      const w = this.renderRoot?.querySelector?.(".mini-more-wrap");
+      if (w && !path.includes(w)) {
+        this._miniMenuOpen = false;
+        this._miniVolOpen = false;
+      }
     }
   };
 
@@ -330,6 +355,17 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
     this._measureTabs();
     this._positionPopups();
     this._syncQueueMenuPopover();
+    this._syncMiniModal();
+  }
+
+  /** Open/close the native <dialog> to match `_miniPopup` (top-layer modal). */
+  private _syncMiniModal(): void {
+    const dlg = this.renderRoot?.querySelector?.(".mini-modal") as
+      | (HTMLDialogElement & { showModal?: () => void; close?: () => void })
+      | null;
+    if (!dlg) return;
+    if (this._miniPopup && !dlg.open) dlg.showModal?.();
+    else if (!this._miniPopup && dlg.open) dlg.close?.();
   }
 
   /** Flip the open popups above/below their trigger, whichever side has room, so
@@ -359,6 +395,22 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
       if (menu && wrap) {
         const up = wantsUp(wrap, menu, 4);
         if (up !== this._shuffleMenuUp) this._shuffleMenuUp = up;
+      }
+    }
+    if (this._miniMenuOpen) {
+      const menu = root?.querySelector(".mini-menu") as HTMLElement | null;
+      const wrap = menu?.closest(".mini-more-wrap") as HTMLElement | null;
+      if (menu && wrap) {
+        const up = wantsUp(wrap, menu, 6);
+        if (up !== this._miniMenuUp) this._miniMenuUp = up;
+      }
+    }
+    if (this._miniVolOpen) {
+      const fly = root?.querySelector(".mini-vol-flyout") as HTMLElement | null;
+      const wrap = fly?.closest(".mini-more-wrap") as HTMLElement | null;
+      if (fly && wrap) {
+        const up = wantsUp(wrap, fly, 6);
+        if (up !== this._miniVolUp) this._miniVolUp = up;
       }
     }
   }
@@ -916,7 +968,13 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
   }
 
   private _orchestrateTabData(): void {
-    if (!this.hass || this._config?.mode === "mini") return;
+    if (!this.hass) return;
+    if (this._config?.mode === "mini") {
+      // Only fetch when a mini popup is open (keeps the idle mini bar cheap).
+      if (this._miniPopup === "queue" && this._massQueueAvailable()) void this._ensureQueue();
+      else if (this._miniPopup === "media") void this._ensureMedia();
+      return;
+    }
     // Keep the queue warm (cached by track) so the favorite state is always known.
     if (this._massQueueAvailable()) void this._ensureQueue();
     if (this._tab === "media") void this._ensureMedia();
@@ -1318,6 +1376,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
           <div class="content mini-content">${this._renderMini()}</div>
           ${this._renderMiniProgress()}
         </ha-card>
+        ${this._renderMiniModal()}
       `;
     }
 
@@ -1531,10 +1590,148 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
             repeat !== "off",
           )}
         </div>
-        <div class="mini-right">${this._renderVolumeControl(volPct, muted)}</div>
+        <div class="mini-right">${this._renderMiniMore(volPct, muted)}</div>
       </div>
     `;
   }
+
+  /** The mini bar's "..." button: opens a small menu of {Media, Queue, Volume}, plus
+   *  the anchored Volume flyout. Media/Queue open a centered modal window. */
+  private _renderMiniMore(volPct: number, muted: boolean): TemplateResult {
+    const menuDir = this._miniMenuUp ? "up" : "down";
+    const volDir = this._miniVolUp ? "up" : "down";
+    return html`<div class="mini-more-wrap">
+      <button
+        type="button"
+        class="ctrl mini-more ${this._miniMenuOpen ? "active" : ""}"
+        title="More"
+        aria-label="More"
+        aria-haspopup="menu"
+        @click=${this._toggleMiniMenu}
+      >
+        <ha-icon icon=${ic(IC.more)}></ha-icon>
+      </button>
+      ${this._miniMenuOpen
+        ? html`<div class="mini-menu ${menuDir}" role="menu">
+            <button type="button" class="mini-menu-item" @click=${() => this._openMiniPopup("media")}>
+              <ha-icon icon=${ic(IC.playlist)}></ha-icon><span>Media</span>
+            </button>
+            <button type="button" class="mini-menu-item" @click=${() => this._openMiniPopup("queue")}>
+              <ha-icon icon=${ic(IC.queue)}></ha-icon><span>Queue</span>
+            </button>
+            <button type="button" class="mini-menu-item" @click=${this._openMiniVol}>
+              <ha-icon icon=${ic(muted || volPct === 0 ? IC.volOff : IC.volHigh)}></ha-icon
+              ><span>Volume</span>
+            </button>
+          </div>`
+        : nothing}
+      ${this._miniVolOpen
+        ? html`<div class="mini-vol-flyout ${volDir}" role="group">
+            <button
+              type="button"
+              class="mini-vol-mute ${muted ? "active" : ""}"
+              title=${muted ? "Unmute" : "Mute"}
+              aria-label=${muted ? "Unmute" : "Mute"}
+              @click=${this._onMiniMute}
+            >
+              <ha-icon
+                icon=${ic(
+                  muted || volPct === 0
+                    ? IC.volOff
+                    : volPct < 10
+                      ? IC.volLow
+                      : volPct < 50
+                        ? IC.volMed
+                        : IC.volHigh,
+                )}
+              ></ha-icon>
+            </button>
+            <input
+              class="mini-vol-range"
+              type="range"
+              min="0"
+              max="100"
+              .value=${String(volPct)}
+              @input=${this._onVolume}
+              @change=${this._onVolume}
+              aria-label="Volume"
+            />
+            <span class="mini-vol-num">${volPct}</span>
+          </div>`
+        : nothing}
+    </div>`;
+  }
+
+  private _toggleMiniMenu = (e: Event): void => {
+    e.stopPropagation();
+    this._miniVolOpen = false;
+    this._miniMenuOpen = !this._miniMenuOpen;
+  };
+
+  private _openMiniPopup(which: "media" | "queue"): void {
+    this._miniMenuOpen = false;
+    this._miniVolOpen = false;
+    this._miniPopup = which;
+  }
+
+  private _openMiniVol = (): void => {
+    this._miniMenuOpen = false;
+    this._miniVolOpen = true;
+  };
+
+  private _closeMiniPopup = (): void => {
+    this._miniPopup = null;
+  };
+
+  private _onMiniMute = (): void => {
+    this._toggleMute();
+  };
+
+  private _onMiniModalClick = (e: MouseEvent): void => {
+    // Tap on the dialog element itself (the backdrop area) closes; taps inside the
+    // sheet stop at the sheet.
+    if (e.target === e.currentTarget) this._closeMiniPopup();
+  };
+
+  /** Centered modal window (native <dialog>, top layer) showing the Media or Queue
+   *  tab body reused from the full player. */
+  private _renderMiniModal(): TemplateResult | typeof nothing {
+    if (!this._miniPopup) return nothing;
+    const title = this._miniPopup === "media" ? "Media" : "Queue";
+    const body =
+      this._miniPopup === "media" ? this._renderMedia() : this._renderQueue(false);
+    return html`<dialog
+      class="mini-modal"
+      @click=${this._onMiniModalClick}
+      @cancel=${this._onMiniModalCancel}
+      @close=${this._onMiniModalClose}
+    >
+      <div class="mini-sheet">
+        <div class="mini-sheet-head">
+          <span class="mini-sheet-title">${title}</span>
+          <button
+            type="button"
+            class="mini-sheet-close"
+            title="Close"
+            aria-label="Close"
+            @click=${this._closeMiniPopup}
+          >
+            <ha-icon icon=${ic(IC.close)}></ha-icon>
+          </button>
+        </div>
+        <div class="mini-sheet-body">${body}</div>
+      </div>
+    </dialog>`;
+  }
+
+  private _onMiniModalCancel = (e: Event): void => {
+    e.preventDefault();
+    this._closeMiniPopup();
+  };
+
+  private _onMiniModalClose = (): void => {
+    if (this._miniPopup) this._miniPopup = null;
+  };
 
   /** Non-interactive playback progress: a thin strip pinned to the card's bottom edge. */
   private _renderMiniProgress(): TemplateResult {
@@ -3001,6 +3198,166 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
         height: 100%;
         background: var(--ted-style-accent);
       }
+
+      /* Mini "..." menu + anchored volume flyout */
+      .mini-more-wrap {
+        position: relative;
+        display: inline-flex;
+      }
+      .mini-menu,
+      .mini-vol-flyout {
+        position: absolute;
+        right: 0;
+        z-index: 12;
+        padding: 4px;
+        border-radius: 10px;
+        /* Opaque composite surface (theme surface over an opaque card base). */
+        background-color: var(--card-background-color, #1c1c1c);
+        background-image: linear-gradient(
+          var(--ted-style-surface, #2b2b2b),
+          var(--ted-style-surface, #2b2b2b)
+        );
+        color: var(--ted-style-text, #fff);
+        border: 1px solid var(--ted-style-divider, rgba(255, 255, 255, 0.12));
+        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+      }
+      .mini-menu.down,
+      .mini-vol-flyout.down {
+        top: calc(100% + 6px);
+        bottom: auto;
+      }
+      .mini-menu.up,
+      .mini-vol-flyout.up {
+        bottom: calc(100% + 6px);
+        top: auto;
+      }
+      .mini-menu {
+        min-width: 168px;
+      }
+      .mini-menu-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        width: 100%;
+        border: none;
+        background: none;
+        color: inherit;
+        cursor: pointer;
+        padding: 8px 10px;
+        border-radius: 6px;
+        font-size: 0.9em;
+        text-align: left;
+      }
+      .mini-menu-item:hover {
+        background: rgba(127, 127, 127, 0.16);
+      }
+      .mini-menu-item ha-icon {
+        --mdc-icon-size: 20px;
+        opacity: 0.85;
+      }
+      .mini-vol-flyout {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 10px;
+        width: 220px;
+      }
+      .mini-vol-mute {
+        flex: 0 0 auto;
+        display: inline-flex;
+        border: none;
+        background: none;
+        color: inherit;
+        cursor: pointer;
+        opacity: 0.9;
+      }
+      .mini-vol-mute.active {
+        color: var(--ted-style-accent);
+        opacity: 1;
+      }
+      .mini-vol-mute ha-icon {
+        --mdc-icon-size: 22px;
+      }
+      .mini-vol-range {
+        flex: 1 1 auto;
+        min-width: 0;
+        accent-color: var(--ted-style-accent);
+      }
+      .mini-vol-num {
+        flex: 0 0 auto;
+        min-width: 2.4ch;
+        text-align: right;
+        font-size: 0.82em;
+        opacity: 0.75;
+        font-variant-numeric: tabular-nums;
+      }
+
+      /* Mini modal window (native <dialog>, top layer) reusing the Media/Queue tabs */
+      .mini-modal {
+        border: none;
+        padding: 0;
+        margin: auto;
+        background: transparent;
+        max-width: none;
+        max-height: none;
+        color: var(--ted-style-text, #fff);
+      }
+      .mini-modal::backdrop {
+        background: rgba(0, 0, 0, 0.5);
+      }
+      .mini-sheet {
+        display: flex;
+        flex-direction: column;
+        width: min(560px, 92vw);
+        max-height: 80vh;
+        border-radius: 14px;
+        overflow: hidden;
+        background-color: var(--card-background-color, #1c1c1c);
+        background-image: linear-gradient(
+          var(--ted-style-surface, #2b2b2b),
+          var(--ted-style-surface, #2b2b2b)
+        );
+        border: 1px solid var(--ted-style-divider, rgba(255, 255, 255, 0.12));
+        box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
+      }
+      .mini-sheet-head {
+        flex: 0 0 auto;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 8px 12px 16px;
+        border-bottom: 1px solid var(--ted-style-divider, rgba(255, 255, 255, 0.12));
+      }
+      .mini-sheet-title {
+        flex: 1 1 auto;
+        font-weight: 700;
+        font-size: 1.05em;
+      }
+      .mini-sheet-close {
+        flex: 0 0 auto;
+        display: inline-flex;
+        border: none;
+        background: none;
+        color: inherit;
+        cursor: pointer;
+        opacity: 0.8;
+        border-radius: 8px;
+        padding: 4px;
+      }
+      .mini-sheet-close:hover {
+        opacity: 1;
+        background: rgba(127, 127, 127, 0.16);
+      }
+      .mini-sheet-close ha-icon {
+        --mdc-icon-size: 22px;
+      }
+      .mini-sheet-body {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow-y: auto;
+        padding: 6px;
+      }
+
       @container (max-width: 620px) {
         .mini-meta {
           flex: 1 1 60px;
