@@ -5,6 +5,7 @@ const HIDDEN_FROM_PICKER = new Set<string>([
   `${NAMESPACE}-settings-card`,
   `${NAMESPACE}-announce-card`,
   `${NAMESPACE}-notification-card`,
+  `${NAMESPACE}-webview-card`,
 ]);
 
 /**

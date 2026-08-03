@@ -15,6 +15,7 @@ import {
 import { tedCardThemeClass, tedStyleTheme } from "../../shared/theme";
 import { computeTabOverflow, positionOverflowPopover } from "../../shared/tab-overflow";
 import { resolveIcon } from "../../shared/icons";
+import { readDashboardUrlPath } from "../../shared/launcher";
 import { MUSIC_CARD_EDITOR_TYPE, MUSIC_CARD_TYPE } from "./const";
 import type { MusicBackgroundMode, MusicCardConfig, MusicTab } from "./types";
 
@@ -114,6 +115,7 @@ const IC = {
   queue: { fluent: "apps-list-24-regular", mdi: "playlist-play" },
   more: { fluent: "more-horizontal-24-filled", mdi: "dots-horizontal" },
   close: { fluent: "dismiss-24-regular", mdi: "close" },
+  party: { fluent: "emoji-24-regular", mdi: "party-popper" },
   menu: { fluent: "more-vertical-24-filled", mdi: "dots-vertical" },
   drag: { fluent: "re-order-dots-vertical-24-regular", mdi: "drag-vertical" },
   playOutline: { fluent: "play-circle-24-regular", mdi: "play-circle-outline" },
@@ -1623,6 +1625,9 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
               <ha-icon icon=${ic(muted || volPct === 0 ? IC.volOff : IC.volHigh)}></ha-icon
               ><span>Volume</span>
             </button>
+            <button type="button" class="mini-menu-item" @click=${this._startParty}>
+              <ha-icon icon=${ic(IC.party)}></ha-icon><span>Party Mode!</span>
+            </button>
           </div>`
         : nothing}
       ${this._miniVolOpen
@@ -1677,6 +1682,34 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
   private _openMiniVol = (): void => {
     this._miniMenuOpen = false;
     this._miniVolOpen = true;
+  };
+
+  /** Open Music Assistant's fullscreen `#/party` dashboard for the current player.
+   *  Navigates to the in-dashboard Web View page (`party_view_path`, default `webview`);
+   *  falls back to a top-level navigation when the page is HTTPS but the party URL is
+   *  plain http (an iframe would be blocked as mixed content). */
+  private _startParty = (): void => {
+    this._miniMenuOpen = false;
+    this._miniVolOpen = false;
+    const entity = this._entityId();
+    if (!entity) return;
+    const base = (
+      this._config?.party_url ?? `http://${window.location.hostname}:8095`
+    ).replace(/\/+$/, "");
+    const player = encodeURIComponent(this._friendly(entity));
+    const partyUrl = `${base}/#/party?player=${player}`;
+
+    const mixedBlocked =
+      window.location.protocol === "https:" && /^http:/i.test(partyUrl);
+    if (mixedBlocked) {
+      window.location.href = partyUrl;
+      return;
+    }
+    const root = readDashboardUrlPath();
+    const view = this._config?.party_view_path || "webview";
+    const target = `/${root}/${view}?url=${encodeURIComponent(partyUrl)}`;
+    window.history.pushState(null, "", target);
+    window.dispatchEvent(new Event("location-changed"));
   };
 
   private _closeMiniPopup = (): void => {

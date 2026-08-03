@@ -27,6 +27,7 @@ import "./cards/vision-card/ted-vision-card";
 import "./cards/climate-card/ted-climate-card";
 import "./cards/music-card/ted-music-card";
 import "./cards/calendar-card/ted-calendar-card";
+import "./cards/webview-card/ted-webview-card";
 import "./cards/navbar-card/ted-navbar-card";
 import "./cards/alarm-card/ted-alarm-card";
 import "./cards/timer-card/ted-timer-card";

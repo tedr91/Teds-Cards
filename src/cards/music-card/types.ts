@@ -50,6 +50,13 @@ export interface MusicCardConfig extends LovelaceCardConfig {
   unmatched_message?: string;
   /** Where the empty-state "Settings" button navigates. Supports `[root]`. */
   settings_path?: string;
+  /** Base URL of the Music Assistant server for the "Party Mode!" mini-menu action
+   *  (its `#/party` dashboard). Defaults to `http://<hostname>:8095` (MA's default
+   *  port for a local install). */
+  party_url?: string;
+  /** Dashboard view path the party page opens in (the Ted Web View page).
+   *  Default `webview`. */
+  party_view_path?: string;
   /** Where the unmatched-state "Music Assistant" button navigates (the MA panel).
    *  Defaults to `/music-assistant`. */
   mass_setup_path?: string;

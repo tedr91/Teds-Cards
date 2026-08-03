@@ -942,6 +942,11 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.67
+
+- **Music Player “mini” mode: “Party Mode!”.** The mini player’s “…” menu has a new **Party Mode!** item that opens Music Assistant’s built-in fullscreen party dashboard for the current player. Requires Music Assistant 2.8+ with the Party plugin.
+- **New Web View card.** A reusable full-bleed web-view (iframe) card that loads a URL from its config or a `?url=` navigation parameter — used by Party Mode to show the party page inside the dashboard.
+
 ### v0.9.66
 
 - **Music Player “mini” mode: new “…” menu.** The compact mini player’s volume button is now a “…” button that opens a menu with **Media**, **Queue**, and **Volume**. Media and Queue open a pop-up window with the full player’s Media or Queue tab, and Volume opens a compact slider (tap the speaker to mute).
