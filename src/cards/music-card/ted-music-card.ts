@@ -383,6 +383,14 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
       const above = t.top - cardRect.top;
       return popup.offsetHeight + gap > below && above > below;
     };
+    // The mini bar is only one row tall, so card-relative space is ~0 both ways —
+    // measure against the viewport instead so a bottom-pinned bar opens upward.
+    const wantsUpViewport = (trigger: HTMLElement, popup: HTMLElement, gap: number): boolean => {
+      const t = trigger.getBoundingClientRect();
+      const below = window.innerHeight - t.bottom;
+      const above = t.top;
+      return popup.offsetHeight + gap > below && above > below;
+    };
     if (this._castOpen) {
       const fly = root?.querySelector(".cast-flyout") as HTMLElement | null;
       const wrap = root?.querySelector(".cast-wrap") as HTMLElement | null;
@@ -403,7 +411,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
       const menu = root?.querySelector(".mini-menu") as HTMLElement | null;
       const wrap = menu?.closest(".mini-more-wrap") as HTMLElement | null;
       if (menu && wrap) {
-        const up = wantsUp(wrap, menu, 6);
+        const up = wantsUpViewport(wrap, menu, 6);
         if (up !== this._miniMenuUp) this._miniMenuUp = up;
       }
     }
@@ -411,7 +419,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
       const fly = root?.querySelector(".mini-vol-flyout") as HTMLElement | null;
       const wrap = fly?.closest(".mini-more-wrap") as HTMLElement | null;
       if (fly && wrap) {
-        const up = wantsUp(wrap, fly, 6);
+        const up = wantsUpViewport(wrap, fly, 6);
         if (up !== this._miniVolUp) this._miniVolUp = up;
       }
     }

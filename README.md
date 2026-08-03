@@ -942,6 +942,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.68
+
+- **Fixed the mini Music Player “…” menu opening off-screen.** On a bottom-pinned mini player the menu (and volume flyout) now open upward instead of dropping below the screen edge.
+
 ### v0.9.67
 
 - **Music Player “mini” mode: “Party Mode!”.** The mini player’s “…” menu has a new **Party Mode!** item that opens Music Assistant’s built-in fullscreen party dashboard for the current player. Requires Music Assistant 2.8+ with the Party plugin.
