@@ -1640,6 +1640,19 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
         : nothing}
       ${this._miniVolOpen
         ? html`<div class="mini-vol-flyout ${volDir}" role="group">
+            <span class="mini-vol-num">${volPct}</span>
+            <span class="mini-vol-range-wrap">
+              <input
+                class="mini-vol-range"
+                type="range"
+                min="0"
+                max="100"
+                .value=${String(volPct)}
+                @input=${this._onVolume}
+                @change=${this._onVolume}
+                aria-label="Volume"
+              />
+            </span>
             <button
               type="button"
               class="mini-vol-mute ${muted ? "active" : ""}"
@@ -1659,17 +1672,6 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
                 )}
               ></ha-icon>
             </button>
-            <input
-              class="mini-vol-range"
-              type="range"
-              min="0"
-              max="100"
-              .value=${String(volPct)}
-              @input=${this._onVolume}
-              @change=${this._onVolume}
-              aria-label="Volume"
-            />
-            <span class="mini-vol-num">${volPct}</span>
           </div>`
         : nothing}
     </div>`;
@@ -3298,10 +3300,11 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
       }
       .mini-vol-flyout {
         display: flex;
+        flex-direction: column;
         align-items: center;
         gap: 8px;
-        padding: 8px 10px;
-        width: 220px;
+        padding: 10px 8px;
+        width: auto;
       }
       .mini-vol-mute {
         flex: 0 0 auto;
@@ -3319,15 +3322,24 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
       .mini-vol-mute ha-icon {
         --mdc-icon-size: 22px;
       }
+      /* Vertical slider: the range is rotated inside a fixed-height wrap so it works
+         even on webviews without CSS vertical-range support. */
+      .mini-vol-range-wrap {
+        height: 132px;
+        width: 34px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
       .mini-vol-range {
-        flex: 1 1 auto;
-        min-width: 0;
+        width: 132px;
+        transform: rotate(-90deg);
         accent-color: var(--ted-style-accent);
       }
       .mini-vol-num {
         flex: 0 0 auto;
         min-width: 2.4ch;
-        text-align: right;
+        text-align: center;
         font-size: 0.82em;
         opacity: 0.75;
         font-variant-numeric: tabular-nums;
