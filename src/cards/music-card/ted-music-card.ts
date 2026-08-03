@@ -3303,7 +3303,9 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
         flex-direction: column;
         align-items: center;
         gap: 8px;
-        padding: 10px 8px;
+        padding: 12px 10px;
+        height: 200px;
+        box-sizing: border-box;
         width: auto;
       }
       .mini-vol-mute {
@@ -3322,18 +3324,23 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
       .mini-vol-mute ha-icon {
         --mdc-icon-size: 22px;
       }
-      /* Vertical slider: the range is rotated inside a fixed-height wrap so it works
-         even on webviews without CSS vertical-range support. */
+      /* Native vertical slider that fills the popup height between the level + speaker.
+         writing-mode covers modern Chromium; -webkit-appearance the older webviews. */
       .mini-vol-range-wrap {
-        height: 132px;
-        width: 34px;
+        flex: 1 1 auto;
+        min-height: 0;
         display: flex;
-        align-items: center;
+        align-items: stretch;
         justify-content: center;
       }
       .mini-vol-range {
-        width: 132px;
-        transform: rotate(-90deg);
+        writing-mode: vertical-lr;
+        direction: rtl;
+        -webkit-appearance: slider-vertical;
+        width: 8px;
+        height: 100%;
+        margin: 0;
+        cursor: pointer;
         accent-color: var(--ted-style-accent);
       }
       .mini-vol-num {
