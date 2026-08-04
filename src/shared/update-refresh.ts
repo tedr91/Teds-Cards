@@ -7,6 +7,10 @@
  * the freshly-installed files take effect — the same effect as the navbar's Refresh
  * menu item (`browser_mod.refresh`), without the manual tap.
  *
+ * We subscribe through the backend's `teds_dashboard_system/subscribe_dashboard_updated`
+ * command rather than `subscribeEvents`, because non-admin (kiosk/Wallpanel) users
+ * aren't allowed to subscribe to custom event types over websocket.
+ *
  * Attach to a long-lived host (the navbar); gated behind the backend integration.
  */
 import type { ReactiveController, ReactiveControllerHost } from "lit";
@@ -14,9 +18,6 @@ import type { HomeAssistant } from "custom-card-helpers";
 
 import { settingsStore } from "./settings";
 import { browserModId } from "./device-id";
-
-/** Must match const.py `EVENT_DASHBOARD_UPDATED`. */
-const EVENT_DASHBOARD_UPDATED = "teds_dashboard_system_dashboard_updated";
 
 type RefreshHost = ReactiveControllerHost & { hass?: HomeAssistant };
 
@@ -57,10 +58,17 @@ export class UpdateRefreshController implements ReactiveController {
 
   private async _subscribe(): Promise<void> {
     const conn = this._host.hass?.connection as
-      | { subscribeEvents?: (cb: () => void, event: string) => Promise<() => void> }
+      | {
+          subscribeMessage?: (
+            cb: () => void,
+            msg: { type: string },
+          ) => Promise<() => void>;
+        }
       | undefined;
-    if (!conn?.subscribeEvents || this._unsub) return;
-    const unsub = await conn.subscribeEvents(() => this._onUpdated(), EVENT_DASHBOARD_UPDATED);
+    if (!conn?.subscribeMessage || this._unsub) return;
+    const unsub = await conn.subscribeMessage(() => this._onUpdated(), {
+      type: "teds_dashboard_system/subscribe_dashboard_updated",
+    });
     // If the host disconnected while the subscription was in flight, drop it.
     if (this._detached) unsub();
     else this._unsub = unsub;

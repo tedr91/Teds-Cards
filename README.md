@@ -942,6 +942,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.71
+
+- **Fixed repeated “Unauthorized” log spam on non-admin tablets.** Auto-refresh-on-update now subscribes through the backend's dedicated WebSocket command instead of listening to the custom event directly, so kiosk/Wallpanel users no longer flood the log with `Refusing to allow … to subscribe to event` errors. Requires Ted's Dashboard System v0.9.76+.
+
 ### v0.9.70
 
 - **Mini Music Player volume slider now fills its popup.** The vertical slider stretches to fit the popout height instead of floating short in the middle.
