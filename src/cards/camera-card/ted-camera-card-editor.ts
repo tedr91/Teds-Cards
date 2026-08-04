@@ -3,7 +3,7 @@ import { customElement, property, state } from "lit/decorators.js";
 import { type HomeAssistant, type LovelaceCardEditor, fireEvent } from "custom-card-helpers";
 
 import { transparencyBlurSchema } from "../../shared/appearance";
-import { substreamBase, streamQualityOf } from "../../shared/camera";
+import { streamQualityOf, isSubstreamNameRelated } from "../../shared/camera";
 import { CAMERA_CARD_EDITOR_TYPE } from "./const";
 import type { CameraCardConfig, CameraItemConfig, CameraLayout } from "./types";
 
@@ -408,10 +408,10 @@ export class TedCameraCardEditor extends LitElement implements LovelaceCardEdito
       return "Defaults to the camera's friendly name.";
     }
     if (schema.name === "stream_medium") {
-      return "Lower-res feed for the primary/grid tiles. Auto-detected from sibling entities (e.g. _medium/_balanced) when left blank; falls back to the main camera.";
+      return "Lower-res feed for the primary/grid tiles. Auto-detected from a same-device sibling with a related name when left blank; falls back to the main camera.";
     }
     if (schema.name === "stream_low") {
-      return "Lowest-res feed for the small Multi tiles. Auto-detected from sibling entities (e.g. _low/_fluent/_sub) when left blank; falls back to medium, then main.";
+      return "Lowest-res feed for the small Multi tiles. Auto-detected from a same-device sibling with a related name when left blank; falls back to medium, then main.";
     }
     return undefined;
   };
@@ -565,23 +565,32 @@ export class TedCameraCardEditor extends LitElement implements LovelaceCardEdito
     if (entities.length === 0) return;
     // Collapse substream variants of the same camera to one entry, keeping the
     // highest-res available (the card auto-detects the medium/low siblings at
-    // render time), so we don't dump every _high/_medium/_low channel.
+    // render time), so we don't dump every _high/_medium/_low channel. Two
+    // entities are the same camera only when their names are related and they
+    // share a parent device (matching the card's runtime detection).
+    const reg = (this.hass as unknown as { entities?: Record<string, { device_id?: string | null }> })
+      .entities;
+    const sameCamera = (a: string, b: string): boolean => {
+      if (!isSubstreamNameRelated(a, b)) return false;
+      const da = reg?.[a]?.device_id ?? undefined;
+      const db = reg?.[b]?.device_id ?? undefined;
+      return da && db ? da === db : true;
+    };
     const rank = (id: string): number => {
       const quality = streamQualityOf(id);
-      if (quality === undefined) return 3; // no suffix → treat as the main feed
+      if (quality === undefined) return 3; // renamed/plain → treat as the main feed
       if (quality === "high") return 2;
       if (quality === "medium") return 1;
       return 0; // low
     };
-    const best = new Map<string, string>();
+    // One representative (highest-res) per camera cluster.
+    const reps: string[] = [];
     for (const id of entities) {
-      const base = substreamBase(id);
-      const current = best.get(base);
-      if (current === undefined || rank(id) > rank(current)) best.set(base, id);
+      const i = reps.findIndex((rep) => sameCamera(rep, id));
+      if (i === -1) reps.push(id);
+      else if (rank(id) > rank(reps[i])) reps[i] = id;
     }
-    const cameras: CameraItemConfig[] = [...best.values()]
-      .sort()
-      .map((entity) => ({ entity }));
+    const cameras: CameraItemConfig[] = reps.sort().map((entity) => ({ entity }));
     this._expanded = new Set();
     this._commit(
       this._withAutoWidth({

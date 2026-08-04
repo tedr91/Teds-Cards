@@ -11,7 +11,7 @@ import {
   hasAction,
 } from "custom-card-helpers";
 
-import { ensureHuiImage, substreamBase, QUALITY_SUFFIXES } from "../../shared/camera";
+import { ensureHuiImage, substreamBase, streamQualityOf, isSubstreamNameRelated } from "../../shared/camera";
 import type { CameraView, StreamQuality } from "../../shared/camera";
 import { pendingCameraFocus, subscribeCameraFocus } from "../../shared/camera-focus";
 import { registerCustomCard } from "../../shared/register-card";
@@ -311,11 +311,31 @@ export class TedCameraCard extends LitElement implements LovelaceCard {
   private _autoSubstream(entity: string, quality: "medium" | "low"): string | undefined {
     if (!this.hass) return undefined;
     const base = substreamBase(entity);
-    for (const suffix of QUALITY_SUFFIXES[quality]) {
-      const candidate = `${base}_${suffix}`;
-      if (candidate !== entity && this.hass.states[candidate]) return candidate;
-    }
-    return undefined;
+    const candidates = Object.keys(this.hass.states).filter(
+      (id) => id.startsWith("camera.") && id !== entity && streamQualityOf(id) === quality,
+    );
+    // Prefer an exact base match (same id, different quality suffix), then a
+    // same-camera sibling proven by shared parent device + related name.
+    return (
+      candidates.find((id) => substreamBase(id) === base) ??
+      candidates.find((id) => this._sameCamera(entity, id))
+    );
+  }
+
+  /** The registry device id for an entity, if the frontend exposes the registry. */
+  private _deviceOf(entityId: string): string | undefined {
+    const reg = (this.hass as unknown as { entities?: Record<string, { device_id?: string | null }> })
+      .entities;
+    return reg?.[entityId]?.device_id ?? undefined;
+  }
+
+  /** Whether two camera entities are the same physical camera: their names must
+   *  be related and, when both are in the registry, share a parent device. */
+  private _sameCamera(a: string, b: string): boolean {
+    if (!isSubstreamNameRelated(a, b)) return false;
+    const da = this._deviceOf(a);
+    const db = this._deviceOf(b);
+    return da && db ? da === db : true;
   }
 
   /** The effective layout. In settings mode (and when the card doesn't pin `layout`),

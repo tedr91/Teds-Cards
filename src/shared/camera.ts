@@ -53,6 +53,19 @@ export function substreamBase(entityId: string): string {
   return entityId;
 }
 
+/** Whether two camera entities look like substreams of the same physical camera
+ *  by name: after stripping quality suffixes, one base is a whole trailing
+ *  segment of the other (so a renamed `camera.front_yard_camera` still matches
+ *  `camera.outside_front_yard_camera_*`, but `_package_camera` variants don't). */
+export function isSubstreamNameRelated(a: string, b: string): boolean {
+  const baseA = substreamBase(a).toLowerCase();
+  const baseB = substreamBase(b).toLowerCase();
+  if (baseA === baseB) return true;
+  const objA = baseA.slice(baseA.indexOf(".") + 1);
+  const objB = baseB.slice(baseB.indexOf(".") + 1);
+  return baseA.endsWith(`_${objB}`) || baseB.endsWith(`_${objA}`);
+}
+
 /**
  * The slim slice of HA's card helpers we use to force the camera element to load.
  * Structurally matches the room card's own declaration so the global `Window`
