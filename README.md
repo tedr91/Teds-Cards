@@ -942,6 +942,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.74
+
+- **Camera card now auto-detects substream entities.** When the Medium/Low substream fields are left blank, the card finds sibling camera entities by naming convention (UniFi Protect `_high/_medium/_low`, Reolink `_clear/_balanced/_fluent`, generic `_main/_sub`), so lower-res feeds are used for small tiles with no manual setup. Explicit config still overrides.
+
 ### v0.9.73
 
 - **Camera card can now use lower-resolution substreams for small feeds.** Each camera gains optional "Medium substream" and "Low substream" entities. The card renders the low feed for the small Multi tiles, the medium feed for the Multi primary tile and the Quad/Auto-grid tiles, and the full (main) feed for the Single layout — with graceful fallback to the main camera when a substream isn't set. Cuts bandwidth on multi-camera layouts.

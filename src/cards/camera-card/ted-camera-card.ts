@@ -37,6 +37,14 @@ const LONG_PRESS_MS = 500;
 /** Relative stream resolution requested for a tile, based on its size/role. */
 type StreamQuality = "low" | "medium" | "high";
 
+/** Entity-id suffixes used to auto-detect sibling substreams, per quality tier.
+ *  Covers common integrations (UniFi Protect, Reolink, go2rtc/generic). */
+const QUALITY_SUFFIXES: Record<StreamQuality, string[]> = {
+  high: ["high", "clear", "main", "hd"],
+  medium: ["medium", "balanced", "mid", "sd"],
+  low: ["low", "fluent", "sub", "ld"],
+};
+
 // mdi:check — marks the active view in the long-press popover.
 const CHECK_ICON = "M21,7L9,19L3.5,13.5L4.91,12.09L9,16.17L19.59,5.59L21,7Z";
 // mdi:crown — "Make primary camera" option.
@@ -291,13 +299,45 @@ export class TedCameraCard extends LitElement implements LovelaceCard {
     return this._viewOverride[cam.entity] ?? cam.camera_view ?? "auto";
   }
 
-  /** The camera entity to render for a given quality tier. Falls back up the
-   *  chain (low → medium → main) when a substream isn't configured, so `high`
-   *  is always the main `entity`. */
+  /** The camera entity to render for a given quality tier. Explicit config wins,
+   *  then an auto-detected sibling substream (by naming convention), then the
+   *  main `entity`. `high` is always the main `entity`. */
   private _streamEntity(cam: CameraItemConfig, quality: StreamQuality): string {
-    if (quality === "low") return cam.stream_low ?? cam.stream_medium ?? cam.entity;
-    if (quality === "medium") return cam.stream_medium ?? cam.entity;
-    return cam.entity;
+    if (quality === "high") return cam.entity;
+    if (quality === "medium") {
+      return cam.stream_medium ?? this._autoSubstream(cam.entity, "medium") ?? cam.entity;
+    }
+    return (
+      cam.stream_low ??
+      this._autoSubstream(cam.entity, "low") ??
+      cam.stream_medium ??
+      this._autoSubstream(cam.entity, "medium") ??
+      cam.entity
+    );
+  }
+
+  /** Strip a known quality suffix from an entity id to get its shared base, so
+   *  siblings like `camera.front_high`/`_medium`/`_low` all resolve to `camera.front`. */
+  private _substreamBase(entity: string): string {
+    const lower = entity.toLowerCase();
+    for (const group of Object.values(QUALITY_SUFFIXES)) {
+      for (const suffix of group) {
+        if (lower.endsWith(`_${suffix}`)) return entity.slice(0, -(suffix.length + 1));
+      }
+    }
+    return entity;
+  }
+
+  /** Find a sibling camera entity for the requested quality by naming convention
+   *  (e.g. UniFi `_high/_medium/_low`, Reolink `_clear/_balanced/_fluent`). */
+  private _autoSubstream(entity: string, quality: "medium" | "low"): string | undefined {
+    if (!this.hass) return undefined;
+    const base = this._substreamBase(entity);
+    for (const suffix of QUALITY_SUFFIXES[quality]) {
+      const candidate = `${base}_${suffix}`;
+      if (candidate !== entity && this.hass.states[candidate]) return candidate;
+    }
+    return undefined;
   }
 
   /** The effective layout. In settings mode (and when the card doesn't pin `layout`),

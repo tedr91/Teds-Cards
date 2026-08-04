@@ -421,10 +421,10 @@ export class TedCameraCardEditor extends LitElement implements LovelaceCardEdito
       return "Defaults to the camera's friendly name.";
     }
     if (schema.name === "stream_medium") {
-      return "Lower-res feed used for the primary/grid tiles. Falls back to the main camera.";
+      return "Lower-res feed for the primary/grid tiles. Auto-detected from sibling entities (e.g. _medium/_balanced) when left blank; falls back to the main camera.";
     }
     if (schema.name === "stream_low") {
-      return "Lowest-res feed used for the small Multi tiles. Falls back to medium, then main.";
+      return "Lowest-res feed for the small Multi tiles. Auto-detected from sibling entities (e.g. _low/_fluent/_sub) when left blank; falls back to medium, then main.";
     }
     return undefined;
   };
@@ -452,9 +452,9 @@ export class TedCameraCardEditor extends LitElement implements LovelaceCardEdito
       case "camera_view":
         return "Camera view";
       case "stream_medium":
-        return "Medium substream (optional)";
+        return "Medium substream (auto)";
       case "stream_low":
-        return "Low substream (optional)";
+        return "Low substream (auto)";
       case "fit_mode":
         return "Fit mode";
       case "aspect_ratio":
