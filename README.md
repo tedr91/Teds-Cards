@@ -942,6 +942,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.73
+
+- **Camera card can now use lower-resolution substreams for small feeds.** Each camera gains optional "Medium substream" and "Low substream" entities. The card renders the low feed for the small Multi tiles, the medium feed for the Multi primary tile and the Quad/Auto-grid tiles, and the full (main) feed for the Single layout — with graceful fallback to the main camera when a substream isn't set. Cuts bandwidth on multi-camera layouts.
+
 ### v0.9.72
 
 - **Tapping a notification in the Notification Center card now opens it.** A tap marks the notification read and opens the full event in the same centered detail modal used by the navbar notifications popup (title, time, any vision clip, and the full message) instead of only marking it read.

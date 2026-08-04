@@ -276,6 +276,8 @@ export class TedCameraCardEditor extends LitElement implements LovelaceCardEdito
               entity: cam.entity ?? "",
               name: cam.name ?? "",
               camera_view: cam.camera_view ?? "auto",
+              stream_medium: cam.stream_medium ?? "",
+              stream_low: cam.stream_low ?? "",
             }}
             .schema=${[
               { name: "entity", required: true, selector: { entity: { domain: "camera" } } },
@@ -293,6 +295,8 @@ export class TedCameraCardEditor extends LitElement implements LovelaceCardEdito
                   },
                 },
               },
+              { name: "stream_medium", selector: { entity: { domain: "camera" } } },
+              { name: "stream_low", selector: { entity: { domain: "camera" } } },
             ]}
             .computeLabel=${this._computeLabel}
             .computeHelper=${this._computeHelper}
@@ -416,6 +420,12 @@ export class TedCameraCardEditor extends LitElement implements LovelaceCardEdito
     if (schema.name === "name") {
       return "Defaults to the camera's friendly name.";
     }
+    if (schema.name === "stream_medium") {
+      return "Lower-res feed used for the primary/grid tiles. Falls back to the main camera.";
+    }
+    if (schema.name === "stream_low") {
+      return "Lowest-res feed used for the small Multi tiles. Falls back to medium, then main.";
+    }
     return undefined;
   };
 
@@ -441,6 +451,10 @@ export class TedCameraCardEditor extends LitElement implements LovelaceCardEdito
         return "Camera name size";
       case "camera_view":
         return "Camera view";
+      case "stream_medium":
+        return "Medium substream (optional)";
+      case "stream_low":
+        return "Low substream (optional)";
       case "fit_mode":
         return "Fit mode";
       case "aspect_ratio":
@@ -503,13 +517,23 @@ export class TedCameraCardEditor extends LitElement implements LovelaceCardEdito
 
   private _onCameraChanged(idx: number, ev: CustomEvent): void {
     ev.stopPropagation();
-    const value = ev.detail.value as { entity?: string; name?: string; camera_view?: string };
+    const value = ev.detail.value as {
+      entity?: string;
+      name?: string;
+      camera_view?: string;
+      stream_medium?: string;
+      stream_low?: string;
+    };
     const cameras = [...this._cameras()];
     const next: CameraItemConfig = { ...cameras[idx], entity: value.entity ?? "" };
     if (value.name) next.name = value.name;
     else delete next.name;
     if (value.camera_view === "live") next.camera_view = "live";
     else delete next.camera_view;
+    if (value.stream_medium) next.stream_medium = value.stream_medium;
+    else delete next.stream_medium;
+    if (value.stream_low) next.stream_low = value.stream_low;
+    else delete next.stream_low;
     cameras[idx] = next;
     this._commit(this._withAutoWidth({ ...this._config, cameras } as CameraCardConfig));
   }

@@ -34,6 +34,9 @@ interface CardHelpers {
 const DOUBLE_CLICK_MS = 250;
 const LONG_PRESS_MS = 500;
 
+/** Relative stream resolution requested for a tile, based on its size/role. */
+type StreamQuality = "low" | "medium" | "high";
+
 // mdi:check — marks the active view in the long-press popover.
 const CHECK_ICON = "M21,7L9,19L3.5,13.5L4.91,12.09L9,16.17L19.59,5.59L21,7Z";
 // mdi:crown — "Make primary camera" option.
@@ -288,6 +291,15 @@ export class TedCameraCard extends LitElement implements LovelaceCard {
     return this._viewOverride[cam.entity] ?? cam.camera_view ?? "auto";
   }
 
+  /** The camera entity to render for a given quality tier. Falls back up the
+   *  chain (low → medium → main) when a substream isn't configured, so `high`
+   *  is always the main `entity`. */
+  private _streamEntity(cam: CameraItemConfig, quality: StreamQuality): string {
+    if (quality === "low") return cam.stream_low ?? cam.stream_medium ?? cam.entity;
+    if (quality === "medium") return cam.stream_medium ?? cam.entity;
+    return cam.entity;
+  }
+
   /** The effective layout. In settings mode (and when the card doesn't pin `layout`),
    *  it comes from this device's `cameras_layout` setting; otherwise the card config. */
   private _effectiveLayout(): CameraLayout {
@@ -316,7 +328,7 @@ export class TedCameraCard extends LitElement implements LovelaceCard {
             gridTemplateRows: `repeat(${rows}, minmax(0, 1fr))`,
           })}
         >
-          ${cameras.map((cam) => this._renderTile(cam, isGrid))}
+          ${cameras.map((cam) => this._renderTile(cam, isGrid, "medium"))}
         </div>
       `;
     }
@@ -328,10 +340,10 @@ export class TedCameraCard extends LitElement implements LovelaceCard {
       const smallsBasis = position === "bottom" ? { height: `${pct}%` } : { width: `${pct}%` };
       return html`
         <div class=${classMap({ "big-small": true, [position]: true })}>
-          <div class="big">${this._renderTile(big ?? null, isGrid)}</div>
+          <div class="big">${this._renderTile(big ?? null, isGrid, "medium")}</div>
           ${smalls.length
             ? html`<div class="smalls" style=${styleMap({ flex: `0 0 ${pct}%`, ...smallsBasis })}>
-                ${smalls.map((cam) => this._renderTile(cam, isGrid))}
+                ${smalls.map((cam) => this._renderTile(cam, isGrid, "low"))}
               </div>`
             : nothing}
         </div>
@@ -339,17 +351,23 @@ export class TedCameraCard extends LitElement implements LovelaceCard {
     }
 
     const slots = layout === "quad" ? 4 : layout === "dual" ? 2 : 1;
+    // Single fills the card (high-res); dual/quad tiles are smaller (medium).
+    const quality: StreamQuality = layout === "single" ? "high" : "medium";
     const tiles: Array<CameraItemConfig | null> = [];
     for (let i = 0; i < slots; i++) tiles.push(cameras[i] ?? null);
     return html`
       <div class=${classMap({ grid: true, [layout]: true })}>
-        ${tiles.map((cam) => this._renderTile(cam, isGrid))}
+        ${tiles.map((cam) => this._renderTile(cam, isGrid, quality))}
       </div>
     `;
   }
 
   /** Render a single camera tile, or an empty placeholder when `cam` is null. */
-  private _renderTile(cam: CameraItemConfig | null, isGrid: boolean): TemplateResult {
+  private _renderTile(
+    cam: CameraItemConfig | null,
+    isGrid: boolean,
+    quality: StreamQuality,
+  ): TemplateResult {
     if (!cam) {
       return html`<div class="tile"><div class="placeholder" aria-hidden="true"></div></div>`;
     }
@@ -377,7 +395,7 @@ export class TedCameraCard extends LitElement implements LovelaceCard {
         ${this._streamsActive()
           ? html`<hui-image
               .hass=${this.hass}
-              .cameraImage=${cam.entity}
+              .cameraImage=${this._streamEntity(cam, quality)}
               .cameraView=${this._effectiveView(cam)}
               .fitMode=${this._config?.fit_mode ?? "cover"}
               .aspectRatio=${aspectRatio}

@@ -21,7 +21,7 @@ export type BigSmallPosition = "right" | "bottom";
 
 /** A single camera within the card. */
 export interface CameraItemConfig {
-  /** A `camera.*` entity. */
+  /** A `camera.*` entity. This is the main (high-res) feed. */
   entity: string;
   /** Per-camera caption override (defaults to the camera's friendly name). */
   name?: string;
@@ -29,6 +29,10 @@ export interface CameraItemConfig {
   camera_view?: CameraView;
   /** When `false`, the camera is hidden from the layout. Defaults to true. */
   enabled?: boolean;
+  /** Optional low-res substream entity, used for the small Multi feeds. */
+  stream_low?: string;
+  /** Optional medium-res substream entity, used for primary/grid feeds. */
+  stream_medium?: string;
 }
 
 export interface CameraCardConfig extends LovelaceCardConfig {
