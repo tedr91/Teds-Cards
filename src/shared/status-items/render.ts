@@ -774,15 +774,15 @@ function renderNotificationsItem(
         popover
         @toggle=${ctx.slider.onNotifDetailToggle}
       >
-        ${renderNotifDetail(ctx, detailPopId)}
+        ${renderNotifDetail(ctx.slider, detailPopId)}
       </div>
     </div>
   `;
 }
 
 /** Full-notification content for the centered detail modal. */
-function renderNotifDetail(ctx: StatusItemContext, detailPopId: string): TemplateResult {
-  const d = ctx.slider.notifDetail;
+export function renderNotifDetail(slider: StatusSliderController, detailPopId: string): TemplateResult {
+  const d = slider.notifDetail;
   return html`
     <div class="notif-detail sev-${d?.severity ?? "info"}">
       <div class="notif-detail-head">
@@ -794,15 +794,15 @@ function renderNotifDetail(ctx: StatusItemContext, detailPopId: string): Templat
         <button
           class="notif-detail-x"
           aria-label="Close"
-          @click=${() => ctx.slider.closeNotifDetail(detailPopId)}
+          @click=${() => slider.closeNotifDetail(detailPopId)}
         >
           ✕
         </button>
       </div>
       ${d?.created ? html`<div class="notif-detail-time">${notifTimeAgo(d.created)}</div>` : nothing}
       ${(() => {
-        const clip = ctx.slider.notifClip?.clip_url ?? d?.data?.clip_url;
-        const poster = ctx.slider.notifClip?.thumbnail_url ?? d?.data?.thumbnail_url ?? "";
+        const clip = slider.notifClip?.clip_url ?? d?.data?.clip_url;
+        const poster = slider.notifClip?.thumbnail_url ?? d?.data?.thumbnail_url ?? "";
         return clip
           ? html`<video
               class="notif-detail-media"

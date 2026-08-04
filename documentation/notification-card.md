@@ -19,7 +19,8 @@ dashboard column or sidebar.
   relative time ("5m ago"), optional area tag, and any action buttons.
 - Shows an **unread badge** in the header and a **Mark all read** footer button.
 - **Clear all** button in the header (scoped to the card's area if set).
-- Tapping a row marks it read; tapping ✕ dismisses it.
+- Tapping a row marks it read and opens the full notification in a centered detail
+  modal (with any vision clip), matching the navbar notifications popup; tapping ✕ dismisses it.
 - Optionally **pops toasts** for new notifications (like the navbar bell does).
 - **Device-area scoped**: shows the resolved device area's notifications **plus**
   house-wide ones (see [scoping](#area-scoping)).

@@ -1,6 +1,115 @@
 import { css } from "lit";
 
 /**
+ * Centered full-notification detail modal, shared by the navbar/room status strip
+ * popover and the Notification Center card so tapping a notification opens the same
+ * detail view (title, time, optional vision clip, full message) in both places.
+ */
+export const notifDetailStyles = css`
+  /* Centered full-notification modal (opens when a notification row is tapped, marking
+     it read). Native [popover] centered with a transform; opts into the theme card frost
+     like the other floating surfaces so translucent themes blur the dashboard behind. */
+  .notif-detail-popover {
+    position: fixed;
+    inset: auto;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    margin: 0;
+    box-sizing: border-box;
+    width: min(420px, 92vw);
+    max-height: 80vh;
+    overflow: auto;
+    padding: 0;
+    background: var(--ted-style-surface);
+    -webkit-backdrop-filter: var(--ha-card-backdrop-filter, none);
+    backdrop-filter: var(--ha-card-backdrop-filter, none);
+    border: 1px solid var(--ted-style-divider);
+    border-radius: var(--ted-style-radius-sm);
+    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
+    color: var(--ted-style-text);
+  }
+  .notif-detail-popover:popover-open {
+    display: block;
+  }
+  .notif-detail-popover::backdrop {
+    background: rgba(0, 0, 0, 0.45);
+  }
+  .notif-detail {
+    --nc-accent: var(--ted-style-accent);
+    border-left: 3px solid var(--nc-accent);
+  }
+  .notif-detail.sev-info {
+    --nc-accent: #4cc2ff;
+  }
+  .notif-detail.sev-success {
+    --nc-accent: #6ccb5f;
+  }
+  .notif-detail.sev-warning {
+    --nc-accent: #ffb454;
+  }
+  .notif-detail.sev-danger {
+    --nc-accent: #ff99a4;
+  }
+  .notif-detail.sev-tip {
+    --nc-accent: #9b6cff;
+  }
+  .notif-detail-head {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 12px 12px 4px 14px;
+  }
+  .notif-detail-icon {
+    flex: none;
+    --mdc-icon-size: 22px;
+    color: var(--nc-accent);
+    margin-top: 1px;
+  }
+  .notif-detail-title {
+    font-weight: 600;
+    font-size: 0.95rem;
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  .notif-detail-x {
+    flex: none;
+    appearance: none;
+    border: none;
+    background: none;
+    color: var(--ted-style-muted);
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1;
+    padding: 2px 4px;
+  }
+  .notif-detail-x:hover {
+    color: var(--ted-style-text);
+  }
+  .notif-detail-time {
+    padding: 0 12px 0 14px;
+    font-size: 0.7rem;
+    color: var(--ted-style-muted);
+  }
+  .notif-detail-msg {
+    padding: 8px 12px 14px 14px;
+    font-size: 0.85rem;
+    color: var(--ted-style-text);
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+  }
+  .notif-detail-media {
+    display: block;
+    width: calc(100% - 24px);
+    margin: 8px 12px 0 12px;
+    max-height: 46vh;
+    border-radius: 8px;
+    background: #000;
+  }
+`;
+
+/**
  * Item-level styles shared by every status-item host. Hosts append this to their
  * own `static styles` (after `tedStyleTheme`, whose CSS variables it relies on)
  * and keep their own strip/container layout styles separate. The icon size is
@@ -321,107 +430,7 @@ export const statusItemStyles = css`
     color: var(--ted-style-text);
   }
 
-  /* Centered full-notification modal (opens when a popover row is tapped, marking it
-     read). Native [popover] centered with a transform; opts into the theme card frost
-     like the other floating surfaces so translucent themes blur the dashboard behind. */
-  .notif-detail-popover {
-    position: fixed;
-    inset: auto;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    margin: 0;
-    box-sizing: border-box;
-    width: min(420px, 92vw);
-    max-height: 80vh;
-    overflow: auto;
-    padding: 0;
-    background: var(--ted-style-surface);
-    -webkit-backdrop-filter: var(--ha-card-backdrop-filter, none);
-    backdrop-filter: var(--ha-card-backdrop-filter, none);
-    border: 1px solid var(--ted-style-divider);
-    border-radius: var(--ted-style-radius-sm);
-    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
-    color: var(--ted-style-text);
-  }
-  .notif-detail-popover:popover-open {
-    display: block;
-  }
-  .notif-detail-popover::backdrop {
-    background: rgba(0, 0, 0, 0.45);
-  }
-  .notif-detail {
-    --nc-accent: var(--ted-style-accent);
-    border-left: 3px solid var(--nc-accent);
-  }
-  .notif-detail.sev-info {
-    --nc-accent: #4cc2ff;
-  }
-  .notif-detail.sev-success {
-    --nc-accent: #6ccb5f;
-  }
-  .notif-detail.sev-warning {
-    --nc-accent: #ffb454;
-  }
-  .notif-detail.sev-danger {
-    --nc-accent: #ff99a4;
-  }
-  .notif-detail.sev-tip {
-    --nc-accent: #9b6cff;
-  }
-  .notif-detail-head {
-    display: flex;
-    align-items: flex-start;
-    gap: 8px;
-    padding: 12px 12px 4px 14px;
-  }
-  .notif-detail-icon {
-    flex: none;
-    --mdc-icon-size: 22px;
-    color: var(--nc-accent);
-    margin-top: 1px;
-  }
-  .notif-detail-title {
-    font-weight: 600;
-    font-size: 0.95rem;
-    flex: 1 1 auto;
-    min-width: 0;
-    overflow-wrap: anywhere;
-  }
-  .notif-detail-x {
-    flex: none;
-    appearance: none;
-    border: none;
-    background: none;
-    color: var(--ted-style-muted);
-    cursor: pointer;
-    font-size: 14px;
-    line-height: 1;
-    padding: 2px 4px;
-  }
-  .notif-detail-x:hover {
-    color: var(--ted-style-text);
-  }
-  .notif-detail-time {
-    padding: 0 12px 0 14px;
-    font-size: 0.7rem;
-    color: var(--ted-style-muted);
-  }
-  .notif-detail-msg {
-    padding: 8px 12px 14px 14px;
-    font-size: 0.85rem;
-    color: var(--ted-style-text);
-    overflow-wrap: anywhere;
-    white-space: pre-wrap;
-  }
-  .notif-detail-media {
-    display: block;
-    width: calc(100% - 24px);
-    margin: 8px 12px 0 12px;
-    max-height: 46vh;
-    border-radius: 8px;
-    background: #000;
-  }
+  ${notifDetailStyles}
 
   /* Slider popover (brightness / volume). Opt into the theme's card frost so on
      translucent themes the surface blurs the dashboard behind it instead of showing it

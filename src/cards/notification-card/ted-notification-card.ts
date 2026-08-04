@@ -10,6 +10,9 @@ import { severityIcon } from "../../shared/icons";
 import { brushedOverlay, tedCardThemeClass, tedStyleTheme } from "../../shared/theme";
 import { registerCustomCard } from "../../shared/register-card";
 import { NotificationToastController, type TedNotification } from "../../shared/notifications";
+import { StatusSliderController } from "../../shared/status-items/slider-controller";
+import { renderNotifDetail } from "../../shared/status-items/render";
+import { notifDetailStyles } from "../../shared/status-items/styles";
 import { notificationInScope, resolveDeviceArea } from "../../shared/device-area";
 import { effectiveSnooze } from "../../shared/settings";
 import "../../shared/ted-icon-button";
@@ -63,6 +66,8 @@ export class TedNotificationCard extends LitElement implements LovelaceCard {
   @property({ attribute: false }) public hass?: HomeAssistant;
   @state() private _config?: NotificationCardConfig;
   private _markedReadFor = -1;
+  private readonly _slider = new StatusSliderController(this);
+  private readonly _detailPopId = "nc-notif-detail";
 
   public constructor() {
     super();
@@ -133,6 +138,14 @@ export class TedNotificationCard extends LitElement implements LovelaceCard {
   }
   private _markRead(id: string): void {
     this._call("mark_read", { id });
+  }
+  /** Open a notification in the centered detail modal, marking it read first — mirrors
+   *  the navbar/room notifications popup so a tap opens the event, not just marks it.
+   *  Clicks on the row's action/snooze buttons run their own handler instead. */
+  private _openDetail(n: TedNotification, ev: Event): void {
+    if (ev.composedPath().some((el) => el instanceof HTMLElement && el.tagName === "BUTTON")) return;
+    if (!n.read) this._markRead(n.id);
+    this._slider.openNotifDetail(n, this._detailPopId);
   }
   private _clearAll(): void {
     const area = this._effectiveArea();
@@ -262,6 +275,14 @@ export class TedNotificationCard extends LitElement implements LovelaceCard {
                 : nothing}
             `}
       </ha-card>
+      <div
+        id=${this._detailPopId}
+        class="notif-detail-popover"
+        popover
+        @toggle=${this._slider.onNotifDetailToggle}
+      >
+        ${renderNotifDetail(this._slider, this._detailPopId)}
+      </div>
     `;
   }
 
@@ -273,7 +294,7 @@ export class TedNotificationCard extends LitElement implements LovelaceCard {
     return html`
       <div class="row sev-${sev} ${n.read ? "read" : ""}">
         <ha-icon class="row-icon" icon=${icon}></ha-icon>
-        <div class="row-body" @click=${() => !n.read && this._markRead(n.id)}>
+        <div class="row-body" @click=${(ev: Event) => this._openDetail(n, ev)}>
           <div class="row-top">
             ${!n.read ? html`<span class="unread-dot"></span>` : nothing}
             ${n.title ? html`<span class="row-title">${n.title}</span>` : nothing}
@@ -332,6 +353,7 @@ export class TedNotificationCard extends LitElement implements LovelaceCard {
 
   static styles = [
     tedStyleTheme,
+    notifDetailStyles,
     css`
       :host {
         display: block;
