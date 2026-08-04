@@ -942,6 +942,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.77
+
+- **Camera card editor polish for substreams.** The Medium/Low substream pickers now show the auto-detected feed as a muted placeholder when left blank, so the effective stream is always visible. The main “Camera entity” picker now hides redundant medium/low substream entities (keeping only the main feeds), while never hiding a camera whose only entities are substreams.
+
 ### v0.9.76
 
 - **Camera card substream matching is now device-aware.** Auto-detection and “Auto populate” only pair feeds that belong to the same parent device *and* share a significant portion of their entity name. This correctly links renamed cameras to their substreams (e.g. a renamed `camera.front_yard_camera` to its `_medium/_low_resolution_channel` siblings) while keeping distinct feeds like doorbell package cameras separate.

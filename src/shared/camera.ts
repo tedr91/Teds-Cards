@@ -66,6 +66,68 @@ export function isSubstreamNameRelated(a: string, b: string): boolean {
   return baseA.endsWith(`_${objB}`) || baseB.endsWith(`_${objA}`);
 }
 
+/** Whether two camera entities are the same physical camera: their names must be
+ *  related and, when both are in the registry, share a parent device. */
+export function isSameCamera(
+  a: string,
+  b: string,
+  deviceOf: (id: string) => string | undefined,
+): boolean {
+  if (!isSubstreamNameRelated(a, b)) return false;
+  const da = deviceOf(a);
+  const db = deviceOf(b);
+  return da && db ? da === db : true;
+}
+
+/** The relative resolution rank of a camera entity (higher = better feed). A
+ *  suffix-less entity is treated as the main/high feed. */
+function qualityRank(id: string): number {
+  const quality = streamQualityOf(id);
+  if (quality === undefined) return 3;
+  if (quality === "high") return 2;
+  if (quality === "medium") return 1;
+  return 0;
+}
+
+/** Find the sibling camera entity to use for `quality`, given the full camera
+ *  entity list and a device-id lookup. Prefers an exact base match, then a
+ *  same-camera sibling proven by shared parent device + related name. Returns
+ *  `undefined` when nothing matches (caller falls back to the main entity). */
+export function detectSubstream(
+  entity: string,
+  quality: "medium" | "low",
+  cameraIds: string[],
+  deviceOf: (id: string) => string | undefined,
+): string | undefined {
+  const base = substreamBase(entity);
+  const candidates = cameraIds.filter(
+    (id) => id !== entity && streamQualityOf(id) === quality,
+  );
+  return (
+    candidates.find((id) => substreamBase(id) === base) ??
+    candidates.find((id) => isSameCamera(entity, id, deviceOf))
+  );
+}
+
+/** Medium/low substream entities that have a higher-res same-camera sibling, so
+ *  they can be hidden from a "main camera" picker without ever hiding a camera
+ *  whose only entities are substreams. */
+export function redundantSubstreamEntities(
+  cameraIds: string[],
+  deviceOf: (id: string) => string | undefined,
+): string[] {
+  return cameraIds.filter((id) => {
+    const quality = streamQualityOf(id);
+    if (quality !== "medium" && quality !== "low") return false;
+    return cameraIds.some(
+      (other) =>
+        other !== id &&
+        qualityRank(other) > qualityRank(id) &&
+        isSameCamera(id, other, deviceOf),
+    );
+  });
+}
+
 /**
  * The slim slice of HA's card helpers we use to force the camera element to load.
  * Structurally matches the room card's own declaration so the global `Window`

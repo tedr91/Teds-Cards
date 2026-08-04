@@ -3,7 +3,12 @@ import { customElement, property, state } from "lit/decorators.js";
 import { type HomeAssistant, type LovelaceCardEditor, fireEvent } from "custom-card-helpers";
 
 import { transparencyBlurSchema } from "../../shared/appearance";
-import { streamQualityOf, isSubstreamNameRelated } from "../../shared/camera";
+import {
+  streamQualityOf,
+  isSameCamera,
+  detectSubstream,
+  redundantSubstreamEntities,
+} from "../../shared/camera";
 import { CAMERA_CARD_EDITOR_TYPE } from "./const";
 import type { CameraCardConfig, CameraItemConfig, CameraLayout } from "./types";
 
@@ -234,6 +239,21 @@ export class TedCameraCardEditor extends LitElement implements LovelaceCardEdito
       ? this.hass?.states[cam.entity]?.attributes?.friendly_name
       : undefined;
     const title = cam.name || friendly || cam.entity || `Camera ${idx + 1}`;
+    // Auto-detected substreams surface as muted placeholders (schema `default`)
+    // when the field is left blank, so the effective feed is always visible.
+    const cameraIds = Object.keys(this.hass?.states ?? {}).filter((id) => id.startsWith("camera."));
+    const deviceOf = (id: string): string | undefined => this._deviceOf(id);
+    const mediumDefault = cam.entity
+      ? detectSubstream(cam.entity, "medium", cameraIds, deviceOf)
+      : undefined;
+    const lowDefault = cam.entity
+      ? detectSubstream(cam.entity, "low", cameraIds, deviceOf)
+      : undefined;
+    // Hide redundant medium/low substreams from the main picker (keep the current
+    // value selectable so a deliberate override still shows).
+    const hiddenSubstreams = redundantSubstreamEntities(cameraIds, deviceOf).filter(
+      (id) => id !== cam.entity,
+    );
     return html`
       <ha-expansion-panel
         outlined
@@ -270,7 +290,11 @@ export class TedCameraCardEditor extends LitElement implements LovelaceCardEdito
               stream_low: cam.stream_low ?? "",
             }}
             .schema=${[
-              { name: "entity", required: true, selector: { entity: { domain: "camera" } } },
+              {
+                name: "entity",
+                required: true,
+                selector: { entity: { domain: "camera", exclude_entities: hiddenSubstreams } },
+              },
               { name: "name", selector: { text: {} } },
               {
                 name: "camera_view",
@@ -285,8 +309,8 @@ export class TedCameraCardEditor extends LitElement implements LovelaceCardEdito
                   },
                 },
               },
-              { name: "stream_medium", selector: { entity: { domain: "camera" } } },
-              { name: "stream_low", selector: { entity: { domain: "camera" } } },
+              { name: "stream_medium", default: mediumDefault, selector: { entity: { domain: "camera" } } },
+              { name: "stream_low", default: lowDefault, selector: { entity: { domain: "camera" } } },
             ]}
             .computeLabel=${this._computeLabel}
             .computeHelper=${this._computeHelper}
@@ -557,6 +581,13 @@ export class TedCameraCardEditor extends LitElement implements LovelaceCardEdito
     this._commit({ ...this._config, cameras } as CameraCardConfig);
   };
 
+  /** The registry device id for an entity, if the frontend exposes the registry. */
+  private _deviceOf(entityId: string): string | undefined {
+    const reg = (this.hass as unknown as { entities?: Record<string, { device_id?: string | null }> })
+      .entities;
+    return reg?.[entityId]?.device_id ?? undefined;
+  }
+
   private _autoPopulate = (): void => {
     if (!this.hass) return;
     const entities = Object.keys(this.hass.states)
@@ -568,14 +599,8 @@ export class TedCameraCardEditor extends LitElement implements LovelaceCardEdito
     // render time), so we don't dump every _high/_medium/_low channel. Two
     // entities are the same camera only when their names are related and they
     // share a parent device (matching the card's runtime detection).
-    const reg = (this.hass as unknown as { entities?: Record<string, { device_id?: string | null }> })
-      .entities;
-    const sameCamera = (a: string, b: string): boolean => {
-      if (!isSubstreamNameRelated(a, b)) return false;
-      const da = reg?.[a]?.device_id ?? undefined;
-      const db = reg?.[b]?.device_id ?? undefined;
-      return da && db ? da === db : true;
-    };
+    const sameCamera = (a: string, b: string): boolean =>
+      isSameCamera(a, b, (id) => this._deviceOf(id));
     const rank = (id: string): number => {
       const quality = streamQualityOf(id);
       if (quality === undefined) return 3; // renamed/plain → treat as the main feed
