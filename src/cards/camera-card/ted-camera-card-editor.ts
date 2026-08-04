@@ -3,6 +3,7 @@ import { customElement, property, state } from "lit/decorators.js";
 import { type HomeAssistant, type LovelaceCardEditor, fireEvent } from "custom-card-helpers";
 
 import { transparencyBlurSchema } from "../../shared/appearance";
+import { substreamBase, streamQualityOf } from "../../shared/camera";
 import { CAMERA_CARD_EDITOR_TYPE } from "./const";
 import type { CameraCardConfig, CameraItemConfig, CameraLayout } from "./types";
 
@@ -29,12 +30,6 @@ const LAYOUT_OPTIONS = [
   { value: "quad", label: "Quad (2×2)" },
   { value: "big-small", label: "Multi" },
   { value: "auto", label: "Auto grid" },
-];
-
-/** Where the camera list comes from. */
-const SOURCE_OPTIONS = [
-  { value: "config", label: "This card (choose below)" },
-  { value: "settings", label: "This device's Settings list" },
 ];
 
 /** Where the small-feed strip sits in the big-small layout. */
@@ -112,10 +107,6 @@ export class TedCameraCardEditor extends LitElement implements LovelaceCardEdito
     const layout = this._config?.layout ?? "single";
     const topSchema = [
       {
-        name: "cameras_source",
-        selector: { select: { mode: "dropdown", options: SOURCE_OPTIONS } },
-      },
-      {
         name: "layout",
         selector: { select: { mode: "dropdown", options: LAYOUT_OPTIONS } },
       },
@@ -178,7 +169,6 @@ export class TedCameraCardEditor extends LitElement implements LovelaceCardEdito
       },
     ];
     const topData = {
-      cameras_source: source,
       layout,
       big_small_position: this._config?.big_small_position ?? "right",
       big_small_width: this._config?.big_small_width ?? 25,
@@ -411,9 +401,6 @@ export class TedCameraCardEditor extends LitElement implements LovelaceCardEdito
     if (schema.name === "fill") {
       return "Fill the parent container (e.g. a dashboard view area) instead of a fixed width/height.";
     }
-    if (schema.name === "cameras_source") {
-      return "\"This device's Settings list\" shows the per-device Cameras list from Ted's Cards Settings.";
-    }
     if (schema.name === "aspect_ratio") {
       return "e.g. 16:9. Ignored in a grid (Sections) view with set rows.";
     }
@@ -431,8 +418,6 @@ export class TedCameraCardEditor extends LitElement implements LovelaceCardEdito
 
   private _computeLabel = (schema: { name: string }): string => {
     switch (schema.name) {
-      case "cameras_source":
-        return "Camera source";
       case "fill":
         return "Fill available space";
       case "layout":
@@ -578,7 +563,25 @@ export class TedCameraCardEditor extends LitElement implements LovelaceCardEdito
       .filter((id) => id.startsWith("camera."))
       .sort();
     if (entities.length === 0) return;
-    const cameras: CameraItemConfig[] = entities.map((entity) => ({ entity }));
+    // Collapse substream variants of the same camera to one entry, keeping the
+    // highest-res available (the card auto-detects the medium/low siblings at
+    // render time), so we don't dump every _high/_medium/_low channel.
+    const rank = (id: string): number => {
+      const quality = streamQualityOf(id);
+      if (quality === undefined) return 3; // no suffix → treat as the main feed
+      if (quality === "high") return 2;
+      if (quality === "medium") return 1;
+      return 0; // low
+    };
+    const best = new Map<string, string>();
+    for (const id of entities) {
+      const base = substreamBase(id);
+      const current = best.get(base);
+      if (current === undefined || rank(id) > rank(current)) best.set(base, id);
+    }
+    const cameras: CameraItemConfig[] = [...best.values()]
+      .sort()
+      .map((entity) => ({ entity }));
     this._expanded = new Set();
     this._commit(
       this._withAutoWidth({

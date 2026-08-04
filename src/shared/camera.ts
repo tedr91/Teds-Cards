@@ -17,6 +17,42 @@ export type CameraView = "auto" | "live";
 /** How the camera image fits its box (mirrors picture-glance's `fit_mode`). */
 export type FitMode = "cover" | "contain" | "fill";
 
+/** Relative stream resolution requested for a tile, based on its size/role. */
+export type StreamQuality = "low" | "medium" | "high";
+
+/** Entity-id suffixes used to detect sibling substreams, per quality tier. Covers
+ *  common integrations: UniFi Protect (`_high/_medium/_low`), Reolink
+ *  (`_clear/_balanced/_fluent` and `_<q>_resolution_channel`), go2rtc/generic
+ *  (`_main/_sub`). Longer/more-specific suffixes are listed first so base-id
+ *  stripping matches them before the short forms. */
+export const QUALITY_SUFFIXES: Record<StreamQuality, string[]> = {
+  high: ["high_resolution_channel", "high_resolution", "high", "clear", "main", "hd"],
+  medium: ["medium_resolution_channel", "medium_resolution", "medium", "balanced", "mid", "sd"],
+  low: ["low_resolution_channel", "low_resolution", "low", "fluent", "sub", "ld"],
+};
+
+/** The quality tier a camera entity id encodes via its suffix, or `undefined`
+ *  when it carries no recognized suffix (treated as the main/high feed). */
+export function streamQualityOf(entityId: string): StreamQuality | undefined {
+  const lower = entityId.toLowerCase();
+  for (const quality of ["high", "medium", "low"] as StreamQuality[]) {
+    if (QUALITY_SUFFIXES[quality].some((suffix) => lower.endsWith(`_${suffix}`))) return quality;
+  }
+  return undefined;
+}
+
+/** Strip a known quality suffix from an entity id to get its shared base, so
+ *  siblings like `camera.front_high`/`_medium`/`_low` all resolve to `camera.front`. */
+export function substreamBase(entityId: string): string {
+  const lower = entityId.toLowerCase();
+  for (const quality of ["high", "medium", "low"] as StreamQuality[]) {
+    for (const suffix of QUALITY_SUFFIXES[quality]) {
+      if (lower.endsWith(`_${suffix}`)) return entityId.slice(0, -(suffix.length + 1));
+    }
+  }
+  return entityId;
+}
+
 /**
  * The slim slice of HA's card helpers we use to force the camera element to load.
  * Structurally matches the room card's own declaration so the global `Window`

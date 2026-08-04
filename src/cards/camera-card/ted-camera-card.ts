@@ -11,7 +11,8 @@ import {
   hasAction,
 } from "custom-card-helpers";
 
-import { ensureHuiImage, type CameraView } from "../../shared/camera";
+import { ensureHuiImage, substreamBase, QUALITY_SUFFIXES } from "../../shared/camera";
+import type { CameraView, StreamQuality } from "../../shared/camera";
 import { pendingCameraFocus, subscribeCameraFocus } from "../../shared/camera-focus";
 import { registerCustomCard } from "../../shared/register-card";
 import { appearanceStyle, cssColor } from "../../shared/appearance";
@@ -33,17 +34,6 @@ interface CardHelpers {
 
 const DOUBLE_CLICK_MS = 250;
 const LONG_PRESS_MS = 500;
-
-/** Relative stream resolution requested for a tile, based on its size/role. */
-type StreamQuality = "low" | "medium" | "high";
-
-/** Entity-id suffixes used to auto-detect sibling substreams, per quality tier.
- *  Covers common integrations (UniFi Protect, Reolink, go2rtc/generic). */
-const QUALITY_SUFFIXES: Record<StreamQuality, string[]> = {
-  high: ["high", "clear", "main", "hd"],
-  medium: ["medium", "balanced", "mid", "sd"],
-  low: ["low", "fluent", "sub", "ld"],
-};
 
 // mdi:check — marks the active view in the long-press popover.
 const CHECK_ICON = "M21,7L9,19L3.5,13.5L4.91,12.09L9,16.17L19.59,5.59L21,7Z";
@@ -316,23 +306,11 @@ export class TedCameraCard extends LitElement implements LovelaceCard {
     );
   }
 
-  /** Strip a known quality suffix from an entity id to get its shared base, so
-   *  siblings like `camera.front_high`/`_medium`/`_low` all resolve to `camera.front`. */
-  private _substreamBase(entity: string): string {
-    const lower = entity.toLowerCase();
-    for (const group of Object.values(QUALITY_SUFFIXES)) {
-      for (const suffix of group) {
-        if (lower.endsWith(`_${suffix}`)) return entity.slice(0, -(suffix.length + 1));
-      }
-    }
-    return entity;
-  }
-
   /** Find a sibling camera entity for the requested quality by naming convention
    *  (e.g. UniFi `_high/_medium/_low`, Reolink `_clear/_balanced/_fluent`). */
   private _autoSubstream(entity: string, quality: "medium" | "low"): string | undefined {
     if (!this.hass) return undefined;
-    const base = this._substreamBase(entity);
+    const base = substreamBase(entity);
     for (const suffix of QUALITY_SUFFIXES[quality]) {
       const candidate = `${base}_${suffix}`;
       if (candidate !== entity && this.hass.states[candidate]) return candidate;

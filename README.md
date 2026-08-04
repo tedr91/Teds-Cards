@@ -942,6 +942,11 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.75
+
+- **Camera card “Auto populate” is now smart about substreams.** It collapses the high/medium/low variants of the same camera into a single entry (keeping the highest-res), so you no longer get a wall of duplicate feeds — the card auto-detects the lower-res siblings for small tiles. Substream detection also now recognizes Reolink's `_high/medium/low_resolution_channel` entity naming.
+- **Removed the “Camera source” selector from the card editor.** The device-Settings source is a dashboard-integration feature and is now YAML-only; cards already using it keep working.
+
 ### v0.9.74
 
 - **Camera card now auto-detects substream entities.** When the Medium/Low substream fields are left blank, the card finds sibling camera entities by naming convention (UniFi Protect `_high/_medium/_low`, Reolink `_clear/_balanced/_fluent`, generic `_main/_sub`), so lower-res feeds are used for small tiles with no manual setup. Explicit config still overrides.
