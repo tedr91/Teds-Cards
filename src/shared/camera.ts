@@ -128,6 +128,22 @@ export function redundantSubstreamEntities(
   });
 }
 
+/** Collapse a camera entity list to one representative per physical camera,
+ *  keeping the highest-res feed (so a mix of high/medium/low channels for the
+ *  same camera becomes a single entry). Order is stable (sorted). */
+export function collapseCameraEntities(
+  cameraIds: string[],
+  deviceOf: (id: string) => string | undefined,
+): string[] {
+  const reps: string[] = [];
+  for (const id of [...cameraIds].sort()) {
+    const i = reps.findIndex((rep) => isSameCamera(rep, id, deviceOf));
+    if (i === -1) reps.push(id);
+    else if (qualityRank(id) > qualityRank(reps[i])) reps[i] = id;
+  }
+  return reps.sort();
+}
+
 /**
  * The slim slice of HA's card helpers we use to force the camera element to load.
  * Structurally matches the room card's own declaration so the global `Window`

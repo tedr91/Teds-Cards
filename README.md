@@ -942,6 +942,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.78
+
+- **Settings → Cameras substream cleanup.** Auto-populate now collapses high/medium/low substream channels into one entry per physical camera (keeping the highest-res) and cleans up any redundant substreams already in the list, and the “Add a camera” picker hides redundant medium/low substreams — matching the camera card editor. A camera whose only entities are substreams is never hidden.
+
 ### v0.9.77
 
 - **Camera card editor polish for substreams.** The Medium/Low substream pickers now show the auto-detected feed as a muted placeholder when left blank, so the effective stream is always visible. The main “Camera entity” picker now hides redundant medium/low substream entities (keeping only the main feeds), while never hiding a camera whose only entities are substreams.

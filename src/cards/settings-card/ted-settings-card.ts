@@ -17,6 +17,7 @@ import {
   subscribeUiScope,
 } from "../../shared/settings";
 import { resolveDeviceMediaPlayer } from "../../shared/device-id";
+import { collapseCameraEntities, redundantSubstreamEntities } from "../../shared/camera";
 import { resolveIconForSet, isIconSetAvailable } from "../../shared/icons";
 import { resolveMusicPlayer, isMassIntegrationLoaded } from "../../shared/music-player";
 import { firstWeatherEntity } from "../../shared/status-items/model";
@@ -2121,6 +2122,23 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
       .sort();
   }
 
+  /** The registry device id for an entity, if the frontend exposes the registry. */
+  private _deviceOf(entityId: string): string | undefined {
+    const reg = (this.hass as unknown as { entities?: Record<string, { device_id?: string | null }> })
+      .entities;
+    return reg?.[entityId]?.device_id ?? undefined;
+  }
+
+  /** Entities offered by the add-picker for a list. For cameras, redundant
+   *  medium/low substreams (those with a higher-res same-camera sibling) are
+   *  hidden so only main feeds are listed. */
+  private _availableCameras(domain: string): string[] {
+    const all = this._allCameras(domain);
+    if (domain !== "camera") return all;
+    const hidden = new Set(redundantSubstreamEntities(all, (id) => this._deviceOf(id)));
+    return all.filter((id) => !hidden.has(id));
+  }
+
   private _cameraName(id: string): string {
     const fn = this.hass?.states[id]?.attributes?.friendly_name;
     return typeof fn === "string" && fn ? fn : id;
@@ -2948,7 +2966,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     const meta = this._listMeta(field);
     const domain = field.entityDomain ?? "camera";
     const ids = this._camerasArray(this._globalValue(field.key));
-    const remaining = this._allCameras(domain).filter((id) => !ids.includes(id));
+    const remaining = this._availableCameras(domain).filter((id) => !ids.includes(id));
     const setList = (next: string[]): void => this._setGlobal(field.key, next);
     return html`
       <ha-expansion-panel outlined class="sub-panel">
@@ -3058,7 +3076,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     const domain = field.entityDomain ?? "camera";
     const ids = this._camerasArray(this._globalValue(field.key));
     const q = this._addListQuery.trim().toLowerCase();
-    const remaining = this._allCameras(domain)
+    const remaining = this._availableCameras(domain)
       .filter((id) => !ids.includes(id))
       .filter(
         (id) => !q || this._cameraName(id).toLowerCase().includes(q) || id.toLowerCase().includes(q),
@@ -3108,6 +3126,13 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
   private _autoPopulateGlobal(field: SettingField): void {
     const domain = field.entityDomain ?? "camera";
     const ids = this._camerasArray(this._globalValue(field.key));
+    if (domain === "camera") {
+      // Collapse substream channels to one entry per physical camera (keeping the
+      // highest-res), and clean up any redundant substreams already in the list.
+      const union = [...ids, ...this._allCameras(domain).filter((id) => !ids.includes(id))];
+      this._setGlobal(field.key, collapseCameraEntities(union, (id) => this._deviceOf(id)));
+      return;
+    }
     const merged = [...ids, ...this._allCameras(domain).filter((id) => !ids.includes(id))];
     this._setGlobal(field.key, merged);
   }

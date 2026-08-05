@@ -4,10 +4,9 @@ import { type HomeAssistant, type LovelaceCardEditor, fireEvent } from "custom-c
 
 import { transparencyBlurSchema } from "../../shared/appearance";
 import {
-  streamQualityOf,
-  isSameCamera,
   detectSubstream,
   redundantSubstreamEntities,
+  collapseCameraEntities,
 } from "../../shared/camera";
 import { CAMERA_CARD_EDITOR_TYPE } from "./const";
 import type { CameraCardConfig, CameraItemConfig, CameraLayout } from "./types";
@@ -590,32 +589,13 @@ export class TedCameraCardEditor extends LitElement implements LovelaceCardEdito
 
   private _autoPopulate = (): void => {
     if (!this.hass) return;
-    const entities = Object.keys(this.hass.states)
-      .filter((id) => id.startsWith("camera."))
-      .sort();
+    const entities = Object.keys(this.hass.states).filter((id) => id.startsWith("camera."));
     if (entities.length === 0) return;
     // Collapse substream variants of the same camera to one entry, keeping the
     // highest-res available (the card auto-detects the medium/low siblings at
-    // render time), so we don't dump every _high/_medium/_low channel. Two
-    // entities are the same camera only when their names are related and they
-    // share a parent device (matching the card's runtime detection).
-    const sameCamera = (a: string, b: string): boolean =>
-      isSameCamera(a, b, (id) => this._deviceOf(id));
-    const rank = (id: string): number => {
-      const quality = streamQualityOf(id);
-      if (quality === undefined) return 3; // renamed/plain → treat as the main feed
-      if (quality === "high") return 2;
-      if (quality === "medium") return 1;
-      return 0; // low
-    };
-    // One representative (highest-res) per camera cluster.
-    const reps: string[] = [];
-    for (const id of entities) {
-      const i = reps.findIndex((rep) => sameCamera(rep, id));
-      if (i === -1) reps.push(id);
-      else if (rank(id) > rank(reps[i])) reps[i] = id;
-    }
-    const cameras: CameraItemConfig[] = reps.sort().map((entity) => ({ entity }));
+    // render time), so we don't dump every _high/_medium/_low channel.
+    const reps = collapseCameraEntities(entities, (id) => this._deviceOf(id));
+    const cameras: CameraItemConfig[] = reps.map((entity) => ({ entity }));
     this._expanded = new Set();
     this._commit(
       this._withAutoWidth({
