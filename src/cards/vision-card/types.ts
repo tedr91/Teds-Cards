@@ -23,6 +23,8 @@ export interface VisionEvent {
   trigger_entity?: string | null;
   /** The AI flagged this event as a likely false alarm. */
   false_alarm?: boolean;
+  /** A provisional Frigate event whose clip + AI summary is still being produced. */
+  analyzing?: boolean;
 }
 
 export interface VisionCardConfig extends LovelaceCardConfig {

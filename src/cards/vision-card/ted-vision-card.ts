@@ -288,7 +288,7 @@ export class TedVisionCard extends LitElement implements LovelaceCard {
         events,
         (e) => e.id,
         (e) => html`<button
-          class="row ${e.reviewed ? "reviewed" : ""}"
+          class="row ${e.reviewed ? "reviewed" : ""} ${e.analyzing ? "analyzing" : ""}"
           @click=${() => (this._detailId = e.id)}
         >
           <div class="thumb" style="--sev: ${SEVERITY_COLOR[e.severity]}">
@@ -305,6 +305,7 @@ export class TedVisionCard extends LitElement implements LovelaceCard {
               ${e.false_alarm
                 ? html`<span class="fa-tag" style="--sev: ${FALSE_ALARM_COLOR}">${FALSE_ALARM_LABEL}</span>`
                 : nothing}
+              ${e.analyzing ? html`<span class="analyzing-tag">Analyzing…</span>` : nothing}
               <span class="cam">${e.camera_name}</span>
               <span class="time">${this._relTime(e.ts_start)}</span>
             </div>
@@ -328,6 +329,7 @@ export class TedVisionCard extends LitElement implements LovelaceCard {
           ${e.false_alarm
             ? html`<span class="fa-tag" style="--sev: ${FALSE_ALARM_COLOR}">${FALSE_ALARM_LABEL}</span>`
             : nothing}
+          ${e.analyzing ? html`<span class="analyzing-tag">Analyzing…</span>` : nothing}
           ${e.camera_name}
         </div>
         <div class="ted-sheet-body">
@@ -598,6 +600,32 @@ export class TedVisionCard extends LitElement implements LovelaceCard {
         border-radius: 999px;
         padding: 0 6px;
         flex: 0 0 auto;
+      }
+      .analyzing-tag {
+        font-size: 0.62rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+        color: var(--ted-style-accent, var(--primary-color));
+        border: 1px solid var(--ted-style-accent, var(--primary-color));
+        border-radius: 999px;
+        padding: 0 6px;
+        flex: 0 0 auto;
+        animation: ted-vision-pulse 1.2s ease-in-out infinite;
+      }
+      @keyframes ted-vision-pulse {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.4;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .analyzing-tag {
+          animation: none;
+        }
       }
       .cam {
         font-weight: 600;
