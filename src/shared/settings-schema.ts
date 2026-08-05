@@ -366,7 +366,7 @@ export const SETTINGS_FIELDS: SettingField[] = [
     help: "When the AI believes an event is a false alarm: Off acts normally; Log only stores it but doesn't fire the trigger's actions; Drop discards it entirely.",
   },
   // Frigate — only relevant when Frigate is the adopted camera source.
-  { key: "frigate_native_detection", label: "Use Frigate detection", group: "Cameras", subsection: "Frigate", globalOnly: true, kind: "boolean", help: "For Frigate cameras with two-pass on, skip the quick AI pass (Frigate already classified the object) and let the detailed pass still analyze the full clip. Saves an AI call per event." },
+  { key: "frigate_native_detection", label: "Use Frigate detection", group: "Cameras", subsection: "Frigate", globalOnly: true, kind: "boolean", help: "Let Frigate drive Vision for its cameras: log its own events using Frigate's thumbnail and clip (no local recording) and run the AI only to describe that clip. Requires the MQTT integration." },
   { key: "frigate_notifications", label: "Frigate alert notifications", group: "Cameras", subsection: "Frigate", globalOnly: true, kind: "boolean", help: "Turn Frigate review alerts into Ted's notifications with the event thumbnail and clip. Requires the MQTT integration." },
   { key: "frigate_controls", label: "Camera controls", group: "Cameras", subsection: "Frigate", kind: "boolean", help: "Show Frigate detect/recordings/snapshots toggles (and a Recordings link) in a Frigate camera's long-press menu on the Cameras view." },
   { key: "frigate_health", label: "Status chips", group: "Cameras", subsection: "Frigate", kind: "boolean", help: "Show Frigate review status and active object counts as chips on a Frigate camera's tile." },
