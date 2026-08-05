@@ -942,6 +942,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.82
+
+- **Tighter Frigate integration on the Cameras view.** For a Frigate camera, the long-press menu now includes **Detect / Recordings / Snapshots** toggles and a **Recordings** link (opens Frigate's review page), and each tile can show **status chips** (review status + active object counts). New **Settings → Cameras → Frigate** toggles control these plus using Frigate's own detection to save an AI pass (requires the Ted's Dashboard System integration).
+
 ### v0.9.81
 
 - **Use Frigate as your camera source (Settings → Cameras).** When the Frigate integration is installed and exposing cameras, the Cameras settings page now offers a one-tap switch to Frigate — it does a one-time clear of your current camera list and replaces it with your Frigate cameras (requires the Ted's Dashboard System integration).

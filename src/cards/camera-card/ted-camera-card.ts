@@ -19,6 +19,7 @@ import { appearanceStyle, cssColor } from "../../shared/appearance";
 import { brushedOverlay, tedStyleTheme } from "../../shared/theme";
 import { themedIcon } from "../../shared/icons";
 import { SettingsController, settingsStore } from "../../shared/settings";
+import { frigateCameraInfo, frigateUrl, isFrigateCamera } from "../../shared/frigate";
 import {
   CAMERA_CARD_DESCRIPTION,
   CAMERA_CARD_EDITOR_TYPE,
@@ -40,6 +41,9 @@ const CHECK_ICON = "M21,7L9,19L3.5,13.5L4.91,12.09L9,16.17L19.59,5.59L21,7Z";
 // mdi:crown — "Make primary camera" option.
 const CROWN_ICON =
   "M5,16L3,5L8.5,10L12,4L15.5,10L21,5L19,16H5M19,19A1,1 0 0,1 18,20H6A1,1 0 0,1 5,19V18H19V19Z";
+// mdi:filmstrip — "Recordings" (opens the Frigate web UI).
+const FILMSTRIP_ICON =
+  "M18,4L20,8H17L15,4H13L15,8H12L10,4H8L10,8H7L5,4H4A2,2 0 0,0 2,6V18A2,2 0 0,0 4,20H20A2,2 0 0,0 22,18V4H18Z";
 
 /** Subset of Home Assistant's LovelaceGridOptions for the Sections grid layout. */
 interface GridOptions {
@@ -427,8 +431,25 @@ export class TedCameraCard extends LitElement implements LovelaceCard {
               <div class="title" style=${styleMap({ fontSize: `${nameSize}px` })}>${caption}</div>
             </div>`
           : nothing}
+        ${this._renderHealthChips(cam.entity)}
       </div>
     `;
+  }
+
+  /** Passive Frigate status chips (review status + active object counts) on a tile. */
+  private _renderHealthChips(entity: string): TemplateResult | typeof nothing {
+    if (!this.hass || settingsStore.effective().frigate_health === false) return nothing;
+    if (!isFrigateCamera(this.hass, entity)) return nothing;
+    const info = frigateCameraInfo(this.hass, entity);
+    const status = (info.reviewStatus ?? "").toLowerCase();
+    const showStatus = status === "alert" || status === "detection";
+    if (!showStatus && info.counts.length === 0) return nothing;
+    return html`<div class="cam-fchips">
+      ${showStatus
+        ? html`<span class="fchip status ${status}">${status === "alert" ? "Alert" : "Detection"}</span>`
+        : nothing}
+      ${info.counts.map((c) => html`<span class="fchip">${c.label} ${c.count}</span>`)}
+    </div>`;
   }
 
   /** Whether a tap should do something: an explicit action, or the more-info default. */
@@ -562,8 +583,52 @@ export class TedCameraCard extends LitElement implements LovelaceCard {
               <span>Make primary camera</span>
             </button>`
           : nothing}
+        ${this._renderFrigatePopItems(popup.entity)}
       </div>
     `;
+  }
+
+  /** Frigate control toggles (detect/recordings/snapshots) + a Recordings link, shown
+   *  in the long-press popover for a Frigate camera. */
+  private _renderFrigatePopItems(entity: string): TemplateResult | typeof nothing {
+    if (!this.hass || !isFrigateCamera(this.hass, entity)) return nothing;
+    const controls = settingsStore.effective().frigate_controls !== false;
+    const info = controls ? frigateCameraInfo(this.hass, entity) : { switches: [], counts: [] };
+    const url = frigateUrl(this.hass);
+    if (info.switches.length === 0 && !url) return nothing;
+    return html`
+      <div class="cam-pop-sep"></div>
+      ${info.switches.map(
+        (sw) => html`<button
+          type="button"
+          class=${classMap({ "cam-pop-item": true, active: sw.on })}
+          @click=${() => this._toggleFrigateSwitch(sw.entity)}
+        >
+          <ha-svg-icon class="check" .path=${CHECK_ICON}></ha-svg-icon>
+          <span>${sw.label}</span>
+          <span class="cam-pop-state">${sw.on ? "On" : "Off"}</span>
+        </button>`,
+      )}
+      ${url
+        ? html`<button type="button" class="cam-pop-item" @click=${() => this._openRecordings(url)}>
+            <ha-svg-icon .path=${FILMSTRIP_ICON}></ha-svg-icon>
+            <span>Recordings</span>
+          </button>`
+        : nothing}
+    `;
+  }
+
+  private _toggleFrigateSwitch(entity: string): void {
+    void this.hass?.callService("switch", "toggle", { entity_id: entity });
+  }
+
+  /** Open the Frigate review/recordings web UI in the dashboard's webview view. */
+  private _openRecordings(url: string): void {
+    const root = String(settingsStore.effective().dashboard_root ?? "ted-dashboard");
+    const target = `/${root}/webview?url=${encodeURIComponent(`${url}/review`)}`;
+    window.history.pushState(null, "", target);
+    window.dispatchEvent(new CustomEvent("location-changed", { bubbles: true, composed: true }));
+    this._closePopup();
   }
 
   // --- Empty-state (settings mode) -------------------------------------------
@@ -732,6 +797,33 @@ export class TedCameraCard extends LitElement implements LovelaceCard {
         overflow: hidden;
         text-overflow: ellipsis;
       }
+      .cam-fchips {
+        position: absolute;
+        top: 6px;
+        left: 6px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        max-width: calc(100% - 12px);
+        pointer-events: none;
+      }
+      .fchip {
+        font-size: 11px;
+        font-weight: 600;
+        line-height: 1;
+        padding: 3px 6px;
+        border-radius: 6px;
+        color: #fff;
+        background: rgba(0, 0, 0, 0.55);
+        white-space: nowrap;
+      }
+      .fchip.status.alert {
+        background: var(--error-color, #db4437);
+      }
+      .fchip.status.detection {
+        background: var(--warning-color, #ffa600);
+        color: #1c1c1c;
+      }
       .cam-backdrop {
         position: fixed;
         inset: 0;
@@ -793,6 +885,16 @@ export class TedCameraCard extends LitElement implements LovelaceCard {
       }
       .cam-pop-item.active ha-svg-icon.check {
         visibility: visible;
+      }
+      .cam-pop-sep {
+        height: 1px;
+        margin: 4px 6px;
+        background: var(--divider-color, rgba(0, 0, 0, 0.12));
+      }
+      .cam-pop-state {
+        margin-left: auto;
+        font-size: 12px;
+        color: var(--secondary-text-color);
       }
       /* Empty state — a centered ted-messagebox-card (matches Climate/Music/Calendar). */
       .empty-wrap {
