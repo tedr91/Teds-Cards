@@ -23,6 +23,8 @@ export interface MessagePopupOptions {
   severity?: MessagePopupSeverity;
   /** MDI icon; defaults to a severity-appropriate icon. */
   icon?: string;
+  /** Optional thumbnail image URL, shown in place of the icon when present. */
+  thumbnail?: string | null;
   /** Action buttons. */
   actions?: ToastAction[];
   /** Auto-dismiss after this many ms (default 10000). 0 = stay until dismissed. */
@@ -100,7 +102,9 @@ export class TedMessagePopupLayer extends LitElement {
   private _renderBox(m: ActiveMessage): TemplateResult {
     return html`
       <div class="mb-box mb-sev-${m.severity ?? "info"} ${m.prominent ? "prominent" : ""}" role="status">
-        <ha-icon class="mb-icon" .icon=${m.icon ?? severityIcon(m.severity ?? "info")}></ha-icon>
+        ${m.thumbnail
+          ? html`<img class="mb-thumb" src=${m.thumbnail} alt="" loading="lazy" />`
+          : html`<ha-icon class="mb-icon" .icon=${m.icon ?? severityIcon(m.severity ?? "info")}></ha-icon>`}
         <div class="mb-content">
           ${m.title ? html`<div class="mb-title">${m.title}</div>` : nothing}
           <div class="mb-message">
@@ -236,6 +240,18 @@ export class TedMessagePopupLayer extends LitElement {
       --mdc-icon-size: 24px;
       color: var(--mb-accent);
       margin-top: 1px;
+    }
+    .mb-thumb {
+      flex: 0 0 auto;
+      width: 44px;
+      height: 44px;
+      border-radius: 0.4em;
+      object-fit: cover;
+      background: rgba(0, 0, 0, 0.2);
+    }
+    .mb-box.prominent .mb-thumb {
+      width: 4em;
+      height: 4em;
     }
     .mb-content {
       display: flex;

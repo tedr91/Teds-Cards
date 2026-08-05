@@ -293,7 +293,9 @@ export class TedNotificationCard extends LitElement implements LovelaceCard {
     const actions = (Array.isArray(n.actions) ? n.actions : []) as NotifAction[];
     return html`
       <div class="row sev-${sev} ${n.read ? "read" : ""}">
-        <ha-icon class="row-icon" icon=${icon}></ha-icon>
+        ${n.data?.thumbnail_url
+          ? html`<img class="row-thumb" src=${n.data.thumbnail_url} alt="" loading="lazy" />`
+          : html`<ha-icon class="row-icon" icon=${icon}></ha-icon>`}
         <div class="row-body" @click=${(ev: Event) => this._openDetail(n, ev)}>
           <div class="row-top">
             ${!n.read ? html`<span class="unread-dot"></span>` : nothing}
@@ -458,6 +460,14 @@ export class TedNotificationCard extends LitElement implements LovelaceCard {
         --mdc-icon-size: 22px;
         flex: none;
         margin-top: 1px;
+      }
+      .row-thumb {
+        flex: none;
+        width: 46px;
+        height: 46px;
+        border-radius: 8px;
+        object-fit: cover;
+        background: rgba(0, 0, 0, 0.2);
       }
       .row-body {
         flex: 1 1 auto;

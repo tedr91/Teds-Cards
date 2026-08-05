@@ -942,6 +942,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.79
+
+- **Notifications now show a thumbnail image when one is provided.** The navbar notifications popup, the Notification Center card, and the toast all display the notification's thumbnail (e.g. a vision event snapshot) in place of the icon when available, falling back to the icon otherwise.
+
 ### v0.9.78
 
 - **Settings → Cameras substream cleanup.** Auto-populate now collapses high/medium/low substream channels into one entry per physical camera (keeping the highest-res) and cleans up any redundant substreams already in the list, and the “Add a camera” picker hides redundant medium/low substreams — matching the camera card editor. A camera whose only entities are substreams is never hidden.

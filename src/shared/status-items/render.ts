@@ -741,7 +741,14 @@ function renderNotificationsItem(
             : items.map(
                 (n) => html`
                   <div class="notif-pop-row sev-${n.severity ?? "info"} ${n.read ? "read" : ""}">
-                    <ha-icon class="notif-pop-icon" .icon=${notifIcon(n)}></ha-icon>
+                    ${n.data?.thumbnail_url
+                      ? html`<img
+                          class="notif-pop-thumb"
+                          src=${n.data.thumbnail_url}
+                          alt=""
+                          loading="lazy"
+                        />`
+                      : html`<ha-icon class="notif-pop-icon" .icon=${notifIcon(n)}></ha-icon>`}
                     <div
                       class="notif-pop-body"
                       @click=${() => {

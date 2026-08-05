@@ -144,6 +144,7 @@ export class NotificationToastController implements ReactiveController {
       title: n.title,
       message: n.message,
       icon: n.icon,
+      thumbnail: n.data?.thumbnail_url ?? undefined,
       actions,
       prominent: announcement,
       // Announcement boxes never auto-close locally: the backend dismisses them (at

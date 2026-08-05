@@ -372,6 +372,14 @@ export const statusItemStyles = css`
     color: var(--nc-accent);
     margin-top: 1px;
   }
+  .notif-pop-thumb {
+    flex: none;
+    width: 40px;
+    height: 40px;
+    border-radius: 6px;
+    object-fit: cover;
+    background: rgba(0, 0, 0, 0.2);
+  }
   .notif-pop-top {
     display: flex;
     align-items: baseline;
