@@ -37,6 +37,9 @@ import { type AttributionActions, applyAttribution, applyBackground } from "./ba
 interface HassLike {
   callWS?<T>(msg: Record<string, unknown>): Promise<T>;
   fetchWithAuth?(path: string, init?: RequestInit): Promise<Response>;
+  connection?: {
+    subscribeMessage<T>(cb: (msg: T) => void, sub: { type: string }): Promise<() => void>;
+  };
 }
 
 /** One entry returned by the backend `list_bing_photos` WebSocket command. */
@@ -110,6 +113,9 @@ class BackgroundEngine {
   private bingMeta = new Map<string, { title: string; copyright: string }>();
   /** Periodic re-poll of the Bing feed while the Bing album is active. */
   private bingRefreshTimer?: number;
+  /** Live subscription to the backend's "a Bing photo was removed" broadcast, so a
+   *  Remove on one device drops the image from every device's slideshow at once. */
+  private _bingRemovedSub?: Promise<() => void>;
 
   /** A card connected: keep the engine live and paint the current wallpaper. */
   attach(hass: HassLike | undefined, config?: SettingsMap, backendInt = false): void {
@@ -120,6 +126,7 @@ class BackgroundEngine {
     this.lastDark = this._isDark();
     // Only subscribe to the backend settings store when a card opts in.
     if (backendInt && !this.unsub) this.unsub = settingsStore.subscribe(() => this.apply());
+    this._ensureBingRemovedSub();
     this.apply();
   }
 
@@ -159,6 +166,8 @@ class BackgroundEngine {
       this.unsub = undefined;
       this._stopTimer();
       this._stopBingRefresh();
+      this._bingRemovedSub?.then((u) => u()).catch(() => {});
+      this._bingRemovedSub = undefined;
     }
   }
 
@@ -167,6 +176,7 @@ class BackgroundEngine {
   setHass(hass: HassLike | undefined): void {
     const hadHass = !!this.hass;
     this.hass = hass;
+    this._ensureBingRemovedSub();
     const dark = this._isDark();
     if ((!hadHass && hass) || dark !== this.lastDark) {
       this.lastDark = dark;
@@ -339,9 +349,55 @@ class BackgroundEngine {
 
   /** The bing_pod filename (`<startdate>.jpg`) for the current slide, or null. */
   private _currentBingFilename(): string | null {
-    const url = this.slideUrls[this.slideIdx];
+    return this._bingName(this.slideUrls[this.slideIdx]);
+  }
+
+  /** Extract the bing_pod filename (`<startdate>.jpg`) from a slide URL, or null. */
+  private _bingName(url: string | undefined): string | null {
     const m = url ? /\/bing_pod\/([^/]+\.jpg)$/i.exec(url) : null;
     return m ? m[1] : null;
+  }
+
+  /** Subscribe once to the backend's "Bing photo removed" broadcast so a Remove on
+   *  any device drops the image from this device's slideshow too. */
+  private _ensureBingRemovedSub(): void {
+    const conn = this.hass?.connection;
+    if (!this.backendInt || this._bingRemovedSub || !conn?.subscribeMessage) return;
+    this._bingRemovedSub = conn.subscribeMessage<{ filename?: string }>(
+      (ev) => this._onBingRemoved(ev?.filename),
+      { type: "teds_dashboard_system/subscribe_bing_removed" },
+    );
+    this._bingRemovedSub.catch(() => {
+      this._bingRemovedSub = undefined;
+    });
+  }
+
+  /** A Bing photo was removed elsewhere: drop it from our slideshow, advancing to a
+   *  new image only if it was the one currently on screen. */
+  private _onBingRemoved(filename: string | undefined): void {
+    if (!filename) return;
+    const matches = (u: string) => this._bingName(u) === filename;
+    if (!this.slideUrls.some(matches)) return;
+    const currentUrl = this.slideUrls[this.slideIdx];
+    const wasCurrent = currentUrl ? matches(currentUrl) : false;
+    for (const u of this.slideUrls) if (matches(u)) this.bingMeta.delete(u);
+    this.slideUrls = this.slideUrls.filter((u) => !matches(u));
+    if (this.slideUrls.length === 0) {
+      this.slideSig = undefined;
+      this.apply();
+      return;
+    }
+    if (!wasCurrent) {
+      // Keep the current image on screen; just keep the index pointing at it.
+      const idx = currentUrl ? this.slideUrls.indexOf(currentUrl) : -1;
+      this.slideIdx = idx >= 0 ? idx : Math.min(this.slideIdx, this.slideUrls.length - 1);
+      return;
+    }
+    if (this.slideIdx >= this.slideUrls.length) this.slideIdx = 0;
+    const s = this._effective();
+    const gen = ++this.gen;
+    void this._paint(s, this.slideUrls[this.slideIdx], gen, true);
+    this._startTimer(Math.max(1, Number(s.background_cycle_minutes ?? 30)));
   }
 
   /** Advance the slideshow to the next image immediately + restart the cycle. */

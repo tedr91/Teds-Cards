@@ -942,6 +942,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.80
+
+- **Removing a Bing “Photo of the Day” now removes it from every device at once.** When you tap Remove on one tablet, the wallpaper slideshow on all other devices drops that photo live too (advancing to a new image only if it was the one currently on screen) — instead of the removed photo lingering until each device reloaded (requires the Ted's Dashboard System integration).
+
 ### v0.9.79
 
 - **Notifications now show a thumbnail image when one is provided.** The navbar notifications popup, the Notification Center card, and the toast all display the notification's thumbnail (e.g. a vision event snapshot) in place of the icon when available, falling back to the icon otherwise.
