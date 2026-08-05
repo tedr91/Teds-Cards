@@ -1179,6 +1179,43 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     this._soundPlaying = undefined;
   }
 
+  /** A one-time offer to adopt Frigate as the camera source, shown atop the Cameras
+   *  section only when Frigate is present with cameras and hasn't been answered
+   *  (capability "available"). Buttons call the backend adopt/dismiss services. */
+  private _renderFrigateBanner(group: string): TemplateResult | typeof nothing {
+    if (group !== "Cameras") return nothing;
+    const cap = this.hass?.states?.["sensor.teds_requirements"]?.attributes?.frigate;
+    if (cap !== "available") return nothing;
+    return html`
+      <div class="frigate-banner">
+        <ha-icon icon="mdi:cctv"></ha-icon>
+        <div class="fb-body">
+          <div class="fb-title">Use Frigate as your camera source?</div>
+          <div class="fb-text">
+            Frigate is installed and exposing cameras. This does a one-time clear of your
+            current camera list and replaces it with your Frigate cameras.
+          </div>
+          <div class="fb-actions">
+            <button
+              class="fb-primary"
+              @click=${() =>
+                this.hass?.callService("teds_dashboard_system", "adopt_frigate_cameras", {})}
+            >
+              Use Frigate cameras
+            </button>
+            <button
+              class="fb-secondary"
+              @click=${() =>
+                this.hass?.callService("teds_dashboard_system", "dismiss_frigate_prompt", {})}
+            >
+              No thanks
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
   /** Render a group's fields: un-subsectioned fields inline, then a collapsible panel
    *  per named `subsection` (in first-appearance order) at the bottom. */
   private _renderFields(fields: SettingField[], scope: "global" | "device"): TemplateResult {
@@ -4255,7 +4292,9 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
                 </div>
                 <div class="groups">
                   ${activeGroup
-                    ? html`<div class="group">${this._renderFields(activeGroup.fields, scope)}</div>`
+                    ? html`<div class="group">
+                        ${this._renderFrigateBanner(activeGroup.group)}${this._renderFields(activeGroup.fields, scope)}
+                      </div>`
                     : nothing}
                 </div>
               `}
@@ -4304,7 +4343,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
                   (g) => html`
                     <div class="group">
                       <div class="group-title">${g.group}</div>
-                      ${this._renderFields(g.fields, tab)}
+                      ${this._renderFrigateBanner(g.group)}${this._renderFields(g.fields, tab)}
                     </div>
                   `,
                 )}
@@ -4571,6 +4610,53 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
         background: color-mix(in srgb, var(--ted-style-accent, var(--primary-color)) 16%, transparent);
         color: var(--ted-style-text, var(--primary-text-color));
         font-size: 0.82rem;
+      }
+      .frigate-banner {
+        display: flex;
+        gap: 10px;
+        align-items: flex-start;
+        padding: 10px 12px;
+        margin-bottom: 10px;
+        border-radius: 10px;
+        background: color-mix(in srgb, var(--ted-style-accent, var(--primary-color)) 14%, transparent);
+        color: var(--ted-style-text, var(--primary-text-color));
+      }
+      .frigate-banner > ha-icon {
+        flex: none;
+        color: var(--ted-style-accent, var(--primary-color));
+        --mdc-icon-size: 22px;
+      }
+      .fb-title {
+        font-weight: 600;
+        font-size: 0.9rem;
+      }
+      .fb-text {
+        margin-top: 2px;
+        font-size: 0.8rem;
+        color: var(--ted-style-muted, var(--secondary-text-color));
+      }
+      .fb-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 8px;
+      }
+      .fb-primary,
+      .fb-secondary {
+        padding: 5px 12px;
+        border-radius: 8px;
+        font-size: 0.8rem;
+        cursor: pointer;
+      }
+      .fb-primary {
+        border: none;
+        background: var(--ted-style-accent, var(--primary-color));
+        color: var(--ted-style-on-accent, var(--text-primary-color, #fff));
+      }
+      .fb-secondary {
+        border: 1px solid var(--ted-style-divider, var(--divider-color));
+        background: none;
+        color: var(--ted-style-text, var(--primary-text-color));
       }
       .dash-sub {
         margin-top: 4px;

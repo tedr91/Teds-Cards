@@ -942,6 +942,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.81
+
+- **Use Frigate as your camera source (Settings → Cameras).** When the Frigate integration is installed and exposing cameras, the Cameras settings page now offers a one-tap switch to Frigate — it does a one-time clear of your current camera list and replaces it with your Frigate cameras (requires the Ted's Dashboard System integration).
+
 ### v0.9.80
 
 - **Removing a Bing “Photo of the Day” now removes it from every device at once.** When you tap Remove on one tablet, the wallpaper slideshow on all other devices drops that photo live too (advancing to a new image only if it was the one currently on screen) — instead of the removed photo lingering until each device reloaded (requires the Ted's Dashboard System integration).
