@@ -1091,6 +1091,19 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
     .calendar .agenda-day-forecast .forecast-condition ha-icon {
       --mdc-icon-size: 14px;
     }
+    /* Let long event titles ellipsis-truncate instead of stretching past the card:
+       daylight already sets overflow/ellipsis on the title, but the grid column and the
+       flex title never shrink below the (nowrap) title's intrinsic width without a
+       min-width:0, so the row overflows the card edge and the ellipsis never fires. */
+    .calendar .agenda-day-events {
+      min-width: 0;
+    }
+    .calendar .calendar-container .agenda-event {
+      max-width: 100%;
+    }
+    .calendar .calendar-container.agenda-compact-events .agenda-event-title {
+      min-width: 0;
+    }
     .loading {
       height: 100%;
       min-height: 120px;

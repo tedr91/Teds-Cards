@@ -942,6 +942,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.89
+
+- **Calendar Card (Agenda view): long event titles now truncate with “…” instead of stretching past the card.** A long-standing layout quirk in the underlying daylight-calendar-card (its event column and title never shrank below the title's intrinsic width) let long titles overflow the card's right edge; it became more noticeable after the recent event-title size bump. Titles now ellipsis-truncate within the card at any font size.
+
 ### v0.9.88
 
 - **Voice: interrupt a long answer, and the response view scrolls.** While the assistant is speaking you can now cut it off — say a stop word (“stop”, “shut up”, “quit”, “no”, “cancel”…) and it stops and acknowledges with “Okay”, or tap the navbar mic (which turns into a stop button while speaking). The full-screen Assist-Response view now scrolls, so long answers no longer get clipped. See the [Voice Assist docs](documentation/voice-assist.md) for a suggested agent instruction to keep spoken answers short.
