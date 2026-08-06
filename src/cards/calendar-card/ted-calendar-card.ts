@@ -1061,10 +1061,25 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
     .calendar .agenda-day-events {
       gap: 0; /* no spacing between an event and the next */
     }
+    /* Group DAY / DATE / WEATHER tightly and center them vertically, so the weekday sits
+       just above the date and the forecast just below it (instead of daylight spreading
+       them to the top and bottom of the tall label column). */
+    .calendar .calendar-container .agenda-day-label {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+    }
+    .calendar .calendar-container .agenda-day-weekday,
+    .calendar .calendar-container .agenda-day-date,
+    .calendar .calendar-container .agenda-day-forecast {
+      margin-top: 0;
+    }
     /* Bigger day date (beats daylight's 16px compact-events rule via extra specificity). */
     .calendar .agenda-day-date,
     .calendar .calendar-container.agenda-compact-events .agenda-day-date {
-      font-size: 22px;
+      font-size: 26px;
     }
     /* Show only the high temperature, and size the condition icon to match it. */
     .calendar .agenda-day-forecast .forecast-temp-low {

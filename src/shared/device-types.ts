@@ -39,13 +39,13 @@ export interface DeviceTypePreset {
   navbar_sections?: unknown[];
 }
 
-/** The nightstand navbar: the default five sections with every section EXCEPT the
- *  Center (launcher) one hidden, so a revealed nightstand bar shows just its curated
- *  launcher buttons. Items are preserved (only `visible` is flipped) so re-enabling a
- *  section in Settings brings its content back. */
-const NIGHTSTAND_NAVBAR_SECTIONS = DEFAULT_NAVBAR_SECTIONS.map((section, i) =>
-  i === 2 ? section : { ...section, visible: false },
-);
+/** The nightstand navbar: every section (including Left and Right) stays enabled, but
+ *  the weather and clock (datetime) status items are removed since the nightstand Home
+ *  view already shows the time. */
+const NIGHTSTAND_NAVBAR_SECTIONS = DEFAULT_NAVBAR_SECTIONS.map((section) => ({
+  ...section,
+  items: (section.items ?? []).filter((item) => item.type !== "weather" && item.type !== "datetime"),
+}));
 
 /** The portrait-tablet navbar: the default bar with the weather and clock (datetime)
  *  items removed, since the portrait Home view already shows a clock and calendar. */
@@ -58,14 +58,14 @@ const TABLET_PORTRAIT_NAVBAR_SECTIONS = DEFAULT_NAVBAR_SECTIONS.map((section) =>
 export const DEVICE_TYPE_PRESETS: Record<DeviceType, DeviceTypePreset> = {
   nightstand: {
     home_dashboard: "[root]/home-nightstand",
-    navbar_position: "left",
+    navbar_position: "right",
     navbar_auto_hide: true,
     navbar_size: 56,
     navbar_float: false,
     fullscreen_default: true,
     night_enabled: true,
-    // A minimal bar: only Home, Music, and Alarms/Timers launcher buttons, and only the
-    // Center (launcher) navbar section shown.
+    // A minimal bar: only Home, Music, and Alarms/Timers launcher buttons, with the
+    // weather and datetime status items removed from the (still-enabled) sections.
     launcher_list: ["home-nightstand", "music", "alarms-timers"],
     navbar_sections: NIGHTSTAND_NAVBAR_SECTIONS,
   },

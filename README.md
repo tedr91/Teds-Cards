@@ -942,6 +942,11 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.87
+
+- **Nightstand device type: navbar now defaults to the right.** The one-time Nightstand preset docks the bar to the right edge (was left) and keeps the Left and Right navbar sections enabled — just with the weather and date/time status items removed — instead of hiding them entirely.
+- **Calendar Card (Agenda view) polish.** In the day column the weekday and forecast now sit tightly just above and below the date number (vertically centered as a group, rather than pinned to the top and bottom), and the date number is a bit larger.
+
 ### v0.9.86
 
 - **Calendar Card (Agenda view) tuned to a Calendar Card Pro look.** In Agenda mode the day date is larger, the weather forecast now shows only the high temperature with its condition icon sized to match, days are spaced 1px apart, events sit flush with no gap, and event titles are a touch larger (via daylight's native `event_font_size`).
