@@ -112,6 +112,20 @@ const VISION_DET_ICON: Record<string, string> = {
   motion: "mdi:motion-sensor", person: "mdi:account", animal: "mdi:paw",
   car: "mdi:car", package: "mdi:package-variant-closed",
 };
+/** Fresh default action set for a new trigger (shared by manual add + auto-created catch-all). */
+const visionDefaultActions = (): Record<string, unknown>[] => [
+  { type: "live_feed", enabled: true, areas: [] },
+  { type: "toast", enabled: true, areas: [] },
+  { type: "push", enabled: false, services: [] },
+  { type: "custom", enabled: false, items: [] },
+];
+/** Fresh trigger with default cooldown/discard/actions. */
+const visionTrigger = (type = ""): Record<string, unknown> => ({
+  type,
+  discard_severities: [],
+  cooldown_seconds: 60,
+  actions: visionDefaultActions(),
+});
 // Severities listed high → low so the multi-select reads in order of severity.
 const VISION_SEVERITY_OPTIONS = [
   { value: "critical", label: "Critical" },
@@ -413,6 +427,8 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
   @state() private _climateAliasOpen = new Set<string>();
   /** Discovered detection sensors per camera (fetched from the backend on demand). */
   @state() private _visionDetectors: Record<string, Record<string, string[]>> = {};
+  /** Per-camera: whether Frigate's native alert detection drives it (from the backend). */
+  @state() private _visionFrigateNative: Record<string, boolean> = {};
   /** Open "pick a type" popup for an Add button whose child item has a type. */
   @state() private _typePicker?: {
     title: string;
@@ -2518,17 +2534,20 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
       callWS?: <T>(msg: Record<string, unknown>) => Promise<T>;
     };
     let detectors: Record<string, string[]> = {};
+    let native = false;
     try {
       if (!hass.callWS) throw new Error("no ws");
-      const res = await hass.callWS<{ detectors: Record<string, string[]> }>({
+      const res = await hass.callWS<{ detectors: Record<string, string[]>; frigate_native?: boolean }>({
         type: "teds_dashboard_system/list_camera_detectors",
         camera_entity: camera,
       });
       detectors = res.detectors ?? {};
+      native = res.frigate_native === true;
     } catch {
       detectors = {};
     }
     this._visionDetectors = { ...this._visionDetectors, [camera]: detectors };
+    this._visionFrigateNative = { ...this._visionFrigateNative, [camera]: native };
   }
 
   private _toggleCamVision(camera: string): void {
@@ -2551,8 +2570,33 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
   private _setVisionEnabled(id: string, on: boolean): void {
     const cfg = this._visionCam(id);
     cfg.enabled = on;
-    if (!Array.isArray(cfg.triggers)) cfg.triggers = [];
+    const trigs = Array.isArray(cfg.triggers)
+      ? [...(cfg.triggers as Record<string, unknown>[])]
+      : [];
+    // Frigate decides what's an alert, so a Frigate-native camera always gets the
+    // "Any Frigate alert" catch-all (a `motion` trigger) so nothing is dropped.
+    if (on && this._isFrigateNative(id) && !trigs.some((t) => t.type === "motion")) {
+      trigs.push(visionTrigger("motion"));
+      this._visTrigPanelOpen = new Set(this._visTrigPanelOpen).add(id);
+    }
+    cfg.triggers = trigs;
     this._writeVisionCam(id, cfg);
+  }
+
+  private _isFrigateNative(id: string): boolean {
+    return this._visionFrigateNative[id] === true;
+  }
+
+  /** Display label for a trigger type — the `motion` catch-all reads "Any Frigate alert"
+   * on a Frigate-native camera (its reviews are object alerts, not motion). */
+  private _detLabel(id: string, type: string): string {
+    if (type === "motion" && this._isFrigateNative(id)) return "Any Frigate alert";
+    return VISION_DET_LABEL[type] ?? type;
+  }
+
+  private _detIcon(id: string, type: string): string {
+    if (type === "motion" && this._isFrigateNative(id)) return "mdi:cctv";
+    return VISION_DET_ICON[type] ?? "mdi:motion-sensor";
   }
 
   private _visionCamName(id: string): string {
@@ -2570,17 +2614,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
   private _addTrigger(id: string, type = ""): void {
     const cfg = this._visionCam(id);
     const trigs = [...this._visionTriggers(id)];
-    trigs.push({
-      type,
-      discard_severities: [],
-      cooldown_seconds: 60,
-      actions: [
-        { type: "live_feed", enabled: true, areas: [] },
-        { type: "toast", enabled: true, areas: [] },
-        { type: "push", enabled: false, services: [] },
-        { type: "custom", enabled: false, items: [] },
-      ],
-    });
+    trigs.push(visionTrigger(type));
     cfg.triggers = trigs;
     this._writeVisionCam(id, cfg);
     this._visTrigPanelOpen = new Set(this._visTrigPanelOpen).add(id);
@@ -2591,16 +2625,28 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
   private _triggerTypeOptions(id: string): { value: string; label: string; icon?: string; disabled?: boolean }[] {
     const detectors = this._visionDetectors[id];
     const avail = detectors ? Object.keys(detectors) : [];
-    const types = avail.length ? avail : ["motion", "person", "animal", "car", "package"];
+    // Frigate-native triggers are matched against Frigate review objects, not binary_sensor
+    // entities, so offer the full standard set regardless of discovered detectors.
+    const types = this._isFrigateNative(id)
+      ? ["motion", "person", "animal", "car", "package"]
+      : avail.length ? avail : ["motion", "person", "animal", "car", "package"];
     const used = new Set(this._visionTriggers(id).map((t) => t.type as string));
     return types.map((t) => ({
-      value: t, label: VISION_DET_LABEL[t] ?? t, icon: VISION_DET_ICON[t], disabled: used.has(t),
+      value: t, label: this._detLabel(id, t), icon: this._detIcon(id, t), disabled: used.has(t),
     }));
   }
 
   private _removeTrigger(id: string, i: number): void {
     const cfg = this._visionCam(id);
     const trigs = [...this._visionTriggers(id)];
+    // The "Any Frigate alert" catch-all is required on Frigate-native cameras.
+    const target = trigs[i];
+    if (
+      this._isFrigateNative(id) && target?.type === "motion"
+      && trigs.filter((t) => t.type === "motion").length <= 1
+    ) {
+      return;
+    }
     trigs.splice(i, 1);
     cfg.triggers = trigs;
     this._writeVisionCam(id, cfg);
@@ -2831,7 +2877,11 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
         </div>
         ${open
           ? html`<div class="vis-pbody">
-              ${trigs.length === 0 ? html`<div class="help">No triggers yet — tap “Add”.</div>` : nothing}
+              ${this._isFrigateNative(id)
+                ? html`<div class="help">Frigate decides what counts as an alert. “Any Frigate alert” handles everything it sends. Add an object trigger only to give that object a different cooldown or different actions.</div>`
+                : trigs.length === 0
+                  ? html`<div class="help">No triggers yet — tap “Add”.</div>`
+                  : nothing}
               ${trigs.map((t, i) => this._renderTrigger(id, i, t))}
             </div>`
           : nothing}
@@ -2847,20 +2897,24 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
       cooldown_seconds: (trig.cooldown_seconds as number) ?? 60,
     };
     const label = trig.type
-      ? VISION_DET_LABEL[trig.type as string] ?? String(trig.type)
+      ? this._detLabel(id, trig.type as string)
       : "New trigger";
     const onChange = (e: CustomEvent): void => this._updateTrigger(id, i, e.detail.value);
+    // The Frigate-native catch-all is required, so it can't be deleted.
+    const locked = this._isFrigateNative(id) && trig.type === "motion";
     return html`
       <div class="vis-item">
         <div class="vis-ihead" @click=${() => (this._visTrigOpen = this._toggleSet(this._visTrigOpen, key))}>
-          <ha-icon icon=${VISION_DET_ICON[trig.type as string] ?? "mdi:motion-sensor"}></ha-icon>
+          <ha-icon icon=${this._detIcon(id, trig.type as string)}></ha-icon>
           <span class="vis-iname">${label}</span>
-          <ha-icon-button
-            class="hdr-btn"
-            @click=${(e: Event) => { e.stopPropagation(); this._removeTrigger(id, i); }}
-            title="Remove"
-            ><ha-icon .icon=${this._ui("delete")}></ha-icon
-          ></ha-icon-button>
+          ${locked
+            ? nothing
+            : html`<ha-icon-button
+                class="hdr-btn"
+                @click=${(e: Event) => { e.stopPropagation(); this._removeTrigger(id, i); }}
+                title="Remove"
+                ><ha-icon .icon=${this._ui("delete")}></ha-icon
+              ></ha-icon-button>`}
           <ha-icon class="vis-chev" .icon=${this._ui(open ? "chevronUp" : "chevronDown")}></ha-icon>
         </div>
         ${open

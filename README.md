@@ -942,6 +942,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.90
+
+- **Vision Settings: “Any Frigate alert” catch-all trigger.** For a Frigate camera, Vision now always has a built-in catch-all so no Frigate alert is ever silently dropped — the `motion` trigger reads **“Any Frigate alert”**, is created automatically when you enable analysis, and can't be deleted. Add object triggers (person, car, …) only to give a specific object a different cooldown or actions. Requires the Ted's Dashboard System integration.
+
 ### v0.9.89
 
 - **Calendar Card (Agenda view): long event titles now truncate with “…” instead of stretching past the card.** A long-standing layout quirk in the underlying daylight-calendar-card (its event column and title never shrank below the title's intrinsic width) let long titles overflow the card's right edge; it became more noticeable after the recent event-title size bump. Titles now ellipsis-truncate within the card at any font size.
