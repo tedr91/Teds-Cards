@@ -2572,7 +2572,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     const trigs = [...this._visionTriggers(id)];
     trigs.push({
       type,
-      severities: [],
+      discard_severities: [],
       cooldown_seconds: 60,
       actions: [
         { type: "live_feed", enabled: true, areas: [] },
@@ -2784,7 +2784,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
   private _triggerLabel = (s: { name: string }): string =>
     ({
       type: "Trigger type",
-      severities: "Severity level filter",
+      discard_severities: "Discard events if severity matches",
       cooldown_seconds: "Cooldown (seconds)",
     })[s.name] ?? s.name;
 
@@ -2843,7 +2843,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     const key = `${id}#${i}`;
     const open = this._visTrigOpen.has(key);
     const data = {
-      severities: Array.isArray(trig.severities) ? trig.severities : [],
+      discard_severities: Array.isArray(trig.discard_severities) ? trig.discard_severities : [],
       cooldown_seconds: (trig.cooldown_seconds as number) ?? 60,
     };
     const label = trig.type
@@ -2866,12 +2866,12 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
         ${open
           ? html`<div class="vis-ibody">
               <div class="vis-field">
-                <div class="vis-field-label">Severity level filter</div>
-                <div class="help">Only take action if the event is one of these severities (leave empty for any).</div>
+                <div class="vis-field-label">Discard events if severity matches:</div>
+                <div class="help">The severity is determined after full vision analysis completes. Matching events are discarded per the “Filter out false alarms” setting (log only or drop).</div>
                 <ha-form
                   .hass=${this.hass}
-                  .data=${{ severities: data.severities }}
-                  .schema=${[{ name: "severities", selector: { select: { multiple: true, options: VISION_SEVERITY_OPTIONS } } }]}
+                  .data=${{ discard_severities: data.discard_severities }}
+                  .schema=${[{ name: "discard_severities", selector: { select: { multiple: true, options: VISION_SEVERITY_OPTIONS } } }]}
                   .computeLabel=${() => ""}
                   @value-changed=${onChange}
                 ></ha-form>
