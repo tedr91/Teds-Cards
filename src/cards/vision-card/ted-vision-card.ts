@@ -288,7 +288,7 @@ export class TedVisionCard extends LitElement implements LovelaceCard {
         events,
         (e) => e.id,
         (e) => html`<button
-          class="row ${e.reviewed ? "reviewed" : ""} ${e.analyzing ? "analyzing" : ""}"
+          class="row ${e.reviewed ? "reviewed" : ""} ${e.status && e.status !== "complete" ? "analyzing" : ""}"
           @click=${() => (this._detailId = e.id)}
         >
           <div class="thumb" style="--sev: ${SEVERITY_COLOR[e.severity]}">
@@ -305,7 +305,7 @@ export class TedVisionCard extends LitElement implements LovelaceCard {
               ${e.false_alarm
                 ? html`<span class="fa-tag" style="--sev: ${FALSE_ALARM_COLOR}">${FALSE_ALARM_LABEL}</span>`
                 : nothing}
-              ${e.analyzing ? html`<span class="analyzing-tag">Analyzing…</span>` : nothing}
+              ${this._statusTag(e)}
               <span class="cam">${e.camera_name}</span>
               <span class="time">${this._relTime(e.ts_start)}</span>
             </div>
@@ -329,7 +329,7 @@ export class TedVisionCard extends LitElement implements LovelaceCard {
           ${e.false_alarm
             ? html`<span class="fa-tag" style="--sev: ${FALSE_ALARM_COLOR}">${FALSE_ALARM_LABEL}</span>`
             : nothing}
-          ${e.analyzing ? html`<span class="analyzing-tag">Analyzing…</span>` : nothing}
+          ${this._statusTag(e)}
           ${e.camera_name}
         </div>
         <div class="ted-sheet-body">
@@ -383,6 +383,13 @@ export class TedVisionCard extends LitElement implements LovelaceCard {
     };
     void hass?.callWS?.({ type: `${DOMAIN}/delete_vision_event`, event_id: e.id });
     if (this._detailId === e.id) this._detailId = undefined;
+  }
+
+  /** The in-progress badge for an event still being analyzed (nothing once complete). */
+  private _statusTag(e: VisionEvent): TemplateResult | typeof nothing {
+    if (!e.status || e.status === "complete") return nothing;
+    const label = e.status === "in_progress" ? "In progress…" : "Analyzing…";
+    return html`<span class="analyzing-tag">${label}</span>`;
   }
 
   private _relTime(iso: string): string {

@@ -942,6 +942,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.85
+
+- **Vision events now show live analysis progress.** A camera event appears the instant it's detected with an **In progress…** badge (and its actions — live feed, chime, notifications — fire immediately), upgrades to **Analyzing…** while the AI reviews the clip, then settles into its final summary and severity. With two-pass analysis a quick first look can post a preliminary summary before the detailed pass finishes. Requires the Ted's Dashboard System integration.
+
 ### v0.9.84
 
 - **Vision triggers: “Discard events if severity matches”.** The per-trigger severity control is now a discard filter rather than a gate — trigger actions (live feed, chime, notifications) always fire the instant an event starts, and after the full AI analysis completes any event whose final severity matches the selected levels (or that turns out to be a false alarm) is discarded per your **Filter out false alarms** setting (log only or drop). Requires the Ted's Dashboard System integration.

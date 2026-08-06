@@ -23,8 +23,8 @@ export interface VisionEvent {
   trigger_entity?: string | null;
   /** The AI flagged this event as a likely false alarm. */
   false_alarm?: boolean;
-  /** A provisional Frigate event whose clip + AI summary is still being produced. */
-  analyzing?: boolean;
+  /** Two-pass analysis progress; shown as a badge until "complete". */
+  status?: "in_progress" | "analyzing" | "complete";
 }
 
 export interface VisionCardConfig extends LovelaceCardConfig {
