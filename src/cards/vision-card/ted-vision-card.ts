@@ -67,6 +67,8 @@ export class TedVisionCard extends LitElement implements LovelaceCard {
   @state() private _severityFilter?: VisionSeverity;
   /** When on, show only events the AI flagged as false alarms. */
   @state() private _falseAlarmOnly = false;
+  /** Hide events already marked reviewed (on by default). */
+  @state() private _hideViewed = true;
   @state() private _detailId?: string;
   /** ai_task availability: undefined = not checked, true/false once known. */
   @state() private _aiTaskOk?: boolean;
@@ -182,6 +184,7 @@ export class TedVisionCard extends LitElement implements LovelaceCard {
     if (cams && cams.length) list = list.filter((e) => cams.includes(e.camera_id));
     if (this._severityFilter) list = list.filter((e) => e.severity === this._severityFilter);
     if (this._falseAlarmOnly) list = list.filter((e) => e.false_alarm);
+    if (this._hideViewed) list = list.filter((e) => !e.reviewed);
     return list.slice(0, max);
   }
 
@@ -241,6 +244,13 @@ export class TedVisionCard extends LitElement implements LovelaceCard {
         @click=${() => (this._falseAlarmOnly = !this._falseAlarmOnly)}
       >
         ${FALSE_ALARM_LABEL}
+      </button>
+      <button
+        class="chip ${this._hideViewed ? "on" : ""}"
+        title="Hide events you've already reviewed"
+        @click=${() => (this._hideViewed = !this._hideViewed)}
+      >
+        Hide viewed
       </button>
       <div class="filter-actions">
         <ha-icon-button class="filter-act" title="Mark all reviewed" @click=${this._markAllReviewed}>
