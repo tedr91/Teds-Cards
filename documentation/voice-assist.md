@@ -142,4 +142,39 @@ The overlay adapts to the device using its **device type's "fullscreen default"*
 During a request the overlay shows the live state — *Listening…*, then what you
 said, then the spoken answer — using the same look as the
 [Assist-Response card](./assist-response-card.md). The spoken response plays through
-the device's own speaker.
+the device's own speaker. The full-screen Assist-Response view keeps a scroll-back
+history of the conversation, so a long answer can be scrolled through.
+
+---
+
+## Interrupting a long answer
+
+While the assistant is speaking you can cut it off:
+
+- **Say a stop word** — "stop", "shut up", "quit", "no", "cancel", "enough", etc.
+  TDS keeps listening during playback and stops the answer as soon as it hears one
+  (then it just acknowledges with "Okay"). Barge-in needs the device's microphone,
+  so it only works over HTTPS.
+- **Tap the mic button** — while an answer is speaking the navbar mic turns into a
+  **stop** button; tapping it cuts the answer off immediately.
+
+---
+
+## Keep answers short and to the point
+
+The length of a spoken answer is decided by your **conversation agent** (e.g. the
+OpenAI/LLM agent in Settings → Voice assistants), not by TDS. LLM agents love to
+give long, thorough paragraphs — which is painful to *listen* to. Add an
+instruction to your agent's prompt so answers stay brief. For example:
+
+> You are a voice assistant for a home. Keep spoken answers **short and to the
+> point** — usually one or two sentences. Lead with the key information the user
+> asked for, use natural spoken phrasing (no markdown, lists, or URLs), and only add
+> detail if the user explicitly asks for more.
+
+For weather specifically, something like *"Give tomorrow's forecast in one short
+sentence — the condition and the high/low"* keeps it tight.
+
+This makes every answer quicker to hear (and quicker to read on the Assist-Response
+view), and pairs well with the stop-word interruption above.
+

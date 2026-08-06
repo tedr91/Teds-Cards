@@ -262,11 +262,14 @@ export class TedAssistResponseCard extends LitElement implements LovelaceCard {
       /* The box clips; the thread inside it scrolls (conversation scroll-back). */
       .ar-box {
         overflow: hidden;
+        min-height: 0;
       }
       .ar-thread {
         gap: clamp(16px, 2.4vw, 26px);
+        align-self: stretch;
         min-height: 0;
         overflow-y: auto;
+        overscroll-behavior: contain;
       }
       .arh-entry {
         display: flex;

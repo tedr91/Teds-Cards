@@ -42,6 +42,8 @@ export interface VoiceSnapshot {
   stage?: VoiceStage;
   /** True while the TTS answer audio is still playing in the browser. */
   ttsActive?: boolean;
+  /** True on the emit where the user interrupted the spoken answer ("stop" / tap). */
+  interrupted?: boolean;
 }
 
 export interface VoiceStartOptions {
@@ -82,6 +84,37 @@ interface PipelineEvent {
 
 const TARGET_RATE = 16000;
 
+/** Utterances that cut off the spoken answer when heard during playback (barge-in). */
+const STOP_PHRASES = new Set([
+  "stop",
+  "stop it",
+  "shut up",
+  "quit",
+  "no",
+  "nope",
+  "cancel",
+  "cancel it",
+  "never mind",
+  "nevermind",
+  "be quiet",
+  "enough",
+  "silence",
+  "shush",
+]);
+
+/** True when a short barge-in utterance is a request to stop the TTS. */
+function isStopPhrase(text: string): boolean {
+  const t = text
+    .toLowerCase()
+    .replace(/[^a-z\s]/g, "")
+    .trim()
+    .replace(/\s+/g, " ");
+  if (!t) return false;
+  if (STOP_PHRASES.has(t)) return true;
+  const words = t.split(" ");
+  return words.length <= 3 && words.some((w) => STOP_PHRASES.has(w));
+}
+
 /** True when the browser can capture the microphone (secure context + API present). */
 export function isVoiceSupported(): boolean {
   return (
@@ -112,6 +145,16 @@ export class VoicePipeline {
   private _starting = false;
   private _conversationId?: string;
   private _beeped = false;
+  // Barge-in: a second, transcription-only capture that listens for a "stop" word
+  // while the TTS answer is speaking, so the user can cut it off by voice.
+  private _biStream?: MediaStream;
+  private _biCtx?: AudioContext;
+  private _biSource?: MediaStreamAudioSourceNode;
+  private _biNode?: ScriptProcessorNode;
+  private _biSink?: GainNode;
+  private _biHandlerId: number | null = null;
+  private _biUnsub?: () => void;
+  private _biActive = false;
 
   public setHass(hass: HomeAssistant | undefined): void {
     this._hass = hass;
@@ -218,8 +261,116 @@ export class VoicePipeline {
   public stop(): void {
     this._unsub?.();
     this._unsub = undefined;
+    this._stopBargeIn();
     this._teardownCapture();
     if (this._snap.state !== "idle") this._set({ state: "idle", active: false });
+  }
+
+  /** Cut off the TTS answer if it's speaking (voice “stop” or a tap). Returns true if
+   *  something was actually stopped. */
+  public stopSpeaking(): boolean {
+    const was = !!this._audio && this._snap.ttsActive === true;
+    try {
+      this._audio?.pause();
+    } catch {
+      /* ignore */
+    }
+    this._audio = undefined;
+    this._stopBargeIn();
+    if (this._snap.ttsActive) this._set({ ...this._snap, ttsActive: false, interrupted: true });
+    return was;
+  }
+
+  // --- Barge-in (listen for "stop" during TTS) -------------------------------
+
+  private async _startBargeIn(): Promise<void> {
+    if (this._biActive || !this._hass?.connection || !isVoiceSupported()) return;
+    this._biActive = true;
+    try {
+      this._biStream = await navigator.mediaDevices.getUserMedia({
+        audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true },
+      });
+      const ctx = new AudioContext();
+      this._biCtx = ctx;
+      if (ctx.state === "suspended") await ctx.resume().catch(() => undefined);
+      this._biSource = ctx.createMediaStreamSource(this._biStream);
+      this._biNode = ctx.createScriptProcessor(4096, 1, 1);
+      this._biSink = ctx.createGain();
+      this._biSink.gain.value = 0;
+      this._biNode.onaudioprocess = (e) => this._onBiAudio(e, ctx.sampleRate);
+      this._biSource.connect(this._biNode);
+      this._biNode.connect(this._biSink);
+      this._biSink.connect(ctx.destination);
+      this._biHandlerId = null;
+      const conn = this._hass.connection as unknown as ConnLike;
+      this._biUnsub = await conn.subscribeMessage<PipelineEvent>((ev) => this._onBiEvent(ev), {
+        type: "assist_pipeline/run",
+        start_stage: "stt",
+        end_stage: "stt",
+        input: { sample_rate: TARGET_RATE },
+      });
+    } catch {
+      this._teardownBiCapture();
+    }
+  }
+
+  private _onBiEvent(ev: PipelineEvent): void {
+    if (ev.type === "run-start") {
+      const id = ev.data?.runner_data?.stt_binary_handler_id;
+      this._biHandlerId = typeof id === "number" ? id : null;
+      return;
+    }
+    if (ev.type === "stt-end") {
+      if (isStopPhrase(ev.data?.stt_output?.text ?? "")) this.stopSpeaking();
+      return;
+    }
+    if (ev.type === "run-end" || ev.type === "error") {
+      this._teardownBiCapture();
+      // Keep listening for a later "stop" while the answer is still speaking.
+      if (this._snap.ttsActive) window.setTimeout(() => void this._startBargeIn(), 250);
+    }
+  }
+
+  private _onBiAudio(e: AudioProcessingEvent, srcRate: number): void {
+    if (this._biHandlerId == null) return;
+    const socket = (this._hass?.connection as unknown as ConnLike | undefined)?.socket;
+    if (!socket || socket.readyState !== 1) return;
+    const pcm = downsampleTo16k(e.inputBuffer.getChannelData(0), srcRate);
+    if (!pcm.length) return;
+    const frame = new Uint8Array(pcm.byteLength + 1);
+    frame[0] = this._biHandlerId;
+    frame.set(new Uint8Array(pcm.buffer, pcm.byteOffset, pcm.byteLength), 1);
+    try {
+      socket.send(frame);
+    } catch {
+      /* socket may be mid-reconnect */
+    }
+  }
+
+  private _teardownBiCapture(): void {
+    this._biHandlerId = null;
+    try {
+      if (this._biNode) this._biNode.onaudioprocess = null;
+      this._biNode?.disconnect();
+      this._biSource?.disconnect();
+      this._biSink?.disconnect();
+    } catch {
+      /* ignore */
+    }
+    this._biNode = undefined;
+    this._biSource = undefined;
+    this._biSink = undefined;
+    this._biCtx?.close().catch(() => undefined);
+    this._biCtx = undefined;
+    this._biStream?.getTracks().forEach((t) => t.stop());
+    this._biStream = undefined;
+    this._biActive = false;
+  }
+
+  private _stopBargeIn(): void {
+    this._biUnsub?.();
+    this._biUnsub = undefined;
+    this._teardownBiCapture();
   }
 
   // --- Pipeline events -------------------------------------------------------
@@ -324,8 +475,11 @@ export class VoicePipeline {
       const audio = new Audio(url);
       this._audio = audio;
       this._set({ ...this._snap, ttsActive: true });
+      // Listen for a spoken "stop" (barge-in) while the answer plays.
+      void this._startBargeIn();
       const done = () => {
         if (this._audio !== audio) return;
+        this._stopBargeIn();
         this._set({ ...this._snap, ttsActive: false });
       };
       audio.addEventListener("ended", done, { once: true });

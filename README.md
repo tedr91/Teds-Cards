@@ -942,6 +942,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.88
+
+- **Voice: interrupt a long answer, and the response view scrolls.** While the assistant is speaking you can now cut it off — say a stop word (“stop”, “shut up”, “quit”, “no”, “cancel”…) and it stops and acknowledges with “Okay”, or tap the navbar mic (which turns into a stop button while speaking). The full-screen Assist-Response view now scrolls, so long answers no longer get clipped. See the [Voice Assist docs](documentation/voice-assist.md) for a suggested agent instruction to keep spoken answers short.
+
 ### v0.9.87
 
 - **Nightstand device type: navbar now defaults to the right.** The one-time Nightstand preset docks the bar to the right edge (was left) and keeps the Left and Right navbar sections enabled — just with the weather and date/time status items removed — instead of hiding them entirely.

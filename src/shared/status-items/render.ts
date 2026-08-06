@@ -154,19 +154,21 @@ function renderAssistItem(
   const supported = isVoiceSupported();
   const snap = voicePipeline.snapshot;
   const active = supported && snap.active;
+  const speaking = supported && snap.ttsActive === true;
+  const highlight = active || speaking;
   const icon =
     item.icon ??
     (!supported
       ? "mdi:microphone-off"
-      : active
-        ? snap.state === "thinking"
-          ? "mdi:dots-horizontal"
-          : snap.state === "responding"
-            ? "mdi:message-reply-text"
+      : speaking
+        ? "mdi:stop-circle-outline"
+        : active
+          ? snap.state === "thinking"
+            ? "mdi:dots-horizontal"
             : "mdi:microphone"
-        : snap.state === "error"
-          ? "mdi:microphone-off"
-          : "mdi:microphone-outline");
+          : snap.state === "error"
+            ? "mdi:microphone-off"
+            : "mdi:microphone-outline");
   const anchorId = `${ctx.keyPrefix}-assist-${index}`;
   const g = effectiveGestures(item, ctx, {
     tap: supported ? () => startPushToTalk(ctx.hass) : () => showVoiceUnavailable(),
@@ -176,15 +178,19 @@ function renderAssistItem(
     <div class="status-item">
       <button
         id=${anchorId}
-        class="status-icon-button assist-btn${active ? " assist-active" : ""}${
+        class="status-icon-button assist-btn${highlight ? " assist-active" : ""}${
           supported ? "" : " assist-unavailable"
         }"
-        style=${active
+        style=${highlight
           ? "color: var(--ted-style-accent, #4cc2ff)"
           : supported
             ? ""
             : "opacity:0.5"}
-        title=${supported ? String(item.name ?? "Assist") : "Voice needs an HTTPS connection"}
+        title=${!supported
+          ? "Voice needs an HTTPS connection"
+          : speaking
+            ? "Tap to stop"
+            : String(item.name ?? "Assist")}
         aria-label="Assist"
         @pointerdown=${h.down}
         @pointerup=${h.up}

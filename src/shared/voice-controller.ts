@@ -109,6 +109,11 @@ class VoiceManager {
     if (hass) this.setHass(hass);
     this._ensureSub();
     const s = voicePipeline.snapshot;
+    if (s.ttsActive) {
+      // Tapping while the answer is speaking cuts it off.
+      voicePipeline.stopSpeaking();
+      return;
+    }
     if (s.active) {
       // Interrupt a waiting wake-word run to talk now; a second tap cancels a PTT run.
       voicePipeline.stop();
@@ -141,7 +146,9 @@ class VoiceManager {
   private _refreshWake(): void {
     if (!this._wakeEnabled || !this._gestured) return;
     if (!this._hass || !isVoiceSupported()) return;
-    if (voicePipeline.active) return;
+    // Don't open a wake capture while a run is active or the answer is still speaking
+    // (the barge-in listener owns the mic during TTS).
+    if (voicePipeline.active || voicePipeline.snapshot.ttsActive) return;
     void voicePipeline.start({
       stage: "wake_word",
       pipelineId: configuredPipeline(),
@@ -217,7 +224,16 @@ class VoiceManager {
     // Clear only once the run has finished AND the spoken answer has stopped playing,
     // so a long response stays on screen a little past the end of the TTS.
     if (!s.active && !s.ttsActive) {
-      if (s.state === "error") this._endConversation(2600);
+      if (s.interrupted) {
+        // The user cut the answer off — acknowledge briefly, then dismiss.
+        voiceOverlay.show({
+          turns: this._turns,
+          status: "Okay",
+          icon: ICON.responding,
+          accent: ACCENT.responding,
+        });
+        this._endConversation(1400);
+      } else if (s.state === "error") this._endConversation(2600);
       else if (fs && this._answerRouted) this._endConversation(0);
       else if (this._turns.length) this._endConversation(3500);
       else this._endConversation(0);
