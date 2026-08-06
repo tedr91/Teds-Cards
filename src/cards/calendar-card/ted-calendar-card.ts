@@ -1052,6 +1052,30 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
       background: transparent !important;
       border-color: transparent !important;
     }
+    /* Agenda view: nudge daylight's layout closer to a Calendar Card Pro look. daylight
+       has no native options for these, so override its light-DOM agenda classes (the
+       event title size itself is handled natively via event_font_size). */
+    .calendar .agenda-container {
+      gap: 1px; /* tighter spacing between days */
+    }
+    .calendar .agenda-day-events {
+      gap: 0; /* no spacing between an event and the next */
+    }
+    /* Bigger day date (beats daylight's 16px compact-events rule via extra specificity). */
+    .calendar .agenda-day-date,
+    .calendar .calendar-container.agenda-compact-events .agenda-day-date {
+      font-size: 22px;
+    }
+    /* Show only the high temperature, and size the condition icon to match it. */
+    .calendar .agenda-day-forecast .forecast-temp-low {
+      display: none;
+    }
+    .calendar .agenda-day-forecast .forecast-temperatures {
+      font-size: 14px;
+    }
+    .calendar .agenda-day-forecast .forecast-condition ha-icon {
+      --mdc-icon-size: 14px;
+    }
     .loading {
       height: 100%;
       min-height: 120px;

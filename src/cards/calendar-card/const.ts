@@ -114,6 +114,7 @@ export const CALENDAR_DEFAULT_CONFIG: Record<string, unknown> = {
   hide_empty_days: false,
   agenda_compact_events: true,
   shorten_event_times: true,
+  event_font_size: 14,
   display_full_weekday_names: false,
   compact_width: true,
   show_current_time_bar: true,

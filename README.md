@@ -942,6 +942,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.86
+
+- **Calendar Card (Agenda view) tuned to a Calendar Card Pro look.** In Agenda mode the day date is larger, the weather forecast now shows only the high temperature with its condition icon sized to match, days are spaced 1px apart, events sit flush with no gap, and event titles are a touch larger (via daylight's native `event_font_size`).
+
 ### v0.9.85
 
 - **Vision events now show live analysis progress.** A camera event appears the instant it's detected with an **In progress…** badge (and its actions — live feed, chime, notifications — fire immediately), upgrades to **Analyzing…** while the AI reviews the clip, then settles into its final summary and severity. With two-pass analysis a quick first look can post a preliminary summary before the detailed pass finishes. Requires the Ted's Dashboard System integration.
