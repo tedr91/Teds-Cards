@@ -25,7 +25,7 @@ import {
   VISION_SEVERITIES,
   type VisionSeverity,
 } from "./const";
-import type { VisionCardConfig, VisionEvent } from "./types";
+import type { VisionAnalysisPass, VisionCardConfig, VisionEvent } from "./types";
 
 const DOMAIN = "teds_dashboard_system";
 
@@ -405,6 +405,7 @@ export class TedVisionCard extends LitElement implements LovelaceCard {
               : nothing}
           </div>
           <div class="long">${e.long_summary || e.short_summary || "(no details)"}</div>
+          ${this._renderPasses(e)}
           <div class="detail-actions">
             <button class="ted-btn" @click=${() => this._markReviewed(e)}>
               ${e.reviewed ? "Mark unreviewed" : "Mark reviewed"}
@@ -417,6 +418,37 @@ export class TedVisionCard extends LitElement implements LovelaceCard {
         </div>
       </div>
     </div>`;
+  }
+
+  private _renderPasses(e: VisionEvent): TemplateResult | typeof nothing {
+    const passes = e.analysis_passes;
+    if (!passes?.length) return nothing;
+    const label: Record<string, string> = {
+      quick: "Pass 1 — quick",
+      detailed: "Pass 2 — detailed",
+      single: "Single pass",
+    };
+    return html`<details class="passes">
+      <summary>Analysis passes (${passes.length})</summary>
+      ${passes.map(
+        (p: VisionAnalysisPass) => html`<div class="pass">
+          <div class="pass-head">
+            <strong>${label[p.pass] ?? p.pass}</strong>
+            ${p.published ? html`<span class="pass-tag">shown</span>` : nothing}
+            ${p.failed ? html`<span class="pass-tag fail">failed</span>` : nothing}
+            <span class="pass-meta">
+              ${p.entity_id ?? "auto"}${p.duration_ms != null
+                ? ` · ${(p.duration_ms / 1000).toFixed(1)}s`
+                : ""}${p.attachments != null ? ` · ${p.attachments} att` : ""}${p.severity
+                ? ` · ${p.severity}`
+                : ""}${p.false_alarm ? " · false alarm" : ""}
+            </span>
+          </div>
+          ${p.short_summary ? html`<div class="pass-short">${p.short_summary}</div>` : nothing}
+          ${p.long_summary ? html`<div class="pass-long">${p.long_summary}</div>` : nothing}
+        </div>`,
+      )}
+    </details>`;
   }
 
   private _markReviewed(e: VisionEvent): void {
@@ -834,6 +866,51 @@ export class TedVisionCard extends LitElement implements LovelaceCard {
       .vision-detail .long {
         font-size: 0.9rem;
         line-height: 1.4;
+      }
+      .passes {
+        border-top: 1px solid var(--ted-style-border, var(--divider-color));
+        padding-top: 8px;
+        font-size: 0.82rem;
+      }
+      .passes > summary {
+        cursor: pointer;
+        color: var(--ted-style-muted, var(--secondary-text-color));
+        user-select: none;
+      }
+      .pass {
+        margin-top: 10px;
+        padding-left: 10px;
+        border-left: 2px solid var(--ted-style-border, var(--divider-color));
+      }
+      .pass-head {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        gap: 6px;
+      }
+      .pass-tag {
+        font-size: 0.68rem;
+        padding: 1px 6px;
+        border-radius: 999px;
+        background: var(--ted-style-accent, var(--primary-color));
+        color: var(--ted-style-on-accent, #fff);
+      }
+      .pass-tag.fail {
+        background: var(--error-color, #c62828);
+        color: #fff;
+      }
+      .pass-meta {
+        font-size: 0.72rem;
+        color: var(--ted-style-muted, var(--secondary-text-color));
+      }
+      .pass-short {
+        margin-top: 4px;
+        font-weight: 600;
+      }
+      .pass-long {
+        margin-top: 2px;
+        line-height: 1.35;
+        color: var(--ted-style-muted, var(--secondary-text-color));
       }
       .detail-actions {
         display: flex;

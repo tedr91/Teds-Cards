@@ -181,6 +181,7 @@ export const SETTINGS_DEFAULTS: SettingsMap = {
   vision_clip_seconds: 10,
   vision_frame_count: 3,
   vision_false_alarm_mode: "log_only",
+  vision_debug_passes: false,
   vision_retention_max: 200,
   frigate_native_detection: true,
   frigate_notifications: true,
@@ -369,6 +370,7 @@ export const SETTINGS_FIELDS: SettingField[] = [
     ],
     help: "When the AI believes an event is a false alarm: Off acts normally; Log only stores it but doesn't fire the trigger's actions; Drop discards it entirely.",
   },
+  { key: "vision_debug_passes", label: "Keep both analysis passes", group: "Cameras", subsection: "Vision Analysis", globalOnly: true, kind: "boolean", showWhen: { key: "vision_two_pass", truthy: true }, help: "Diagnostic: store the quick and detailed pass results separately on each event so you can compare them in the event detail. Increases stored event size — leave off unless you're troubleshooting summary quality." },
   // Frigate — only relevant when Frigate is the adopted camera source.
   { key: "frigate_native_detection", label: "Use Frigate detection", group: "Cameras", subsection: "Frigate", globalOnly: true, kind: "boolean", help: "Let Frigate drive Vision for its cameras: log its own events using Frigate's thumbnail and clip (no local recording) and run the AI only to describe that clip. Requires the MQTT integration." },
   { key: "frigate_notifications", label: "Frigate alert notifications", group: "Cameras", subsection: "Frigate", globalOnly: true, kind: "boolean", help: "Turn Frigate review alerts into Ted's notifications with the event thumbnail and clip. Requires the MQTT integration." },

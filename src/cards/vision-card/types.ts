@@ -3,6 +3,27 @@ import type { LovelaceCardConfig } from "custom-card-helpers";
 import type { TedStyleTheme } from "../../shared/types";
 import type { VisionSeverity } from "./const";
 
+/** One AI analysis pass, retained only when "Keep both analysis passes" is on. */
+export interface VisionAnalysisPass {
+  /** Which pass produced this: the fast first pass, the full second pass, or the
+   *  single pass used when two-pass is disabled. */
+  pass: "quick" | "detailed" | "single";
+  /** The ai_task entity that ran it. */
+  entity_id?: string | null;
+  /** How many images/videos were attached. */
+  attachments?: number;
+  /** Wall-clock time the pass took. */
+  duration_ms?: number;
+  /** True if this pass's text is what the event ended up showing. */
+  published?: boolean;
+  /** True if the ai_task call failed outright. */
+  failed?: boolean;
+  severity?: string | null;
+  false_alarm?: boolean | null;
+  short_summary?: string | null;
+  long_summary?: string | null;
+}
+
 /** One analyzed camera event as delivered by the backend. */
 export interface VisionEvent {
   id: string;
@@ -25,6 +46,8 @@ export interface VisionEvent {
   false_alarm?: boolean;
   /** Two-pass analysis progress; shown as a badge until "complete". */
   status?: "in_progress" | "analyzing" | "complete";
+  /** Per-pass debug results (only when vision_debug_passes is enabled). */
+  analysis_passes?: VisionAnalysisPass[] | null;
 }
 
 export interface VisionCardConfig extends LovelaceCardConfig {

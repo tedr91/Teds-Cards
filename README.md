@@ -942,6 +942,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.98
+
+- **Vision: compare both analysis passes.** A new diagnostic setting (Settings → Cameras → Vision Analysis → **Keep both analysis passes**) stores the quick and detailed pass results separately on each event, and the event detail sheet gains an **Analysis passes** disclosure showing each pass's entity, timing, attachment count, and text — with the one you actually saw tagged **shown**. Off by default; older events are unaffected.
+
 ### v0.9.97
 
 - **Cameras and Vision are now one view.** Ted's Tab Card gained per-tab gating so the Cameras view can host the Vision timeline as a second tab: a tab can be tied to a setting (the Vision tab hides when Vision Analysis is off), and the tab strip auto-hides when only one tab remains. Both tabs are deep-linkable (`?tab=cameras` / `?tab=vision`).
