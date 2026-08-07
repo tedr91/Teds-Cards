@@ -105,18 +105,22 @@ export const SETTINGS_GROUP_ICONS: Record<string, { fluent: string; mdi: string 
 };
 
 /** The default five navbar sections (matches the bar Ted's Dashboard ships with):
- *  0 = weather, 1/2/3 empty (2 = View Launcher target), 4 = assist · timers · alarms ·
+ *  0 = weather · assist, 1/2/3 empty (2 = View Launcher target), 4 = timers · alarms ·
  *  datetime · notifications. Pre-populated so `navbar_sections` renders today's bar out
  *  of the box; users can then edit/remove items in Settings → Navbar. Must match the
  *  backend `SETTINGS_DEFAULTS["navbar_sections"]`. */
 export const DEFAULT_NAVBAR_SECTIONS = [
-  { items: [{ type: "weather", tap_action: { action: "navigate-dashboard", dashboard: "weather_dashboard" } }] },
+  {
+    items: [
+      { type: "weather", tap_action: { action: "navigate-dashboard", dashboard: "weather_dashboard" } },
+      { type: "assist" },
+    ],
+  },
   { items: [] },
   { items: [] },
   { items: [] },
   {
     items: [
-      { type: "assist" },
       { type: "timers" },
       { type: "alarms" },
       {

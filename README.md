@@ -942,6 +942,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.96
+
+- **Navbar: Assist mic moved to the left.** The voice Assist button now sits in the navbar's Left section (just after the weather item) instead of leading the Right status cluster. The Nightstand device type no longer auto-hides its navbar — the bar stays visible on the right.
+
 ### v0.9.95
 
 - **Night Mode no longer darkens other devices on the same account.** Automatic Night Mode's dark theme is now applied locally in each browser instead of through Home Assistant's account-wide theme setting, so a nightstand can go dark while wall panels sharing the same HA user account stay light. Devices that share one account can now hold different night-mode settings, and the profile page's Theme selection is left untouched.

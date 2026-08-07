@@ -59,7 +59,7 @@ export const DEVICE_TYPE_PRESETS: Record<DeviceType, DeviceTypePreset> = {
   nightstand: {
     home_dashboard: "[root]/home-nightstand",
     navbar_position: "right",
-    navbar_auto_hide: true,
+    navbar_auto_hide: false,
     navbar_size: 56,
     navbar_float: false,
     fullscreen_default: true,
