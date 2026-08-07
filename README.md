@@ -942,6 +942,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.95
+
+- **Night Mode no longer darkens other devices on the same account.** Automatic Night Mode's dark theme is now applied locally in each browser instead of through Home Assistant's account-wide theme setting, so a nightstand can go dark while wall panels sharing the same HA user account stay light. Devices that share one account can now hold different night-mode settings, and the profile page's Theme selection is left untouched.
+
 ### v0.9.94
 
 - **Notification severity now has a color, not just an icon.** Each severity has a single canonical accent color (info blue, success green, warning amber, danger red, tip purple) shared by the toast, Notification Center, and message detail views — and the danger accent was warmed up to a clearer red. The auto-hide navbar pill now pulsates in the color of the **highest-severity unread** notification (danger > warning > success > info > tip), so a serious alert reads at a glance even before you reveal the bar.

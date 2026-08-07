@@ -24,16 +24,27 @@ import {
 } from "../../shared/night-mode";
 import { backgroundEngine } from "./background-engine";
 import { findHuiRoot } from "./background-dom";
-import { browserModId } from "../../shared/device-id";
 import { cssColor } from "../../shared/appearance";
 
-type ThemeMode = "auto" | "dark" | "light";
+interface HassThemeVars {
+  modes?: { light?: Record<string, string>; dark?: Record<string, string> } | undefined;
+}
 
 interface HassLike {
   states?: Record<string, { state?: string; attributes?: Record<string, unknown> } | undefined>;
   callService?(domain: string, service: string, data?: Record<string, unknown>): Promise<unknown> | void;
   entities?: Record<string, { device_id?: string | null } | undefined>;
   devices?: Record<string, { identifiers?: [string, string][] } | undefined>;
+  themes?: {
+    // Typed loosely: the custom-card-helpers `Theme` type omits `modes`, so the concrete
+    // per-theme shape is narrowed to HassThemeVars at the read site in `_darkVars`.
+    themes?: Record<string, unknown>;
+    default_theme?: string;
+    default_dark_theme?: string | null;
+  };
+  // HA's runtime `selectedTheme` is an object; the custom-card-helpers type still calls it a
+  // string, so accept both to stay assignable from HomeAssistant.
+  selectedTheme?: { theme?: string; dark?: boolean } | string | null;
 }
 
 /** Persisted "day" snapshot (per device, in the backend settings store) so we can restore the
@@ -46,12 +57,11 @@ interface DaySnapshot {
   on?: boolean;
   kelvin?: number;
   mired?: number;
-  /** The device's Auto/Light/Dark theme setting + theme name, restored when night ends. */
-  themeMode?: ThemeMode;
-  themeName?: string | null;
 }
 
 const NIGHT_FONT_STYLE_ID = "ted-night-mode-font";
+/** Document-level stylesheet holding the night dark-mode theme variable overrides. */
+const NIGHT_DARK_STYLE_ID = "ted-night-mode-dark";
 /** The `ted-style` theme's default text color — the day-start of the font fade for ted-style cards
  *  (so they fade white → night color directly, without flashing through the HA theme color). */
 const TED_STYLE_DAY_TEXT = "#ffffff";
@@ -199,25 +209,82 @@ class NightModeEngine {
     this._applyDarkMode(s, durMs);
   }
 
-  /** Switch to Dark mode 5s after the transition finishes (needs browser_mod). Toggling the
-   *  setting off while night restores the stored Auto/Light/Dark value. */
+  /** HA's stock dark palette — the fallback when the active theme declares no `modes.dark`. */
+  private static readonly FALLBACK_DARK: Record<string, string> = {
+    "primary-text-color": "#e1e1e1",
+    "secondary-text-color": "#9b9b9b",
+    "text-primary-color": "#212121",
+    "disabled-text-color": "#6f6f6f",
+    "primary-background-color": "#111111",
+    "secondary-background-color": "#202020",
+    "card-background-color": "#1c1c1c",
+    "divider-color": "rgba(225, 225, 225, 0.12)",
+    "app-header-background-color": "#1c1c1c",
+    "app-header-text-color": "#e1e1e1",
+    "sidebar-background-color": "#1c1c1c",
+    "sidebar-text-color": "#e1e1e1",
+    "state-icon-color": "#9b9b9b",
+    "input-fill-color": "rgba(255, 255, 255, 0.05)",
+    "input-ink-color": "#e1e1e1",
+    "mdc-theme-surface": "#1c1c1c",
+    "mdc-theme-on-surface": "#e1e1e1",
+    "mdc-dialog-scrim-color": "rgba(0, 0, 0, 0.6)",
+    "ha-card-background": "#1c1c1c",
+  };
+
+  /** The CSS custom properties that make the *currently selected* theme dark. */
+  private _darkVars(): Record<string, string> {
+    const t = this.hass?.themes;
+    const sel = this.hass?.selectedTheme;
+    const selName = sel && typeof sel === "object" ? sel.theme : undefined;
+    const name = selName || t?.default_dark_theme || t?.default_theme || "";
+    const def = name ? (t?.themes?.[name] as HassThemeVars | undefined) : undefined;
+    const modeVars = def?.modes?.dark;
+    if (modeVars && Object.keys(modeVars).length) {
+      // The theme's own dark mode wins; base keys stay as HA already applied them.
+      return { ...modeVars };
+    }
+    return { ...NightModeEngine.FALLBACK_DARK };
+  }
+
+  /** Apply (or remove) the dark palette for THIS browser only, without touching hass.selectedTheme.
+   *  HA writes theme variables as inline styles on <html>; a stylesheet rule marked !important
+   *  overrides them, and removing the stylesheet restores HA's values with no state to unwind. */
+  private _applyLocalDark(on: boolean): void {
+    const existing = document.getElementById(NIGHT_DARK_STYLE_ID);
+    if (!on) {
+      existing?.remove();
+      return;
+    }
+    const vars = this._darkVars();
+    const body = Object.entries(vars)
+      .filter(([, v]) => typeof v === "string" && v !== "")
+      .map(([k, v]) => `--${k}:${v} !important;`)
+      .join("");
+    if (!body) return;
+    const el = (existing as HTMLStyleElement | null) ?? document.createElement("style");
+    if (!existing) {
+      el.id = NIGHT_DARK_STYLE_ID;
+      document.head.appendChild(el);
+    }
+    el.textContent = `html{color-scheme:dark;${body}}`;
+  }
+
+  /** Switch to Dark mode 5s after the transition finishes. Applied locally to this browser only,
+   *  so devices sharing an HA user account are unaffected. */
   private _applyDarkMode(s: SettingsMap, durMs: number): void {
-    if (!browserModId()) return;
     if (this.darkTimer !== undefined) {
       clearTimeout(this.darkTimer);
       this.darkTimer = undefined;
     }
     if (s.night_dark_mode === false) {
-      const day = this._getDay();
-      if (day?.themeMode) this._setTheme(day.themeName ?? null, day.themeMode);
+      this._applyLocalDark(false);
       return;
     }
-    const day = this._getDay();
-    const themeName = day?.themeName ?? null;
     const delay = durMs > 0 ? durMs + DARK_AFTER_TRANSITION_MS : 0;
     this.darkTimer = window.setTimeout(() => {
       this.darkTimer = undefined;
-      this._setTheme(themeName, "dark");
+      this._applyLocalDark(true);
     }, delay);
   }
 
@@ -229,10 +296,12 @@ class NightModeEngine {
       clearTimeout(this.darkTimer);
       this.darkTimer = undefined;
     }
+    // Always drop the local dark stylesheet — unconditional, so a missing or partial day
+    // snapshot can never strand the browser in dark mode.
+    this._applyLocalDark(false);
+
     const day = this._getDay();
     if (day) this._restoreDay(day, durMs);
-    // Restore the Auto/Light/Dark setting immediately at night's end.
-    if (day?.themeMode && browserModId()) this._setTheme(day.themeName ?? null, day.themeMode);
     this._animateDim(0, durMs);
     this._applyFont(null, durMs);
     this._clearDay();
@@ -414,8 +483,7 @@ class NightModeEngine {
   }
 
   /** Capture the entity's current value as a day snapshot (brightness %, and for lights also
-   *  the on/off state and color temperature) for later restore. Also captures the device's
-   *  Auto/Light/Dark theme setting. */
+   *  the on/off state and color temperature) for later restore. */
   private _snapshotDay(entity: string | undefined): DaySnapshot {
     const snap: DaySnapshot = entity ? { entity, pct: this._readPct(entity) } : { entity: null, pct: 100 };
     if (entity && entity.split(".")[0] === "light") {
@@ -426,22 +494,7 @@ class NightModeEngine {
       if (!Number.isNaN(k) && k > 0) snap.kelvin = k;
       else if (!Number.isNaN(m) && m > 0) snap.mired = m;
     }
-    const theme = (this.hass as unknown as { selectedTheme?: { theme?: string; dark?: boolean } | null } | undefined)
-      ?.selectedTheme;
-    snap.themeMode = theme?.dark === true ? "dark" : theme?.dark === false ? "light" : "auto";
-    snap.themeName = typeof theme?.theme === "string" ? theme.theme : null;
     return snap;
-  }
-
-  /** Apply a theme mode (Auto/Light/Dark) to THIS browser via browser_mod, keeping the theme name. */
-  private _setTheme(themeName: string | null, mode: ThemeMode): void {
-    const bid = browserModId();
-    if (!bid || !this.hass?.callService) return;
-    void this.hass.callService("browser_mod", "set_theme", {
-      theme: themeName ?? "auto",
-      dark: mode,
-      browser_id: [bid],
-    });
   }
 
   /** Restore an entity to its captured day snapshot, fading brightness over `durMs`. For a light we
@@ -487,8 +540,6 @@ class NightModeEngine {
     if (typeof v.on === "boolean") snap.on = v.on;
     if (typeof v.kelvin === "number") snap.kelvin = v.kelvin;
     if (typeof v.mired === "number") snap.mired = v.mired;
-    if (v.themeMode === "auto" || v.themeMode === "dark" || v.themeMode === "light") snap.themeMode = v.themeMode;
-    if (typeof v.themeName === "string" || v.themeName === null) snap.themeName = v.themeName as string | null;
     return snap;
   }
 
