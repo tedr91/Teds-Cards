@@ -942,6 +942,11 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.97
+
+- **Cameras and Vision are now one view.** Ted's Tab Card gained per-tab gating so the Cameras view can host the Vision timeline as a second tab: a tab can be tied to a setting (the Vision tab hides when Vision Analysis is off), and the tab strip auto-hides when only one tab remains. Both tabs are deep-linkable (`?tab=cameras` / `?tab=vision`).
+- **Calendar Card Agenda view:** the blank strip above each day row nudged from 1px to 2px.
+
 ### v0.9.96
 
 - **Navbar: Assist mic moved to the left.** The voice Assist button now sits in the navbar's Left section (just after the weather item) instead of leading the Right status cluster. The Nightstand device type no longer auto-hides its navbar — the bar stays visible on the right.

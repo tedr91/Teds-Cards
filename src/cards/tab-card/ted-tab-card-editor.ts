@@ -198,6 +198,8 @@ export class TedTabCardEditor extends LitElement implements LovelaceCardEditor {
     if (config.url_param === DEFAULT_TAB_PARAM || config.url_param === "") delete config.url_param;
     if (typeof config.default_tab !== "number") delete config.default_tab;
     if (config.show_tabs !== false) delete config.show_tabs;
+    if (!config.hide_single_tab) delete config.hide_single_tab;
+    if (!config.dashboard_integration) delete config.dashboard_integration;
     if (config.tab_header === "both" || !config.tab_header) delete config.tab_header;
     if (config.auto_shrink !== false) delete config.auto_shrink;
     for (const key of ["background", "brushed", "shadow", "transparency", "blur", "scale", "theme"] as const) {
@@ -219,6 +221,8 @@ export class TedTabCardEditor extends LitElement implements LovelaceCardEditor {
       url_param: this._config.url_param ?? DEFAULT_TAB_PARAM,
       default_tab: this._config.default_tab,
       show_tabs: this._config.show_tabs !== false,
+      hide_single_tab: this._config.hide_single_tab ?? false,
+      dashboard_integration: this._config.dashboard_integration ?? false,
       tab_header: this._config.tab_header ?? "both",
       auto_shrink: this._config.auto_shrink !== false,
       theme: this._config.theme,
@@ -347,6 +351,15 @@ export class TedTabCardEditor extends LitElement implements LovelaceCardEditor {
         name: "",
         column_min_width: "120px",
         schema: [
+          { name: "hide_single_tab", selector: { boolean: {} } },
+          { name: "dashboard_integration", selector: { boolean: {} } },
+        ],
+      },
+      {
+        type: "grid",
+        name: "",
+        column_min_width: "120px",
+        schema: [
           {
             name: "tab_header",
             selector: {
@@ -403,6 +416,10 @@ export class TedTabCardEditor extends LitElement implements LovelaceCardEditor {
         return "Default tab index";
       case "show_tabs":
         return "Show tab strip";
+      case "hide_single_tab":
+        return "Hide tab strip when only one tab is shown";
+      case "dashboard_integration":
+        return "Dashboard integration (enables per-tab setting gates)";
       case "tab_header":
         return "Tab header";
       case "auto_shrink":

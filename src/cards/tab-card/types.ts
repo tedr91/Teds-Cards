@@ -32,6 +32,12 @@ export interface TabConfig {
   /** Custom-element dependencies; a friendly messagebox replaces the card when any is
    *  missing (and swaps back to the real card once the element registers). */
   requires?: TabRequirement[];
+  /**
+   * Settings key that gates this tab (requires `dashboard_integration`). The tab is only
+   * shown when the effective setting is truthy; otherwise it's disabled — dropped from the
+   * strip and never rendered (e.g. `vision_enabled` hides the Vision tab when Vision is off).
+   */
+  enabled_setting?: string;
 }
 
 /** Configuration for `ted-tab-card`. */
@@ -44,6 +50,10 @@ export interface TabCardConfig extends LovelaceCardConfig {
   url_param?: string;
   /** Hide the tab strip (e.g. when a single tab, or tabs are driven externally). */
   show_tabs?: boolean;
+  /** Hide the tab strip automatically when only one tab is enabled/visible. */
+  hide_single_tab?: boolean;
+  /** Feed the backend settings store so `enabled_setting` gating works. */
+  dashboard_integration?: boolean;
   /** What each tab button shows: icon + name (default), icon only, or name only. */
   tab_header?: TabHeaderMode;
   /**

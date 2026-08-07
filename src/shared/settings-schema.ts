@@ -273,7 +273,7 @@ export const SETTINGS_DEFAULTS: SettingsMap = {
   weather_dashboard: "[root]/weather",
   calendar_dashboard: "[root]/calendar-month",
   cameras_dashboard: "[root]/cameras",
-  vision_dashboard: "[root]/vision",
+  vision_dashboard: "[root]/cameras?tab=vision",
   climate_dashboard: "[root]/climate",
   music_dashboard: "[root]/music",
   photos_dashboard: "[root]/photos",

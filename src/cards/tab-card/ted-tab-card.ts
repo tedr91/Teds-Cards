@@ -7,6 +7,7 @@ import { appearanceStyle, cssColor } from "../../shared/appearance";
 import { brushedOverlay, tedCardThemeClass, tedStyleTheme } from "../../shared/theme";
 import { computeTabOverflow, positionOverflowPopover } from "../../shared/tab-overflow";
 import { registerCustomCard } from "../../shared/register-card";
+import { SettingsController, settingsStore } from "../../shared/settings";
 import {
   DEFAULT_TAB_ICON,
   DEFAULT_TAB_PARAM,
@@ -73,6 +74,9 @@ export class TedTabCard extends LitElement implements LovelaceCard {
   /** How many tabs fit in the strip; the rest go into the overflow menu. */
   @state() private _visibleCount = Number.POSITIVE_INFINITY;
 
+  /** Count of enabled tabs at the last update; a change resets the overflow measurement. */
+  private _prevEnabledCount = Number.NaN;
+
   private _helpers?: CardHelpers;
   /** Embedded child cards, keyed by tab index. */
   private _tabEls = new Map<number, TabEntry>();
@@ -82,6 +86,13 @@ export class TedTabCard extends LitElement implements LovelaceCard {
   private _watchedRequires = new Set<string>();
   /** Watches the host width so the tab strip can re-measure its overflow. */
   private _resizeObserver?: ResizeObserver;
+
+  public constructor() {
+    super();
+    // Only feed/subscribe the backend settings store when the card opts in (so
+    // `enabled_setting` tab gating works); card-only use stays self-contained.
+    new SettingsController(this, () => (this._config?.dashboard_integration ? this.hass : undefined));
+  }
 
   public setConfig(config: TabCardConfig): void {
     if (!config) throw new Error("Invalid configuration");
@@ -152,6 +163,38 @@ export class TedTabCard extends LitElement implements LovelaceCard {
     this._activeTab = index;
   }
 
+  /** Whether a tab is enabled — a `enabled_setting` gate (needs `dashboard_integration`)
+   *  must be truthy, else the tab is disabled (dropped from the strip + panels). */
+  private _tabEnabled(tab: TabConfig): boolean {
+    const key = tab.enabled_setting;
+    if (!key || !this._config?.dashboard_integration) return true;
+    return (settingsStore.effective() as Record<string, unknown>)[key] === true;
+  }
+
+  /** Original indices of the currently-enabled tabs, in order. */
+  private _enabledIndices(tabs: TabConfig[]): number[] {
+    const out: number[] = [];
+    tabs.forEach((tab, idx) => {
+      if (this._tabEnabled(tab)) out.push(idx);
+    });
+    return out;
+  }
+
+  /** The active tab index clamped to an enabled tab. */
+  private _effectiveActive(enabled: number[]): number {
+    if (enabled.length === 0) return 0;
+    return enabled.includes(this._activeTab) ? this._activeTab : enabled[0];
+  }
+
+  /** Whether the tab strip should render (respects `show_tabs` + `hide_single_tab`). */
+  private _showStrip(enabledCount: number): boolean {
+    const cfg = this._config;
+    if (!cfg) return false;
+    if (cfg.show_tabs === false || enabledCount === 0) return false;
+    if (cfg.hide_single_tab && enabledCount <= 1) return false;
+    return true;
+  }
+
   protected willUpdate(changed: PropertyValues): void {
     if (changed.has("_config")) {
       this._buildTabElements();
@@ -161,6 +204,13 @@ export class TedTabCard extends LitElement implements LovelaceCard {
       this._effectiveMode = this._config?.tab_header ?? "both";
     }
     if (changed.has("hass")) this._propagateHass();
+    // When a setting toggles a gated tab, the enabled-tab set changes without a config
+    // change — reset the overflow measurement so the strip re-fits the new tab count.
+    const enabledCount = this._enabledIndices(this._config?.tabs ?? []).length;
+    if (enabledCount !== this._prevEnabledCount) {
+      this._prevEnabledCount = enabledCount;
+      this._visibleCount = Number.POSITIVE_INFINITY;
+    }
   }
 
   protected updated(): void {
@@ -262,11 +312,12 @@ export class TedTabCard extends LitElement implements LovelaceCard {
     if (!cfg) return nothing;
 
     const tabs = cfg.tabs ?? [];
-    const activeIdx = Math.min(Math.max(this._activeTab, 0), Math.max(tabs.length - 1, 0));
+    const enabled = this._enabledIndices(tabs);
+    const activeIdx = this._effectiveActive(enabled);
     const theme = cfg.theme === "ted-style" ? "ted-style" : "ha";
     const shadow = cfg.shadow !== false;
     const brushed = cfg.brushed === true;
-    const showTabs = cfg.show_tabs !== false && tabs.length > 0;
+    const showTabs = this._showStrip(enabled.length);
     const scale = typeof cfg.scale === "number" ? cfg.scale : 100;
 
     // The frosted surface is painted as an isolated background LAYER (a sibling of the
@@ -283,20 +334,23 @@ export class TedTabCard extends LitElement implements LovelaceCard {
       blur: cfg.blur,
     });
 
-    // Work out which tabs are shown inline vs. moved into the overflow menu. The active
-    // tab is always kept visible (it displaces the last inline slot if it would overflow).
+    // Work out which tabs are shown inline vs. moved into the overflow menu, over the
+    // ENABLED tabs only. The active tab is always kept visible (it displaces the last
+    // inline slot if it would overflow). `visible`/`overflowList` hold ORIGINAL indices.
     const configMode: TabHeaderMode = cfg.tab_header ?? "both";
-    const total = tabs.length;
+    const total = enabled.length;
     const visibleCount = Math.min(this._visibleCount, total);
     const overflow = showTabs && visibleCount < total;
-    const visible: number[] = [];
-    for (let i = 0; i < visibleCount; i++) visible.push(i);
-    if (overflow && !visible.includes(activeIdx) && visible.length > 0) {
-      visible[visible.length - 1] = activeIdx;
+    const visiblePos: number[] = [];
+    for (let p = 0; p < visibleCount; p++) visiblePos.push(p);
+    const activePos = enabled.indexOf(activeIdx);
+    if (overflow && activePos >= 0 && !visiblePos.includes(activePos) && visiblePos.length > 0) {
+      visiblePos[visiblePos.length - 1] = activePos;
     }
-    const visibleSet = new Set(visible);
+    const visibleSet = new Set(visiblePos);
+    const visible = visiblePos.map((p) => enabled[p]);
     const overflowList: number[] = [];
-    for (let i = 0; i < total; i++) if (!visibleSet.has(i)) overflowList.push(i);
+    for (let p = 0; p < total; p++) if (!visibleSet.has(p)) overflowList.push(enabled[p]);
 
     return html`
       <div class="tab-root ${tedCardThemeClass(theme)}" style=${styleMap(rootStyle)}>
@@ -338,12 +392,12 @@ export class TedTabCard extends LitElement implements LovelaceCard {
                     )}
                   </div>`
                 : nothing}
-              ${this._renderMeasure(tabs, configMode)}`
+              ${this._renderMeasure(tabs, enabled, configMode)}`
           : nothing}
         <div class="panels">
           ${tabs.length === 0
             ? html`<div class="empty">No tabs configured.</div>`
-            : tabs.map((tab, idx) => this._renderPanel(tab, idx, idx === activeIdx))}
+            : enabled.map((idx) => this._renderPanel(tabs[idx], idx, idx === activeIdx))}
         </div>
       </div>
     `;
@@ -374,13 +428,13 @@ export class TedTabCard extends LitElement implements LovelaceCard {
    * purely to measure natural widths so overflow decisions don't depend on the live strip
    * (which avoids a render→measure→render feedback loop).
    */
-  private _renderMeasure(tabs: TabConfig[], configMode: TabHeaderMode): TemplateResult {
+  private _renderMeasure(tabs: TabConfig[], enabled: number[], configMode: TabHeaderMode): TemplateResult {
     return html`<div class="tab-measure" aria-hidden="true">
       <div class="measure-row measure-full">
-        ${tabs.map((tab, idx) => this._renderTabButton(tab, idx, configMode, false))}
+        ${enabled.map((idx) => this._renderTabButton(tabs[idx], idx, configMode, false))}
       </div>
       <div class="measure-row measure-icon">
-        ${tabs.map((tab, idx) => this._renderTabButton(tab, idx, "icon", false))}
+        ${enabled.map((idx) => this._renderTabButton(tabs[idx], idx, "icon", false))}
       </div>
     </div>`;
   }
@@ -405,9 +459,8 @@ export class TedTabCard extends LitElement implements LovelaceCard {
     const cfg = this._config;
     if (!cfg) return;
     const tabs = cfg.tabs ?? [];
-    const total = tabs.length;
-    const showTabs = cfg.show_tabs !== false && total > 0;
-    if (!showTabs) return;
+    const enabledCount = this._enabledIndices(tabs).length;
+    if (!this._showStrip(enabledCount)) return;
     const root = this.renderRoot as ShadowRoot;
     const strip = root.querySelector(".tab-strip") as HTMLElement | null;
     const fullRow = root.querySelector(".measure-full") as HTMLElement | null;
