@@ -942,6 +942,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.100
+
+- **Vision cost controls.** Vision Analysis settings gain **Images per pass** (now a total budget including Frigate's labelled snapshot, default 5), **Max image size** (downscales every image before the AI sees it — default 1024 px, 0 = full resolution), and **Adaptive image count** (sends fewer images on quiet events, scaled to how much the tracked object moved). Together these cut per-event vision cost several-fold and make it predictable across AI models.
+
 ### v0.9.99
 
 - **Vision: the analysis-passes detail is clearer about what each pass saw.** Pass 1 is now labelled “Pass 1 — live, first 10s” and Pass 2 “Pass 2 — finished clip”, and each pass now shows whether the model was actually fed **video** or **stills** — so a provider that can't accept video (e.g. Ollama/OpenAI) is no longer silently sent stills without you knowing. (Pairs with the backend change that makes Pass 1 run live at the start of the event.)
