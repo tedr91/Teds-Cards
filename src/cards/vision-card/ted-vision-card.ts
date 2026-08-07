@@ -177,22 +177,65 @@ export class TedVisionCard extends LitElement implements LovelaceCard {
     }
   }
 
-  private _filtered(): VisionEvent[] {
+  /** Events limited to this card's camera scope (before pills / hide-viewed). */
+  private _scoped(): VisionEvent[] {
     const cams = this._config?.cameras;
+    return cams && cams.length
+      ? this._events.filter((e) => cams.includes(e.camera_id))
+      : this._events;
+  }
+
+  /** Severity + false-alarm pills only — deliberately excludes "Hide viewed". */
+  private _matchesPills(e: VisionEvent): boolean {
+    if (this._severityFilter && e.severity !== this._severityFilter) return false;
+    if (this._falseAlarmOnly && !e.false_alarm) return false;
+    return true;
+  }
+
+  private _filtered(): VisionEvent[] {
     const max = this._config?.max_events ?? 50;
-    let list = this._events;
-    if (cams && cams.length) list = list.filter((e) => cams.includes(e.camera_id));
-    if (this._severityFilter) list = list.filter((e) => e.severity === this._severityFilter);
-    if (this._falseAlarmOnly) list = list.filter((e) => e.false_alarm);
+    let list = this._scoped().filter((e) => this._matchesPills(e));
     if (this._hideViewed) list = list.filter((e) => !e.reviewed);
     return list.slice(0, max);
   }
+
+  /** Human labels for the severity / false-alarm pills currently engaged. */
+  private _activeFilterLabels(): string[] {
+    const out: string[] = [];
+    if (this._severityFilter) out.push(SEVERITY_LABEL[this._severityFilter]);
+    if (this._falseAlarmOnly) out.push(FALSE_ALARM_LABEL);
+    return out;
+  }
+
+  /** Camera ids opted into Vision Analysis, narrowed to this card's scope. */
+  private _optedInCameras(): string[] {
+    const raw = settingsStore.effective().vision_cameras;
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return [];
+    let ids = Object.entries(raw as Record<string, unknown>)
+      .filter(
+        ([, c]) =>
+          !!c && typeof c === "object" && (c as { enabled?: unknown }).enabled === true,
+      )
+      .map(([id]) => id);
+    const scope = this._config?.cameras;
+    if (scope && scope.length) ids = ids.filter((id) => scope.includes(id));
+    return ids;
+  }
+
+  private _resetFilters = (): void => {
+    this._severityFilter = undefined;
+    this._falseAlarmOnly = false;
+    this._hideViewed = false;
+  };
 
   protected render(): TemplateResult | typeof nothing {
     if (!this._config || !this.hass) return nothing;
     const themeMode = this._config.theme === "ha" ? "ha" : "ted-style";
     const themeClass = tedCardThemeClass(themeMode);
     const events = this._filtered();
+    const scoped = this._scoped();
+    // Events exist but every one is filtered out — offer a reset.
+    const filtersHid = !events.length && scoped.length > 0;
 
     let body: TemplateResult;
     if (events.length) {
@@ -200,7 +243,14 @@ export class TedVisionCard extends LitElement implements LovelaceCard {
     } else if (this._aiTaskOk === false && this._events.length === 0) {
       body = this._renderMessage(this._onboardingConfig());
     } else {
-      body = this._renderMessage(this._emptyConfig());
+      body = this._renderMessage(
+        this._emptyConfig(),
+        filtersHid
+          ? html`<div class="empty-actions">
+              <button class="chip on" @click=${this._resetFilters}>Show all events</button>
+            </div>`
+          : nothing,
+      );
     }
 
     return html`
@@ -219,7 +269,7 @@ export class TedVisionCard extends LitElement implements LovelaceCard {
   }
 
   private _renderFilter(): TemplateResult | typeof nothing {
-    if (!this._events.length) return nothing;
+    if (!this._scoped().length) return nothing;
     const admin = !!(this.hass as unknown as { user?: { is_admin?: boolean } })?.user?.is_admin;
     return html`<div class="vision-filter">
       <button
@@ -421,25 +471,111 @@ export class TedVisionCard extends LitElement implements LovelaceCard {
   }
 
   private _emptyConfig(): LovelaceCardConfig {
-    return {
+    const eff = settingsStore.effective();
+    const scoped = this._scoped();
+
+    const box = (
+      severity: string,
+      icon: string,
+      title: string,
+      message: string,
+      actions: Record<string, unknown>[] = [],
+    ): LovelaceCardConfig => ({
       type: "custom:ted-messagebox-card",
       theme: "ted-style",
-      severity: "info",
-      icon: themedIcon("camera"),
-      title: this._config?.empty_title ?? "No vision events yet",
-      message:
-        this._config?.empty_message ??
-        "Opt cameras into Vision Analysis in Settings, then detected events will appear here.",
-      actions: [
-        {
-          label: "Settings",
-          icon: themedIcon("settings"),
-          action: "navigate",
-          navigation_path: this._settingsPath(),
-          variant: "primary",
-        },
-      ],
+      severity,
+      icon,
+      title,
+      message,
+      actions,
+    });
+
+    const settingsAction: Record<string, unknown> = {
+      label: "Settings",
+      icon: themedIcon("settings"),
+      action: "navigate",
+      navigation_path: this._settingsPath(),
+      variant: "primary",
     };
+
+    // ── A. Nothing has ever landed here ──────────────────────────────────
+    if (!scoped.length) {
+      // An explicit empty_title/empty_message in the card config is a
+      // deliberate override — honour it and skip the smart states.
+      if (this._config?.empty_title || this._config?.empty_message) {
+        return box(
+          "info",
+          themedIcon("camera"),
+          this._config.empty_title ?? "No vision events yet",
+          this._config.empty_message ??
+            "Opt cameras into Vision Analysis in Settings, then detected events will appear here.",
+          [settingsAction],
+        );
+      }
+
+      // A1 — master switch is off.
+      if (eff.vision_enabled !== true) {
+        return box(
+          "info",
+          themedIcon("camera"),
+          "Vision Analysis is off",
+          "Turn on Vision Analysis in Settings, then opt in the cameras you want analyzed.",
+          [settingsAction],
+        );
+      }
+
+      const optedIn = this._optedInCameras();
+
+      // A2 — on, but no camera opted in. (The original message; still correct here.)
+      if (!optedIn.length) {
+        return box(
+          "info",
+          themedIcon("camera"),
+          "No vision events yet",
+          "Opt cameras into Vision Analysis in Settings, then detected events will appear here.",
+          [settingsAction],
+        );
+      }
+
+      // A3 — configured and waiting. Nothing to fix.
+      const n = optedIn.length;
+      return box(
+        "success",
+        themedIcon("camera"),
+        "Watching for activity",
+        `${n} camera${n === 1 ? " is" : "s are"} opted into Vision Analysis. ` +
+          "Analyzed events will appear here as they're detected.",
+        [{ ...settingsAction, variant: "secondary" }],
+      );
+    }
+
+    // ── B. Events exist — the filters hid them ───────────────────────────
+    const matching = scoped.filter((e) => this._matchesPills(e));
+    const labels = this._activeFilterLabels();
+
+    // B1 — the pills match events, so "Hide viewed" is what emptied the list.
+    if (matching.length) {
+      const n = matching.length;
+      const what = labels.length
+        ? `All ${n} event${n === 1 ? "" : "s"} matching ${labels.join(" + ")} have been viewed.`
+        : `All ${n} event${n === 1 ? "" : "s"} have been viewed.`;
+      return box(
+        "success",
+        "mdi:check-all",
+        "You're all caught up",
+        `${what} Turn off "Hide viewed" to see them again.`,
+      );
+    }
+
+    // B2 — the severity / false-alarm pills themselves exclude everything.
+    const total = scoped.length;
+    return box(
+      "info",
+      "mdi:filter-off-outline",
+      "No matching events",
+      `None of the ${total} event${total === 1 ? "" : "s"} match ` +
+        `${labels.join(" + ") || "the current filters"}.`,
+    );
   }
 
   private _onboardingConfig(): LovelaceCardConfig {
@@ -465,7 +601,10 @@ export class TedVisionCard extends LitElement implements LovelaceCard {
     };
   }
 
-  private _renderMessage(cfg: LovelaceCardConfig): TemplateResult {
+  private _renderMessage(
+    cfg: LovelaceCardConfig,
+    extra: TemplateResult | typeof nothing = nothing,
+  ): TemplateResult {
     if (!this._helpers) return html`<div class="msg-wrap"></div>`;
     const json = JSON.stringify(cfg);
     if (!this._msgCard || this._msgJson !== json) {
@@ -473,7 +612,7 @@ export class TedVisionCard extends LitElement implements LovelaceCard {
       this._msgJson = json;
     }
     if (this.hass) this._msgCard.hass = this.hass;
-    return html`<div class="msg-wrap">${this._msgCard}</div>`;
+    return html`<div class="msg-wrap">${this._msgCard}${extra}</div>`;
   }
 
   static styles = [
@@ -668,9 +807,15 @@ export class TedVisionCard extends LitElement implements LovelaceCard {
       .msg-wrap {
         flex: 1;
         display: flex;
+        flex-direction: column;
+        gap: 12px;
         align-items: center;
         justify-content: center;
         padding: 16px;
+      }
+      .empty-actions {
+        display: flex;
+        justify-content: center;
       }
       .msg-wrap > * {
         width: min(520px, 100%);

@@ -942,6 +942,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.92
+
+- **Vision card: clearer empty states.** Instead of always showing “opt cameras into Vision Analysis”, the timeline now tells you the real reason it's empty — Vision is off, no cameras opted in, watching for activity, all events already viewed, or no events match the current filters — and offers a **Show all events** button when filters are hiding everything.
+
 ### v0.9.91
 
 - **Vision card: “Hide viewed” toggle.** The Vision timeline now hides events you've already reviewed by default, keeping the list focused on what's new; tap **Hide viewed** in the filter row to show them again.
