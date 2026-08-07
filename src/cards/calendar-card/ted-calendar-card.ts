@@ -1104,6 +1104,10 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
     .calendar .calendar-container.agenda-compact-events .agenda-event-title {
       min-width: 0;
     }
+    /* Trim daylight's 8px blank strip above each day row. */
+    .calendar .agenda-day-row {
+      padding-top: 1px;
+    }
     .loading {
       height: 100%;
       min-height: 120px;
