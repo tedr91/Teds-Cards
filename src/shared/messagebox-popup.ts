@@ -2,6 +2,7 @@ import { LitElement, css, html, nothing, type TemplateResult } from "lit";
 import { customElement, state } from "lit/decorators.js";
 
 import { severityIcon } from "./icons";
+import { severityAccentCss } from "./severity";
 
 /** Severity looks mirror the MessageBox card's accent stripe. */
 export type MessagePopupSeverity = "info" | "success" | "warning" | "danger" | "tip";
@@ -205,21 +206,7 @@ export class TedMessagePopupLayer extends LitElement {
       box-shadow: 0 18px 48px rgba(0, 0, 0, 0.45);
       animation: mb-in 0.22s ease-out both;
     }
-    .mb-sev-info {
-      --mb-accent: #4cc2ff;
-    }
-    .mb-sev-success {
-      --mb-accent: #6ccb5f;
-    }
-    .mb-sev-warning {
-      --mb-accent: #ffb454;
-    }
-    .mb-sev-danger {
-      --mb-accent: #ff99a4;
-    }
-    .mb-sev-tip {
-      --mb-accent: #9b6cff;
-    }
+    ${severityAccentCss(".mb-sev-", "--mb-accent")}
     /* Prominent announcement toast: scale everything up to ~3x as the screen allows.
        Inner text/actions already use em, so scaling the box font-size scales them;
        the px-based metrics are overridden to em here so they scale too. */

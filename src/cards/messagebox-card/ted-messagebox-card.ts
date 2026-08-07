@@ -14,6 +14,7 @@ import { isVisible } from "../../shared/conditions";
 import { registerBrowserMod } from "../../shared/device-id";
 import { settingsStore } from "../../shared/settings";
 import { applyDeviceType, asDeviceType } from "../../shared/device-types";
+import { severityAccentCss } from "../../shared/severity";
 import {
   DISMISS_STORAGE_PREFIX,
   MESSAGEBOX_CARD_DESCRIPTION,
@@ -307,21 +308,7 @@ export class TedMessageBoxCard extends LitElement implements LovelaceCard {
       }
 
       /* Severity accents */
-      .mb-sev-info {
-        --mb-accent: #4cc2ff;
-      }
-      .mb-sev-success {
-        --mb-accent: #6ccb5f;
-      }
-      .mb-sev-warning {
-        --mb-accent: #ffb454;
-      }
-      .mb-sev-danger {
-        --mb-accent: #ff99a4;
-      }
-      .mb-sev-tip {
-        --mb-accent: #9b6cff;
-      }
+      ${severityAccentCss(".mb-sev-", "--mb-accent")}
 
       .mb-icon {
         color: var(--mb-accent);

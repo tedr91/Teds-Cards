@@ -7,6 +7,7 @@ import { type HomeAssistant, type LovelaceCard, type LovelaceCardEditor, fireEve
 
 import { appearanceStyle, cssColor } from "../../shared/appearance";
 import { severityIcon } from "../../shared/icons";
+import { severityAccentCss } from "../../shared/severity";
 import { brushedOverlay, tedCardThemeClass, tedStyleTheme } from "../../shared/theme";
 import { registerCustomCard } from "../../shared/register-card";
 import { NotificationToastController, type TedNotification } from "../../shared/notifications";
@@ -440,21 +441,7 @@ export class TedNotificationCard extends LitElement implements LovelaceCard {
       .row.read {
         opacity: 0.62;
       }
-      .row.sev-info {
-        --nc-accent: #4cc2ff;
-      }
-      .row.sev-success {
-        --nc-accent: #6ccb5f;
-      }
-      .row.sev-warning {
-        --nc-accent: #ffb454;
-      }
-      .row.sev-danger {
-        --nc-accent: #ff99a4;
-      }
-      .row.sev-tip {
-        --nc-accent: #9b6cff;
-      }
+      ${severityAccentCss(".row.sev-", "--nc-accent")}
       .row-icon {
         color: var(--nc-accent);
         --mdc-icon-size: 22px;

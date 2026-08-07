@@ -16,6 +16,7 @@ import { registerCustomCard } from "../../shared/register-card";
 import { NotificationToastController } from "../../shared/notifications";
 import { type AnnounceTargets, notificationInScope, resolveDeviceArea } from "../../shared/device-area";
 import { SettingsController, settingsStore } from "../../shared/settings";
+import { SEVERITY_COLORS, highestSeverity, type Severity } from "../../shared/severity";
 import { navigationSignal } from "../../shared/navigation-signal";
 import { pendingCameraLive, subscribeCameraLive } from "../../shared/camera-live";
 import { ensureHuiImage } from "../../shared/camera";
@@ -364,17 +365,25 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
     return this._settingOverride("navbar_float") === true ? "float" : "snap";
   }
 
-  /** Unread notifications for this device (house-wide + this device's area), from the
-   *  backend notifications sensor. Drives the auto-hide pill glow. 0 when not integrated. */
-  private _unreadNotifications(): number {
-    if (!this._dashboardIntegration() || !this.hass) return 0;
+  /** Unread, in-scope notifications (house-wide + this device's area). Empty when not integrated.
+   *  Drives the auto-hide pill glow. */
+  private _unreadInScope(): { read?: boolean; severity?: string }[] {
+    if (!this._dashboardIntegration() || !this.hass) return [];
     const all = this.hass.states["sensor.teds_notifications"]?.attributes?.notifications;
-    if (!Array.isArray(all)) return 0;
+    if (!Array.isArray(all)) return [];
     const area = resolveDeviceArea(this.hass, undefined).area;
-    const list = (all as { read?: boolean; area?: string | null; announce_targets?: AnnounceTargets }[]).filter(
-      (n) => notificationInScope(this.hass, n, area),
-    );
-    return list.filter((n) => !n.read).length;
+    const list = (all as {
+      read?: boolean;
+      severity?: string;
+      area?: string | null;
+      announce_targets?: AnnounceTargets;
+    }[]).filter((n) => notificationInScope(this.hass, n, area));
+    return list.filter((n) => !n.read);
+  }
+
+  /** Highest severity among the unread, in-scope notifications; null when there are none. */
+  private _highestUnreadSeverity(): Severity | null {
+    return highestSeverity(this._unreadInScope().map((n) => n.severity));
   }
 
   /** A per-device setting override for a navbar key (device scope, else global scope),
@@ -1210,12 +1219,16 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
         })}
       >
         ${autoHide
-          ? html`<button
-              class="nav-pill ${this._unreadNotifications() > 0 ? "has-unread" : ""}"
-              aria-label="Show navigation"
-              @click=${this._reveal}
-              @pointerenter=${this._reveal}
-            ></button>`
+          ? (() => {
+              const sev = this._highestUnreadSeverity();
+              return html`<button
+                class="nav-pill ${sev ? "has-unread" : ""}"
+                style=${styleMap(sev ? { "--nav-pill-accent": SEVERITY_COLORS[sev] } : {})}
+                aria-label="Show navigation"
+                @click=${this._reveal}
+                @pointerenter=${this._reveal}
+              ></button>`;
+            })()
           : nothing}
         <ha-card
           class="navbar-card ${tedCardThemeClass(theme)}${hug ? " hug" : ""}"
@@ -1794,27 +1807,28 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
           transparent
         );
       }
-      /* Unread notifications: the collapsed pill glows accent and slowly pulses. */
+      /* Unread notifications: the collapsed pill glows in the highest unread severity's
+         color (falling back to the theme accent) and slowly pulses. */
       .navbar.collapsed .nav-pill.has-unread::before {
-        background: var(--ted-style-accent);
+        background: var(--nav-pill-accent, var(--ted-style-accent));
         animation: nav-pill-glow 2.4s ease-in-out infinite;
       }
       @keyframes nav-pill-glow {
         0%,
         100% {
           opacity: 0.7;
-          box-shadow: 0 0 3px 0 color-mix(in srgb, var(--ted-style-accent) 55%, transparent);
+          box-shadow: 0 0 3px 0 color-mix(in srgb, var(--nav-pill-accent, var(--ted-style-accent)) 55%, transparent);
         }
         50% {
           opacity: 1;
-          box-shadow: 0 0 10px 2px color-mix(in srgb, var(--ted-style-accent) 80%, transparent);
+          box-shadow: 0 0 10px 2px color-mix(in srgb, var(--nav-pill-accent, var(--ted-style-accent)) 80%, transparent);
         }
       }
       @media (prefers-reduced-motion: reduce) {
         .navbar.collapsed .nav-pill.has-unread::before {
           animation: none;
           opacity: 1;
-          box-shadow: 0 0 7px 1px color-mix(in srgb, var(--ted-style-accent) 65%, transparent);
+          box-shadow: 0 0 7px 1px color-mix(in srgb, var(--nav-pill-accent, var(--ted-style-accent)) 65%, transparent);
         }
       }
       /* Horizontal bars: a wide, short pill centered on the top/bottom edge; its hit

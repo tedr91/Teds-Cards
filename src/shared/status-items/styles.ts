@@ -1,5 +1,7 @@
 import { css } from "lit";
 
+import { severityAccentCss } from "../severity";
+
 /**
  * Centered full-notification detail modal, shared by the navbar/room status strip
  * popover and the Notification Center card so tapping a notification opens the same
@@ -39,21 +41,7 @@ export const notifDetailStyles = css`
     --nc-accent: var(--ted-style-accent);
     border-left: 3px solid var(--nc-accent);
   }
-  .notif-detail.sev-info {
-    --nc-accent: #4cc2ff;
-  }
-  .notif-detail.sev-success {
-    --nc-accent: #6ccb5f;
-  }
-  .notif-detail.sev-warning {
-    --nc-accent: #ffb454;
-  }
-  .notif-detail.sev-danger {
-    --nc-accent: #ff99a4;
-  }
-  .notif-detail.sev-tip {
-    --nc-accent: #9b6cff;
-  }
+  ${severityAccentCss(".notif-detail.sev-", "--nc-accent")}
   .notif-detail-head {
     display: flex;
     align-items: flex-start;
@@ -343,21 +331,7 @@ export const statusItemStyles = css`
   .notif-pop-row.read {
     opacity: 0.62;
   }
-  .notif-pop-row.sev-info {
-    --nc-accent: #4cc2ff;
-  }
-  .notif-pop-row.sev-success {
-    --nc-accent: #6ccb5f;
-  }
-  .notif-pop-row.sev-warning {
-    --nc-accent: #ffb454;
-  }
-  .notif-pop-row.sev-danger {
-    --nc-accent: #ff99a4;
-  }
-  .notif-pop-row.sev-tip {
-    --nc-accent: #9b6cff;
-  }
+  ${severityAccentCss(".notif-pop-row.sev-", "--nc-accent")}
   .notif-pop-body {
     flex: 1 1 auto;
     min-width: 0;
