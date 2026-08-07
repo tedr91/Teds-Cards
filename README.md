@@ -942,6 +942,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.102
+
+- **Vision analysis debugging now also raises a notification per pass.** With Enable analysis debugging on, each pass (and each A/B pass) posts a silent Info notification titled with the AI Task entity, showing its images/timing/severity and full summary — so you can compare models straight from the notification center without opening each event. Off by default; note it churns the notification list while on.
+
 ### v0.9.101
 
 - **Vision analysis debugging + model A/B.** The diagnostic setting is renamed **Enable analysis debugging** (and now works in single-pass mode too), and a new **AI Task entity — A/B pass** runs every pass a second time in parallel against a candidate model with the exact same images — recorded in the event detail for side-by-side comparison, but never published (it can't change the event's summary). Doubles AI cost only while an A/B entity is set.
