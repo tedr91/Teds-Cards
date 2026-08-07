@@ -427,6 +427,9 @@ export class TedVisionCard extends LitElement implements LovelaceCard {
       quick: "Pass 1 — live, first 10s",
       detailed: "Pass 2 — finished clip",
       single: "Single pass",
+      quick_ab: "Pass 1 — A/B",
+      detailed_ab: "Pass 2 — A/B",
+      single_ab: "Single pass — A/B",
     };
     return html`<details class="passes">
       <summary>Analysis passes (${passes.length})</summary>

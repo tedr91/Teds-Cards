@@ -184,6 +184,7 @@ export const SETTINGS_DEFAULTS: SettingsMap = {
   vision_frame_adaptive: true,
   vision_false_alarm_mode: "log_only",
   vision_debug_passes: false,
+  vision_ai_task_entity_ab: null,
   vision_retention_max: 200,
   frigate_native_detection: true,
   frigate_notifications: true,
@@ -374,7 +375,8 @@ export const SETTINGS_FIELDS: SettingField[] = [
     ],
     help: "When the AI believes an event is a false alarm: Off acts normally; Log only stores it but doesn't fire the trigger's actions; Drop discards it entirely.",
   },
-  { key: "vision_debug_passes", label: "Keep both analysis passes", group: "Cameras", subsection: "Vision Analysis", globalOnly: true, kind: "boolean", showWhen: { key: "vision_two_pass", truthy: true }, help: "Diagnostic: store the quick and detailed pass results separately on each event so you can compare them in the event detail. Increases stored event size — leave off unless you're troubleshooting summary quality." },
+  { key: "vision_debug_passes", label: "Enable analysis debugging", group: "Cameras", subsection: "Vision Analysis", globalOnly: true, kind: "boolean", help: "Diagnostic: store each analysis pass separately on every event — the entity used, image count, elapsed time, and its full result — so you can compare passes in the event detail. Increases stored event size and unlocks the A/B entity below. Leave off unless you're troubleshooting summary quality." },
+  { key: "vision_ai_task_entity_ab", label: "AI Task entity — A/B pass", group: "Cameras", subsection: "Vision Analysis", globalOnly: true, kind: "entity", entityDomain: "ai_task", showWhen: { key: "vision_debug_passes", truthy: true }, help: "Diagnostic: also run every pass against this entity in parallel, with the exact same images, to compare models side by side in the event detail. Its result is recorded but never published. Doubles AI cost while set — leave empty unless actively comparing." },
   // Frigate — only relevant when Frigate is the adopted camera source.
   { key: "frigate_native_detection", label: "Use Frigate detection", group: "Cameras", subsection: "Frigate", globalOnly: true, kind: "boolean", help: "Let Frigate drive Vision for its cameras: log its own events using Frigate's thumbnail and clip (no local recording) and run the AI only to describe that clip. Requires the MQTT integration." },
   { key: "frigate_notifications", label: "Frigate alert notifications", group: "Cameras", subsection: "Frigate", globalOnly: true, kind: "boolean", help: "Turn Frigate review alerts into Ted's notifications with the event thumbnail and clip. Requires the MQTT integration." },

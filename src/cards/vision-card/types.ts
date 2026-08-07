@@ -3,11 +3,12 @@ import type { LovelaceCardConfig } from "custom-card-helpers";
 import type { TedStyleTheme } from "../../shared/types";
 import type { VisionSeverity } from "./const";
 
-/** One AI analysis pass, retained only when "Keep both analysis passes" is on. */
+/** One AI analysis pass, retained only when "Enable analysis debugging" is on. */
 export interface VisionAnalysisPass {
   /** Which pass produced this: the fast first pass, the full second pass, or the
-   *  single pass used when two-pass is disabled. */
-  pass: "quick" | "detailed" | "single";
+   *  single pass used when two-pass is disabled. The `_ab` variants are the parallel
+   *  A/B-comparison runs (never published). */
+  pass: "quick" | "detailed" | "single" | "quick_ab" | "detailed_ab" | "single_ab";
   /** The ai_task entity that ran it. */
   entity_id?: string | null;
   /** How many images/videos were attached. */

@@ -942,6 +942,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.101
+
+- **Vision analysis debugging + model A/B.** The diagnostic setting is renamed **Enable analysis debugging** (and now works in single-pass mode too), and a new **AI Task entity — A/B pass** runs every pass a second time in parallel against a candidate model with the exact same images — recorded in the event detail for side-by-side comparison, but never published (it can't change the event's summary). Doubles AI cost only while an A/B entity is set.
+
 ### v0.9.100
 
 - **Vision cost controls.** Vision Analysis settings gain **Images per pass** (now a total budget including Frigate's labelled snapshot, default 5), **Max image size** (downscales every image before the AI sees it — default 1024 px, 0 = full resolution), and **Adaptive image count** (sends fewer images on quiet events, scaled to how much the tracked object moved). Together these cut per-event vision cost several-fold and make it predictable across AI models.
@@ -952,7 +956,7 @@ the Home Assistant / HACS **update** dialog when you update. Newest first.
 
 ### v0.9.98
 
-- **Vision: compare both analysis passes.** A new diagnostic setting (Settings → Cameras → Vision Analysis → **Keep both analysis passes**) stores the quick and detailed pass results separately on each event, and the event detail sheet gains an **Analysis passes** disclosure showing each pass's entity, timing, attachment count, and text — with the one you actually saw tagged **shown**. Off by default; older events are unaffected.
+- **Vision: compare both analysis passes.** A new diagnostic setting (Settings → Cameras → Vision Analysis → **Enable analysis debugging**) stores the quick and detailed pass results separately on each event, and the event detail sheet gains an **Analysis passes** disclosure showing each pass's entity, timing, attachment count, and text — with the one you actually saw tagged **shown**. Off by default; older events are unaffected.
 
 ### v0.9.97
 
