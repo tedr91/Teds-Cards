@@ -49,6 +49,8 @@ export interface VisionEvent {
   false_alarm?: boolean;
   /** Two-pass analysis progress; shown as a badge until "complete". */
   status?: "in_progress" | "analyzing" | "complete";
+  /** The stills sent to the AI, retained so the timeline can loop them as a preview. */
+  frame_urls?: string[] | null;
   /** Per-pass debug results (only when vision_debug_passes is enabled). */
   analysis_passes?: VisionAnalysisPass[] | null;
 }

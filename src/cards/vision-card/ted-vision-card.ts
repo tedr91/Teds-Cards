@@ -72,7 +72,11 @@ export class TedVisionCard extends LitElement implements LovelaceCard {
   @state() private _detailId?: string;
   /** ai_task availability: undefined = not checked, true/false once known. */
   @state() private _aiTaskOk?: boolean;
+  /** Advances the looping preview thumbnails (Frigate-style) across all rows. */
+  @state() private _frameTick = 0;
 
+  private _frameTimer?: number;
+  private _preloaded = new Set<string>();
   private _sub?: Promise<() => void>;
   private _helpers?: CardHelpers;
   private _msgCard?: LovelaceCard;
@@ -98,15 +102,24 @@ export class TedVisionCard extends LitElement implements LovelaceCard {
     void this._loadHelpers();
     this._subscribe();
     void this._checkAiTask();
+    // Cycle the multi-frame preview thumbnails, ~2 fps, only while some event has frames.
+    this._frameTimer = window.setInterval(() => {
+      if (this._animatePreviews && this._events.some((e) => (e.frame_urls?.length ?? 0) > 1)) {
+        this._frameTick = (this._frameTick + 1) % 600;
+      }
+    }, 450);
   }
 
   public disconnectedCallback(): void {
     super.disconnectedCallback();
     this._sub?.then((unsub) => unsub()).catch(() => undefined);
     this._sub = undefined;
+    if (this._frameTimer) window.clearInterval(this._frameTimer);
+    this._frameTimer = undefined;
   }
 
   protected updated(changed: Map<string, unknown>): void {
+    if (changed.has("_events")) this._preloadFrames();
     if (changed.has("hass") && this.hass) {
       if (!this._sub) this._subscribe();
       if (this._aiTaskOk === undefined) void this._checkAiTask();
@@ -342,6 +355,31 @@ export class TedVisionCard extends LitElement implements LovelaceCard {
     this._detailId = undefined;
   };
 
+  private get _animatePreviews(): boolean {
+    return !window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+}
+
+  /** The image shown in a row's thumbnail — a looping frame when we have several, else the
+   *  single Frigate thumbnail (or the first retained frame). */
+  private _previewSrc(e: VisionEvent): string | undefined {
+    const frames = e.frame_urls;
+    if (this._animatePreviews && frames && frames.length > 1) {
+      return frames[this._frameTick % frames.length];
+    }
+    return e.thumbnail_url ?? frames?.[0] ?? undefined;
+  }
+
+  /** Warm the browser cache for every retained frame so cycling doesn't flicker. */
+  private _preloadFrames(): void {
+    for (const e of this._events) {
+      for (const url of e.frame_urls ?? []) {
+        if (this._preloaded.has(url)) continue;
+        this._preloaded.add(url);
+        new Image().src = url;
+      }
+    }
+  }
+
   private _renderList(events: VisionEvent[]): TemplateResult {
     return html`<div class="vision-list">
       ${repeat(
@@ -352,8 +390,8 @@ export class TedVisionCard extends LitElement implements LovelaceCard {
           @click=${() => (this._detailId = e.id)}
         >
           <div class="thumb" style="--sev: ${SEVERITY_COLOR[e.severity]}">
-            ${e.thumbnail_url
-              ? html`<img src=${e.thumbnail_url} alt="" loading="lazy" />`
+            ${this._previewSrc(e)
+              ? html`<img src=${this._previewSrc(e)} alt="" loading="lazy" />`
               : html`<ha-icon icon=${themedIcon("camera")}></ha-icon>`}
             ${e.clip_url ? html`<ha-icon class="play" icon="mdi:play-circle"></ha-icon>` : nothing}
           </div>
@@ -396,8 +434,8 @@ export class TedVisionCard extends LitElement implements LovelaceCard {
           ${e.clip_url
             ? html`<video class="media" src=${e.clip_url} controls playsinline
                 poster=${e.thumbnail_url ?? ""}></video>`
-            : e.thumbnail_url
-              ? html`<img class="media" src=${e.thumbnail_url} alt="" />`
+            : this._previewSrc(e)
+              ? html`<img class="media" src=${this._previewSrc(e)} alt="" />`
               : nothing}
           <div class="meta">
             ${this._relTime(e.ts_start)} · ${e.event_type}${e.area_name
