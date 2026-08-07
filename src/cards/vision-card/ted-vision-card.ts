@@ -424,8 +424,8 @@ export class TedVisionCard extends LitElement implements LovelaceCard {
     const passes = e.analysis_passes;
     if (!passes?.length) return nothing;
     const label: Record<string, string> = {
-      quick: "Pass 1 — quick",
-      detailed: "Pass 2 — detailed",
+      quick: "Pass 1 — live, first 10s",
+      detailed: "Pass 2 — finished clip",
       single: "Single pass",
     };
     return html`<details class="passes">
@@ -439,9 +439,11 @@ export class TedVisionCard extends LitElement implements LovelaceCard {
             <span class="pass-meta">
               ${p.entity_id ?? "auto"}${p.duration_ms != null
                 ? ` · ${(p.duration_ms / 1000).toFixed(1)}s`
-                : ""}${p.attachments != null ? ` · ${p.attachments} att` : ""}${p.severity
-                ? ` · ${p.severity}`
-                : ""}${p.false_alarm ? " · false alarm" : ""}
+                : ""}${p.attachments != null ? ` · ${p.attachments} att` : ""}${p.input
+                ? ` · ${p.input}`
+                : ""}${p.severity ? ` · ${p.severity}` : ""}${p.false_alarm
+                ? " · false alarm"
+                : ""}
             </span>
           </div>
           ${p.short_summary ? html`<div class="pass-short">${p.short_summary}</div>` : nothing}

@@ -12,6 +12,8 @@ export interface VisionAnalysisPass {
   entity_id?: string | null;
   /** How many images/videos were attached. */
   attachments?: number;
+  /** Whether the model actually received video, or stills standing in for it. */
+  input?: "stills" | "video";
   /** Wall-clock time the pass took. */
   duration_ms?: number;
   /** True if this pass's text is what the event ended up showing. */

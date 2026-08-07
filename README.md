@@ -942,6 +942,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.99
+
+- **Vision: the analysis-passes detail is clearer about what each pass saw.** Pass 1 is now labelled “Pass 1 — live, first 10s” and Pass 2 “Pass 2 — finished clip”, and each pass now shows whether the model was actually fed **video** or **stills** — so a provider that can't accept video (e.g. Ollama/OpenAI) is no longer silently sent stills without you knowing. (Pairs with the backend change that makes Pass 1 run live at the start of the event.)
+
 ### v0.9.98
 
 - **Vision: compare both analysis passes.** A new diagnostic setting (Settings → Cameras → Vision Analysis → **Keep both analysis passes**) stores the quick and detailed pass results separately on each event, and the event detail sheet gains an **Analysis passes** disclosure showing each pass's entity, timing, attachment count, and text — with the one you actually saw tagged **shown**. Off by default; older events are unaffected.
