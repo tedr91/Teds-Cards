@@ -34,6 +34,8 @@ interface Alarm {
   light_entity?: string;
   light_fade_minutes?: number;
   light_target_pct?: number;
+  /** Optional presence gate: skip the light + ring when this entity isn't present. */
+  presence_entity?: string;
 }
 
 /** Backend day indices (0–6) → short labels. Python weekday convention (Mon = 0). */
@@ -82,6 +84,8 @@ export class TedAlarmCard extends LitElement implements LovelaceCard {
   @state() private _lightEntity = "";
   @state() private _lightFade = 15;
   @state() private _lightTarget = 100;
+  /** Optional presence sensor gating the alarm being added/edited (empty = none). */
+  @state() private _presenceEntity = "";
   /** Area chosen in the "set device area" banner (before saving to localStorage). */
   @state() private _bannerArea = "";
 
@@ -187,6 +191,7 @@ export class TedAlarmCard extends LitElement implements LovelaceCard {
     this._lightEntity = "";
     this._lightFade = 15;
     this._lightTarget = 100;
+    this._presenceEntity = "";
     this._addOpen = true;
   }
 
@@ -199,6 +204,7 @@ export class TedAlarmCard extends LitElement implements LovelaceCard {
     this._lightEntity = a.light_entity ?? "";
     this._lightFade = typeof a.light_fade_minutes === "number" ? a.light_fade_minutes : 15;
     this._lightTarget = typeof a.light_target_pct === "number" ? a.light_target_pct : 100;
+    this._presenceEntity = a.presence_entity ?? "";
     this._addOpen = true;
   }
 
@@ -221,6 +227,7 @@ export class TedAlarmCard extends LitElement implements LovelaceCard {
     const lightEntity = this._lightEntity || null;
     const lightFade = this._lightEntity ? this._lightFade : null;
     const lightTarget = this._lightEntity ? this._lightTarget : null;
+    const presenceEntity = this._presenceEntity || null;
     if (this._editId) {
       this._call("update_alarm", {
         id: this._editId,
@@ -232,6 +239,7 @@ export class TedAlarmCard extends LitElement implements LovelaceCard {
         light_entity: lightEntity,
         light_fade_minutes: lightFade,
         light_target_pct: lightTarget,
+        presence_entity: presenceEntity,
       });
     } else {
       this._call("add_alarm", {
@@ -242,6 +250,7 @@ export class TedAlarmCard extends LitElement implements LovelaceCard {
         light_entity: lightEntity,
         light_fade_minutes: lightFade,
         light_target_pct: lightTarget,
+        presence_entity: presenceEntity,
       });
     }
     this._closeAdd();
@@ -384,6 +393,9 @@ export class TedAlarmCard extends LitElement implements LovelaceCard {
             ${a.light_entity
               ? html`<ha-icon class="light-ind" icon="mdi:weather-sunset-up" .title=${"Wake-up light"}></ha-icon>`
               : nothing}
+            ${a.presence_entity
+              ? html`<ha-icon class="light-ind" icon="mdi:motion-sensor" .title=${"Only when present"}></ha-icon>`
+              : nothing}
             ${roomName ? html`<div class="room">${roomName}</div>` : nothing}
             ${Array.isArray(a.days) && a.days.length
               ? html`<div class="days">
@@ -415,6 +427,7 @@ export class TedAlarmCard extends LitElement implements LovelaceCard {
     const theme = this._config?.theme === "ted-style" ? "ted-style" : "ha";
     const effArea = this._effectiveArea();
     const lights = this._lightOptions();
+    const presence = this._presenceOptions();
     return html`
       <div
         class="ted-modal ${tedCardThemeClass(theme)}"
@@ -478,6 +491,20 @@ export class TedAlarmCard extends LitElement implements LovelaceCard {
               </div>
             </div>
             <div class="ted-field">
+              <span class="ted-field-label">Only when present (optional)</span>
+              <select
+                class="ted-input"
+                .value=${this._presenceEntity}
+                @change=${(e: Event) => (this._presenceEntity = (e.target as HTMLSelectElement).value)}
+              >
+                <option value="">Always</option>
+                ${presence.map(
+                  (p) => html`<option value=${p.id} ?selected=${p.id === this._presenceEntity}>${p.name}</option>`,
+                )}
+              </select>
+              <span class="ted-field-hint">Skip the wake-up light and the alarm when this sensor isn't present.</span>
+            </div>
+            <div class="ted-field">
               <span class="ted-field-label">Wake-up light</span>
               <select
                 class="ted-input"
@@ -536,6 +563,16 @@ export class TedAlarmCard extends LitElement implements LovelaceCard {
     const states = this.hass?.states ?? {};
     return Object.keys(states)
       .filter((id) => id.startsWith("light."))
+      .map((id) => ({ id, name: (states[id].attributes.friendly_name as string) || id }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  /** Presence-capable entities (binary_sensor/person/device_tracker/input_boolean). */
+  private _presenceOptions(): { id: string; name: string }[] {
+    const states = this.hass?.states ?? {};
+    const prefixes = ["binary_sensor.", "person.", "device_tracker.", "input_boolean."];
+    return Object.keys(states)
+      .filter((id) => prefixes.some((p) => id.startsWith(p)))
       .map((id) => ({ id, name: (states[id].attributes.friendly_name as string) || id }))
       .sort((a, b) => a.name.localeCompare(b.name));
   }
@@ -619,6 +656,10 @@ export class TedAlarmCard extends LitElement implements LovelaceCard {
         display: flex;
         flex-direction: column;
         gap: 6px;
+      }
+      .ted-field-hint {
+        color: var(--ted-style-muted);
+        font-size: 0.8rem;
       }
       .add-hdr {
         margin-left: auto;

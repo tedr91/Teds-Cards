@@ -942,6 +942,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.105
+
+- **Alarms can require presence.** Each alarm can now name an optional presence sensor (occupancy/motion binary sensor, person, device tracker, or input boolean). If nobody's present when the alarm is due, it skips both the wake-up light and the alarm itself — no point waking an empty room. Set it in the new **Only when present** field of the add/edit dialog. Requires Ted's Dashboard System.
+
 ### v0.9.104
 
 - **Alarms can gently wake you with a light.** Each alarm can now name a light that gradually brightens up to a target level, reaching full exactly when the alarm rings (a smooth, parabolic sunrise ramp rather than a linear one). As an energy safeguard the light fades back to whatever it was before — but only if you haven't already changed or switched it off. Configure it per alarm in the new **Wake-up light** section of the add/edit dialog. Requires Ted's Dashboard System.
