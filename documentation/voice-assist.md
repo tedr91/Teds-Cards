@@ -12,8 +12,9 @@ appears when you speak and **dismisses itself** as soon as the answer finishes.
 
 There are two ways to trigger it:
 
-- **Push-to-talk** — a microphone button in the navbar (mid-right). Tap it, speak,
-  and the overlay shows what you said and the answer. On by default.
+- **Push-to-talk** — a microphone button in the navbar (by default at the left, next to
+  the weather item). Tap it, speak, and the overlay shows what you said and the answer.
+  On by default. You can move it to any section in **Settings → Navbar**.
 - **Continuous wake word (experimental)** — the device listens for your wake word
   hands-free. Off by default; see [the setting](#settings) below.
 
