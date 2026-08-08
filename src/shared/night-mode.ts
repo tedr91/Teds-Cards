@@ -8,18 +8,40 @@
  */
 import { browserModId } from "./device-id";
 
-/** The sub-keys backing the "nightmode" composite setting (mirror `SETTINGS_DEFAULTS`). */
-export const NIGHTMODE_KEYS = [
-  "night_enabled",
+/** Top-level (“General”) night settings — one per-device override unit. */
+export const NIGHT_GENERAL_KEYS = [
   "night_schedule_source",
   "night_start",
   "night_end",
-  "night_dim_brightness",
-  "night_dim_background",
-  "night_font_color",
   "night_transition_seconds",
   "night_dark_mode",
+] as const;
+
+/** Screen-brightness sub-section keys (one override unit). */
+export const NIGHT_SCREEN_KEYS = [
+  "night_screen_auto",
+  "night_screen_day",
+  "night_dim_brightness",
   "night_brightness_entity",
+] as const;
+
+/** Background sub-section keys (one override unit). */
+export const NIGHT_BACKGROUND_KEYS = [
+  "night_background_auto",
+  "night_background_hide",
+  "night_background_day",
+  "night_dim_background",
+] as const;
+
+/** Font sub-section keys (one override unit). */
+export const NIGHT_FONT_KEYS = ["night_font_shift", "night_font_color"] as const;
+
+/** All sub-keys backing the "nightmode" composite setting (mirror `SETTINGS_DEFAULTS`). */
+export const NIGHTMODE_KEYS = [
+  ...NIGHT_GENERAL_KEYS,
+  ...NIGHT_SCREEN_KEYS,
+  ...NIGHT_BACKGROUND_KEYS,
+  ...NIGHT_FONT_KEYS,
 ] as const;
 
 /** How the night window is determined: fixed manual times, or the Sun integration

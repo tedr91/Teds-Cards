@@ -105,6 +105,8 @@ class BackgroundEngine {
   private lastDark?: boolean;
   /** Automatic Night Mode: extra black-overlay fraction (0..1) darkening the wallpaper. */
   private _nightDim = 0;
+  /** Automatic Night Mode: hide the wallpaper behind a calm solid gradient while night is active. */
+  private _nightHide = false;
   /** Last painted state, so `setNightDim` can repaint without re-resolving the image. */
   private _lastS?: SettingsMap;
   private _lastUrl: string | null = null;
@@ -199,6 +201,15 @@ class BackgroundEngine {
       applyBackground(backgroundLayerCss(this._lastS, this._lastUrl, this._lastScrim, this._dimFor(this._lastS)));
   }
 
+  /** Automatic Night Mode: replace the wallpaper with a calm solid gradient (#57608E) while night
+   *  is active, restoring the real wallpaper when cleared. A visual override only — the stored
+   *  background settings are untouched, so nothing needs restoring server-side. */
+  setNightHide(on: boolean): void {
+    if (on === this._nightHide) return;
+    this._nightHide = on;
+    this.apply();
+  }
+
   /** The effective background-dim fraction: the base dim from `background_brightness`
    *  (100% = none) combined with (max of) the Night Mode override. */
   private _dimFor(s: SettingsMap): number {
@@ -255,6 +266,16 @@ class BackgroundEngine {
   apply(): void {
     const gen = ++this.gen;
     const s = this._effective();
+    // Dynamic night mode "hide background": paint a calm solid gradient over the real wallpaper.
+    if (this._nightHide) {
+      const hs: SettingsMap = { ...s, background_mode: "solid", background_color: "#57608E", background_gradient: true };
+      this._setModeDiag(hs, "Dynamic night mode is hiding the wallpaper behind a calm solid gradient.");
+      this._lastS = hs;
+      this._lastUrl = null;
+      this._lastScrim = undefined;
+      applyBackground(backgroundLayerCss(hs, null, undefined, this._dimFor(hs)));
+      return;
+    }
     const mode = (s.background_mode as BackgroundMode) ?? "solid";
 
     if (mode !== "slideshow") {

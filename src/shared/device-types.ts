@@ -29,8 +29,10 @@ export interface DeviceTypePreset {
   navbar_float: boolean;
   /** Default maximized state for content `ted-fullscreen-card`s on this device. */
   fullscreen_default: boolean;
-  /** Whether Automatic Night Mode is on for this device type (only nightstands). */
-  night_enabled: boolean;
+  /** Whether this device type opts into night screen-dimming (only nightstands). */
+  night_screen_auto: boolean;
+  /** Whether this device type opts into the night font-color shift (only nightstands). */
+  night_font_shift: boolean;
   /** Curated View Launcher subset (view paths) for this device, if the type limits it.
    *  Omitted = the device inherits the global launcher list (all views). */
   launcher_list?: string[];
@@ -63,7 +65,8 @@ export const DEVICE_TYPE_PRESETS: Record<DeviceType, DeviceTypePreset> = {
     navbar_size: 56,
     navbar_float: false,
     fullscreen_default: true,
-    night_enabled: true,
+    night_screen_auto: true,
+    night_font_shift: true,
     // A minimal bar: only Home, Music, and Alarms/Timers launcher buttons, with the
     // weather and datetime status items removed from the (still-enabled) sections.
     launcher_list: ["home-nightstand", "music", "alarms-timers"],
@@ -76,7 +79,8 @@ export const DEVICE_TYPE_PRESETS: Record<DeviceType, DeviceTypePreset> = {
     navbar_size: 52,
     navbar_float: false,
     fullscreen_default: false,
-    night_enabled: false,
+    night_screen_auto: false,
+    night_font_shift: false,
   },
   "tablet-portrait": {
     home_dashboard: "[root]/home-wallpanel-v",
@@ -85,7 +89,8 @@ export const DEVICE_TYPE_PRESETS: Record<DeviceType, DeviceTypePreset> = {
     navbar_size: 52,
     navbar_float: false,
     fullscreen_default: false,
-    night_enabled: false,
+    night_screen_auto: false,
+    night_font_shift: false,
     navbar_sections: TABLET_PORTRAIT_NAVBAR_SECTIONS,
   },
   handheld: {
@@ -95,7 +100,8 @@ export const DEVICE_TYPE_PRESETS: Record<DeviceType, DeviceTypePreset> = {
     navbar_size: 56,
     navbar_float: true,
     fullscreen_default: true,
-    night_enabled: false,
+    night_screen_auto: false,
+    night_font_shift: false,
   },
 };
 
@@ -143,7 +149,8 @@ export function applyDeviceType(
       "navbar_size",
       "navbar_float",
       "fullscreen_default",
-      "night_enabled",
+      "night_screen_auto",
+      "night_font_shift",
       "launcher_list",
       "navbar_sections",
       FULLSCREEN_STATES_KEY,
@@ -160,7 +167,8 @@ export function applyDeviceType(
   store.setValue("device", "navbar_size", preset.navbar_size);
   store.setValue("device", "navbar_float", preset.navbar_float);
   store.setValue("device", "fullscreen_default", preset.fullscreen_default);
-  store.setValue("device", "night_enabled", preset.night_enabled);
+  store.setValue("device", "night_screen_auto", preset.night_screen_auto);
+  store.setValue("device", "night_font_shift", preset.night_font_shift);
   // Launcher subset + navbar section layout — only some types reshape these; clear the
   // device override for types that don't, so they inherit the global bar.
   if (preset.launcher_list) store.setValue("device", "launcher_list", preset.launcher_list);

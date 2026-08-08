@@ -37,7 +37,13 @@ import {
   stringList,
   type BackgroundFieldsCtx,
 } from "../../shared/background";
-import { NIGHTMODE_KEYS, resolveBrightnessEntity } from "../../shared/night-mode";
+import {
+  NIGHTMODE_KEYS,
+  NIGHT_GENERAL_KEYS,
+  NIGHT_SCREEN_KEYS,
+  NIGHT_BACKGROUND_KEYS,
+  NIGHT_FONT_KEYS,
+} from "../../shared/night-mode";
 import {
   applyDeviceType,
   asDeviceType,
@@ -103,6 +109,10 @@ const SUBSECTION_ICONS: Record<string, { fluent: string; mdi: string }> = {
   "Vision Analysis": { fluent: "fluent:eye-24-regular", mdi: "mdi:cctv" },
   Advanced: { fluent: "fluent:options-24-regular", mdi: "mdi:tune" },
   Personalization: { fluent: "fluent:color-24-regular", mdi: "mdi:palette-outline" },
+  "Dynamic brightness": { fluent: "fluent:brightness-high-24-regular", mdi: "mdi:brightness-6" },
+  Screen: { fluent: "fluent:phone-screen-time-24-regular", mdi: "mdi:monitor" },
+  Background: { fluent: "fluent:image-24-regular", mdi: "mdi:image-outline" },
+  "Dynamic font": { fluent: "fluent:text-font-24-regular", mdi: "mdi:format-color-text" },
 };
 
 // Per-camera Vision Analysis editor option lists (inline in the Cameras list).
@@ -243,7 +253,6 @@ const LAUNCHER_SETTING_KEYS = [
 ] as const;
 
 /** ha-form schema pieces for the Automatic Night Mode composite. */
-const NIGHT_ENABLED_SCHEMA = [{ name: "night_enabled", selector: { boolean: {} } }];
 const NIGHT_SOURCE_SCHEMA = [
   {
     name: "night_schedule_source",
@@ -263,16 +272,20 @@ const NIGHT_TIME_SCHEMA = [
   { name: "night_start", selector: { time: {} } },
   { name: "night_end", selector: { time: {} } },
 ];
-const NIGHT_NUM_SCHEMA = [
-  { name: "night_dim_brightness", selector: { number: { min: 0, max: 100, mode: "box", unit_of_measurement: "%" } } },
-  { name: "night_dim_background", selector: { number: { min: 0, max: 100, mode: "box", unit_of_measurement: "%" } } },
-  { name: "night_transition_seconds", selector: { number: { min: 0, max: 600, mode: "box", unit_of_measurement: "s" } } },
-];
-const NIGHT_COLOR_SCHEMA = [{ name: "night_font_color", selector: { ui_color: { default_color: "red" } } }];
 const NIGHT_DARK_SCHEMA = [{ name: "night_dark_mode", selector: { boolean: {} } }];
-const NIGHT_ENTITY_SCHEMA = [
-  { name: "night_brightness_entity", selector: { entity: { domain: ["light", "number", "input_number"] } } },
+const NIGHT_SCREEN_AUTO_SCHEMA = [{ name: "night_screen_auto", selector: { boolean: {} } }];
+const NIGHT_SCREEN_NUM_SCHEMA = [
+  { name: "night_screen_day", selector: { number: { min: 0, max: 100, mode: "box", unit_of_measurement: "%" } } },
+  { name: "night_dim_brightness", selector: { number: { min: 0, max: 100, mode: "box", unit_of_measurement: "%" } } },
 ];
+const NIGHT_BG_AUTO_SCHEMA = [{ name: "night_background_auto", selector: { boolean: {} } }];
+const NIGHT_BG_HIDE_SCHEMA = [{ name: "night_background_hide", selector: { boolean: {} } }];
+const NIGHT_BG_NUM_SCHEMA = [
+  { name: "night_background_day", selector: { number: { min: 0, max: 100, mode: "box", unit_of_measurement: "%" } } },
+  { name: "night_dim_background", selector: { number: { min: 0, max: 100, mode: "box", unit_of_measurement: "%" } } },
+];
+const NIGHT_FONT_SHIFT_SCHEMA = [{ name: "night_font_shift", selector: { boolean: {} } }];
+const NIGHT_COLOR_SCHEMA = [{ name: "night_font_color", selector: { ui_color: { default_color: "red" } } }];
 
 /** ha-form schema for a predefined-announcement icon (HA's searchable icon picker). */
 const ANNOUNCE_ICON_SCHEMA = [{ name: "icon", selector: { icon: {} } }];
@@ -284,25 +297,30 @@ interface ClimateAlias {
 }
 
 const NIGHT_LABELS: Record<string, string> = {
-  night_enabled: "Enabled",
   night_schedule_source: "Schedule",
   night_start: "Night start time",
   night_end: "Night end time",
-  night_dim_brightness: "Dim brightness (screen)",
-  night_dim_background: "Dim brightness (background)",
-  night_font_color: "Night font color",
   night_transition_seconds: "Transition duration",
-  night_dark_mode: "Switch to Dark mode",
+  night_dark_mode: "Switch to Dark Mode",
+  night_screen_auto: "Auto-adjust screen brightness at night",
+  night_screen_day: "Brightness (day)",
+  night_dim_brightness: "Brightness (night)",
   night_brightness_entity: "Screen brightness entity",
+  night_background_auto: "Auto-adjust background at night",
+  night_background_hide: "Hide background at night",
+  night_background_day: "Brightness (day)",
+  night_dim_background: "Brightness (night)",
+  night_font_shift: "Shift primary font color at night",
+  night_font_color: "Night font color",
 };
 
 const NIGHT_HELPERS: Record<string, string> = {
   night_schedule_source:
-    "When night mode turns on/off. “Sun” options follow the Sun integration (sunset/sunrise or civil dusk/dawn) and fall back to the manual times if it isn't available.",
-  night_dim_brightness: "Target brightness level for the entire screen",
-  night_dim_background: "Independant target brightness level for the background; stacks with screen brightness",
+    "When night begins/ends. “Sun” options follow the Sun integration (sunset/sunrise or civil dusk/dawn) and fall back to the manual times if it isn't available.",
   night_dark_mode:
-    "Stores this device's Auto/Light/Dark setting, switches to Dark shortly after the night transition, and restores it when night ends (needs browser_mod).",
+    "Switches this browser to Dark shortly after the night transition and restores it when night ends.",
+  night_background_hide:
+    "At night, replace the wallpaper with a calm solid gradient; the previous wallpaper returns at dawn.",
 };
 
 registerCustomCard({
@@ -3565,63 +3583,76 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     }
   }
 
+  /** The inherit/override control (device scope) or a help line (global) for one night sub-unit. */
+  private _nmOverrideHead(
+    scope: "global" | "device",
+    anchorKey: string,
+    keys: readonly string[],
+    help?: string,
+  ): TemplateResult {
+    if (scope === "device") {
+      const overriding = keys.some((k) => k in settingsStore.deviceSettings());
+      return html`<div class="cam-head">
+        <div class="row-label">
+          ${overriding
+            ? html`<span class="help">Overriding for this device.</span>`
+            : html`<span class="inherit-tag">Inherited</span>`}
+        </div>
+        <button
+          class="ovr ${overriding ? "on" : ""}"
+          title=${overriding ? "Overriding — click to inherit" : "Inheriting — click to override"}
+          @click=${() => this._setCompositeOverride(anchorKey, keys, !overriding)}
+        >
+          <ha-icon .icon=${this._ui(overriding ? "linkOff" : "linkOn")}></ha-icon>
+        </button>
+      </div>`;
+    }
+    return help ? html`<div class="row-label"><span class="help">${help}</span></div>` : html``;
+  }
+
   private _renderNightMode(field: SettingField, scope: "global" | "device"): TemplateResult {
-    const overriding = scope === "device" && NIGHTMODE_KEYS.some((k) => k in settingsStore.deviceSettings());
-    const disabled = (scope === "global" && !this._isAdmin()) || (scope === "device" && !overriding);
     const val = (k: string): SettingsValue => this._nmVal(k, scope);
-    const enabled = val("night_enabled") !== false;
-    const explicitEntity =
-      typeof val("night_brightness_entity") === "string" ? String(val("night_brightness_entity")) : "";
-    const autoEntity = resolveBrightnessEntity(this.hass);
+    const num = (k: string, d: number): number => Number(val(k) ?? d);
+    const has = (keys: readonly string[]): boolean =>
+      scope === "device" ? keys.some((k) => k in settingsStore.deviceSettings()) : true;
+    const dis = (keys: readonly string[]): boolean =>
+      (scope === "global" && !this._isAdmin()) || (scope === "device" && !has(keys));
+    const changed = (ev: CustomEvent): void => this._onNightModeChanged(ev, scope);
+
+    const source = String(val("night_schedule_source") ?? "manual");
+    const screenAuto = val("night_screen_auto") === true;
+    const bgAuto = val("night_background_auto") === true;
+    const fontShift = val("night_font_shift") === true;
     const fontColor =
       typeof val("night_font_color") === "string" && val("night_font_color") ? String(val("night_font_color")) : "red";
+
+    const screenStatus = screenAuto ? `${num("night_dim_brightness", 75)}%` : "disabled";
+    const bgStatus = bgAuto ? `${num("night_dim_background", 25)}%` : "disabled";
+    const fontStatus = fontShift ? fontColor : "disabled";
+
+    const genDis = dis(NIGHT_GENERAL_KEYS);
+    const screenDis = dis(NIGHT_SCREEN_KEYS);
+    const bgDis = dis(NIGHT_BACKGROUND_KEYS);
+    const fontDis = dis(NIGHT_FONT_KEYS);
 
     return html`
       <ha-expansion-panel outlined class="sub-panel bg-panel">
         <div slot="header" class="sub-head">
           <ha-icon .icon=${this._ui("nightMode")}></ha-icon>
           <span class="sub-head-label">${field.label}${scope === "device" ? " — this device" : ""}</span>
-          <span class="sub-head-value">${enabled ? "Enabled" : "Disabled"}</span>
         </div>
         <div class="bg-row">
-          <div class="cam-head">
-            ${scope === "device"
-              ? html`<div class="row-label">
-                    ${overriding
-                      ? html`<span class="help">Overriding for this device.</span>`
-                      : html`<span class="inherit-tag">Inherited</span>`}
-                  </div>
-                  <button
-                    class="ovr ${overriding ? "on" : ""}"
-                    title=${overriding ? "Overriding — click to inherit" : "Inheriting — click to override"}
-                    @click=${() => this._setCompositeOverride("night_enabled", NIGHTMODE_KEYS, !overriding)}
-                  >
-                    <ha-icon .icon=${this._ui(overriding ? "linkOff" : "linkOn")}></ha-icon>
-                  </button>`
-              : field.help
-                ? html`<div class="row-label"><span class="help">${field.help}</span></div>`
-                : nothing}
-          </div>
-
+          ${this._nmOverrideHead(scope, "night_schedule_source", NIGHT_GENERAL_KEYS, field.help)}
           <ha-form
             .hass=${this.hass}
-            .data=${{ night_enabled: enabled }}
-            .schema=${NIGHT_ENABLED_SCHEMA}
-            .disabled=${disabled}
-            .computeLabel=${this._nightLabel}
-            @value-changed=${(ev: CustomEvent) => this._onNightModeChanged(ev, scope)}
-          ></ha-form>
-
-          <ha-form
-            .hass=${this.hass}
-            .data=${{ night_schedule_source: String(val("night_schedule_source") ?? "manual") }}
+            .data=${{ night_schedule_source: source }}
             .schema=${NIGHT_SOURCE_SCHEMA}
-            .disabled=${disabled}
+            .disabled=${genDis}
             .computeLabel=${this._nightLabel}
             .computeHelper=${this._nightHelper}
-            @value-changed=${(ev: CustomEvent) => this._onNightModeChanged(ev, scope)}
+            @value-changed=${changed}
           ></ha-form>
-          ${String(val("night_schedule_source") ?? "manual") === "manual"
+          ${source === "manual"
             ? html`<ha-form
                 .hass=${this.hass}
                 .data=${{
@@ -3629,59 +3660,130 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
                   night_end: String(val("night_end") ?? "07:00:00"),
                 }}
                 .schema=${NIGHT_TIME_SCHEMA}
-                .disabled=${disabled}
+                .disabled=${genDis}
                 .computeLabel=${this._nightLabel}
-                @value-changed=${(ev: CustomEvent) => this._onNightModeChanged(ev, scope)}
+                @value-changed=${changed}
               ></ha-form>`
             : nothing}
           <ha-form
             .hass=${this.hass}
-            .data=${{
-              night_dim_brightness: Number(val("night_dim_brightness") ?? 75),
-              night_dim_background: Number(val("night_dim_background") ?? 25),
-              night_transition_seconds: Number(val("night_transition_seconds") ?? 30),
-            }}
-            .schema=${NIGHT_NUM_SCHEMA}
-            .disabled=${disabled}
-            .computeLabel=${this._nightLabel}
-            .computeHelper=${this._nightHelper}
-            @value-changed=${(ev: CustomEvent) => this._onNightModeChanged(ev, scope)}
-          ></ha-form>
-          <ha-form
-            .hass=${this.hass}
-            .data=${{ night_font_color: fontColor }}
-            .schema=${NIGHT_COLOR_SCHEMA}
-            .disabled=${disabled}
-            .computeLabel=${this._nightLabel}
-            @value-changed=${(ev: CustomEvent) => this._onNightModeChanged(ev, scope)}
-          ></ha-form>
-          <ha-form
-            .hass=${this.hass}
-            .data=${{ night_dark_mode: val("night_dark_mode") !== false }}
+            .data=${{ night_dark_mode: val("night_dark_mode") === true }}
             .schema=${NIGHT_DARK_SCHEMA}
-            .disabled=${disabled}
+            .disabled=${genDis}
             .computeLabel=${this._nightLabel}
             .computeHelper=${this._nightHelper}
-            @value-changed=${(ev: CustomEvent) => this._onNightModeChanged(ev, scope)}
+            @value-changed=${changed}
           ></ha-form>
-          <ha-form
-            .hass=${this.hass}
-            .data=${{ night_brightness_entity: explicitEntity || undefined }}
-            .schema=${NIGHT_ENTITY_SCHEMA}
-            .disabled=${disabled}
-            .computeLabel=${this._nightLabel}
-            @value-changed=${(ev: CustomEvent) => this._onNightModeChanged(ev, scope)}
-          ></ha-form>
-          <div class="row-label">
-            <span class="help">
-              ${explicitEntity
-                ? "Screen brightness is controlled via this entity."
-                : autoEntity
-                  ? html`When empty, this device auto-uses its browser_mod screen light:
-                      <code>${autoEntity}</code>.`
-                  : "When empty, night mode looks for this device's browser_mod screen light. None found — pick a light/number entity that controls the display."}
-            </span>
-          </div>
+
+          <ha-expansion-panel outlined class="sub-panel">
+            <div slot="header" class="sub-head">
+              <ha-icon icon=${this._subsectionIcon("Dynamic brightness")}></ha-icon>
+              <span class="sub-head-label">Dynamic brightness</span>
+              <span class="sub-head-value">Screen ${screenStatus} / Background ${bgStatus}</span>
+            </div>
+            <div class="sub-body">
+              <ha-expansion-panel outlined class="sub-panel">
+                <div slot="header" class="sub-head">
+                  <ha-icon icon=${this._subsectionIcon("Screen")}></ha-icon>
+                  <span class="sub-head-label">Screen</span>
+                  <span class="sub-head-value">${screenStatus}</span>
+                </div>
+                <div class="bg-row">
+                  ${this._nmOverrideHead(scope, "night_screen_auto", NIGHT_SCREEN_KEYS)}
+                  <ha-form
+                    .hass=${this.hass}
+                    .data=${{ night_screen_auto: screenAuto }}
+                    .schema=${NIGHT_SCREEN_AUTO_SCHEMA}
+                    .disabled=${screenDis}
+                    .computeLabel=${this._nightLabel}
+                    @value-changed=${changed}
+                  ></ha-form>
+                  ${screenAuto
+                    ? html`<ha-form
+                        .hass=${this.hass}
+                        .data=${{
+                          night_screen_day: num("night_screen_day", 100),
+                          night_dim_brightness: num("night_dim_brightness", 75),
+                        }}
+                        .schema=${NIGHT_SCREEN_NUM_SCHEMA}
+                        .disabled=${screenDis}
+                        .computeLabel=${this._nightLabel}
+                        @value-changed=${changed}
+                      ></ha-form>`
+                    : nothing}
+                </div>
+              </ha-expansion-panel>
+              <ha-expansion-panel outlined class="sub-panel">
+                <div slot="header" class="sub-head">
+                  <ha-icon icon=${this._subsectionIcon("Background")}></ha-icon>
+                  <span class="sub-head-label">Background</span>
+                  <span class="sub-head-value">${bgStatus}</span>
+                </div>
+                <div class="bg-row">
+                  ${this._nmOverrideHead(scope, "night_background_auto", NIGHT_BACKGROUND_KEYS)}
+                  <ha-form
+                    .hass=${this.hass}
+                    .data=${{ night_background_auto: bgAuto }}
+                    .schema=${NIGHT_BG_AUTO_SCHEMA}
+                    .disabled=${bgDis}
+                    .computeLabel=${this._nightLabel}
+                    @value-changed=${changed}
+                  ></ha-form>
+                  <ha-form
+                    .hass=${this.hass}
+                    .data=${{ night_background_hide: val("night_background_hide") === true }}
+                    .schema=${NIGHT_BG_HIDE_SCHEMA}
+                    .disabled=${bgDis}
+                    .computeLabel=${this._nightLabel}
+                    .computeHelper=${this._nightHelper}
+                    @value-changed=${changed}
+                  ></ha-form>
+                  ${bgAuto
+                    ? html`<ha-form
+                        .hass=${this.hass}
+                        .data=${{
+                          night_background_day: num("night_background_day", 100),
+                          night_dim_background: num("night_dim_background", 25),
+                        }}
+                        .schema=${NIGHT_BG_NUM_SCHEMA}
+                        .disabled=${bgDis}
+                        .computeLabel=${this._nightLabel}
+                        @value-changed=${changed}
+                      ></ha-form>`
+                    : nothing}
+                </div>
+              </ha-expansion-panel>
+            </div>
+          </ha-expansion-panel>
+
+          <ha-expansion-panel outlined class="sub-panel">
+            <div slot="header" class="sub-head">
+              <ha-icon icon=${this._subsectionIcon("Dynamic font")}></ha-icon>
+              <span class="sub-head-label">Dynamic font</span>
+              <span class="sub-head-value">${fontStatus}</span>
+            </div>
+            <div class="bg-row">
+              ${this._nmOverrideHead(scope, "night_font_shift", NIGHT_FONT_KEYS)}
+              <ha-form
+                .hass=${this.hass}
+                .data=${{ night_font_shift: fontShift }}
+                .schema=${NIGHT_FONT_SHIFT_SCHEMA}
+                .disabled=${fontDis}
+                .computeLabel=${this._nightLabel}
+                @value-changed=${changed}
+              ></ha-form>
+              ${fontShift
+                ? html`<ha-form
+                    .hass=${this.hass}
+                    .data=${{ night_font_color: fontColor }}
+                    .schema=${NIGHT_COLOR_SCHEMA}
+                    .disabled=${fontDis}
+                    .computeLabel=${this._nightLabel}
+                    @value-changed=${changed}
+                  ></ha-form>`
+                : nothing}
+            </div>
+          </ha-expansion-panel>
         </div>
       </ha-expansion-panel>
     `;
