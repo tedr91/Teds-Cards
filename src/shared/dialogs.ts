@@ -245,6 +245,24 @@ export function showPrompt(_element: HTMLElement, params: PromptParams): Promise
 }
 
 /**
+ * Open every `<dialog class="ted-modal">` currently rendered under `root` as a
+ * top-layer modal (via `showModal`). Call from a component's `updated()`. The top
+ * layer escapes any transformed/contained ancestor (tab card, view layout) that
+ * would otherwise clip a `position: fixed` overlay. Safe to call repeatedly —
+ * already-open (or not-yet-connected) dialogs are skipped.
+ */
+export function syncTopLayerDialogs(root: ParentNode): void {
+  root.querySelectorAll<HTMLDialogElement>("dialog.ted-modal").forEach((d) => {
+    if (!d.isConnected || d.open) return;
+    try {
+      d.showModal();
+    } catch {
+      /* not connected yet / already modal — ignored */
+    }
+  });
+}
+
+/**
  * Styles for a self-contained modal overlay (`.ted-modal` > `.ted-sheet`).
  * Used instead of `ha-dialog`, which is lazy-loaded and often undefined when a
  * dashboard card first renders. Fields are native `<input>`s (not `ha-textfield`,
@@ -264,6 +282,21 @@ export const modalStyles = css`
     justify-content: center;
     padding: 16px;
     background: rgba(0, 0, 0, 0.45);
+  }
+  /* When the overlay is a native <dialog> opened via showModal() (top layer, so it
+     escapes transformed/contained ancestors), reset the UA dialog box so .ted-modal
+     still fills the viewport and centers the sheet. */
+  dialog.ted-modal {
+    border: none;
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    max-width: 100%;
+    max-height: 100%;
+    color: inherit;
+  }
+  dialog.ted-modal::backdrop {
+    background: transparent;
   }
   .ted-sheet {
     width: min(360px, 100%);

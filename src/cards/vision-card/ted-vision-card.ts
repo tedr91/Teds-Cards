@@ -11,7 +11,7 @@ import type {
 import { registerCustomCard } from "../../shared/register-card";
 import { tedStyleTheme, tedCardThemeClass } from "../../shared/theme";
 import { themedIcon } from "../../shared/icons";
-import { showConfirmation, modalStyles } from "../../shared/dialogs";
+import { showConfirmation, modalStyles, syncTopLayerDialogs } from "../../shared/dialogs";
 import { SettingsController, settingsStore } from "../../shared/settings";
 import {
   FALSE_ALARM_COLOR,
@@ -119,6 +119,8 @@ export class TedVisionCard extends LitElement implements LovelaceCard {
   }
 
   protected updated(changed: Map<string, unknown>): void {
+    // Open the detail modal in the top layer so it escapes any contained ancestor.
+    syncTopLayerDialogs(this.renderRoot);
     if (changed.has("_events")) this._preloadFrames();
     if (changed.has("hass") && this.hass) {
       if (!this._sub) this._subscribe();
@@ -418,7 +420,11 @@ export class TedVisionCard extends LitElement implements LovelaceCard {
     const e = this._events.find((x) => x.id === this._detailId);
     if (!e) return nothing;
     const themeClass = tedCardThemeClass(this._config?.theme === "ha" ? "ha" : "ted-style");
-    return html`<div class="ted-modal ${themeClass}" @click=${() => (this._detailId = undefined)}>
+    return html`<dialog
+      class="ted-modal ${themeClass}"
+      @click=${() => (this._detailId = undefined)}
+      @close=${() => (this._detailId = undefined)}
+    >
       <div class="ted-sheet vision-detail" @click=${(ev: Event) => ev.stopPropagation()}>
         <div class="ted-sheet-head">
           <span class="badge" style="--sev: ${SEVERITY_COLOR[e.severity]}"
@@ -455,7 +461,7 @@ export class TedVisionCard extends LitElement implements LovelaceCard {
           </div>
         </div>
       </div>
-    </div>`;
+    </dialog>`;
   }
 
   private _renderPasses(e: VisionEvent): TemplateResult | typeof nothing {

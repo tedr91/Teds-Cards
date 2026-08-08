@@ -7,7 +7,7 @@ import { type HomeAssistant, type LovelaceCard, type LovelaceCardConfig, type Lo
 import { appearanceStyle, cssColor } from "../../shared/appearance";
 import { brushedOverlay, tedCardThemeClass, tedStyleTheme } from "../../shared/theme";
 import { computeTabOverflow, positionOverflowPopover } from "../../shared/tab-overflow";
-import { modalStyles, showConfirmation } from "../../shared/dialogs";
+import { modalStyles, showConfirmation, syncTopLayerDialogs } from "../../shared/dialogs";
 import { registerCustomCard } from "../../shared/register-card";
 import {
   SettingsController,
@@ -522,6 +522,8 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
   }
 
   protected updated(): void {
+    // Open any ted-modal in the top layer so it escapes a transformed/contained ancestor.
+    syncTopLayerDialogs(this.renderRoot);
     // Discover the wallpaper folder once hass is available (may be unset at connect).
     if (this.hass && this._mediaFolder === null) {
       void getMediaFolder(this.hass).then((f) => {
@@ -2673,7 +2675,11 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     if (!p) return nothing;
     const themeClass = tedCardThemeClass(this._config?.theme === "ted-style" ? "ted-style" : "ha");
     return html`
-      <div class="ted-modal ${themeClass}" @click=${() => (this._typePicker = undefined)}>
+      <dialog
+        class="ted-modal ${themeClass}"
+        @click=${() => (this._typePicker = undefined)}
+        @close=${() => (this._typePicker = undefined)}
+      >
         <div class="ted-sheet add-sheet" @click=${(e: Event) => e.stopPropagation()}>
           <div class="ted-sheet-head">${p.title}</div>
           <div class="add-list">
@@ -2695,7 +2701,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
             )}
           </div>
         </div>
-      </div>
+      </dialog>
     `;
   }
 
@@ -3177,7 +3183,11 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
       this._setGlobal(field.key, [...ids, id]);
     };
     return html`
-      <div class="ted-modal ${themeClass}" @click=${() => this._closeAddList()}>
+      <dialog
+        class="ted-modal ${themeClass}"
+        @click=${() => this._closeAddList()}
+        @close=${() => this._closeAddList()}
+      >
         <div class="ted-sheet add-sheet" @click=${(e: Event) => e.stopPropagation()}>
           <div class="ted-sheet-head">Add a ${meta.noun}</div>
           <div class="add-search">
@@ -3210,7 +3220,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
             <button class="cam-btn" @click=${() => this._closeAddList()}>Done</button>
           </div>
         </div>
-      </div>
+      </dialog>
     `;
   }
 

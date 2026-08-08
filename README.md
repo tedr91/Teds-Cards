@@ -942,6 +942,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.108
+
+- **More dialogs fixed from running off-screen.** The same top-layer modal fix from v0.9.107 now also applies to the Timer add/edit and recent-timer dialogs, the Settings “Add” choosers, and the Vision event detail — so none of them can be clipped or pushed off-screen when the card sits inside a tabbed or scaled layout.
+
 ### v0.9.107
 
 - **Fixed the alarm dialog running off-screen.** The taller add/edit alarm dialog could extend past the bottom of the screen with its buttons unreachable. It now opens as a proper top-layer modal that's always centered and reachable, with the header and footer pinned and the body scrolling when needed.

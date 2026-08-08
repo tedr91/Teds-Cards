@@ -8,7 +8,7 @@ import type { HomeAssistant, LovelaceCard, LovelaceCardEditor } from "custom-car
 import { appearanceStyle, cssColor } from "../../shared/appearance";
 import { brushedOverlay, tedCardThemeClass, tedStyleTheme } from "../../shared/theme";
 import { registerCustomCard } from "../../shared/register-card";
-import { modalStyles } from "../../shared/dialogs";
+import { modalStyles, syncTopLayerDialogs } from "../../shared/dialogs";
 import { NotificationToastController } from "../../shared/notifications";
 import { listAreas, resolveDeviceArea, setLocalDeviceArea } from "../../shared/device-area";
 import "../../shared/ted-icon-button";
@@ -484,10 +484,10 @@ export class TedTimerCard extends LitElement implements LovelaceCard {
     const r = this._recentMenu!;
     const theme = this._config?.theme === "ted-style" ? "ted-style" : "ha";
     return html`
-      <div
+      <dialog
         class="ted-modal ${tedCardThemeClass(theme)}"
         @click=${this._closeRecentMenu}
-        @keydown=${(e: KeyboardEvent) => e.key === "Escape" && this._closeRecentMenu()}
+        @close=${this._closeRecentMenu}
       >
         <div class="ted-sheet" @click=${(e: Event) => e.stopPropagation()}>
           <div class="ted-sheet-head">${this._fmtRemaining(r.h * 3600 + r.m * 60 + r.s)} (${r.name})</div>
@@ -496,7 +496,7 @@ export class TedTimerCard extends LitElement implements LovelaceCard {
             <button class="ted-btn" @click=${this._closeRecentMenu}>Cancel</button>
           </div>
         </div>
-      </div>
+      </dialog>
     `;
   }
 
@@ -506,10 +506,10 @@ export class TedTimerCard extends LitElement implements LovelaceCard {
     const total = this._h * 3600 + this._m * 60 + this._s;
     const effArea = this._effectiveArea();
     return html`
-      <div
+      <dialog
         class="ted-modal ${tedCardThemeClass(theme)}"
         @click=${this._closeDialog}
-        @keydown=${(e: KeyboardEvent) => e.key === "Escape" && this._closeDialog()}
+        @close=${this._closeDialog}
       >
         <div class="ted-sheet" @click=${(e: Event) => e.stopPropagation()}>
           <div class="ted-sheet-head">${adding ? "New timer" : "Edit timer"}</div>
@@ -559,8 +559,13 @@ export class TedTimerCard extends LitElement implements LovelaceCard {
             </button>
           </div>
         </div>
-      </div>
+      </dialog>
     `;
+  }
+
+  /** Open modals in the top layer so they escape the tab card's containing block. */
+  protected updated(): void {
+    syncTopLayerDialogs(this.renderRoot);
   }
 
   private _numField(
