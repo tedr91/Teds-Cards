@@ -942,6 +942,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.110
+
+- **Personalization section repositioned.** In Settings → General, the collapsible Personalization section (Theme, Icon set, Background Wallpaper) now sits directly under Kiosk mode, above the Automatic night mode section. Collapsible sections now render in their declared position within a group rather than always at the bottom.
+
 ### v0.9.109
 
 - **Settings → General reorganized.** Kiosk mode now sits directly under Device type, and a new collapsible **Personalization** section groups Theme, Icon set, and Background Wallpaper. Weather entity moved into the Advanced section, and the Automatic night mode settings now stay visible even when night mode is turned off.

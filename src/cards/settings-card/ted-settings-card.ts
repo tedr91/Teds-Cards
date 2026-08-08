@@ -1235,32 +1235,33 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     `;
   }
 
-  /** Render a group's fields: un-subsectioned fields inline, then a collapsible panel
-   *  per named `subsection` (in first-appearance order) at the bottom. */
+  /** Render a group's fields in declared order: un-subsectioned fields inline, and each
+   *  named `subsection` as a collapsible panel emitted where its first field appears. */
   private _renderFields(fields: SettingField[], scope: "global" | "device"): TemplateResult {
     const row = (f: SettingField): TemplateResult =>
       scope === "global" ? this._renderGlobalRow(f) : this._renderDeviceRow(f);
     fields = fields.filter((f) => this._fieldVisible(f));
     if (scope === "device") fields = fields.filter((f) => !f.globalOnly);
-    const inline = fields.filter((f) => !f.subsection);
-    const order: string[] = [];
+    const panel = (name: string): TemplateResult =>
+      html`<ha-expansion-panel outlined class="sub-panel">
+        <div slot="header" class="sub-head">
+          <ha-icon icon=${this._subsectionIcon(name)}></ha-icon>
+          <span class="sub-head-label">${name}</span>
+        </div>
+        <div class="sub-body">
+          ${fields.filter((f) => f.subsection === name).map(row)}
+        </div>
+      </ha-expansion-panel>`;
+    const seen = new Set<string>();
+    const parts: TemplateResult[] = [];
     for (const f of fields) {
-      if (f.subsection && !order.includes(f.subsection)) order.push(f.subsection);
+      if (!f.subsection) parts.push(row(f));
+      else if (!seen.has(f.subsection)) {
+        seen.add(f.subsection);
+        parts.push(panel(f.subsection));
+      }
     }
-    return html`
-      ${inline.map(row)}
-      ${order.map(
-        (name) => html`<ha-expansion-panel outlined class="sub-panel">
-          <div slot="header" class="sub-head">
-            <ha-icon icon=${this._subsectionIcon(name)}></ha-icon>
-            <span class="sub-head-label">${name}</span>
-          </div>
-          <div class="sub-body">
-            ${fields.filter((f) => f.subsection === name).map(row)}
-          </div>
-        </ha-expansion-panel>`,
-      )}
-    `;
+    return html`${parts}`;
   }
 
   /** Whether a field's `showWhen` condition is met by the effective settings. */

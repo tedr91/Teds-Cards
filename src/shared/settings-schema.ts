@@ -451,7 +451,6 @@ export const SETTINGS_FIELDS: SettingField[] = [
   // General
   { key: "device_type", label: "Device type", group: "General", kind: "device-type", deviceOnly: true, help: "A profile for this device that seeds a coherent home view, navbar layout, and fullscreen default in one step." },
   { key: "use_kiosk_mode", label: "Kiosk mode", group: "General", kind: "boolean", deviceOnly: true, help: "Hide Home Assistant's sidebar, header and edit UI on this device for a clean wall-panel look, using Home Assistant's built-in kiosk mode. Set per-device." },
-  { key: "night_mode", label: "Automatic night mode", group: "General", kind: "nightmode", help: "Automatically dims the background, lowers screen brightness, and switches to a night font color on a nightly schedule, restoring day values in the morning." },
   { key: "theme", label: "Theme", group: "General", kind: "select", subsection: "Personalization", options: [{ value: "ha", label: "HA Theme" }, { value: "ted-style", label: "Ted's Style" }], help: "Visual style for Ted's cards that have dashboard integration enabled (clock, room, calendar, ...)." },
   {
     key: "icon_set",
@@ -466,6 +465,7 @@ export const SETTINGS_FIELDS: SettingField[] = [
     help: "Which icon family Ted's built-in icons use. Auto picks the best installed set; a specific set falls back to Material Design when an icon isn't available.",
   },
   { key: "background", label: "Background Wallpaper", group: "General", kind: "background", subsection: "Personalization", help: "Dashboard background painted by the invisible ted-background-card." },
+  { key: "night_mode", label: "Automatic night mode", group: "General", kind: "nightmode", help: "Automatically dims the background, lowers screen brightness, and switches to a night font color on a nightly schedule, restoring day values in the morning." },
   { key: "weather_entity", label: "Weather entity", group: "General", kind: "entity", entityDomain: "weather", subsection: "Advanced", help: "Default weather entity used by Ted's weather/clock cards that opt in via `dashboard_integration: true`." },
   { key: "debug_mode", label: "Debug mode", group: "General", kind: "boolean", subsection: "Advanced", help: "Publishes the --ted-debug CSS variable so dashboards can show layout debug outlines." },
   { key: "allow_device_area_self_assign", label: "Allow un-scoped devices to set their own Area", group: "General", kind: "boolean", subsection: "Advanced", help: "Let a wall-panel (non-admin) account assign its own device to a room when it has none, so voice commands become room-aware. Only applies to devices that currently have no area." },
