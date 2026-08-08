@@ -443,10 +443,10 @@ export class TedAlarmCard extends LitElement implements LovelaceCard {
     const theme = this._config?.theme === "ted-style" ? "ted-style" : "ha";
     const effArea = this._effectiveArea();
     return html`
-      <div
+      <dialog
         class="ted-modal ${tedCardThemeClass(theme)}"
         @click=${this._closeAdd}
-        @keydown=${(e: KeyboardEvent) => e.key === "Escape" && this._closeAdd()}
+        @close=${this._onDialogClose}
       >
         <div class="ted-sheet" @click=${(e: Event) => e.stopPropagation()}>
           <div class="ted-sheet-head">${this._editId ? "Edit alarm" : "New alarm"}</div>
@@ -562,9 +562,22 @@ export class TedAlarmCard extends LitElement implements LovelaceCard {
             </button>
           </div>
         </div>
-      </div>
+      </dialog>
     `;
   }
+
+  /** Open the native modal in the top layer so it escapes any transformed/contained
+   *  ancestor (tab card / view layout) that would otherwise clip a fixed overlay. */
+  protected updated(): void {
+    const dlg = this.renderRoot.querySelector("dialog.ted-modal") as HTMLDialogElement | null;
+    if (this._addOpen && dlg && !dlg.open) dlg.showModal();
+  }
+
+  /** Esc / native close: keep card state in sync so the dialog element is removed. */
+  private _onDialogClose = (): void => {
+    this._addOpen = false;
+    this._editId = null;
+  };
 
   /** ha-form uses our own field-label span above the picker, so suppress its label. */
   private _noLabel = (): string => "";
@@ -660,6 +673,34 @@ export class TedAlarmCard extends LitElement implements LovelaceCard {
       .ted-field-hint {
         color: var(--ted-style-muted);
         font-size: 0.8rem;
+      }
+      dialog.ted-modal {
+        border: none;
+        margin: 0;
+        width: 100%;
+        height: 100%;
+        max-width: 100%;
+        max-height: 100%;
+      }
+      dialog.ted-modal::backdrop {
+        background: transparent;
+      }
+      /* Tall alarm dialog: cap to the viewport and scroll the body so the footer
+         (Cancel/Add) stays reachable, with the header + footer pinned. */
+      .ted-sheet {
+        max-height: calc(100dvh - 32px);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+      .ted-sheet-head,
+      .ted-sheet-foot {
+        flex: none;
+      }
+      .ted-sheet-body {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow-y: auto;
       }
       .add-hdr {
         margin-left: auto;
