@@ -30,6 +30,10 @@ interface Alarm {
   description?: string;
   enabled: boolean;
   location?: string;
+  /** Optional wake-up light: ramps up to full over the fade window, done at ring time. */
+  light_entity?: string;
+  light_fade_minutes?: number;
+  light_target_pct?: number;
 }
 
 /** Backend day indices (0–6) → short labels. Python weekday convention (Mon = 0). */
@@ -74,6 +78,10 @@ export class TedAlarmCard extends LitElement implements LovelaceCard {
   @state() private _editId: string | null = null;
   /** Scope of the alarm being added/edited: this device's room, or house-wide. */
   @state() private _scope: "room" | "house" = "room";
+  /** Wake-up light for the alarm being added/edited (empty = none). */
+  @state() private _lightEntity = "";
+  @state() private _lightFade = 15;
+  @state() private _lightTarget = 100;
   /** Area chosen in the "set device area" banner (before saving to localStorage). */
   @state() private _bannerArea = "";
 
@@ -176,6 +184,9 @@ export class TedAlarmCard extends LitElement implements LovelaceCard {
     this._time = "07:00";
     this._days = [0, 1, 2, 3, 4];
     this._scope = this._effectiveArea() ? "room" : "house";
+    this._lightEntity = "";
+    this._lightFade = 15;
+    this._lightTarget = 100;
     this._addOpen = true;
   }
 
@@ -185,6 +196,9 @@ export class TedAlarmCard extends LitElement implements LovelaceCard {
     this._time = (a.time ?? "07:00").slice(0, 5);
     this._days = Array.isArray(a.days) ? [...a.days] : [];
     this._scope = a.location ? "room" : "house";
+    this._lightEntity = a.light_entity ?? "";
+    this._lightFade = typeof a.light_fade_minutes === "number" ? a.light_fade_minutes : 15;
+    this._lightTarget = typeof a.light_target_pct === "number" ? a.light_target_pct : 100;
     this._addOpen = true;
   }
 
@@ -203,6 +217,10 @@ export class TedAlarmCard extends LitElement implements LovelaceCard {
     if (!this._label) return;
     const area = this._effectiveArea();
     const location = this._scope === "house" ? null : (area ?? null);
+    // Only carry the fade settings when a light is chosen; clearing sends null.
+    const lightEntity = this._lightEntity || null;
+    const lightFade = this._lightEntity ? this._lightFade : null;
+    const lightTarget = this._lightEntity ? this._lightTarget : null;
     if (this._editId) {
       this._call("update_alarm", {
         id: this._editId,
@@ -211,6 +229,9 @@ export class TedAlarmCard extends LitElement implements LovelaceCard {
         days: this._days,
         enabled: true,
         location,
+        light_entity: lightEntity,
+        light_fade_minutes: lightFade,
+        light_target_pct: lightTarget,
       });
     } else {
       this._call("add_alarm", {
@@ -218,6 +239,9 @@ export class TedAlarmCard extends LitElement implements LovelaceCard {
         time: this._time,
         days: this._days,
         location,
+        light_entity: lightEntity,
+        light_fade_minutes: lightFade,
+        light_target_pct: lightTarget,
       });
     }
     this._closeAdd();
@@ -357,6 +381,9 @@ export class TedAlarmCard extends LitElement implements LovelaceCard {
           <div class="time">${this._fmtTime(a.time)}</div>
           <div class="label-row">
             <div class="label">${a.label}</div>
+            ${a.light_entity
+              ? html`<ha-icon class="light-ind" icon="mdi:weather-sunset-up" .title=${"Wake-up light"}></ha-icon>`
+              : nothing}
             ${roomName ? html`<div class="room">${roomName}</div>` : nothing}
             ${Array.isArray(a.days) && a.days.length
               ? html`<div class="days">
@@ -387,6 +414,7 @@ export class TedAlarmCard extends LitElement implements LovelaceCard {
   private _renderAddDialog(): TemplateResult {
     const theme = this._config?.theme === "ted-style" ? "ted-style" : "ha";
     const effArea = this._effectiveArea();
+    const lights = this._lightOptions();
     return html`
       <div
         class="ted-modal ${tedCardThemeClass(theme)}"
@@ -449,6 +477,45 @@ export class TedAlarmCard extends LitElement implements LovelaceCard {
                 </button>
               </div>
             </div>
+            <div class="ted-field">
+              <span class="ted-field-label">Wake-up light</span>
+              <select
+                class="ted-input"
+                .value=${this._lightEntity}
+                @change=${(e: Event) => (this._lightEntity = (e.target as HTMLSelectElement).value)}
+              >
+                <option value="">None</option>
+                ${lights.map(
+                  (l) => html`<option value=${l.id} ?selected=${l.id === this._lightEntity}>${l.name}</option>`,
+                )}
+              </select>
+            </div>
+            ${this._lightEntity
+              ? html`<div class="ted-field ted-light-grid">
+                  <label class="ted-subfield">
+                    <span class="ted-field-label">Fade duration (min)</span>
+                    <input
+                      class="ted-input"
+                      type="number"
+                      min="1"
+                      max="120"
+                      .value=${String(this._lightFade)}
+                      @input=${(e: Event) => (this._lightFade = Number((e.target as HTMLInputElement).value))}
+                    />
+                  </label>
+                  <label class="ted-subfield">
+                    <span class="ted-field-label">Target brightness (%)</span>
+                    <input
+                      class="ted-input"
+                      type="number"
+                      min="1"
+                      max="100"
+                      .value=${String(this._lightTarget)}
+                      @input=${(e: Event) => (this._lightTarget = Number((e.target as HTMLInputElement).value))}
+                    />
+                  </label>
+                </div>`
+              : nothing}
           </div>
           <div class="ted-sheet-foot">
             ${this._editId
@@ -462,6 +529,15 @@ export class TedAlarmCard extends LitElement implements LovelaceCard {
         </div>
       </div>
     `;
+  }
+
+  /** light.* entities sorted by friendly name, for the wake-up light picker. */
+  private _lightOptions(): { id: string; name: string }[] {
+    const states = this.hass?.states ?? {};
+    return Object.keys(states)
+      .filter((id) => id.startsWith("light."))
+      .map((id) => ({ id, name: (states[id].attributes.friendly_name as string) || id }))
+      .sort((a, b) => a.name.localeCompare(b.name));
   }
 
   /** Condense a day set into "Every day" / "Weekdays" / "Weekends", else null. */
@@ -529,6 +605,20 @@ export class TedAlarmCard extends LitElement implements LovelaceCard {
       .hdr-area {
         color: var(--ted-style-muted);
         font-weight: 400;
+      }
+      .light-ind {
+        color: var(--ted-style-muted);
+        --mdc-icon-size: 16px;
+      }
+      .ted-light-grid {
+        display: flex;
+        gap: 10px;
+      }
+      .ted-light-grid .ted-subfield {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
       }
       .add-hdr {
         margin-left: auto;

@@ -942,6 +942,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.104
+
+- **Alarms can gently wake you with a light.** Each alarm can now name a light that gradually brightens up to a target level, reaching full exactly when the alarm rings (a smooth, parabolic sunrise ramp rather than a linear one). As an energy safeguard the light fades back to whatever it was before — but only if you haven't already changed or switched it off. Configure it per alarm in the new **Wake-up light** section of the add/edit dialog. Requires Ted's Dashboard System.
+
 ### v0.9.103
 
 - **Vision timeline previews now animate.** Each event's thumbnail loops through the stills that were analyzed (Frigate-style), so you can see the motion at a glance instead of a single frozen frame. The detail sheet falls back to the same looping stills when an event has no clip. Respects reduced-motion (shows a static frame). Needs Ted's Dashboard System to retain the frames — older events keep their single thumbnail.
