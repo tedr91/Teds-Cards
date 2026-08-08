@@ -102,6 +102,7 @@ const SUBSECTION_ICONS: Record<string, { fluent: string; mdi: string }> = {
   Timers: { fluent: "fluent:timer-24-regular", mdi: "mdi:timer-outline" },
   "Vision Analysis": { fluent: "fluent:eye-24-regular", mdi: "mdi:cctv" },
   Advanced: { fluent: "fluent:options-24-regular", mdi: "mdi:tune" },
+  Personalization: { fluent: "fluent:color-24-regular", mdi: "mdi:palette-outline" },
 };
 
 // Per-camera Vision Analysis editor option lists (inline in the Cameras list).
@@ -3610,80 +3611,76 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
             @value-changed=${(ev: CustomEvent) => this._onNightModeChanged(ev, scope)}
           ></ha-form>
 
-          ${enabled
-            ? html`
-                <ha-form
-                  .hass=${this.hass}
-                  .data=${{ night_schedule_source: String(val("night_schedule_source") ?? "manual") }}
-                  .schema=${NIGHT_SOURCE_SCHEMA}
-                  .disabled=${disabled}
-                  .computeLabel=${this._nightLabel}
-                  .computeHelper=${this._nightHelper}
-                  @value-changed=${(ev: CustomEvent) => this._onNightModeChanged(ev, scope)}
-                ></ha-form>
-                ${String(val("night_schedule_source") ?? "manual") === "manual"
-                  ? html`<ha-form
-                      .hass=${this.hass}
-                      .data=${{
-                        night_start: String(val("night_start") ?? "21:00:00"),
-                        night_end: String(val("night_end") ?? "07:00:00"),
-                      }}
-                      .schema=${NIGHT_TIME_SCHEMA}
-                      .disabled=${disabled}
-                      .computeLabel=${this._nightLabel}
-                      @value-changed=${(ev: CustomEvent) => this._onNightModeChanged(ev, scope)}
-                    ></ha-form>`
-                  : nothing}
-                <ha-form
-                  .hass=${this.hass}
-                  .data=${{
-                    night_dim_brightness: Number(val("night_dim_brightness") ?? 75),
-                    night_dim_background: Number(val("night_dim_background") ?? 25),
-                    night_transition_seconds: Number(val("night_transition_seconds") ?? 30),
-                  }}
-                  .schema=${NIGHT_NUM_SCHEMA}
-                  .disabled=${disabled}
-                  .computeLabel=${this._nightLabel}
-                  .computeHelper=${this._nightHelper}
-                  @value-changed=${(ev: CustomEvent) => this._onNightModeChanged(ev, scope)}
-                ></ha-form>
-                <ha-form
-                  .hass=${this.hass}
-                  .data=${{ night_font_color: fontColor }}
-                  .schema=${NIGHT_COLOR_SCHEMA}
-                  .disabled=${disabled}
-                  .computeLabel=${this._nightLabel}
-                  @value-changed=${(ev: CustomEvent) => this._onNightModeChanged(ev, scope)}
-                ></ha-form>
-                <ha-form
-                  .hass=${this.hass}
-                  .data=${{ night_dark_mode: val("night_dark_mode") !== false }}
-                  .schema=${NIGHT_DARK_SCHEMA}
-                  .disabled=${disabled}
-                  .computeLabel=${this._nightLabel}
-                  .computeHelper=${this._nightHelper}
-                  @value-changed=${(ev: CustomEvent) => this._onNightModeChanged(ev, scope)}
-                ></ha-form>
-                <ha-form
-                  .hass=${this.hass}
-                  .data=${{ night_brightness_entity: explicitEntity || undefined }}
-                  .schema=${NIGHT_ENTITY_SCHEMA}
-                  .disabled=${disabled}
-                  .computeLabel=${this._nightLabel}
-                  @value-changed=${(ev: CustomEvent) => this._onNightModeChanged(ev, scope)}
-                ></ha-form>
-                <div class="row-label">
-                  <span class="help">
-                    ${explicitEntity
-                      ? "Screen brightness is controlled via this entity."
-                      : autoEntity
-                        ? html`When empty, this device auto-uses its browser_mod screen light:
-                            <code>${autoEntity}</code>.`
-                        : "When empty, night mode looks for this device's browser_mod screen light. None found — pick a light/number entity that controls the display."}
-                  </span>
-                </div>
-              `
+          <ha-form
+            .hass=${this.hass}
+            .data=${{ night_schedule_source: String(val("night_schedule_source") ?? "manual") }}
+            .schema=${NIGHT_SOURCE_SCHEMA}
+            .disabled=${disabled}
+            .computeLabel=${this._nightLabel}
+            .computeHelper=${this._nightHelper}
+            @value-changed=${(ev: CustomEvent) => this._onNightModeChanged(ev, scope)}
+          ></ha-form>
+          ${String(val("night_schedule_source") ?? "manual") === "manual"
+            ? html`<ha-form
+                .hass=${this.hass}
+                .data=${{
+                  night_start: String(val("night_start") ?? "21:00:00"),
+                  night_end: String(val("night_end") ?? "07:00:00"),
+                }}
+                .schema=${NIGHT_TIME_SCHEMA}
+                .disabled=${disabled}
+                .computeLabel=${this._nightLabel}
+                @value-changed=${(ev: CustomEvent) => this._onNightModeChanged(ev, scope)}
+              ></ha-form>`
             : nothing}
+          <ha-form
+            .hass=${this.hass}
+            .data=${{
+              night_dim_brightness: Number(val("night_dim_brightness") ?? 75),
+              night_dim_background: Number(val("night_dim_background") ?? 25),
+              night_transition_seconds: Number(val("night_transition_seconds") ?? 30),
+            }}
+            .schema=${NIGHT_NUM_SCHEMA}
+            .disabled=${disabled}
+            .computeLabel=${this._nightLabel}
+            .computeHelper=${this._nightHelper}
+            @value-changed=${(ev: CustomEvent) => this._onNightModeChanged(ev, scope)}
+          ></ha-form>
+          <ha-form
+            .hass=${this.hass}
+            .data=${{ night_font_color: fontColor }}
+            .schema=${NIGHT_COLOR_SCHEMA}
+            .disabled=${disabled}
+            .computeLabel=${this._nightLabel}
+            @value-changed=${(ev: CustomEvent) => this._onNightModeChanged(ev, scope)}
+          ></ha-form>
+          <ha-form
+            .hass=${this.hass}
+            .data=${{ night_dark_mode: val("night_dark_mode") !== false }}
+            .schema=${NIGHT_DARK_SCHEMA}
+            .disabled=${disabled}
+            .computeLabel=${this._nightLabel}
+            .computeHelper=${this._nightHelper}
+            @value-changed=${(ev: CustomEvent) => this._onNightModeChanged(ev, scope)}
+          ></ha-form>
+          <ha-form
+            .hass=${this.hass}
+            .data=${{ night_brightness_entity: explicitEntity || undefined }}
+            .schema=${NIGHT_ENTITY_SCHEMA}
+            .disabled=${disabled}
+            .computeLabel=${this._nightLabel}
+            @value-changed=${(ev: CustomEvent) => this._onNightModeChanged(ev, scope)}
+          ></ha-form>
+          <div class="row-label">
+            <span class="help">
+              ${explicitEntity
+                ? "Screen brightness is controlled via this entity."
+                : autoEntity
+                  ? html`When empty, this device auto-uses its browser_mod screen light:
+                      <code>${autoEntity}</code>.`
+                  : "When empty, night mode looks for this device's browser_mod screen light. None found — pick a light/number entity that controls the display."}
+            </span>
+          </div>
         </div>
       </ha-expansion-panel>
     `;

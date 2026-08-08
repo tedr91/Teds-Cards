@@ -942,6 +942,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.109
+
+- **Settings → General reorganized.** Kiosk mode now sits directly under Device type, and a new collapsible **Personalization** section groups Theme, Icon set, and Background Wallpaper. Weather entity moved into the Advanced section, and the Automatic night mode settings now stay visible even when night mode is turned off.
+
 ### v0.9.108
 
 - **More dialogs fixed from running off-screen.** The same top-layer modal fix from v0.9.107 now also applies to the Timer add/edit and recent-timer dialogs, the Settings “Add” choosers, and the Vision event detail — so none of them can be clipped or pushed off-screen when the card sits inside a tabbed or scaled layout.
