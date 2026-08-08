@@ -41,6 +41,22 @@ interface Alarm {
 /** Backend day indices (0–6) → short labels. Python weekday convention (Mon = 0). */
 const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
+interface EntityFormItem {
+  name: string;
+  selector: { entity: { domain?: string | string[] } };
+}
+
+/** Stable ha-form schemas for the alarm dialog's entity pickers. */
+const LIGHT_FORM_SCHEMA: EntityFormItem[] = [
+  { name: "light_entity", selector: { entity: { domain: "light" } } },
+];
+const PRESENCE_FORM_SCHEMA: EntityFormItem[] = [
+  {
+    name: "presence_entity",
+    selector: { entity: { domain: ["binary_sensor", "person", "device_tracker", "input_boolean"] } },
+  },
+];
+
 /** Subset of Home Assistant's LovelaceGridOptions. */
 interface GridOptions {
   columns?: number | "full";
@@ -426,8 +442,6 @@ export class TedAlarmCard extends LitElement implements LovelaceCard {
   private _renderAddDialog(): TemplateResult {
     const theme = this._config?.theme === "ted-style" ? "ted-style" : "ha";
     const effArea = this._effectiveArea();
-    const lights = this._lightOptions();
-    const presence = this._presenceOptions();
     return html`
       <div
         class="ted-modal ${tedCardThemeClass(theme)}"
@@ -492,30 +506,24 @@ export class TedAlarmCard extends LitElement implements LovelaceCard {
             </div>
             <div class="ted-field">
               <span class="ted-field-label">Only when present (optional)</span>
-              <select
-                class="ted-input"
-                .value=${this._presenceEntity}
-                @change=${(e: Event) => (this._presenceEntity = (e.target as HTMLSelectElement).value)}
-              >
-                <option value="">Always</option>
-                ${presence.map(
-                  (p) => html`<option value=${p.id} ?selected=${p.id === this._presenceEntity}>${p.name}</option>`,
-                )}
-              </select>
+              <ha-form
+                .hass=${this.hass}
+                .data=${{ presence_entity: this._presenceEntity || undefined }}
+                .schema=${PRESENCE_FORM_SCHEMA}
+                .computeLabel=${this._noLabel}
+                @value-changed=${this._onPresenceFormChanged}
+              ></ha-form>
               <span class="ted-field-hint">Skip the wake-up light and the alarm when this sensor isn't present.</span>
             </div>
             <div class="ted-field">
               <span class="ted-field-label">Wake-up light</span>
-              <select
-                class="ted-input"
-                .value=${this._lightEntity}
-                @change=${(e: Event) => (this._lightEntity = (e.target as HTMLSelectElement).value)}
-              >
-                <option value="">None</option>
-                ${lights.map(
-                  (l) => html`<option value=${l.id} ?selected=${l.id === this._lightEntity}>${l.name}</option>`,
-                )}
-              </select>
+              <ha-form
+                .hass=${this.hass}
+                .data=${{ light_entity: this._lightEntity || undefined }}
+                .schema=${LIGHT_FORM_SCHEMA}
+                .computeLabel=${this._noLabel}
+                @value-changed=${this._onLightFormChanged}
+              ></ha-form>
             </div>
             ${this._lightEntity
               ? html`<div class="ted-field ted-light-grid">
@@ -558,24 +566,16 @@ export class TedAlarmCard extends LitElement implements LovelaceCard {
     `;
   }
 
-  /** light.* entities sorted by friendly name, for the wake-up light picker. */
-  private _lightOptions(): { id: string; name: string }[] {
-    const states = this.hass?.states ?? {};
-    return Object.keys(states)
-      .filter((id) => id.startsWith("light."))
-      .map((id) => ({ id, name: (states[id].attributes.friendly_name as string) || id }))
-      .sort((a, b) => a.name.localeCompare(b.name));
-  }
+  /** ha-form uses our own field-label span above the picker, so suppress its label. */
+  private _noLabel = (): string => "";
 
-  /** Presence-capable entities (binary_sensor/person/device_tracker/input_boolean). */
-  private _presenceOptions(): { id: string; name: string }[] {
-    const states = this.hass?.states ?? {};
-    const prefixes = ["binary_sensor.", "person.", "device_tracker.", "input_boolean."];
-    return Object.keys(states)
-      .filter((id) => prefixes.some((p) => id.startsWith(p)))
-      .map((id) => ({ id, name: (states[id].attributes.friendly_name as string) || id }))
-      .sort((a, b) => a.name.localeCompare(b.name));
-  }
+  private _onLightFormChanged = (ev: CustomEvent): void => {
+    this._lightEntity = ((ev.detail.value as { light_entity?: string }).light_entity as string) ?? "";
+  };
+
+  private _onPresenceFormChanged = (ev: CustomEvent): void => {
+    this._presenceEntity = ((ev.detail.value as { presence_entity?: string }).presence_entity as string) ?? "";
+  };
 
   /** Condense a day set into "Every day" / "Weekdays" / "Weekends", else null. */
   private _daysLabel(days: number[] | undefined): string | null {
