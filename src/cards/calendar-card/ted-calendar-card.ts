@@ -516,7 +516,11 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
       }
     } else {
       appearance.background_opacity = 100;
-      appearance.color_scheme = themeName === "ted-style" ? "dark" : "auto";
+      // Follow HA's dark-mode toggle explicitly — daylight's own "auto" tracks the
+      // browser's prefers-color-scheme, not the HA theme, so it would keep dark text and
+      // white-based event tints when the HA theme is dark.
+      appearance.color_scheme =
+        themeName === "ted-style" ? "dark" : this._isDarkMode() ? "dark" : "light";
       // A colored header bar matched to the surface (steel blue for Ted's, the theme's
       // primary color for HA). An explicit `header_color` / `header_transparency` wins.
       const defaultHeader = themeName === "ted-style" ? "#3399cc" : "var(--primary-color)";

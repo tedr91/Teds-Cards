@@ -127,7 +127,7 @@ export const CALENDAR_DEFAULT_CONFIG: Record<string, unknown> = {
   combine_background: "primary",
   event_color_mode: "left-tint",
   event_neutral_background: "#F8F3E9",
-  event_tint_opacity: 80,
+  event_tint_opacity: 85,
   event_color_bar_width: 6,
   day_badges: [],
   hide_calendars: false,

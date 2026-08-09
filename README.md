@@ -942,6 +942,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.113
+
+- **Calendar Card: dark mode now follows the Home Assistant theme.** On the HA theme, the wrapped Daylight calendar was left in its own "auto" mode, which tracks the browser's color scheme rather than HA's — so in a dark HA theme its text stayed dark and its event tints blended toward white (making events jump out). It now follows HA's dark-mode toggle, so the font turns white and event tints recede to match the rest of the dashboard. Event tint softened slightly (85%) so events are a touch more subtle in both modes.
+
 ### v0.9.112
 
 - **Calendar Card (HA theme): fixed the surface reading milkier than other cards.** On translucent themes (Win11/Mica/macOS), the wrapped Daylight calendar floored its own cell/agenda surface opacity, adding a second translucent layer on top of the card's frosted surface. Its custom surfaces are now forced fully transparent so the calendar matches a native `ha-card`'s translucency.
