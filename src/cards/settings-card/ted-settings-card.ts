@@ -3579,8 +3579,52 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
       let val = v[key] as SettingsValue;
       if ((key === "night_font_color" || key === "night_brightness_entity") && (val === "" || val == null))
         val = null;
-      if (val !== this._nmVal(key, scope)) this._setNm(key, scope, val);
+      if (val === this._nmVal(key, scope)) continue;
+      // Dark Mode is a Home Assistant user setting — enabling it cascades to every device signed
+      // in as this account, so confirm first when the account has more than one device.
+      if (key === "night_dark_mode" && val === true) {
+        void this._confirmUserScopedDark(scope);
+        continue;
+      }
+      this._setNm(key, scope, val);
     }
+  }
+
+  /** The names of the devices Home Assistant associates with the current user (the person's
+   *  assigned devices, as shown on Settings → People). */
+  private _userScopedDevices(): string[] {
+    const uid = this.hass?.user?.id;
+    const states = this.hass?.states ?? {};
+    if (!uid) return [];
+    const person = Object.values(states).find(
+      (s) => s?.entity_id?.startsWith("person.") && s.attributes?.user_id === uid,
+    );
+    const trackers = person?.attributes?.device_trackers;
+    if (!Array.isArray(trackers)) return [];
+    return trackers.map((t) => {
+      const fn = states[String(t)]?.attributes?.friendly_name;
+      return typeof fn === "string" && fn ? fn : String(t);
+    });
+  }
+
+  /** Enable Dark Mode, first warning that it's a user-scoped setting when the account spans more
+   *  than one device. Cancelling leaves the toggle off (a re-render resets it). */
+  private async _confirmUserScopedDark(scope: "global" | "device"): Promise<void> {
+    const devices = this._userScopedDevices();
+    if (devices.length > 1) {
+      const ok = await showConfirmation(this, {
+        title: "Dark Mode is a user setting",
+        text: "“Switch to Dark Mode” uses Home Assistant's per-user dark theme, so turning it on here will also switch these devices signed in as this account to Dark Mode at night:",
+        items: devices,
+        confirmText: "Keep setting",
+        dismissText: "Cancel",
+      });
+      if (!ok) {
+        this.requestUpdate();
+        return;
+      }
+    }
+    this._setNm("night_dark_mode", scope, true);
   }
 
   /** The inherit/override control (device scope) or a help line (global) for one night sub-unit. */

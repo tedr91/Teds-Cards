@@ -942,6 +942,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.114
+
+- **Night mode’s “Switch to Dark Mode” now uses Home Assistant’s real dark theme.** Instead of a per-browser style override, it toggles HA’s own user-scoped Dark Mode at night and restores your previous preference at dawn. Because that setting is per-user, enabling it here also affects the account’s other devices — so turning it on now shows a confirmation listing those devices (with **Keep setting** / **Cancel**), and only when the account has more than one device.
+
 ### v0.9.113
 
 - **Calendar Card: dark mode now follows the Home Assistant theme.** On the HA theme, the wrapped Daylight calendar was left in its own "auto" mode, which tracks the browser's color scheme rather than HA's — so in a dark HA theme its text stayed dark and its event tints blended toward white (making events jump out). It now follows HA's dark-mode toggle, so the font turns white and event tints recede to match the rest of the dashboard. Event tint softened slightly (85%) so events are a touch more subtle in both modes.

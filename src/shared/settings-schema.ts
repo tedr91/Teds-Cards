@@ -239,6 +239,7 @@ export const SETTINGS_DEFAULTS: SettingsMap = {
   night_font_shift: false,
   night_font_color: "red",
   night_active: false,
+  night_dark_prev: null,
   // Internal (no Settings field): per-device saved maximized state of Fullscreen
   // cards, keyed by each card's `state_key`. Shape: { [state_key]: boolean }.
   fullscreen_states: {},

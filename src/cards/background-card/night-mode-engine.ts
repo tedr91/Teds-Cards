@@ -8,7 +8,8 @@
  *   - background: dimmed between day/night targets when `night_background_auto`, and/or replaced
  *     by a calm solid gradient when `night_background_hide` (via the background engine);
  *   - font color: switched to the night color dashboard-wide when `night_font_shift`;
- *   - Dark Mode: switched on for this browser when `night_dark_mode`.
+ *   - Dark Mode: HA's user-scoped dark theme toggled on at night when `night_dark_mode`
+ *     (cascades to every session signed in as this account; the prior preference is restored at dawn).
  *
  * Day/night brightness values are explicit settings (no snapshot). A per-device `night_active`
  * marker mirrors the applied state so a page reload mid-night resumes without re-transitioning.
@@ -27,35 +28,25 @@ import { backgroundEngine } from "./background-engine";
 import { findHuiRoot } from "./background-dom";
 import { cssColor } from "../../shared/appearance";
 
-interface HassThemeVars {
-  modes?: { light?: Record<string, string>; dark?: Record<string, string> } | undefined;
-}
-
 interface HassLike {
   states?: Record<string, { state?: string; attributes?: Record<string, unknown> } | undefined>;
   callService?(domain: string, service: string, data?: Record<string, unknown>): Promise<unknown> | void;
   entities?: Record<string, { device_id?: string | null } | undefined>;
   devices?: Record<string, { identifiers?: [string, string][] } | undefined>;
-  themes?: {
-    // Typed loosely: the custom-card-helpers `Theme` type omits `modes`, so the concrete
-    // per-theme shape is narrowed to HassThemeVars at the read site in `_darkVars`.
-    themes?: Record<string, unknown>;
-    default_theme?: string;
-    default_dark_theme?: string | null;
-  };
   // HA's runtime `selectedTheme` is an object; the custom-card-helpers type still calls it a
   // string, so accept both to stay assignable from HomeAssistant.
   selectedTheme?: { theme?: string; dark?: boolean } | string | null;
 }
 
 const NIGHT_FONT_STYLE_ID = "ted-night-mode-font";
-/** Document-level stylesheet holding the night dark-mode theme variable overrides. */
-const NIGHT_DARK_STYLE_ID = "ted-night-mode-dark";
 /** The `ted-style` theme's default text color — the day-start of the font fade for ted-style cards
  *  (so they fade white → night color directly, without flashing through the HA theme color). */
 const TED_STYLE_DAY_TEXT = "#ffffff";
 /** Per-device marker mirroring whether night mode is currently applied (survives a reload). */
 const NIGHT_ACTIVE_KEY = "night_active";
+/** Per-device snapshot of the user's dark-theme preference before night mode forced it on (so the
+ *  morning can restore it). Absent = night mode isn't currently overriding dark mode. */
+const NIGHT_DARK_PREV_KEY = "night_dark_prev";
 /** Switch to Dark mode this long AFTER the night transition finishes. */
 const DARK_AFTER_TRANSITION_MS = 5_000;
 /** How often to re-check the clock for a night-window boundary crossing. */
@@ -234,83 +225,52 @@ class NightModeEngine {
     this._applyDark(s.night_dark_mode === true && isNightNow, durMs);
   }
 
-  /** HA's stock dark palette — the fallback when the active theme declares no `modes.dark`. */
-  private static readonly FALLBACK_DARK: Record<string, string> = {
-    "primary-text-color": "#e1e1e1",
-    "secondary-text-color": "#9b9b9b",
-    "text-primary-color": "#212121",
-    "disabled-text-color": "#6f6f6f",
-    "primary-background-color": "#111111",
-    "secondary-background-color": "#202020",
-    "card-background-color": "#1c1c1c",
-    "divider-color": "rgba(225, 225, 225, 0.12)",
-    "app-header-background-color": "#1c1c1c",
-    "app-header-text-color": "#e1e1e1",
-    "sidebar-background-color": "#1c1c1c",
-    "sidebar-text-color": "#e1e1e1",
-    "state-icon-color": "#9b9b9b",
-    "input-fill-color": "rgba(255, 255, 255, 0.05)",
-    "input-ink-color": "#e1e1e1",
-    "mdc-theme-surface": "#1c1c1c",
-    "mdc-theme-on-surface": "#e1e1e1",
-    "mdc-dialog-scrim-color": "rgba(0, 0, 0, 0.6)",
-    "ha-card-background": "#1c1c1c",
-  };
-
-  /** The CSS custom properties that make the *currently selected* theme dark. */
-  private _darkVars(): Record<string, string> {
-    const t = this.hass?.themes;
-    const sel = this.hass?.selectedTheme;
-    const selName = sel && typeof sel === "object" ? sel.theme : undefined;
-    const name = selName || t?.default_dark_theme || t?.default_theme || "";
-    const def = name ? (t?.themes?.[name] as HassThemeVars | undefined) : undefined;
-    const modeVars = def?.modes?.dark;
-    if (modeVars && Object.keys(modeVars).length) {
-      // The theme's own dark mode wins; base keys stay as HA already applied them.
-      return { ...modeVars };
-    }
-    return { ...NightModeEngine.FALLBACK_DARK };
-  }
-
-  /** Apply (or remove) the dark palette for THIS browser only, without touching hass.selectedTheme.
-   *  HA writes theme variables as inline styles on <html>; a stylesheet rule marked !important
-   *  overrides them, and removing the stylesheet restores HA's values with no state to unwind. */
-  private _applyLocalDark(on: boolean): void {
-    const existing = document.getElementById(NIGHT_DARK_STYLE_ID);
-    if (!on) {
-      existing?.remove();
-      return;
-    }
-    const vars = this._darkVars();
-    const body = Object.entries(vars)
-      .filter(([, v]) => typeof v === "string" && v !== "")
-      .map(([k, v]) => `--${k}:${v} !important;`)
-      .join("");
-    if (!body) return;
-    const el = (existing as HTMLStyleElement | null) ?? document.createElement("style");
-    if (!existing) {
-      el.id = NIGHT_DARK_STYLE_ID;
-      document.head.appendChild(el);
-    }
-    el.textContent = `html{color-scheme:dark;${body}}`;
-  }
-
-  /** Switch to (or clear) Dark mode. Turning on happens 5s after the transition finishes.
-   *  Applied locally to this browser only, so devices sharing an HA user account are unaffected. */
+  /** Switch HA's user-scoped Dark Mode on (or restore the prior preference). Turning on happens
+   *  5s after the transition finishes. Unlike a local override this drives Home Assistant's own
+   *  per-user dark setting, so it cascades to every session signed in as this account. */
   private _applyDark(on: boolean, durMs: number): void {
     if (this.darkTimer !== undefined) {
       clearTimeout(this.darkTimer);
       this.darkTimer = undefined;
     }
     if (!on) {
-      this._applyLocalDark(false);
+      this._setNativeDark(false);
       return;
     }
     const delay = durMs > 0 ? durMs + DARK_AFTER_TRANSITION_MS : 0;
     this.darkTimer = window.setTimeout(() => {
       this.darkTimer = undefined;
-      this._applyLocalDark(true);
+      this._setNativeDark(true);
     }, delay);
+  }
+
+  /** The user's current dark-theme preference (true/false, or undefined = auto/system). */
+  private _currentDark(): boolean | undefined {
+    const sel = this.hass?.selectedTheme;
+    return sel && typeof sel === "object" && typeof sel.dark === "boolean" ? sel.dark : undefined;
+  }
+
+  /** Toggle HA's user dark mode by firing `settheme` on the <home-assistant> root (which HA persists
+   *  user-scoped). Snapshots the prior preference on the way in so the morning can restore it. */
+  private _setNativeDark(on: boolean): void {
+    const root = document.querySelector("home-assistant") as HTMLElement | null;
+    if (!root) return;
+    const dev = settingsStore.deviceSettings();
+    const applied = NIGHT_DARK_PREV_KEY in dev;
+    if (on) {
+      if (!applied)
+        settingsStore.setValue("device", NIGHT_DARK_PREV_KEY, (this._currentDark() ?? null) as SettingsValue);
+      if (this._currentDark() !== true) this._fireSetTheme(root, true);
+    } else if (applied) {
+      const prev = dev[NIGHT_DARK_PREV_KEY];
+      const restore = prev === true ? true : prev === false ? false : undefined;
+      settingsStore.clearValue("device", NIGHT_DARK_PREV_KEY);
+      if (this._currentDark() !== restore) this._fireSetTheme(root, restore);
+    }
+  }
+
+  private _fireSetTheme(target: HTMLElement, dark: boolean | undefined): void {
+    target.dispatchEvent(new CustomEvent("settheme", { detail: { dark }, bubbles: true, composed: true }));
   }
 
   // --- Effects ------------------------------------------------------------

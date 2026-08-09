@@ -4,6 +4,8 @@ import { css } from "lit";
 export interface ConfirmationParams {
   title?: string;
   text?: string;
+  /** Optional bulleted list rendered under `text` (e.g. affected devices). */
+  items?: string[];
   confirmText?: string;
   dismissText?: string;
   /** Renders the confirm button in the warning/destructive style. */
@@ -31,6 +33,7 @@ export function showConfirmation(_element: HTMLElement, params: ConfirmationPara
     const {
       title = "",
       text = "",
+      items = [],
       confirmText = "OK",
       dismissText = "Cancel",
       destructive = false,
@@ -63,6 +66,19 @@ export function showConfirmation(_element: HTMLElement, params: ConfirmationPara
       textEl.textContent = text;
       textEl.style.cssText = "padding:10px 20px 4px;color:var(--secondary-text-color,#555);";
       sheet.append(textEl);
+    }
+    if (items.length) {
+      const listEl = document.createElement("ul");
+      listEl.style.cssText =
+        "margin:6px 20px 4px;padding-left:20px;color:var(--primary-text-color,#111);" +
+        "max-height:180px;overflow:auto;";
+      for (const item of items) {
+        const li = document.createElement("li");
+        li.textContent = item;
+        li.style.cssText = "padding:2px 0;";
+        listEl.append(li);
+      }
+      sheet.append(listEl);
     }
 
     const actions = document.createElement("div");
