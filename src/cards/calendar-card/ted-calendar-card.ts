@@ -988,6 +988,14 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
       position: relative;
       z-index: 1;
     }
+    /* daylight FLOORS its custom-background surface alpha at 0.25 even at
+       background_opacity: 100, so its day/agenda cells add a second translucent layer on
+       top of our .surface (two 0.55-ish layers read milkier than a normal card). Force it
+       to a true 0 so OUR frosted surface is the only layer — matching a native ha-card.
+       (!important beats daylight's inline --custom-surface-alpha on .calendar-container.) */
+    .calendar.styled .calendar-container.custom-background {
+      --custom-surface-alpha: 0 !important;
+    }
     /* Default: let the calendar size itself (its compact_height computes a
        viewport-based height). */
     .calendar.natural {

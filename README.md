@@ -942,6 +942,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.112
+
+- **Calendar Card (HA theme): fixed the surface reading milkier than other cards.** On translucent themes (Win11/Mica/macOS), the wrapped Daylight calendar floored its own cell/agenda surface opacity, adding a second translucent layer on top of the card's frosted surface. Its custom surfaces are now forced fully transparent so the calendar matches a native `ha-card`'s translucency.
+
 ### v0.9.111
 
 - **Night mode redesigned → “Dynamic night mode.”** The single on/off switch is gone; each effect is now independently opt-in (all off by default). Schedule and Switch to Dark Mode lead, followed by a collapsible **Dynamic brightness** section (separate **Screen** and **Background** controls with day/night levels) and a **Dynamic font** section. Background can now be **hidden** at night behind a calm solid gradient instead of dimmed. Per-device overrides are independent per sub-section.
