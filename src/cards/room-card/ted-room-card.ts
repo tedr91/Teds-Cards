@@ -33,6 +33,7 @@ import {
   ROOM_CARD_TYPE,
 } from "./const";
 import { autoPopulateRoom, type AutoPopulateResult } from "./auto-populate";
+import { onRoomPhotosChanged, primeRoomPhotos, roomPhotoUrl } from "../../shared/room-photos";
 import type {
   ButtonSize,
   RoomButtonConfig,
@@ -259,6 +260,8 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
   @state() private _config?: RoomCardConfig;
   /** True when the configured room photo failed to load (hidden gracefully). */
   @state() private _photoError = false;
+  /** Unsubscribe from the shared room-photo cache (primed once per page load). */
+  private _roomPhotosUnsub?: () => void;
   /** True once HA's `<hui-image>` is registered (for a camera room photo). */
   @state() private _huiImageReady = false;
   /** Measured y (px) of the header's bottom edge, for the "below header" photo. */
@@ -338,6 +341,8 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
     super.disconnectedCallback();
     this._layoutObserver?.disconnect();
     this._layoutObserver = undefined;
+    this._roomPhotosUnsub?.();
+    this._roomPhotosUnsub = undefined;
   }
 
   public connectedCallback(): void {
@@ -347,6 +352,14 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
       this._settingsAttached = true;
       new SettingsController(this, () => (this._dashboardIntegration() ? this.hass : undefined));
     }
+    // Prime the local (TDS-served) room-photo cache once per page load; re-render when it
+    // resolves so bundled photos switch from the CDN fallback to the local URL. Clear a prior
+    // CDN load error so the now-available local copy gets a fresh chance.
+    void primeRoomPhotos(this.hass);
+    this._roomPhotosUnsub ??= onRoomPhotosChanged(() => {
+      this._photoError = false;
+      this.requestUpdate();
+    });
     // Re-attach the size observer when the card returns to the DOM (e.g. after
     // leaving the dashboard editor) so the layout recomputes for the restored
     // width instead of waiting for the next reactive update.
@@ -862,7 +875,9 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
       !c.photo || c.photo === "auto" ? autoMatchPhotoKey(c.name || this._areaName()) : c.photo;
     if (!key) return undefined;
     const file = BUNDLED_PHOTOS[key];
-    return file ? bundledPhotoUrl(file) : undefined;
+    if (!file) return undefined;
+    // Prefer the locally-served (TDS-bundled) copy; fall back to the CDN when no backend.
+    return roomPhotoUrl(file) ?? bundledPhotoUrl(file);
   }
 
   /** Build the comma-separated CSS gradients for the selected scrim edges. */

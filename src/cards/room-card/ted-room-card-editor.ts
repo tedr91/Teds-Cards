@@ -8,6 +8,7 @@ import {
 } from "custom-card-helpers";
 
 import {
+  BUNDLED_PHOTO_FILES,
   BUNDLED_PHOTO_OPTIONS,
   DEFAULT_PHOTO_HEIGHT,
   defaultEdgeGradient,
@@ -30,6 +31,13 @@ import type {
 import { transparencyBlurSchema } from "../../shared/appearance";
 import { showConfirmation } from "../../shared/dialogs";
 import { resolveMusicPlayer } from "../../shared/music-player";
+import {
+  downloadRoomPhotos,
+  missingRoomPhotos,
+  onRoomPhotosChanged,
+  primeRoomPhotos,
+  roomPhotosBackendAvailable,
+} from "../../shared/room-photos";
 import { ROOM_STATUS_ITEM_TYPES } from "../../shared/status-items/const";
 import { newStatusItem, statusItemData, statusItemSchema } from "../../shared/status-items/editor";
 import { autoPopulateRoom } from "./auto-populate";
@@ -200,6 +208,23 @@ export class TedRoomCardEditor extends LitElement implements LovelaceCardEditor 
   private _creatingEditors = new Set<string>();
   /** Key of the currently open "add" dropdown, if any. */
   @state() private _openMenu?: string;
+  /** Retrieve-default-photos fallback button state. */
+  @state() private _photoFetchState: "idle" | "working" = "idle";
+  @state() private _photoFetchError = "";
+  /** Unsubscribe from the shared room-photo cache (drives button visibility). */
+  private _roomPhotosUnsub?: () => void;
+
+  public connectedCallback(): void {
+    super.connectedCallback();
+    void primeRoomPhotos(this.hass);
+    this._roomPhotosUnsub ??= onRoomPhotosChanged(() => this.requestUpdate());
+  }
+
+  public disconnectedCallback(): void {
+    super.disconnectedCallback();
+    this._roomPhotosUnsub?.();
+    this._roomPhotosUnsub = undefined;
+  }
 
   public setConfig(config: RoomCardConfig): void {
     this._config = config;
@@ -646,6 +671,8 @@ export class TedRoomCardEditor extends LitElement implements LovelaceCardEditor 
               </button>`
             : html`<div class="autopop-hint">Set a Room (area) above to enable Auto-populate.</div>`}
 
+        ${this._renderPhotoFetch()}
+
         <ha-expansion-panel
           outlined
           .expanded=${this._isExpanded("g-status", false)}
@@ -906,6 +933,46 @@ export class TedRoomCardEditor extends LitElement implements LovelaceCardEditor 
         schema: this._photoSchema(),
       },
     ];
+  }
+
+  /** Fallback "Retrieve default photos" button — shown only when TDS is present but some bundled
+   *  photos are missing on disk (a rare edge; the healthy bundled install never shows it). */
+  private _renderPhotoFetch(): TemplateResult | typeof nothing {
+    const src = this._config?.photo_source;
+    if (src === "custom" || src === "camera") return nothing;
+    if (!roomPhotosBackendAvailable()) return nothing;
+    const missing = missingRoomPhotos(BUNDLED_PHOTO_FILES);
+    if (!missing.length) return nothing;
+
+    if (this._photoFetchState === "working") {
+      return html`<div class="autopop-hint">Retrieving default photos…</div>`;
+    }
+    return html`
+      <button type="button" class="autopop-button" @click=${this._fetchPhotos}>
+        <ha-icon icon="mdi:cloud-download"></ha-icon>
+        <span>Retrieve default photos (${missing.length})</span>
+      </button>
+      <div class="autopop-hint">
+        ${missing.length} default room photo(s) aren't available locally. This downloads them from
+        the internet once and stores them in Home Assistant — after that they're served locally and
+        never fetched again.
+        ${this._photoFetchError
+          ? html`<br /><span class="error">${this._photoFetchError}</span>`
+          : nothing}
+      </div>
+    `;
+  }
+
+  private async _fetchPhotos(): Promise<void> {
+    this._photoFetchState = "working";
+    this._photoFetchError = "";
+    this.requestUpdate();
+    const { ok, failed } = await downloadRoomPhotos(this.hass, BUNDLED_PHOTO_FILES);
+    this._photoFetchState = "idle";
+    this._photoFetchError = ok
+      ? ""
+      : `${failed.length} photo(s) could not be downloaded. Check Home Assistant's internet access and try again.`;
+    this.requestUpdate();
   }
 
   private _photoSchema(): unknown[] {
@@ -1525,6 +1592,9 @@ export class TedRoomCardEditor extends LitElement implements LovelaceCardEditor 
     .autopop-hint {
       color: var(--secondary-text-color);
       font-size: 0.9em;
+    }
+    .autopop-hint .error {
+      color: var(--error-color, #db4437);
     }
     .loading {
       color: var(--secondary-text-color);

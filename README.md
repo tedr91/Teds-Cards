@@ -942,6 +942,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.115
+
+- **Room Card photos are now served locally when Ted’s Dashboard System is installed.** The 16 curated room header photos ship inside TDS and load from your own Home Assistant instead of fetching from a public CDN on every dashboard load — no third-party request, no referrer leak. Card-only users (no TDS) still get the photos from the CDN as before. The photos were also converted to WebP (87% smaller). A “Retrieve default photos” button appears in the Room Card editor only in the rare case the bundled photos are missing.
+
 ### v0.9.114
 
 - **Night mode’s “Switch to Dark Mode” now uses Home Assistant’s real dark theme.** Instead of a per-browser style override, it toggles HA’s own user-scoped Dark Mode at night and restores your previous preference at dawn. Because that setting is per-user, enabling it here also affects the account’s other devices — so turning it on now shows a confirmation listing those devices (with **Keep setting** / **Cancel**), and only when the account has more than one device.
