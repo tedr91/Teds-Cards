@@ -17,7 +17,12 @@ import { computeTabOverflow, positionOverflowPopover } from "../../shared/tab-ov
 import { resolveIcon } from "../../shared/icons";
 import { readDashboardUrlPath } from "../../shared/launcher";
 import { MUSIC_CARD_EDITOR_TYPE, MUSIC_CARD_TYPE } from "./const";
-import type { MusicBackgroundMode, MusicCardConfig, MusicTab } from "./types";
+import type {
+  MusicBackgroundMode,
+  MusicCardConfig,
+  MusicMediaLayout,
+  MusicTab,
+} from "./types";
 
 /** Subset of HA's LovelaceGridOptions for the Sections grid layout. */
 interface GridOptions {
@@ -34,6 +39,20 @@ const TABS: { id: MusicTab; label: string }[] = [
   { id: "recent", label: "Recent" },
   { id: "lyrics", label: "Lyrics" },
 ];
+
+/** The Media-tab library filters, in display order. */
+type MediaFilter = "playlist" | "album" | "artist" | "favorite";
+const MEDIA_FILTERS: { id: MediaFilter; label: string }[] = [
+  { id: "playlist", label: "Playlists" },
+  { id: "album", label: "Albums" },
+  { id: "artist", label: "Artists" },
+  { id: "favorite", label: "Favorites" },
+];
+
+/** Music Assistant `get_library` media_type for a filter (Favorites = favorited playlists). */
+function filterMediaType(f: MediaFilter): string {
+  return f === "favorite" ? "playlist" : f;
+}
 
 /** mm:ss for a number of seconds. */
 function fmtTime(sec: number): string {
@@ -111,6 +130,10 @@ const IC = {
   loading: { mdi: "loading" },
   playlist: { fluent: "music-note-2-24-regular", mdi: "playlist-music" },
   playlistRemove: { fluent: "text-bullet-list-dismiss-20-filled", mdi: "playlist-remove" },
+  tiles: { fluent: "grid-24-regular", mdi: "view-grid-outline" },
+  listView: { fluent: "apps-list-24-regular", mdi: "view-list-outline" },
+  album: { fluent: "album-24-regular", mdi: "album" },
+  artist: { fluent: "person-24-regular", mdi: "account-music" },
   playSmall: { fluent: "play-24-filled", mdi: "play" },
   queue: { fluent: "apps-list-24-regular", mdi: "playlist-play" },
   more: { fluent: "more-horizontal-24-filled", mdi: "dots-horizontal" },
@@ -211,9 +234,15 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
   private _maConfigEntryId?: string;
   /** mass_queue config entry id (for send_command), lazily resolved. */
   private _massQueueEntryId?: string;
-  /** Media tab (playlists). */
-  @state() private _playlists?: MediaItem[];
-  private _mediaLoading = false;
+  /** Media tab: per-filter library caches + in-flight flags, and the active filter. */
+  @state() private _mediaCache: Partial<Record<MediaFilter, MediaItem[]>> = {};
+  private _mediaLoading: Partial<Record<MediaFilter, boolean>> = {};
+  @state() private _mediaFilter: MediaFilter = "playlist";
+  /** Recently-played row (cross-type: playlists + albums), full mode only. */
+  @state() private _recentMedia?: MediaItem[];
+  private _recentLoading = false;
+  /** User's tiles/list override for this session; falls back to config `media_layout`. */
+  @state() private _mediaLayoutOverride?: MusicMediaLayout;
   /** Media tab: the item uri currently being started (shows a loading indicator on its row). */
   @state() private _mediaStartingUri?: string;
   private _mediaStartingPrevId?: string;
@@ -977,45 +1006,85 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
     this._reconcileQueue();
   }
 
+  /** The active Media-tab layout: session override, else config, else tiles. */
+  private _layout(): MusicMediaLayout {
+    return this._mediaLayoutOverride ?? this._config?.media_layout ?? "tiles";
+  }
+
   private _orchestrateTabData(): void {
     if (!this.hass) return;
     if (this._config?.mode === "mini") {
       // Only fetch when a mini popup is open (keeps the idle mini bar cheap).
       if (this._miniPopup === "queue" && this._massQueueAvailable()) void this._ensureQueue();
-      else if (this._miniPopup === "media") void this._ensureMedia();
+      else if (this._miniPopup === "media") void this._ensureMedia(this._mediaFilter);
       return;
     }
     // Keep the queue warm (cached by track) so the favorite state is always known.
     if (this._massQueueAvailable()) void this._ensureQueue();
-    if (this._tab === "media") void this._ensureMedia();
-    else if (this._tab === "lyrics") void this._ensureLyrics();
+    if (this._tab === "media") {
+      void this._ensureMedia(this._mediaFilter);
+      void this._ensureRecent();
+    } else if (this._tab === "lyrics") void this._ensureLyrics();
   }
 
-  private async _ensureMedia(): Promise<void> {
-    if (this._playlists || this._mediaLoading) return;
-    this._mediaLoading = true;
+  private async _ensureMedia(filter: MediaFilter): Promise<void> {
+    if (this._mediaCache[filter] || this._mediaLoading[filter]) return;
+    this._mediaLoading[filter] = true;
     try {
       const cfg = await this._ensureConfigEntry();
       if (!cfg) {
-        this._playlists = [];
+        this._mediaCache = { ...this._mediaCache, [filter]: [] };
         return;
       }
-      const resp = await this._callWithResponse("music_assistant", "get_library", {
+      const mediaType = filterMediaType(filter);
+      const params: Record<string, unknown> = {
         config_entry_id: cfg,
-        media_type: "playlist",
+        media_type: mediaType,
         limit: 100,
         order_by: "last_played_desc",
-      });
-      this._playlists = this._parseMediaItems(resp);
+      };
+      if (filter === "favorite") params.favorite = true;
+      const resp = await this._callWithResponse("music_assistant", "get_library", params);
+      this._mediaCache = { ...this._mediaCache, [filter]: this._parseMediaItems(resp, mediaType) };
     } catch {
-      this._playlists = [];
+      this._mediaCache = { ...this._mediaCache, [filter]: [] };
     } finally {
-      this._mediaLoading = false;
+      this._mediaLoading[filter] = false;
       this.requestUpdate();
     }
   }
 
-  private _parseMediaItems(resp: unknown): MediaItem[] {
+  /** Recently-played row: newest playlists + albums merged (best-effort, full mode only). */
+  private async _ensureRecent(): Promise<void> {
+    if (this._recentMedia || this._recentLoading) return;
+    this._recentLoading = true;
+    try {
+      const cfg = await this._ensureConfigEntry();
+      if (!cfg) {
+        this._recentMedia = [];
+        return;
+      }
+      const query = (media_type: string): Promise<unknown> =>
+        this._callWithResponse("music_assistant", "get_library", {
+          config_entry_id: cfg,
+          media_type,
+          limit: 10,
+          order_by: "last_played_desc",
+        });
+      const [pl, al] = await Promise.all([query("playlist"), query("album")]);
+      this._recentMedia = [
+        ...this._parseMediaItems(pl, "playlist"),
+        ...this._parseMediaItems(al, "album"),
+      ].slice(0, 12);
+    } catch {
+      this._recentMedia = [];
+    } finally {
+      this._recentLoading = false;
+      this.requestUpdate();
+    }
+  }
+
+  private _parseMediaItems(resp: unknown, mediaType: string): MediaItem[] {
     if (!resp) return [];
     let arr: Record<string, unknown>[] = [];
     if (Array.isArray(resp)) arr = resp as Record<string, unknown>[];
@@ -1028,6 +1097,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
         name: String(it.name ?? it.media_title ?? it.title ?? "Unknown"),
         uri: String(it.uri ?? it.media_content_id ?? ""),
         image: this._pickImage(it),
+        mediaType,
       }))
       .filter((x) => x.uri);
   }
@@ -1146,7 +1216,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
     (el as HTMLElement | null)?.scrollIntoView?.({ block: "center", behavior: "smooth" });
   }
 
-  private _playMedia(uri: string): void {
+  private _playMedia(uri: string, mediaType = "playlist"): void {
     const e = this._entityId();
     if (!e || !this.hass || !uri) return;
     // Show a loading indicator on the tapped row until playback actually starts (the
@@ -1160,7 +1230,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
     void this.hass.callService("music_assistant", "play_media", {
       entity_id: e,
       media_id: uri,
-      media_type: "playlist",
+      media_type: mediaType,
       enqueue: "replace",
     });
   }
@@ -2006,12 +2076,112 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
   }
 
   private _renderMedia(): TemplateResult {
-    if (!this._playlists) return this._loadingBody();
-    if (!this._playlists.length) return this._emptyBody(ic(IC.playlistRemove), "No playlists");
+    const filter = this._mediaFilter;
+    const items = this._mediaCache[filter];
+    const layout = this._layout();
+    let body: TemplateResult;
+    if (!items) body = this._loadingBody();
+    else if (!items.length)
+      body = this._emptyBody(ic(IC.playlistRemove), this._mediaEmptyMsg(filter));
+    else body = layout === "tiles" ? this._renderMediaTiles(items) : this._renderMediaList(items);
+    return html`<div class="media-pane">
+      ${this._renderMediaControls(layout)}${this._renderRecentRow()}
+      <div class="media-body">${body}</div>
+    </div>`;
+  }
+
+  private _mediaEmptyMsg(f: MediaFilter): string {
+    switch (f) {
+      case "album":
+        return "No albums";
+      case "artist":
+        return "No artists";
+      case "favorite":
+        return "No favorite playlists";
+      default:
+        return "No playlists";
+    }
+  }
+
+  private _renderMediaControls(layout: MusicMediaLayout): TemplateResult {
+    return html`<div class="media-controls">
+      <div class="seg" role="tablist">
+        ${MEDIA_FILTERS.map(
+          (f) => html`<button
+            type="button"
+            role="tab"
+            class="seg-btn ${this._mediaFilter === f.id ? "sel" : ""}"
+            aria-selected=${this._mediaFilter === f.id}
+            @click=${() => {
+              this._mediaFilter = f.id;
+            }}
+          >
+            ${f.label}
+          </button>`,
+        )}
+      </div>
+      <button
+        type="button"
+        class="layout-toggle"
+        title=${layout === "tiles" ? "List view" : "Tile view"}
+        aria-label=${layout === "tiles" ? "List view" : "Tile view"}
+        @click=${() => {
+          this._mediaLayoutOverride = layout === "tiles" ? "list" : "tiles";
+        }}
+      >
+        <ha-icon icon=${layout === "tiles" ? ic(IC.listView) : ic(IC.tiles)}></ha-icon>
+      </button>
+    </div>`;
+  }
+
+  private _renderRecentRow(): TemplateResult | typeof nothing {
+    if (this._config?.mode === "mini") return nothing;
+    const items = this._recentMedia;
+    if (!items?.length) return nothing;
+    return html`<div class="recent">
+      <div class="recent-label">Recently played</div>
+      <div class="recent-row">
+        ${items.map((p) => this._renderTile(p, "rtile"))}
+      </div>
+    </div>`;
+  }
+
+  private _renderMediaTiles(items: MediaItem[]): TemplateResult {
+    return html`<div class="tiles">${items.map((p) => this._renderTile(p, "tile"))}</div>`;
+  }
+
+  /** A single artwork tile (shared by the grid and the Recently-played row). */
+  private _renderTile(p: MediaItem, cls: "tile" | "rtile"): TemplateResult {
+    const starting = this._mediaStartingUri === p.uri;
+    return html`<button
+      type="button"
+      class="${cls} ${starting ? "starting" : ""}"
+      title=${p.name}
+      @click=${() => this._playMedia(p.uri, p.mediaType)}
+    >
+      <div class="${cls}-art-wrap">
+        ${p.image
+          ? html`<img class="${cls}-art" src=${p.image} alt="" loading="lazy" />`
+          : html`<div class="${cls}-art ph"><ha-icon icon=${ic(IC.playlist)}></ha-icon></div>`}
+        ${starting
+          ? html`<div class="tile-loading">
+              <ha-icon class="spin" icon=${ic(IC.loading)}></ha-icon>
+            </div>`
+          : nothing}
+      </div>
+      <span class="${cls}-name">${p.name}</span>
+    </button>`;
+  }
+
+  private _renderMediaList(items: MediaItem[]): TemplateResult {
     return html`<div class="list">
-      ${this._playlists.map((p) => {
+      ${items.map((p) => {
         const starting = this._mediaStartingUri === p.uri;
-        return html`<button type="button" class="row" @click=${() => this._playMedia(p.uri)}>
+        return html`<button
+          type="button"
+          class="row"
+          @click=${() => this._playMedia(p.uri, p.mediaType)}
+        >
           ${p.image
             ? html`<img class="thumb" src=${p.image} alt="" />`
             : html`<div class="thumb ph"><ha-icon icon=${ic(IC.playlist)}></ha-icon></div>`}
@@ -2897,6 +3067,176 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
         color: var(--ted-style-on-accent);
         white-space: nowrap;
       }
+
+      /* Media tab: filter bar + layout toggle */
+      .media-controls {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 2px;
+        background: var(--ted-style-surface, var(--card-background-color));
+      }
+      .seg {
+        display: flex;
+        gap: 4px;
+        flex: 1 1 auto;
+        overflow-x: auto;
+        scrollbar-width: none;
+      }
+      .seg::-webkit-scrollbar {
+        display: none;
+      }
+      .seg-btn {
+        border: none;
+        background: rgba(127, 127, 127, 0.14);
+        color: inherit;
+        cursor: pointer;
+        padding: 5px 10px;
+        border-radius: 999px;
+        font-size: 0.8em;
+        font-weight: 600;
+        white-space: nowrap;
+      }
+      .seg-btn.sel {
+        background: var(--ted-style-accent);
+        color: var(--ted-style-on-accent);
+      }
+      .layout-toggle {
+        flex: 0 0 auto;
+        border: none;
+        background: none;
+        color: inherit;
+        cursor: pointer;
+        opacity: 0.7;
+        padding: 4px;
+        border-radius: 8px;
+        display: flex;
+      }
+      .layout-toggle:hover {
+        background: rgba(127, 127, 127, 0.14);
+        opacity: 1;
+      }
+
+      /* Media tab: recently-played strip */
+      .recent {
+        padding: 2px 2px 0;
+      }
+      .recent-label {
+        font-size: 0.72em;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        opacity: 0.6;
+        padding: 4px 2px;
+      }
+      .recent-row {
+        display: flex;
+        gap: 10px;
+        overflow-x: auto;
+        padding-bottom: 6px;
+      }
+      .rtile {
+        flex: 0 0 auto;
+        width: 96px;
+        border: none;
+        background: none;
+        color: inherit;
+        cursor: pointer;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      .rtile-art-wrap {
+        position: relative;
+        width: 96px;
+        height: 96px;
+      }
+      .rtile-art {
+        width: 96px;
+        height: 96px;
+        border-radius: 10px;
+        object-fit: cover;
+        background: rgba(127, 127, 127, 0.25);
+      }
+      .rtile-name {
+        width: 96px;
+        font-size: 0.78em;
+        font-weight: 600;
+        line-height: 1.2;
+        text-align: center;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+      }
+
+      /* Media tab: artwork tile grid */
+      .tiles {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+        gap: 12px 10px;
+        padding: 8px 4px 4px;
+      }
+      .tile {
+        border: none;
+        background: none;
+        color: inherit;
+        cursor: pointer;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      .tile-art-wrap {
+        position: relative;
+        width: 100%;
+      }
+      .tile-art {
+        width: 100%;
+        aspect-ratio: 1 / 1;
+        border-radius: 10px;
+        object-fit: cover;
+        background: rgba(127, 127, 127, 0.25);
+        transition: transform 0.12s ease;
+      }
+      .tile:hover .tile-art {
+        transform: scale(1.03);
+      }
+      .tile-name {
+        font-size: 0.82em;
+        font-weight: 600;
+        line-height: 1.2;
+        text-align: center;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+      }
+      .tile-art.ph,
+      .rtile-art.ph {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .tile-art.ph ha-icon,
+      .rtile-art.ph ha-icon {
+        --mdc-icon-size: 34px;
+        opacity: 0.7;
+      }
+      .tile-loading {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 10px;
+        background: rgba(0, 0, 0, 0.35);
+        color: #fff;
+      }
       .np {
         flex: 0 0 auto;
         font-size: 0.68em;
@@ -3438,6 +3778,7 @@ interface MediaItem {
   name: string;
   uri: string;
   image?: string;
+  mediaType?: string;
 }
 
 /** A queue entry (Queue / Recent tabs). */

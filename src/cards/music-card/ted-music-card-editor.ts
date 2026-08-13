@@ -25,6 +25,11 @@ const THEME_OPTIONS = [
   { value: "ha", label: "Home Assistant theme" },
 ];
 
+const MEDIA_LAYOUT_OPTIONS = [
+  { value: "tiles", label: "Artwork tiles" },
+  { value: "list", label: "List" },
+];
+
 @customElement(MUSIC_CARD_EDITOR_TYPE)
 export class TedMusicCardEditor extends LitElement implements LovelaceCardEditor {
   @property({ attribute: false }) public hass?: HomeAssistant;
@@ -45,6 +50,7 @@ export class TedMusicCardEditor extends LitElement implements LovelaceCardEditor
       mode: this._config.mode ?? "full",
       background_mode: this._config.background_mode ?? "blur",
       theme: this._config.theme ?? "ha",
+      media_layout: this._config.media_layout ?? "tiles",
       auto_resolve_mass_player: this._config.auto_resolve_mass_player !== false,
       lock_target_device: this._config.lock_target_device ?? false,
       apply_music_volume: this._config.apply_music_volume !== false,
@@ -61,6 +67,10 @@ export class TedMusicCardEditor extends LitElement implements LovelaceCardEditor
             selector: { select: { mode: "dropdown", options: BACKGROUND_OPTIONS } },
           },
           { name: "theme", selector: { select: { mode: "dropdown", options: THEME_OPTIONS } } },
+          {
+            name: "media_layout",
+            selector: { select: { mode: "dropdown", options: MEDIA_LAYOUT_OPTIONS } },
+          },
         ],
       },
       {
@@ -122,6 +132,8 @@ export class TedMusicCardEditor extends LitElement implements LovelaceCardEditor
         return "Prevent switching the playback target device from the card (hides the cast picker).";
       case "apply_music_volume":
         return "Set this device's Music volume when playback first starts.";
+      case "media_layout":
+        return "How the Media tab shows playlists/albums — artwork tiles or a list.";
       default:
         return undefined;
     }
@@ -143,6 +155,8 @@ export class TedMusicCardEditor extends LitElement implements LovelaceCardEditor
         return "Lock target device";
       case "apply_music_volume":
         return "Apply music volume on start";
+      case "media_layout":
+        return "Media layout";
       default:
         return schema.name;
     }

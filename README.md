@@ -942,6 +942,11 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.117
+
+- **Music card: the Media tab is now an artwork browser.** The Media tab presents your Music Assistant library as artwork tiles (with a one-tap list-view toggle), adds a **Playlists / Albums / Artists / Favorites** filter and a **Recently played** row, and plays any item on this device's player with a single tap. Favorites shows your favorited playlists. A new `media_layout` option sets the starting layout.
+- **Removed the last Yet Another Media Player leftovers.** The card has been self-contained for a while; the stale `engine` / `split` / `yamp_config` / `left_config` / `right_config` options (silently ignored by the current card) are gone from the docs and the shipped Music view, and YAMP is no longer listed as a prerequisite.
+
 ### v0.9.116
 
 - **Room Card auto-populate: smarter ordering, zones, and plugs.** Buttons in each section now sort by priority — scenes → zones → lights → covers → plugs → other. Group entities are treated as "zones": the group tile stays in **Controls** while its individual members move to **Others**. Switches with an `outlet` or `plug` device class get their own "plugs" bucket. A new **Group scenes into their own section** option keeps scenes inside Controls by default (turn it on for a dedicated **Scenes** section). Tile names now have the room's area name stripped in every section.

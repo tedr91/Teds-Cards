@@ -22,6 +22,9 @@ export type MusicTab = "media" | "queue" | "recent" | "lyrics";
 /** Player layout. `full` = the two-pane player + tabs; `mini` = a compact one-row bar. */
 export type MusicMode = "full" | "mini";
 
+/** How the Media tab presents library items. `tiles` = artwork grid; `list` = rows. */
+export type MusicMediaLayout = "tiles" | "list";
+
 export interface MusicCardConfig extends LovelaceCardConfig {
   type: string;
   /** Explicit media_player entity. Wins over the Settings value; required for `player_source: config`. */
@@ -41,6 +44,8 @@ export interface MusicCardConfig extends LovelaceCardConfig {
   /** Set the player to this device's "Music volume" setting when playback first
    *  starts (the leading edge of playing). Default true. */
   apply_music_volume?: boolean;
+  /** How the Media tab presents library items. Default `tiles`. */
+  media_layout?: MusicMediaLayout;
   theme?: TedStyleTheme;
   /** Empty-state overrides (no player configured for this device). */
   empty_title?: string;
