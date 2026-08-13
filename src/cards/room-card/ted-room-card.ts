@@ -285,7 +285,7 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
   /** Auto-populated status/sections when running dashboard-integrated with no explicit sections. */
   private _autoResult?: AutoPopulateResult;
   /** The inputs the current `_autoResult` was built from, to skip needless recomputes. */
-  private _autoInputs?: { area: string; volume?: string; entities: unknown; devices: unknown };
+  private _autoInputs?: { area: string; volume?: string; groupScenes?: boolean; entities: unknown; devices: unknown };
 
   public setConfig(config: RoomCardConfig): void {
     if (!config) {
@@ -601,19 +601,21 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
     const area = this._effectiveArea()!;
     const music = resolveMusicPlayer(this.hass);
     const volume = music.state === "ok" ? music.entity : undefined;
+    const groupScenes = this._config?.group_scenes;
     const reg = this.hass as HassWithRegistries;
     if (
       !force &&
       this._autoInputs &&
       this._autoInputs.area === area &&
       this._autoInputs.volume === volume &&
+      this._autoInputs.groupScenes === groupScenes &&
       this._autoInputs.entities === reg.entities &&
       this._autoInputs.devices === reg.devices
     ) {
       return false;
     }
-    this._autoInputs = { area, volume, entities: reg.entities, devices: reg.devices };
-    this._autoResult = autoPopulateRoom(this.hass, area, volume);
+    this._autoInputs = { area, volume, groupScenes, entities: reg.entities, devices: reg.devices };
+    this._autoResult = autoPopulateRoom(this.hass, area, volume, groupScenes);
     return true;
   }
 

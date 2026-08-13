@@ -180,4 +180,6 @@ export interface RoomCardConfig extends LovelaceCardConfig {
   sections?: RoomButtonSection[];
   /** How button sections are laid out: stacked vertically (default) or as switchable tabs. */
   section_layout?: "stacked" | "tabbed";
+  /** Auto-populate: put scenes in their own "Scenes" section instead of inside "Controls". Defaults to false. */
+  group_scenes?: boolean;
 }

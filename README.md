@@ -942,6 +942,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.116
+
+- **Room Card auto-populate: smarter ordering, zones, and plugs.** Buttons in each section now sort by priority — scenes → zones → lights → covers → plugs → other. Group entities are treated as "zones": the group tile stays in **Controls** while its individual members move to **Others**. Switches with an `outlet` or `plug` device class get their own "plugs" bucket. A new **Group scenes into their own section** option keeps scenes inside Controls by default (turn it on for a dedicated **Scenes** section). Tile names now have the room's area name stripped in every section.
+
 ### v0.9.115
 
 - **Room Card photos are now served locally when Ted’s Dashboard System is installed.** The 16 curated room header photos ship inside TDS and load from your own Home Assistant instead of fetching from a public CDN on every dashboard load — no third-party request, no referrer leak. Card-only users (no TDS) still get the photos from the CDN as before. The photos were also converted to WebP (87% smaller). A “Retrieve default photos” button appears in the Room Card editor only in the rare case the bundled photos are missing.

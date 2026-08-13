@@ -32,8 +32,15 @@ export interface AutoPopulateResult {
   section_layout: "stacked" | "tabbed";
 }
 
-/** Non-light domains grouped into "Controls" (lights are prepended, in a smart order). */
-const CONTROL_NON_LIGHT_DOMAINS = ["switch", "cover", "fan", "valve"];
+/** Non-light domains collected into "Controls" (lights are added separately, in a smart order). */
+const CONTROL_NON_LIGHT_DOMAINS = ["switch", "cover", "fan", "valve", "group"];
+/** switch device_classes that read as a "Plug" (their own ordering bucket). */
+const PLUG_DEVICE_CLASSES = ["outlet", "plug"];
+/** Domains that can act as a "Zone": a group whose state lists member entity_ids. */
+const ZONE_DOMAINS = ["light", "switch", "fan", "cover", "valve", "group"];
+/** Button ordering priority within a section (lower index = shown first). */
+const CATEGORY_ORDER = ["scene", "zone", "light", "cover", "plug", "other"] as const;
+type ButtonCategory = (typeof CATEGORY_ORDER)[number];
 /** Light-name → priority buckets for ordering within Controls (lower index = shown first). */
 const LIGHT_ORDER_RULES: RegExp[] = [
   /ceiling|main|overhead|primary/, // 0: the room's main light
@@ -91,6 +98,33 @@ function orderLights(hass: HassReg, lights: string[]): string[] {
   };
   // Stable sort keeps the existing by-name order within each priority bucket.
   return [...lights].sort((a, b) => rank(a) - rank(b));
+}
+
+/** True when `id` is a "Zone": a control-domain group whose state lists member entity_ids. */
+function isZone(hass: HassReg, id: string): boolean {
+  const domain = id.slice(0, id.indexOf("."));
+  if (!ZONE_DOMAINS.includes(domain)) return false;
+  return Array.isArray(hass.states[id]?.attributes?.entity_id);
+}
+
+/** Ordering category for a Controls/Others button (scene → zone → light → cover → plug → other). */
+function categoryOf(hass: HassReg, id: string): ButtonCategory {
+  const domain = id.slice(0, id.indexOf("."));
+  if (domain === "scene") return "scene";
+  if (isZone(hass, id)) return "zone";
+  if (domain === "light") return "light";
+  if (domain === "cover") return "cover";
+  if (domain === "switch") {
+    const dc = hass.states[id]?.attributes?.device_class;
+    if (typeof dc === "string" && PLUG_DEVICE_CLASSES.includes(dc)) return "plug";
+  }
+  return "other";
+}
+
+/** Stable sort of ids by category priority (preserves each bucket's incoming order). */
+function byCategory(hass: HassReg, ids: string[]): string[] {
+  const rank = (id: string) => CATEGORY_ORDER.indexOf(categoryOf(hass, id));
+  return [...ids].sort((a, b) => rank(a) - rank(b));
 }
 
 /** All non-excluded entity ids assigned to `areaId`, grouped by domain (sorted by name). */
@@ -188,11 +222,13 @@ function stripAreaName(name: string, areaName: string | undefined): string {
 /**
  * Build the auto-populated status items + sections for `areaId`.
  * `deviceMediaPlayer` (this device's player) drives the Volume status item when present.
+ * `groupScenes` puts scenes in their own "Scenes" section instead of inside "Controls".
  */
 export function autoPopulateRoom(
   hass: HomeAssistant,
   areaId: string,
   deviceMediaPlayer?: string,
+  groupScenes = false,
 ): AutoPopulateResult {
   const h = hass as HassReg;
   const byDomain = entitiesByDomain(h, areaId);
@@ -207,6 +243,23 @@ export function autoPopulateRoom(
   const climates = byDomain.climate ?? [];
   const binarySensors = byDomain.binary_sensor ?? [];
   const sensors = byDomain.sensor ?? [];
+
+  // Every non-excluded area entity, and the set of entity_ids that belong to a Zone (group).
+  // Zone members are pulled out of Controls and listed under "Others" instead.
+  const allIds = new Set(Object.values(byDomain).flat());
+  const zoneMembers = new Set<string>();
+  for (const id of allIds) {
+    if (!isZone(h, id)) continue;
+    const members = h.states[id]?.attributes?.entity_id;
+    if (Array.isArray(members)) for (const m of members) if (allIds.has(m)) zoneMembers.add(m);
+  }
+
+  // A button whose name has the room's area name stripped out ("Kitchen Ceiling" → "Ceiling").
+  const namedButton = (id: string): RoomButtonConfig => {
+    const base = id.startsWith("scene.") ? sceneButtonFor(id) : buttonFor(id);
+    const name = stripAreaName(String(h.states[id]?.attributes?.friendly_name ?? ""), areaName);
+    return name ? { ...base, name } : base;
+  };
 
   // --- Status items ---------------------------------------------------------
   const status: RoomStatusItem[] = [];
@@ -236,39 +289,42 @@ export function autoPopulateRoom(
   // --- Sections -------------------------------------------------------------
   const sections: RoomButtonSection[] = [];
 
-  // Controls: ordered room lights first, then switches/covers/fans/valves (grouped by type).
-  // Each item's name is the entity's name with the room's area name stripped out.
-  const controls = [
+  // Controls: scenes (unless grouped), zones, lights, covers, plugs, then other controls.
+  // Zone (group) members are excluded here — they're listed under "Others" instead.
+  const controlIds = byCategory(h, [
+    ...(groupScenes ? [] : byDomain.scene ?? []),
     ...roomLights,
     ...CONTROL_NON_LIGHT_DOMAINS.flatMap((d) => byDomain[d] ?? []),
-  ].map((id) => {
-    const name = stripAreaName(String(h.states[id]?.attributes?.friendly_name ?? ""), areaName);
-    return name ? { ...buttonFor(id), name } : buttonFor(id);
-  });
+  ].filter((id) => !zoneMembers.has(id) && !isBrowserModEntity(h, id)));
+  const controls = controlIds.map(namedButton);
   if (controls.length) sections.push({ title: "Controls", icon: "mdi:tune", buttons: controls });
 
-  const scenes = (byDomain.scene ?? []).map((id) => {
-    const name = stripAreaName(String(h.states[id]?.attributes?.friendly_name ?? ""), areaName);
-    return name ? { ...sceneButtonFor(id), name } : sceneButtonFor(id);
-  });
-  if (scenes.length) sections.push({ title: "Scenes", icon: "mdi:palette", buttons: scenes });
+  if (groupScenes) {
+    const scenes = (byDomain.scene ?? []).map(namedButton);
+    if (scenes.length) sections.push({ title: "Scenes", icon: "mdi:palette", buttons: scenes });
+  }
 
   // A single climate is controlled from the header temperature item, so no section for it.
   if (climates.length >= 2) {
-    sections.push({ title: "Thermostats", icon: "mdi:thermostat", buttons: climates.map(buttonFor) });
+    sections.push({ title: "Thermostats", icon: "mdi:thermostat", buttons: climates.map(namedButton) });
   }
 
-  const media = roomMedia.map(buttonFor);
+  const media = roomMedia.map(namedButton);
   if (media.length) {
     sections.push({ title: "Media", icon: "mdi:speaker-multiple", buttons: media });
   }
 
-  // Others: misc controllable domains + any Browser Mod screen light / media player.
-  const others = [
-    ...OTHER_DOMAINS.flatMap((d) => byDomain[d] ?? []),
-    ...bmLights,
-    ...bmMedia,
-  ].map(buttonFor);
+  // Others: misc controllable domains, Zone member entities, and any Browser Mod screen
+  // light / media player — ordered by the same section priority.
+  const otherIds = byCategory(h, [
+    ...new Set([
+      ...OTHER_DOMAINS.flatMap((d) => byDomain[d] ?? []),
+      ...zoneMembers,
+      ...bmLights,
+      ...bmMedia,
+    ]),
+  ]);
+  const others = otherIds.map(namedButton);
   if (others.length) {
     sections.push({ title: "Others", icon: "mdi:dots-horizontal-circle-outline", buttons: others });
   }

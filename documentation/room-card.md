@@ -54,9 +54,17 @@ dashboard_integration: true
 Auto-populate adds status items for occupancy, temperature (a single thermostat is
 shown + adjustable from the header; tap opens its more-info), the room's *main* light
 brightness, and this device's media-player volume. It groups controls into
-**Controls** (lights, switches, covers, fans, valves), **Scenes**, **Thermostats**
-(only when the room has 2+), **Media**, and **Others** — empty groups are skipped, and
-the section layout is chosen automatically (tabbed for 3+ sections).
+**Controls**, **Scenes** (see `group_scenes`), **Thermostats** (only when the room has
+2+), **Media**, and **Others** — empty groups are skipped, and the section layout is
+chosen automatically (tabbed for 3+ sections).
+
+Within each section, buttons are ordered by priority: **scenes → zones → lights →
+covers → plugs → other**. A *zone* is a group entity (light/switch group or the
+`group` domain) whose state lists member entities; the zone tile is shown in
+**Controls** while its individual members are moved to **Others**. A *plug* is a
+`switch` whose device class is `outlet` or `plug`. Tile names have the room's area
+name stripped out (e.g. "Kitchen Ceiling Lights" → "Ceiling Lights").
+
 
 ---
 
@@ -122,6 +130,7 @@ the section layout is chosen automatically (tabbed for 3+ sections).
 | --- | --- | --- | --- |
 | `sections` | array | | Button sections below the status strip (see below). |
 | `section_layout` | `stacked` \| `tabbed` | `stacked` | Vertical stack vs. tabbed sections. |
+| `group_scenes` | boolean | false | Auto-populate: put scenes in their own **Scenes** section instead of inside **Controls**. |
 
 Each section:
 

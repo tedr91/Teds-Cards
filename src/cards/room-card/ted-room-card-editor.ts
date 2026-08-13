@@ -142,6 +142,7 @@ const FIELD_LABELS: Record<string, string> = {
   ted_button_width: "Width",
   ted_button_height: "Height",
   section_layout: "Section layout",
+  group_scenes: "Group scenes into their own section",
 };
 
 /** Order-independent equality for two edge-gradient sets. */
@@ -742,7 +743,10 @@ export class TedRoomCardEditor extends LitElement implements LovelaceCardEditor 
           <div class="panel-content">
             <ha-form
               .hass=${this.hass}
-              .data=${{ section_layout: this._config?.section_layout ?? "stacked" }}
+              .data=${{
+                section_layout: this._config?.section_layout ?? "stacked",
+                group_scenes: this._config?.group_scenes ?? false,
+              }}
               .schema=${[
                 {
                   name: "section_layout",
@@ -756,6 +760,7 @@ export class TedRoomCardEditor extends LitElement implements LovelaceCardEditor 
                     },
                   },
                 },
+                { name: "group_scenes", selector: { boolean: {} } },
               ]}
               .computeLabel=${this._computeLabel}
               @value-changed=${this._onSectionLayoutChanged}
@@ -1191,11 +1196,12 @@ export class TedRoomCardEditor extends LitElement implements LovelaceCardEditor 
 
   private _onSectionLayoutChanged = (ev: CustomEvent): void => {
     ev.stopPropagation();
-    const value = ev.detail.value as { section_layout?: "stacked" | "tabbed" };
+    const value = ev.detail.value as { section_layout?: "stacked" | "tabbed"; group_scenes?: boolean };
     this._commit({
       ...this._config,
       type: this._type(),
       section_layout: value.section_layout === "tabbed" ? "tabbed" : undefined,
+      group_scenes: value.group_scenes ? true : undefined,
     });
   };
 
@@ -1358,7 +1364,7 @@ export class TedRoomCardEditor extends LitElement implements LovelaceCardEditor 
     }
     const music = resolveMusicPlayer(this.hass);
     const volume = music.state === "ok" ? music.entity : undefined;
-    const res = autoPopulateRoom(this.hass, this._config.area, volume);
+    const res = autoPopulateRoom(this.hass, this._config.area, volume, this._config.group_scenes);
     // Auto-populate replaces every status item and section, so drop the cached
     // embedded button editors and panel open/closed state and rebuild fresh
     // (otherwise index-keyed child editors show the previous entities' fields).
