@@ -1123,6 +1123,14 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
       transparency: this._config.transparency,
       blur: this._config.blur,
     });
+    // A room photo sits at z-index -2 inside the isolated ha-card, so a theme that puts
+    // backdrop-filter on the ha-card (Mica / glass / visionOS) would blur the photo. The
+    // photo is the card's own backdrop, so drop the card frost while a photo is shown.
+    if (photoShown) {
+      appearance["--ha-card-backdrop-filter"] = "none";
+      appearance["backdrop-filter"] = "none";
+      appearance["-webkit-backdrop-filter"] = "none";
+    }
 
     return html`
       <ha-card class=${classMap(themeClasses)} style=${styleMap(appearance)}>

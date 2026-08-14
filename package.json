@@ -1,6 +1,6 @@
 {
   "name": "ted-cards",
-  "version": "0.9.132",
+  "version": "0.9.133",
   "description": "A collection of custom Lovelace cards for Home Assistant.",
   "private": false,
   "type": "module",

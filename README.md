@@ -942,6 +942,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.133
+
+- **Translucent/glass themes no longer blur where they shouldn't.** Under themes that drive card blur from `--ha-card-backdrop-filter` or an `ha-card::before` pseudo-element (e.g. visionOS / frosted-glass themes): fully-transparent cards (like the Clock in full-transparency mode) now truly show straight through, and the **Room Card** header photo stays crisp instead of being blurred by the theme's card frost.
+
 ### v0.9.132
 
 - **Fullscreen Card: square corners when maximized.** Expanding to full screen now forces the housed card to square (0px) corners so a themed card border-radius no longer rounds the screen corners and leaves gaps — most noticeable on themes with larger radii. Normal (non-fullscreen) cards keep their rounded corners.
