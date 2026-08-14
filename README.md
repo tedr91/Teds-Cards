@@ -942,6 +942,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.132
+
+- **Fullscreen Card: square corners when maximized.** Expanding to full screen now forces the housed card to square (0px) corners so a themed card border-radius no longer rounds the screen corners and leaves gaps — most noticeable on themes with larger radii. Normal (non-fullscreen) cards keep their rounded corners.
+
 ### v0.9.131
 
 - **Music Card: dark-mode readability scrim.** In dark mode, a subtle scrim is drawn over the blurred album-art background so light artwork stays readable. No effect on cards that don't use `background_mode: blur`, or in light mode.

@@ -480,6 +480,11 @@ export class TedFullscreenCard extends LitElement implements LovelaceCard {
         padding: 0;
         border: none;
         overflow: hidden;
+        border-radius: 0;
+        /* Fullscreen fills to the screen edges, so square off the housed card — a themed
+           --ha-card-border-radius (large on some themes) would otherwise round the screen
+           corners and leave gaps. */
+        --ha-card-border-radius: 0;
         background: var(--ted-style-surface, var(--ha-card-background, transparent));
         top: max(env(safe-area-inset-top), var(--ted-navbar-header-reserve, 0px));
         bottom: max(env(safe-area-inset-bottom), var(--ted-navbar-bottom-reserve, 0px));
