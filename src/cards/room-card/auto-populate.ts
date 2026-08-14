@@ -33,7 +33,7 @@ export interface AutoPopulateResult {
 }
 
 /** Non-light domains collected into "Controls" (lights are added separately, in a smart order). */
-const CONTROL_NON_LIGHT_DOMAINS = ["switch", "cover", "fan", "valve", "group"];
+const CONTROL_NON_LIGHT_DOMAINS = ["cover", "fan", "valve", "group"];
 /** switch device_classes that read as a "Plug" (their own ordering bucket). */
 const PLUG_DEVICE_CLASSES = ["outlet", "plug"];
 /** Domains that can act as a "Zone": a group whose state lists member entity_ids. */
@@ -208,14 +208,25 @@ function sceneButtonFor(entityId: string): RoomButtonConfig {
 /** Word-splitter for names (whitespace + common separators : _ - / and dashes). */
 const NAME_SPLIT = /[\s:_/\-\u2013\u2014]+/;
 
+/** Normalize a name word for area-matching: lowercase, unify apostrophes, and drop a
+ *  trailing possessive so "Teddy's" matches "Teddy" (and vice versa). */
+function baseToken(part: string): string {
+  return part
+    .toLowerCase()
+    .replace(/[\u2018\u2019\u02bc]/g, "'")
+    .replace(/'s$|'$/, "");
+}
+
 /** Drop the room's area name from an entity name wherever it appears ("Kitchen Ceiling
  *  Lights", "Ceiling Lights - Kitchen", "Ceiling Kitchen Lights" all → "Ceiling Lights").
- *  Falls back to the original name if stripping would leave nothing. */
+ *  Possessive room names also strip their owner ("Teddy's Bedroom"/"Teddy's Room" →
+ *  "Teddy's Ceiling Lights" becomes "Ceiling Lights"). Falls back to the original name
+ *  if stripping would leave nothing. */
 function stripAreaName(name: string, areaName: string | undefined): string {
   if (!name || !areaName) return name;
-  const areaTokens = new Set(areaName.toLowerCase().split(NAME_SPLIT).filter(Boolean));
+  const areaTokens = new Set(areaName.split(NAME_SPLIT).map(baseToken).filter(Boolean));
   if (!areaTokens.size) return name;
-  const kept = name.split(NAME_SPLIT).filter((p) => p && !areaTokens.has(p.toLowerCase()));
+  const kept = name.split(NAME_SPLIT).filter((p) => p && !areaTokens.has(baseToken(p)));
   return kept.join(" ").trim() || name;
 }
 
@@ -289,8 +300,8 @@ export function autoPopulateRoom(
   // --- Sections -------------------------------------------------------------
   const sections: RoomButtonSection[] = [];
 
-  // Controls: scenes (unless grouped), zones, lights, covers, plugs, then other controls.
-  // Zone (group) members are excluded here — they're listed under "Others" instead.
+  // Controls: scenes (unless grouped), zones, lights, covers, then fans/valves. Switches
+  // live in "Others"; zone (group) members are excluded here and listed under "Others" too.
   const controlIds = byCategory(h, [
     ...(groupScenes ? [] : byDomain.scene ?? []),
     ...roomLights,
@@ -314,10 +325,11 @@ export function autoPopulateRoom(
     sections.push({ title: "Media", icon: "mdi:speaker-multiple", buttons: media });
   }
 
-  // Others: misc controllable domains, Zone member entities, and any Browser Mod screen
-  // light / media player — ordered by the same section priority.
+  // Others: switches (incl. plugs + switch groups), misc controllable domains, Zone member
+  // entities, and any Browser Mod screen light / media player — ordered by section priority.
   const otherIds = byCategory(h, [
     ...new Set([
+      ...(byDomain.switch ?? []),
       ...OTHER_DOMAINS.flatMap((d) => byDomain[d] ?? []),
       ...zoneMembers,
       ...bmLights,

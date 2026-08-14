@@ -942,6 +942,11 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.123
+
+- **Room Card auto-populate: switches now go to "Others".** All `switch` entities (including smart plugs and switch groups) move from **Controls** to **Others**. **Controls** keeps scenes, zones, lights, covers, fans, and valves.
+- **Smarter area-name stripping for possessive room names.** A room named "Teddy's Bedroom" (or "Teddy's Room") now also strips the owner, so "Teddy's Ceiling Lights" reads as "Ceiling Lights". Curly and straight apostrophes are treated the same.
+
 ### v0.9.122
 
 - **Calendar Card (Agenda view): slightly more space above each day.** The day-row top padding is now 5px (bottom stays 4px).

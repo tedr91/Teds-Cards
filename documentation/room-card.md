@@ -59,11 +59,15 @@ brightness, and this device's media-player volume. It groups controls into
 chosen automatically (tabbed for 3+ sections).
 
 Within each section, buttons are ordered by priority: **scenes → zones → lights →
-covers → plugs → other**. A *zone* is a group entity (light/switch group or the
-`group` domain) whose state lists member entities; the zone tile is shown in
-**Controls** while its individual members are moved to **Others**. A *plug* is a
-`switch` whose device class is `outlet` or `plug`. Tile names have the room's area
-name stripped out (e.g. "Kitchen Ceiling Lights" → "Ceiling Lights").
+covers → plugs → other**. **Controls** holds scenes (unless `group_scenes` is on),
+zones, lights, covers, fans, and valves. **Others** holds everything else — all
+`switch` entities (including smart *plugs* — `switch` with an `outlet`/`plug` device
+class), switch-group zones, misc controllable domains (lock, vacuum, script, select,
+…), and any zone member entities. A *zone* is a group entity whose state lists member
+entities; a light/cover group's tile is shown in **Controls** while its individual
+members move to **Others**. Tile names have the room's area name stripped out (e.g.
+"Kitchen Ceiling Lights" → "Ceiling Lights"; a possessive room like "Teddy's Bedroom"
+also strips "Teddy's").
 
 
 ---
