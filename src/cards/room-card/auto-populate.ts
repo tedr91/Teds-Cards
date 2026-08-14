@@ -176,15 +176,16 @@ function pickMainLight(hass: HassReg, lights: string[], areaName?: string): stri
 function buttonFor(entityId: string): RoomButtonConfig {
   // Light/cover tiles are 1.5x-height with default name/icon/state styling.
   if (entityId.startsWith("light.")) {
-    return { type: `custom:${LIGHT_CARD_TYPE}`, entity: entityId, ted_button_height: "1.5x" };
+    return { type: `custom:${LIGHT_CARD_TYPE}`, entity: entityId, brushed: true, ted_button_height: "1.5x" };
   }
   if (entityId.startsWith("cover.")) {
-    return { type: `custom:${COVER_CARD_TYPE}`, entity: entityId, ted_button_height: "1.5x" };
+    return { type: `custom:${COVER_CARD_TYPE}`, entity: entityId, brushed: true, ted_button_height: "1.5x" };
   }
   // Generic buttons read cleaner as name + state (no icon) with a smaller name.
   return {
     type: `custom:${BUTTON_CARD_TYPE}`,
     entity: entityId,
+    brushed: true,
     show_name: true,
     name_scale: 60,
     show_icon: false,
@@ -197,6 +198,7 @@ function sceneButtonFor(entityId: string): RoomButtonConfig {
   return {
     type: `custom:${BUTTON_CARD_TYPE}`,
     entity: entityId,
+    brushed: true,
     show_icon: true,
     icon_scale: 75,
     show_state: false,
