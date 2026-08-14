@@ -991,6 +991,12 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
     .calendar.styled > daylight-calendar-card {
       position: relative;
       z-index: 1;
+      /* daylight wraps its slotted content in an ha-card (closed shadow) whose 1px
+         theme border shows as a stray hairline on top of OUR frosted surface. Zero it
+         (these custom props inherit through the closed shadow) so our surface is the
+         only card edge. superdingo (native) keeps daylight's own border. */
+      --ha-card-border-color: transparent;
+      --ha-card-border-width: 0;
     }
     /* daylight FLOORS its custom-background surface alpha at 0.25 even at
        background_opacity: 100, so its day/agenda cells add a second translucent layer on

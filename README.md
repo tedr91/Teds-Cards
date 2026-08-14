@@ -942,6 +942,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.120
+
+- **Calendar Card: removed the stray hairline border.** In the HA and Ted's Style surface modes, the embedded Daylight Calendar's own card border no longer shows as a 1px line on top of Ted's frosted surface — the surface is now the only card edge. The native (superdingo) look keeps Daylight's own border.
+
 ### v0.9.119
 
 - **Cards now follow your Home Assistant theme by default.** Every card defaults to the active HA theme; the self-contained **Ted's Style** (Mica-dark) look is now opt-in only. This fixes the out-of-place bright 1px border that appeared around cards on a light theme.
