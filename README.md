@@ -942,6 +942,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.121
+
+- **Calendar Card (Agenda view) polish.** Each day row now has even 4px top/bottom padding, and the line under each day's date is now a vertical divider on the right of the date column at 50% opacity (today stays blue, other days use the grid color) instead of a horizontal underline.
+
 ### v0.9.120
 
 - **Calendar Card: removed the stray hairline border.** In the HA and Ted's Style surface modes, the embedded Daylight Calendar's own card border no longer shows as a 1px line on top of Ted's frosted surface — the surface is now the only card edge. The native (superdingo) look keeps Daylight's own border.
