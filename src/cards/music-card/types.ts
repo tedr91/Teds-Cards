@@ -19,8 +19,12 @@ export type MusicBackgroundMode = "blur" | "none";
 /** The tabs shown on the right side of the full player. */
 export type MusicTab = "media" | "queue" | "recent" | "lyrics";
 
-/** Player layout. `full` = the two-pane player + tabs; `mini` = a compact one-row bar. */
-export type MusicMode = "full" | "mini";
+/** Player layout.
+ * - `full`  — the two-pane player + tabs.
+ * - `mini`  — a compact two-row bar with all transport controls inline.
+ * - `micro` — a nine-wide, one-row bar showing only Play/Pause + "…" (the rest of
+ *             the transport controls move into the "…" menu). */
+export type MusicMode = "full" | "mini" | "micro";
 
 /** How the Media tab presents library items. `tiles` = artwork grid; `list` = rows. */
 export type MusicMediaLayout = "tiles" | "list";

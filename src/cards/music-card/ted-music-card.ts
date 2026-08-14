@@ -329,10 +329,20 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
     }
   };
 
+  /** True for the compact bar layouts (`mini` + `micro`). */
+  private _isBar(): boolean {
+    return this._config?.mode === "mini" || this._config?.mode === "micro";
+  }
+
+  /** True only for the one-row `micro` bar. */
+  private _isMicro(): boolean {
+    return this._config?.mode === "micro";
+  }
+
   /** Decide vertical vs. horizontal (compact) player layout by comparing the album
    *  art's would-be height to the title/artist block. Hysteresis avoids flapping. */
   private _measureLayout(): void {
-    if (this._config?.mode === "mini") return;
+    if (this._isBar()) return;
     const root = this.renderRoot as ShadowRoot | undefined;
     const player = root?.querySelector(".player") as HTMLElement | null;
     const details = root?.querySelector(".details") as HTMLElement | null;
@@ -363,12 +373,16 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
   }
 
   public getCardSize(): number {
+    if (this._isMicro()) return 1;
     return this._config?.mode === "mini" ? 2 : 12;
   }
 
   public getGridOptions(): GridOptions {
+    if (this._isMicro()) {
+      return { columns: 9, rows: 1, min_columns: 6, min_rows: 1 };
+    }
     if (this._config?.mode === "mini") {
-      return { columns: 12, rows: 1, min_columns: 6, min_rows: 1 };
+      return { columns: 12, rows: 2, min_columns: 6, min_rows: 1 };
     }
     return { columns: 12, rows: 6, min_columns: 6, min_rows: 4 };
   }
@@ -457,7 +471,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
   /** Decide how many right-side tabs fit; the rest spill into the "…" overflow menu.
    *  Widths are read from the hidden `.tabbar-measure` mirror so it converges stably. */
   private _measureTabs(): void {
-    if (this._config?.mode === "mini") return;
+    if (this._isBar()) return;
     const root = this.renderRoot as ShadowRoot | undefined;
     const strip = root?.querySelector(".tabbar") as HTMLElement | null;
     const measure = root?.querySelector(".tabbar-measure") as HTMLElement | null;
@@ -1013,7 +1027,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
 
   private _orchestrateTabData(): void {
     if (!this.hass) return;
-    if (this._config?.mode === "mini") {
+    if (this._isBar()) {
       // Only fetch when a mini popup is open (keeps the idle mini bar cheap).
       if (this._miniPopup === "queue" && this._massQueueAvailable()) void this._ensureQueue();
       else if (this._miniPopup === "media") void this._ensureMedia(this._mediaFilter);
@@ -1452,11 +1466,12 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
     const hasArt = mode === "blur" && !!this._artUrl();
     const fg = hasArt ? (this._avgFg ?? "#ffffff") : "var(--ted-style-text)";
 
-    if (this._config?.mode === "mini") {
+    if (this._isBar()) {
+      const micro = this._isMicro();
       return html`
         <ha-card class="ted-card ${themeClass}" style="--music-fg:${fg}">
           <div class="bg-clip">${this._renderBackground(mode)}${this._renderFrost(mode)}</div>
-          <div class="content mini-content">${this._renderMini()}</div>
+          <div class="content mini-content ${micro ? "micro" : ""}">${this._renderMini(micro)}</div>
           ${this._renderMiniProgress()}
         </ha-card>
         ${this._renderMiniModal()}
@@ -1633,8 +1648,9 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
     </div>`;
   }
 
-  /** Compact one-row player (mode: mini). */
-  private _renderMini(): TemplateResult {
+  /** Compact bar player (mode: mini / micro). In `micro` only Play/Pause is inline;
+   *  the other transport controls move into the "…" menu. */
+  private _renderMini(micro = false): TemplateResult {
     const art = this._artUrl();
     const title = this._title() ?? "Not playing";
     const artist = this._attr<string>("media_artist") ?? "";
@@ -1644,6 +1660,14 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
     const volLevel = this._attr<number>("volume_level");
     const volPct = typeof volLevel === "number" ? Math.round(volLevel * 100) : 0;
     const muted = !!this._attr<boolean>("is_volume_muted");
+    const playPause = this._ctrl(
+      playing ? ic(IC.pause) : ic(IC.play),
+      playing ? "Pause" : "Play",
+      this._onPlayPause,
+      false,
+      false,
+      true,
+    );
     return html`
       <div class="mini">
         <div class="mini-art-wrap">
@@ -1656,32 +1680,37 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
           <div class="mini-artist one">${artist}</div>
         </div>
         <div class="mini-controls">
-          ${this._renderShuffleControl(shuffle)}
-          ${this._ctrl(ic(IC.previous), "Previous", this._onPrev)}
-          ${this._ctrl(
-            playing ? ic(IC.pause) : ic(IC.play),
-            playing ? "Pause" : "Play",
-            this._onPlayPause,
-            false,
-            false,
-            true,
-          )}
-          ${this._ctrl(ic(IC.next), "Next", this._onNext)}
-          ${this._ctrl(
-            repeat === "one" ? ic(IC.repeatOne) : ic(IC.repeat),
-            `Repeat: ${repeat}`,
-            this._onRepeat,
-            repeat !== "off",
-          )}
+          ${micro
+            ? playPause
+            : html`
+                ${this._renderShuffleControl(shuffle)}
+                ${this._ctrl(ic(IC.previous), "Previous", this._onPrev)} ${playPause}
+                ${this._ctrl(ic(IC.next), "Next", this._onNext)}
+                ${this._ctrl(
+                  repeat === "one" ? ic(IC.repeatOne) : ic(IC.repeat),
+                  `Repeat: ${repeat}`,
+                  this._onRepeat,
+                  repeat !== "off",
+                )}
+              `}
         </div>
-        <div class="mini-right">${this._renderMiniMore(volPct, muted)}</div>
+        <div class="mini-right">
+          ${this._renderMiniMore(volPct, muted, micro, shuffle, repeat)}
+        </div>
       </div>
     `;
   }
 
-  /** The mini bar's "..." button: opens a small menu of {Media, Queue, Volume}, plus
-   *  the anchored Volume flyout. Media/Queue open a centered modal window. */
-  private _renderMiniMore(volPct: number, muted: boolean): TemplateResult {
+  /** The mini bar's "…" button: opens a small menu of {Media, Queue, Volume, Party},
+   *  plus the anchored Volume flyout. In `micro` the menu is prefixed with the
+   *  transport controls (Previous/Next/Shuffle/Repeat) that aren't shown inline. */
+  private _renderMiniMore(
+    volPct: number,
+    muted: boolean,
+    micro = false,
+    shuffle = false,
+    repeat = "off",
+  ): TemplateResult {
     const menuDir = this._miniMenuUp ? "up" : "down";
     const volDir = this._miniVolUp ? "up" : "down";
     return html`<div class="mini-more-wrap">
@@ -1697,6 +1726,32 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
       </button>
       ${this._miniMenuOpen
         ? html`<div class="mini-menu ${menuDir}" role="menu">
+            ${micro
+              ? html`
+                  <button type="button" class="mini-menu-item" @click=${this._onMiniPrev}>
+                    <ha-icon icon=${ic(IC.previous)}></ha-icon><span>Previous</span>
+                  </button>
+                  <button type="button" class="mini-menu-item" @click=${this._onMiniNext}>
+                    <ha-icon icon=${ic(IC.next)}></ha-icon><span>Next</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="mini-menu-item ${shuffle ? "active" : ""}"
+                    @click=${this._onMiniShuffle}
+                  >
+                    <ha-icon icon=${ic(IC.shuffle)}></ha-icon><span>Shuffle</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="mini-menu-item ${repeat !== "off" ? "active" : ""}"
+                    @click=${this._onMiniRepeat}
+                  >
+                    <ha-icon icon=${ic(repeat === "one" ? IC.repeatOne : IC.repeat)}></ha-icon
+                    ><span>Repeat${repeat === "one" ? ": one" : ""}</span>
+                  </button>
+                  <div class="mini-menu-sep" role="separator"></div>
+                `
+              : nothing}
             <button type="button" class="mini-menu-item" @click=${() => this._openMiniPopup("media")}>
               <ha-icon icon=${ic(IC.playlist)}></ha-icon><span>Media</span>
             </button>
@@ -1766,6 +1821,26 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
   private _openMiniVol = (): void => {
     this._miniMenuOpen = false;
     this._miniVolOpen = true;
+  };
+
+  private _onMiniPrev = (): void => {
+    this._miniMenuOpen = false;
+    this._onPrev();
+  };
+
+  private _onMiniNext = (): void => {
+    this._miniMenuOpen = false;
+    this._onNext();
+  };
+
+  private _onMiniShuffle = (): void => {
+    this._miniMenuOpen = false;
+    this._onShuffle();
+  };
+
+  private _onMiniRepeat = (): void => {
+    this._miniMenuOpen = false;
+    this._onRepeat();
   };
 
   /** Open Music Assistant's fullscreen `#/party` dashboard for the current player.
@@ -3515,14 +3590,30 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
         display: block;
         padding: 10px 16px;
       }
+      .mini-content.micro {
+        padding: 6px 12px;
+      }
       .mini {
         display: flex;
         align-items: center;
         gap: 14px;
+        height: 100%;
       }
+      .mini-art-wrap {
+        flex: 0 0 auto;
+        align-self: stretch;
+        display: flex;
+        align-items: center;
+      }
+      /* Thumbnail auto-sizes to the bar height (album art fills; capped so an
+         "auto height" card can't balloon to the art's intrinsic size, and the
+         idle placeholder can't collapse to zero). */
       .mini-art {
-        width: 48px;
-        height: 48px;
+        width: auto;
+        height: 100%;
+        aspect-ratio: 1 / 1;
+        min-height: 44px;
+        max-height: 104px;
         border-radius: var(--ha-card-border-radius, 12px);
         object-fit: cover;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
@@ -3634,9 +3725,20 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
       .mini-menu-item:hover {
         background: rgba(127, 127, 127, 0.16);
       }
+      .mini-menu-item.active {
+        color: var(--ted-style-accent);
+      }
       .mini-menu-item ha-icon {
         --mdc-icon-size: 20px;
         opacity: 0.85;
+      }
+      .mini-menu-item.active ha-icon {
+        opacity: 1;
+      }
+      .mini-menu-sep {
+        height: 1px;
+        margin: 4px 6px;
+        background: rgba(127, 127, 127, 0.3);
       }
       .mini-vol-flyout {
         display: flex;

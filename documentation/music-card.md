@@ -70,16 +70,19 @@ media_layout: tiles
 
 ---
 
-## Mini player
+## Mini &amp; Micro players
 
-Set `mode: mini` for a compact one-row bar (artwork, title, transport, and a "…" menu
-that pops up the Media/Queue tabs). Otherwise the full player renders with the side
-tabs.
+Set `mode: mini` for a compact two-row bar (artwork, title, all transport controls,
+and a "…" menu that pops up the Media/Queue tabs). Set `mode: micro` for an even
+smaller nine-wide, one-row bar that shows only **Play/Pause** and the "…" menu — the
+other transport controls (previous, next, shuffle, repeat) move into that menu. In
+both bar layouts the thumbnail auto-sizes to the card height. Otherwise the full
+player renders with the side tabs.
 
 ```yaml
 type: custom:ted-music-card
 player_source: settings
-mode: mini
+mode: mini # or: micro
 ```
 
 ---
@@ -111,7 +114,7 @@ reliable result.
 | --- | --- | --- | --- |
 | `player_source` | `settings` \| `config` | `settings` | Where the player comes from. `settings` uses the per-device Music player (then the System sounds player, then the device's own player); `config` uses `entity`. |
 | `entity` | string | | A `media_player.*` entity. Required for `player_source: config`; overrides the Settings value when set. |
-| `mode` | `full` \| `mini` | `full` | `full` = the now-playing player with Media/Queue/Recent/Lyrics tabs; `mini` = a compact one-row bar. |
+| `mode` | `full` \| `mini` \| `micro` | `full` | `full` = the now-playing player with Media/Queue/Recent/Lyrics tabs; `mini` = a compact two-row bar; `micro` = a nine-wide one-row bar with only Play/Pause + a "…" menu. |
 | `media_layout` | `tiles` \| `list` | `tiles` | How the Media tab presents library items — artwork tiles or rows. A header toggle overrides it at runtime. |
 | `auto_resolve_mass_player` | boolean | `true` | If the player isn't a Music Assistant entity, find its Music Assistant match at runtime (by device, then name). |
 | `background_mode` | `blur` \| `none` | `blur` | Player surface: `blur` = frosted album art; `none` = the active theme surface. |
@@ -121,6 +124,6 @@ reliable result.
 | `unmatched_title` / `unmatched_message` | string | | Override the "no Music Assistant match" state. |
 | `settings_path` | string | `[root]/settings?tab=sounds&scope=device` | Where the state buttons navigate. `[root]` is your dashboard root. |
 | `mass_setup_path` | string | auto-detected | Where the unmatched state's **Music Assistant** button navigates. By default the card finds the Music Assistant panel automatically; set this to override it. The button is hidden if no panel is found. |
-| `party_url` | string | `http://<hostname>:8095` | Base URL of the Music Assistant server for the mini player's **Party Mode!** action. |
+| `party_url` | string | `http://<hostname>:8095` | Base URL of the Music Assistant server for the mini/micro player's **Party Mode!** action. |
 | `party_view_path` | string | `webview` | Dashboard view the Party page opens in (the Ted Web View page). |
 | `theme` | `ted-style` \| `ha` | | See [Appearance & theming](./README.md#appearance--theming-shared). |

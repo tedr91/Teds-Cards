@@ -13,6 +13,7 @@ const SOURCE_OPTIONS = [
 const MODE_OPTIONS = [
   { value: "full", label: "Full player" },
   { value: "mini", label: "Mini player" },
+  { value: "micro", label: "Micro player" },
 ];
 
 const BACKGROUND_OPTIONS = [

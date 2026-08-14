@@ -942,6 +942,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.125
+
+- **Music Card: new "Micro" player + taller Mini bar.** `mode: micro` is a compact nine-wide, one-row player showing only **Play/Pause** and a **…** menu (previous, next, shuffle, and repeat move into that menu). `mode: mini` now defaults to two rows tall. In both bar layouts the thumbnail auto-sizes to the card height (and stays sensibly bounded when the card is set to auto height).
+
 ### v0.9.124
 
 - **Night Mode dark theme now reliably returns to light at dawn on multi-panel setups.** The pre-night dark-theme preference is snapshotted once at the account level (matching Home Assistant's user-scoped dark toggle) instead of per-device, so a panel that booted after dark had already cascaded can no longer "restore" the account back to dark in the morning.
