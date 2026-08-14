@@ -43,10 +43,10 @@ const TABS: { id: MusicTab; label: string }[] = [
 /** The Media-tab library filters, in display order. */
 type MediaFilter = "playlist" | "album" | "artist" | "favorite";
 const MEDIA_FILTERS: { id: MediaFilter; label: string }[] = [
-  { id: "playlist", label: "Playlists" },
-  { id: "album", label: "Albums" },
-  { id: "artist", label: "Artists" },
   { id: "favorite", label: "Favorites" },
+  { id: "playlist", label: "Playlists" },
+  { id: "artist", label: "Artists" },
+  { id: "album", label: "Albums" },
 ];
 
 /** Music Assistant `get_library` media_type for a filter (Favorites = favorited playlists). */
@@ -237,7 +237,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
   /** Media tab: per-filter library caches + in-flight flags, and the active filter. */
   @state() private _mediaCache: Partial<Record<MediaFilter, MediaItem[]>> = {};
   private _mediaLoading: Partial<Record<MediaFilter, boolean>> = {};
-  @state() private _mediaFilter: MediaFilter = "playlist";
+  @state() private _mediaFilter: MediaFilter = "favorite";
   /** Recently-played row (cross-type: playlists + albums), full mode only. */
   @state() private _recentMedia?: MediaItem[];
   private _recentLoading = false;
@@ -1447,7 +1447,10 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
     }
 
     const hasMedia = this._hasMedia();
-    const fg = mode === "blur" ? (this._avgFg ?? "#ffffff") : "var(--ted-style-text)";
+    // In blur mode with no artwork (idle), match the themed card surface + text so an
+    // idle player looks like every other card (theme color/opacity/blur).
+    const hasArt = mode === "blur" && !!this._artUrl();
+    const fg = hasArt ? (this._avgFg ?? "#ffffff") : "var(--ted-style-text)";
 
     if (this._config?.mode === "mini") {
       return html`
@@ -1481,18 +1484,19 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
   /** A card-wide frosted-glass layer, tinted with the album's average color, over the
    *  blurred art so content stands out. */
   private _renderFrost(mode: MusicBackgroundMode): TemplateResult | typeof nothing {
-    if (mode !== "blur") return nothing;
+    if (mode !== "blur" || !this._artUrl()) return nothing;
     const c = this._avgColor;
     const style = c ? `background:rgba(${c}, 0.6)` : "background:rgba(16, 16, 20, 0.4)";
     return html`<div class="frost" style=${style}></div>`;
   }
 
   private _renderBackground(mode: MusicBackgroundMode): TemplateResult | typeof nothing {
-    // "none" lets the themed ha-card surface (Ted's style or HA theme) show through.
+    // "none" (or blur with no artwork) lets the themed ha-card surface show through, so an
+    // idle player matches every other card's color/opacity/blur instead of an opaque fill.
     if (mode !== "blur") return nothing;
     const art = this._artUrl();
-    const img = art ? `background-image:url("${art}")` : "background:var(--ted-style-surface)";
-    return html`<div class="bg bg-blur" style=${img}></div>`;
+    if (!art) return nothing;
+    return html`<div class="bg bg-blur" style=${`background-image:url("${art}")`}></div>`;
   }
 
   private _renderPlayer(): TemplateResult {
@@ -2085,7 +2089,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
       body = this._emptyBody(ic(IC.playlistRemove), this._mediaEmptyMsg(filter));
     else body = layout === "tiles" ? this._renderMediaTiles(items) : this._renderMediaList(items);
     return html`<div class="media-pane">
-      ${this._renderMediaControls(layout)}${this._renderRecentRow()}
+      ${this._renderRecentRow()}${this._renderMediaControls(layout)}
       <div class="media-body">${body}</div>
     </div>`;
   }
@@ -3070,14 +3074,10 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
 
       /* Media tab: filter bar + layout toggle */
       .media-controls {
-        position: sticky;
-        top: 0;
-        z-index: 2;
         display: flex;
         align-items: center;
         gap: 8px;
-        padding: 6px 2px;
-        background: var(--ted-style-surface, var(--card-background-color));
+        padding: 6px 2px 8px;
       }
       .seg {
         display: flex;

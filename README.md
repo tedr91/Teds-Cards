@@ -942,6 +942,11 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.118
+
+- **Music Media tab polish.** The library filter is reordered to **Favorites (default) / Playlists / Artists / Albums**, the filter pills + view toggle now sit **below** the Recently-played row, and they no longer sit on an opaque bar.
+- **Idle player now matches your other cards.** With nothing playing (blur background mode), the player no longer paints an opaque fill — it shows the themed card surface (same color, opacity, and blur as every other card) with theme-colored text. The blurred album-art background returns once something plays.
+
 ### v0.9.117
 
 - **Music card: the Media tab is now an artwork browser.** The Media tab presents your Music Assistant library as artwork tiles (with a one-tap list-view toggle), adds a **Playlists / Albums / Artists / Favorites** filter and a **Recently played** row, and plays any item on this device's player with a single tap. Favorites shows your favorited playlists. A new `media_layout` option sets the starting layout.
