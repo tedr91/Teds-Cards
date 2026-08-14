@@ -20,7 +20,7 @@ export class TedAssistResponseCardEditor extends LitElement implements LovelaceC
   }
 
   private _defaults(): Partial<AssistResponseCardConfig> {
-    return { theme: "ted-style", fill: true, shadow: true, transparency: undefined, blur: undefined };
+    return { theme: "ha", fill: true, shadow: true, transparency: undefined, blur: undefined };
   }
 
   protected render(): TemplateResult | typeof nothing {

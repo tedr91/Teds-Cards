@@ -285,7 +285,7 @@ export class TedTabCard extends LitElement implements LovelaceCard {
     const one = missing.length === 1 ? missing[0] : undefined;
     return {
       type: "custom:ted-messagebox-card",
-      theme: "ted-style",
+      theme: this._config?.theme === "ted-style" ? "ted-style" : "ha",
       severity: "warning",
       icon: "mdi:puzzle-outline",
       title: one

@@ -171,7 +171,7 @@ export class TedAssistResponseCard extends LitElement implements LovelaceCard {
   protected render(): TemplateResult | typeof nothing {
     if (!this._config) return nothing;
     const cfg = this._config;
-    const themeClass = tedCardThemeClass(cfg.theme ?? "ted-style");
+    const themeClass = tedCardThemeClass(cfg.theme);
     const entries = this._history;
     const bgImage = cfg.background_image;
 

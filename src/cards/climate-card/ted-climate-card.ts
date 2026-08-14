@@ -265,7 +265,7 @@ export class TedClimateCard extends LitElement implements LovelaceCard {
       "This device hasn't been given any thermostats. Open Settings to choose which ones to show.";
     return {
       type: "custom:ted-messagebox-card",
-      theme: "ted-style",
+      theme: this._config?.theme === "ted-style" ? "ted-style" : "ha",
       severity: "info",
       icon: themedIcon("thermostat"),
       title,

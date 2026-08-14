@@ -322,7 +322,7 @@ export class TedCameraCardEditor extends LitElement implements LovelaceCardEdito
 
   private _defaults(): Partial<CameraCardConfig> {
     return {
-      theme: "ted-style",
+      theme: "ha",
       brushed: false,
       transparency: undefined,
       blur: undefined,

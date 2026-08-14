@@ -942,6 +942,12 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.119
+
+- **Cards now follow your Home Assistant theme by default.** Every card defaults to the active HA theme; the self-contained **Ted's Style** (Mica-dark) look is now opt-in only. This fixes the out-of-place bright 1px border that appeared around cards on a light theme.
+- **Ted's Style card outline adapts to light/dark.** In Ted's Style mode the card stroke now uses the Windows 11 Fluent dark-on-light control stroke under a light device preference (and the light-on-dark stroke in dark), so the outline looks correct in both modes instead of a bright rim on pale surfaces.
+- **Navbar follows the Personalization theme.** With dashboard integration, Ted's Navbar (and its launcher buttons) now follow **Settings → General → Personalization → Theme** instead of a fixed style.
+
 ### v0.9.118
 
 - **Music Media tab polish.** The library filter is reordered to **Favorites (default) / Playlists / Artists / Albums**, the filter pills + view toggle now sit **below** the Recently-played row, and they no longer sit on an opaque bar.

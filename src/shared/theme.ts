@@ -24,6 +24,10 @@ export const tedStyleTheme: CSSResult = css`
     --ted-style-muted: var(--ted-night-text, rgba(255, 255, 255, 0.786));
     --ted-style-icon-dim: rgba(255, 255, 255, 0.5);
     --ted-style-divider: rgba(255, 255, 255, 0.0931);
+    /* Card outline stroke — separate from the internal --ted-style-divider so it can
+       adapt to the device light/dark preference (see @media below). Default (dark):
+       the Win11 Fluent light-on-dark control stroke. */
+    --ted-style-card-stroke: rgba(255, 255, 255, 0.0931);
     --ted-style-surface: #2b2b2b;
     --ted-style-surface-2: #383838;
     --ted-style-success: #6ccb5f;
@@ -40,6 +44,15 @@ export const tedStyleTheme: CSSResult = css`
     outline: 1px var(--ted-debug, none) red;
     font-family: "Segoe UI Variable Text", "Segoe UI Variable", "Segoe UI", system-ui,
       -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+  }
+
+  /* On a light device/OS preference, a light-on-dark stroke reads as an out-of-place
+     bright rim over pale glass surfaces. Switch the card outline to the Win11 Fluent
+     dark-on-light control stroke so ted-style cards look correct in both modes. */
+  @media (prefers-color-scheme: light) {
+    :host {
+      --ted-style-card-stroke: rgba(0, 0, 0, 0.0578);
+    }
   }
 
   .ted-card--theme-ha {
@@ -71,7 +84,7 @@ export const tedStyleTheme: CSSResult = css`
       color-mix(in srgb, #16161a var(--ted-card-bg-alpha, 100%), transparent) 100%
     );
     border: 1px solid
-      color-mix(in srgb, var(--ted-style-divider) var(--ted-card-bg-alpha, 100%), transparent);
+      color-mix(in srgb, var(--ted-style-card-stroke) var(--ted-card-bg-alpha, 100%), transparent);
     color: var(--ted-style-text);
     --ha-card-border-radius: var(--ted-style-radius);
   }
@@ -189,7 +202,8 @@ export const brushedOverlay: TemplateResult = html`
   </div>
 `;
 
-/** Resolve the theme class to apply to a card's `ha-card`. */
+/** Resolve the theme class to apply to a card's `ha-card`. Defaults to the active
+ *  Home Assistant theme; `ted-style` is opt-in (only when explicitly requested). */
 export function tedCardThemeClass(theme: TedStyleTheme | undefined): string {
-  return theme === "ha" ? "ted-card--theme-ha" : "ted-card--theme-ted-style";
+  return theme === "ted-style" ? "ted-card--theme-ted-style" : "ted-card--theme-ha";
 }

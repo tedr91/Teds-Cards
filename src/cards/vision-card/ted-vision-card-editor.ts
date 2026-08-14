@@ -23,7 +23,7 @@ export class TedVisionCardEditor extends LitElement implements LovelaceCardEdito
     if (!this.hass || !this._config) return nothing;
     const data = {
       title: this._config.title ?? "",
-      theme: this._config.theme ?? "ted-style",
+      theme: this._config.theme ?? "ha",
       max_events: this._config.max_events ?? 50,
       cameras: this._config.cameras ?? [],
     };

@@ -225,6 +225,15 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
     return this._config?.dashboard_integration === true;
   }
 
+  /** Effective theme: the card's YAML wins, else (dashboard integration) the global
+   *  `theme` setting, else the active Home Assistant theme. */
+  private _resolvedThemeMode(): "ha" | "ted-style" {
+    if (this._config?.theme === "ted-style") return "ted-style";
+    if (this._config?.theme === "ha") return "ha";
+    if (this._dashboardIntegration() && settingsStore.effective().theme === "ted-style") return "ted-style";
+    return "ha";
+  }
+
   /** The first "notifications" status item across all sections (if any). */
   private _notifItem(): { area?: string } | undefined {
     for (const section of this._configuredSections()) {
@@ -981,7 +990,7 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
       navBackground: typeof this._config?.background === "string" ? this._config.background : undefined,
       navTransparency: typeof this._config?.transparency === "number" ? this._config.transparency : undefined,
       navBlur: typeof this._config?.blur === "number" ? this._config.blur : undefined,
-      navTheme: this._config?.theme === "ted-style" ? "ted-style" : "ha",
+      navTheme: this._resolvedThemeMode(),
       navButtonSize: Math.max(24, this._thickness() - 12),
     });
     return this._launcherCache;
@@ -1149,7 +1158,7 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
 
   protected render(): TemplateResult | typeof nothing {
     if (!this._config) return nothing;
-    const theme = this._config.theme === "ted-style" ? "ted-style" : "ha";
+    const theme = this._resolvedThemeMode();
     const navBg = cssColor(this._config.background);
     const cardStyle: Record<string, string> = appearanceStyle({
       background: navBg,

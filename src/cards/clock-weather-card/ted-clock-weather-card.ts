@@ -636,7 +636,7 @@ export class TedClockWeatherCard extends LitElement implements LovelaceCard {
     if (!this._config || !this.hass) return nothing;
 
     // Explicit config wins; else dashboard integration follows the global `theme` setting;
-    // else the card's own default (ted-style).
+    // else default to the active Home Assistant theme.
     const theme: "ha" | "ted-style" =
       this._config.theme === "ha"
         ? "ha"
@@ -646,7 +646,7 @@ export class TedClockWeatherCard extends LitElement implements LovelaceCard {
             ? settingsStore.effective().theme === "ted-style"
               ? "ted-style"
               : "ha"
-            : "ted-style";
+            : "ha";
     const brushed = this._config.brushed === true;
     const shadow = this._config.shadow !== false; // default true
 

@@ -716,7 +716,7 @@ export class TedPhotoViewerCard extends LitElement implements LovelaceCard {
     }
     return {
       type: "custom:ted-messagebox-card",
-      theme: "ted-style",
+      theme: this._config?.theme === "ted-style" ? "ted-style" : "ha",
       severity: "info",
       icon: ic(IC.photo),
       title,

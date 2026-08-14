@@ -245,7 +245,7 @@ export class TedVisionCard extends LitElement implements LovelaceCard {
 
   protected render(): TemplateResult | typeof nothing {
     if (!this._config || !this.hass) return nothing;
-    const themeMode = this._config.theme === "ha" ? "ha" : "ted-style";
+    const themeMode = this._config.theme === "ted-style" ? "ted-style" : "ha";
     const themeClass = tedCardThemeClass(themeMode);
     const events = this._filtered();
     const scoped = this._scoped();
@@ -563,7 +563,7 @@ export class TedVisionCard extends LitElement implements LovelaceCard {
       actions: Record<string, unknown>[] = [],
     ): LovelaceCardConfig => ({
       type: "custom:ted-messagebox-card",
-      theme: "ted-style",
+      theme: this._config?.theme === "ted-style" ? "ted-style" : "ha",
       severity,
       icon,
       title,
@@ -662,7 +662,7 @@ export class TedVisionCard extends LitElement implements LovelaceCard {
   private _onboardingConfig(): LovelaceCardConfig {
     return {
       type: "custom:ted-messagebox-card",
-      theme: "ted-style",
+      theme: this._config?.theme === "ted-style" ? "ted-style" : "ha",
       severity: "warning",
       icon: "mdi:robot-outline",
       title: "AI Task setup needed",
