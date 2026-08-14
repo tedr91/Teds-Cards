@@ -942,6 +942,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.122
+
+- **Calendar Card (Agenda view): slightly more space above each day.** The day-row top padding is now 5px (bottom stays 4px).
+
 ### v0.9.121
 
 - **Calendar Card (Agenda view) polish.** Each day row now has even 4px top/bottom padding, and the line under each day's date is now a vertical divider on the right of the date column at 50% opacity (today stays blue, other days use the grid color) instead of a horizontal underline.

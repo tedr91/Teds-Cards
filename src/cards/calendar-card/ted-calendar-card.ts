@@ -1122,10 +1122,10 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
     .calendar .calendar-container.agenda-compact-events .agenda-event-title {
       min-width: 0;
     }
-    /* Even 4px breathing room above/below each Agenda day row (daylight defaults to an
-       8px top strip and no bottom padding). */
+    /* Breathing room around each Agenda day row (daylight defaults to an 8px top strip
+       and no bottom padding). */
     .calendar .agenda-day-row {
-      padding-top: 4px;
+      padding-top: 5px;
       padding-bottom: 4px;
     }
     /* Turn daylight's under-date underline into a vertical divider on the RIGHT of the
