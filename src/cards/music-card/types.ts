@@ -3,13 +3,6 @@ import type { LovelaceCardConfig } from "custom-card-helpers";
 import type { TedStyleTheme } from "../../shared/types";
 
 /**
- * Where the player entity comes from.
- * - `settings` (default) — this device's `music_player` setting (Settings → Sounds).
- * - `config`             — the card's own `entity`.
- */
-export type MusicPlayerSource = "settings" | "config";
-
-/**
  * Background treatment for the player surface.
  * - `blur` (default) — heavily blurred album art, frosted with the album's average color.
  * - `none`           — the active theme surface (Ted's style or Home Assistant), no overlay.
@@ -19,22 +12,23 @@ export type MusicBackgroundMode = "blur" | "none";
 /** The tabs shown on the right side of the full player. */
 export type MusicTab = "media" | "queue" | "recent" | "lyrics";
 
-/** Player layout.
- * - `full`  — the two-pane player + tabs.
- * - `mini`  — a compact two-row bar with all transport controls inline.
- * - `micro` — a nine-wide, one-row bar showing only Play/Pause + "…" (the rest of
- *             the transport controls move into the "…" menu). */
-export type MusicMode = "full" | "mini" | "micro";
+/** Player layout. `full` = the two-pane player + tabs; `mini` = a compact bar that
+ *  adapts to the card size — controls collapse into the “…” menu as it narrows, and
+ *  drop to a row below the title/artist when the card is tall enough. */
+export type MusicMode = "full" | "mini";
 
 /** How the Media tab presents library items. `tiles` = artwork grid; `list` = rows. */
 export type MusicMediaLayout = "tiles" | "list";
 
 export interface MusicCardConfig extends LovelaceCardConfig {
   type: string;
-  /** Explicit media_player entity. Wins over the Settings value; required for `player_source: config`. */
+  /** Explicit media_player entity. Used when `dashboard_integration` is off;
+   *  overrides the Settings value when set. */
   entity?: string;
-  /** Where the player entity comes from. Defaults to `settings`. */
-  player_source?: MusicPlayerSource;
+  /** When true (YAML-only), the player comes from this device's Ted's Cards
+   *  Settings (Music player → System sounds player → the device's own player)
+   *  instead of `entity`. Default false. */
+  dashboard_integration?: boolean;
   /** Player layout. Default `full`. */
   mode?: MusicMode;
   /** When the resolved entity is not a Music Assistant player, try to find its

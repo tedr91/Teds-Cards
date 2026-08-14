@@ -3,17 +3,11 @@ import { customElement, property, state } from "lit/decorators.js";
 import { type HomeAssistant, type LovelaceCardEditor, fireEvent } from "custom-card-helpers";
 
 import { MUSIC_CARD_EDITOR_TYPE } from "./const";
-import type { MusicCardConfig, MusicPlayerSource } from "./types";
-
-const SOURCE_OPTIONS = [
-  { value: "settings", label: "This device's Settings player" },
-  { value: "config", label: "This card (choose below)" },
-];
+import type { MusicCardConfig } from "./types";
 
 const MODE_OPTIONS = [
   { value: "full", label: "Full player" },
   { value: "mini", label: "Mini player" },
-  { value: "micro", label: "Micro player" },
 ];
 
 const BACKGROUND_OPTIONS = [
@@ -42,11 +36,6 @@ export class TedMusicCardEditor extends LitElement implements LovelaceCardEditor
 
   protected render(): TemplateResult | typeof nothing {
     if (!this.hass || !this._config) return nothing;
-    const source: MusicPlayerSource = this._config.player_source ?? "settings";
-    const sourceData = { player_source: source };
-    const sourceSchema = [
-      { name: "player_source", selector: { select: { mode: "dropdown", options: SOURCE_OPTIONS } } },
-    ];
     const restData = {
       mode: this._config.mode ?? "full",
       background_mode: this._config.background_mode ?? "blur",
@@ -88,15 +77,7 @@ export class TedMusicCardEditor extends LitElement implements LovelaceCardEditor
 
     return html`
       <div class="editor">
-        <ha-form
-          .hass=${this.hass}
-          .data=${sourceData}
-          .schema=${sourceSchema}
-          .computeLabel=${this._computeLabel}
-          .computeHelper=${this._computeHelper}
-          @value-changed=${this._valueChanged}
-        ></ha-form>
-        ${source === "settings"
+        ${this._config.dashboard_integration
           ? html`<div class="settings-note">
               The player is chosen per-device in <b>Settings → Sounds</b>. Non-Music-Assistant
               speakers are matched to their Music Assistant player automatically when possible.
@@ -123,8 +104,6 @@ export class TedMusicCardEditor extends LitElement implements LovelaceCardEditor
 
   private _computeHelper = (schema: { name: string }): string | undefined => {
     switch (schema.name) {
-      case "player_source":
-        return "\"This device's Settings player\" uses the per-device Music player from Ted's Cards Settings.";
       case "background_mode":
         return "How the player surface is painted.";
       case "auto_resolve_mass_player":
@@ -142,8 +121,6 @@ export class TedMusicCardEditor extends LitElement implements LovelaceCardEditor
 
   private _computeLabel = (schema: { name: string }): string => {
     switch (schema.name) {
-      case "player_source":
-        return "Player source";
       case "mode":
         return "Layout";
       case "background_mode":

@@ -49,7 +49,7 @@ backend-driven alerts (notifications, alarms, timers) fit together.
 These cards need the **Ted's Dashboard System** integration
 (`teds_dashboard_system`) installed: **Settings**, **Alarm**, **Timer**,
 **Notification**, **Announce** (and any card using per-device settings, e.g. Camera's
-`cameras_source: settings`, or the **Music** card's default `player_source: settings`).
+`cameras_source: settings`, or the **Music** card with `dashboard_integration: true`).
 The others work standalone.
 
 The **Music** card additionally needs the third-party
