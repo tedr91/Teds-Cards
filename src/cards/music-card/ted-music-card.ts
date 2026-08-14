@@ -1708,11 +1708,10 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
     `;
   }
 
-  /** Animated equalizer shown at the right of the bar while audio is playing. */
+  /** Animated equalizer shown at the right of the bar while audio is playing.
+   *  Reuses the full player's 3-bar indicator so both match. */
   private _renderEq(): TemplateResult {
-    return html`<div class="mini-eq" aria-hidden="true">
-      <span></span><span></span><span></span><span></span>
-    </div>`;
+    return html`<div class="eq" aria-hidden="true"><i></i><i></i><i></i></div>`;
   }
 
   /** The mini bar's popups: the action menu and the volume flyout. Both anchor to
@@ -3422,7 +3421,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
         height: 5px;
         border-radius: 1px;
         background: var(--ted-style-accent);
-        animation: ted-eq 0.9s ease-in-out infinite;
+        animation: ted-eq 1.3s ease-in-out infinite;
       }
       .eq i:nth-child(2) {
         animation-delay: 0.3s;
@@ -3768,49 +3767,6 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
       .mini-progress-fill {
         height: 100%;
         background: var(--ted-style-accent);
-      }
-
-      /* "Now playing" equalizer, shown at the right of the bar while playing. */
-      .mini-eq {
-        flex: 0 0 auto;
-        display: inline-flex;
-        align-items: flex-end;
-        gap: 3px;
-        height: 20px;
-      }
-      .mini-eq span {
-        width: 3px;
-        height: 40%;
-        border-radius: 1px;
-        background: var(--ted-style-accent);
-        animation: mini-eq-bounce 0.9s ease-in-out infinite;
-      }
-      .mini-eq span:nth-child(1) {
-        animation-delay: -0.25s;
-      }
-      .mini-eq span:nth-child(2) {
-        animation-delay: -0.6s;
-      }
-      .mini-eq span:nth-child(3) {
-        animation-delay: -0.1s;
-      }
-      .mini-eq span:nth-child(4) {
-        animation-delay: -0.45s;
-      }
-      @keyframes mini-eq-bounce {
-        0%,
-        100% {
-          height: 30%;
-        }
-        50% {
-          height: 100%;
-        }
-      }
-      @media (prefers-reduced-motion: reduce) {
-        .mini-eq span {
-          animation: none;
-          height: 60%;
-        }
       }
 
       /* Mini action menu + anchored volume flyout (fly above/below the bar). */
