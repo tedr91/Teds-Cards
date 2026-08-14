@@ -1952,8 +1952,10 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
   private _renderMiniProgress(): TemplateResult {
     const dur = this._duration();
     const pct = dur ? Math.min(100, Math.max(0, (this._elapsed() / dur) * 100)) : 0;
-    return html`<div class="mini-progress ${this._miniStacked ? "tall" : ""}" aria-hidden="true">
-      <div class="mini-progress-fill" style="width:${pct}%"></div>
+    return html`<div class="mini-progress-clip" aria-hidden="true">
+      <div class="mini-progress ${this._miniStacked ? "tall" : ""}">
+        <div class="mini-progress-fill" style="width:${pct}%"></div>
+      </div>
     </div>`;
   }
 
@@ -3748,18 +3750,24 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
         height: 3px;
       }
       /* Playback progress: a thin, non-interactive strip along the card's bottom edge
-         (2px on short cards, a touch taller once the controls get their own row). */
+         (2px on short cards, a touch taller once the controls get their own row).
+         The clip layer matches the card's rounded corners so the bar can't poke past
+         them on themes with a large border radius. */
+      .mini-progress-clip {
+        position: absolute;
+        inset: 0;
+        z-index: 2;
+        pointer-events: none;
+        border-radius: var(--ha-card-border-radius, 12px);
+        overflow: hidden;
+      }
       .mini-progress {
         position: absolute;
         left: 0;
         right: 0;
         bottom: 0;
         height: 2px;
-        z-index: 2;
-        pointer-events: none;
         background: rgba(127, 127, 127, 0.35);
-        border-radius: 0 0 var(--ha-card-border-radius, 12px) var(--ha-card-border-radius, 12px);
-        overflow: hidden;
       }
       .mini-progress.tall {
         height: 3px;

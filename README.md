@@ -942,6 +942,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.129
+
+- **Music Card (Mini): progress bar respects rounded corners.** Fixed the playback progress strip poking past the card's bottom corners on themes with a large border radius — it's now clipped to the card shape.
+
 ### v0.9.128
 
 - **Music Card (Mini): equalizer now matches the full player.** The now-playing equalizer uses the same three bars as the full player's queue indicator (was four), and its animation is a touch slower.
