@@ -942,6 +942,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.124
+
+- **Night Mode dark theme now reliably returns to light at dawn on multi-panel setups.** The pre-night dark-theme preference is snapshotted once at the account level (matching Home Assistant's user-scoped dark toggle) instead of per-device, so a panel that booted after dark had already cascaded can no longer "restore" the account back to dark in the morning.
+
 ### v0.9.123
 
 - **Room Card auto-populate: switches now go to "Others".** All `switch` entities (including smart plugs and switch groups) move from **Controls** to **Others**. **Controls** keeps scenes, zones, lights, covers, fans, and valves.

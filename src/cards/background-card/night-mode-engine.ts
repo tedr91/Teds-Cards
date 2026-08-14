@@ -44,8 +44,10 @@ const NIGHT_FONT_STYLE_ID = "ted-night-mode-font";
 const TED_STYLE_DAY_TEXT = "#ffffff";
 /** Per-device marker mirroring whether night mode is currently applied (survives a reload). */
 const NIGHT_ACTIVE_KEY = "night_active";
-/** Per-device snapshot of the user's dark-theme preference before night mode forced it on (so the
- *  morning can restore it). Absent = night mode isn't currently overriding dark mode. */
+/** Global (user-scoped) snapshot of the dark-theme preference before night mode forced it on, so
+ *  the morning can restore it. Global — not per-device — because HA's dark toggle is user-scoped and
+ *  cascades to every session; a per-device copy lets a panel that booted after dark cascaded snapshot
+ *  the already-dark value and "restore" the account back to dark at dawn. Absent = not overriding. */
 const NIGHT_DARK_PREV_KEY = "night_dark_prev";
 /** Switch to Dark mode this long AFTER the night transition finishes. */
 const DARK_AFTER_TRANSITION_MS = 5_000;
@@ -251,20 +253,25 @@ class NightModeEngine {
   }
 
   /** Toggle HA's user dark mode by firing `settheme` on the <home-assistant> root (which HA persists
-   *  user-scoped). Snapshots the prior preference on the way in so the morning can restore it. */
+   *  user-scoped). The prior preference is snapshotted once, globally, so any panel can restore it
+   *  and a panel that came up after dark cascaded can't overwrite it with the already-dark value. */
   private _setNativeDark(on: boolean): void {
     const root = document.querySelector("home-assistant") as HTMLElement | null;
     if (!root) return;
-    const dev = settingsStore.deviceSettings();
-    const applied = NIGHT_DARK_PREV_KEY in dev;
+    const glob = settingsStore.globalSettings();
+    const applied = NIGHT_DARK_PREV_KEY in glob;
     if (on) {
-      if (!applied)
-        settingsStore.setValue("device", NIGHT_DARK_PREV_KEY, (this._currentDark() ?? null) as SettingsValue);
+      // Record the pre-night preference exactly once, and only while dark is still off, so a
+      // dark theme cascaded from another panel can never poison the snapshot.
+      if (!applied && this._currentDark() !== true)
+        settingsStore.setValue("global", NIGHT_DARK_PREV_KEY, (this._currentDark() ?? null) as SettingsValue);
       if (this._currentDark() !== true) this._fireSetTheme(root, true);
     } else if (applied) {
-      const prev = dev[NIGHT_DARK_PREV_KEY];
+      const prev = glob[NIGHT_DARK_PREV_KEY];
       const restore = prev === true ? true : prev === false ? false : undefined;
-      settingsStore.clearValue("device", NIGHT_DARK_PREV_KEY);
+      // Clear first so any other panel evaluating dawn concurrently sees it as already-restored
+      // and no-ops, leaving exactly one effective restore for the whole account.
+      settingsStore.clearValue("global", NIGHT_DARK_PREV_KEY);
       if (this._currentDark() !== restore) this._fireSetTheme(root, restore);
     }
   }
