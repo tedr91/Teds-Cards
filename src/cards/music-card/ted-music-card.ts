@@ -36,7 +36,6 @@ interface GridOptions {
 const TABS: { id: MusicTab; label: string }[] = [
   { id: "media", label: "Media" },
   { id: "queue", label: "Queue" },
-  { id: "recent", label: "Recent" },
   { id: "lyrics", label: "Lyrics" },
 ];
 
@@ -2146,11 +2145,10 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
     </button>`;
   }
 
-  /** Item count shown next to the Queue/Recent tabs (undefined = no badge). */
+  /** Item count shown next to the Queue tab (undefined = no badge). */
   private _tabCount(id: MusicTab): number | undefined {
     if (!this._queue) return undefined;
     if (id === "queue") return Math.max(0, this._queue.length - this._queueCurrentIdx);
-    if (id === "recent") return this._queueCurrentIdx;
     return undefined;
   }
 
@@ -2160,8 +2158,6 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
         return this._renderMedia();
       case "queue":
         return this._renderQueue(false);
-      case "recent":
-        return this._renderQueue(true);
       case "lyrics":
         return this._renderLyrics();
     }

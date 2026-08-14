@@ -10,7 +10,7 @@ import type { TedStyleTheme } from "../../shared/types";
 export type MusicBackgroundMode = "blur" | "none";
 
 /** The tabs shown on the right side of the full player. */
-export type MusicTab = "media" | "queue" | "recent" | "lyrics";
+export type MusicTab = "media" | "queue" | "lyrics";
 
 /** Player layout. `full` = the two-pane player + tabs; `mini` = a compact bar that
  *  adapts to the card size — controls collapse into the “…” menu as it narrows, and
