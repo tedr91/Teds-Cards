@@ -52,14 +52,16 @@ export function appearanceStyle(opts: {
   // and we force `backdrop-filter: none` to override any blur the active HA theme
   // applies to every ha-card (via --ha-card-backdrop-filter) — otherwise the
   // "transparent" card would still frost the view behind it. We also zero the
-  // `--ha-card-backdrop-filter` variable itself so themes that move the blur onto a
-  // `ha-card::before` pseudo-element (e.g. visionOS / frosted-glass card-mod themes)
-  // are neutralized too — those ignore the element's own backdrop-filter.
+  // `--ha-card-backdrop-filter` and `--ha-card-box-shadow` variables so themes that
+  // move the blur / glass edge-glow onto a `ha-card::before` pseudo-element (e.g.
+  // visionOS / frosted-glass card-mod themes) are neutralized too — those ignore the
+  // element's own backdrop-filter / box-shadow.
   const fullyTransparent = transparency != null && transparency >= 100;
   if (fullyTransparent) {
     style["backdrop-filter"] = "none";
     style["-webkit-backdrop-filter"] = "none";
     style["--ha-card-backdrop-filter"] = "none";
+    style["--ha-card-box-shadow"] = "none";
   } else if (blur != null && blur > 0) {
     const px = (blur / 100) * MAX_BLUR_PX;
     style["backdrop-filter"] = `blur(${px}px)`;

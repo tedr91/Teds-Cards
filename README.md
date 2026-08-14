@@ -942,6 +942,11 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.134
+
+- **Room Card: photo cards keep their frosted-glass body.** The header photo now sits above the card's frost layer, so on translucent/glass themes the card body still frosts while the photo stays crisp (previously a photo turned the whole card's frost off).
+- **Full-transparency cards drop the glass edge-glow too.** A fully-transparent card (e.g. the Clock) now also clears the theme's `--ha-card-box-shadow`, so `ha-card::before`-based glass themes no longer draw a glowing edge around an otherwise invisible card.
+
 ### v0.9.133
 
 - **Translucent/glass themes no longer blur where they shouldn't.** Under themes that drive card blur from `--ha-card-backdrop-filter` or an `ha-card::before` pseudo-element (e.g. visionOS / frosted-glass themes): fully-transparent cards (like the Clock in full-transparency mode) now truly show straight through, and the **Room Card** header photo stays crisp instead of being blurred by the theme's card frost.
