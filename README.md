@@ -942,6 +942,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.131
+
+- **Music Card: dark-mode readability scrim.** In dark mode, a subtle scrim is drawn over the blurred album-art background so light artwork stays readable. No effect on cards that don't use `background_mode: blur`, or in light mode.
+
 ### v0.9.130
 
 - **Music Card: removed the “Recent” tab.** The full player's tab bar is now Media / Queue / Lyrics. (The “Recently played” row inside the Media tab is unchanged.)

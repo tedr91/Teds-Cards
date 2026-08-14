@@ -1463,7 +1463,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
     if (this._config?.mode === "mini") {
       return html`
         <ha-card class="ted-card ${themeClass}" style="--music-fg:${fg}">
-          <div class="bg-clip">${this._renderBackground(mode)}${this._renderFrost(mode)}</div>
+          <div class="bg-clip">${this._renderBackground(mode)}${this._renderScrim(mode)}${this._renderFrost(mode)}</div>
           <div class="content mini-content">${this._renderMini()}</div>
           ${this._renderMiniProgress()}
         </ha-card>
@@ -1480,7 +1480,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
 
     return html`
       <ha-card class="ted-card ${themeClass}" style="--music-fg:${fg}">
-        <div class="bg-clip">${this._renderBackground(mode)}${this._renderFrost(mode)}</div>
+        <div class="bg-clip">${this._renderBackground(mode)}${this._renderScrim(mode)}${this._renderFrost(mode)}</div>
         <div class="content">
           ${this._renderPlayer()}
           <div class="tabs">${this._renderTabs()}</div>
@@ -1496,6 +1496,15 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
     const c = this._avgColor;
     const style = c ? `background:rgba(${c}, 0.6)` : "background:rgba(16, 16, 20, 0.4)";
     return html`<div class="frost" style=${style}></div>`;
+  }
+
+  /** Dark-mode scrim over the blurred art (keeps light artwork readable). No-op
+   *  unless `background_mode: blur` with artwork, and only in dark mode. */
+  private _renderScrim(mode: MusicBackgroundMode): TemplateResult | typeof nothing {
+    if (mode !== "blur" || !this._artUrl()) return nothing;
+    const dark = !!(this.hass as unknown as { themes?: { darkMode?: boolean } })?.themes?.darkMode;
+    if (!dark) return nothing;
+    return html`<div class="bg-scrim"></div>`;
   }
 
   private _renderBackground(mode: MusicBackgroundMode): TemplateResult | typeof nothing {
@@ -2457,6 +2466,13 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
         background-position: center;
         filter: blur(42px) saturate(1.4);
         transform: scale(1.3);
+      }
+      /* Dark-mode readability scrim over the blurred art (below the frost). */
+      .bg-scrim {
+        position: absolute;
+        inset: 0;
+        z-index: 0;
+        background: rgba(0, 0, 0, 0.38);
       }
       /* Card-wide frosted glass, tinted with the album's average color (set inline),
          over the blurred art so content stands out. */
