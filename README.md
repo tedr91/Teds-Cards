@@ -942,6 +942,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.127
+
+- **Music Card (Mini): tap-to-open menu + now-playing equalizer.** The “…” button is gone — tap anywhere on the bar (outside the transport buttons) to open the action menu, which flies up from the bar (or down when the card is near the top of the screen). While audio is playing, an animated equalizer appears at the right of the controls row, or in the title row when the controls are stacked.
+
 ### v0.9.126
 
 - **Music Card: adaptive Mini player + `dashboard_integration`.** The Mini player now adapts to the space it's given — transport controls fold into the “…” menu as the card narrows (down to just “…”), and drop to a row below the title/artist when the card is tall enough; the thumbnail auto-sizes to the card height. The separate “Micro” mode has been removed — that behavior is now automatic. The player is sourced from Settings via a new YAML-only `dashboard_integration: true` (replacing the `player_source` option).

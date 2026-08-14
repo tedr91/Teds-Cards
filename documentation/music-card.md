@@ -74,13 +74,17 @@ media_layout: tiles
 Set `mode: mini` for a compact bar that adapts to the space it's given:
 
 - **Width.** When the card is wide, all transport controls (shuffle, previous,
-  play/pause, next, repeat) are inline. As it narrows, the extra controls fold into
-  the "…" menu — first leaving just **Play/Pause** and "…", then only "…" (with
-  Play/Pause moving to the top of the menu). Media, Queue, Volume, and Party Mode
-  always live in the "…" menu.
+  play/pause, next, repeat) are inline. As it narrows, the extra controls fold away
+  — first leaving just **Play/Pause**, then none. Anything not shown inline (plus
+  Media, Queue, Volume, and Party Mode) lives in the action menu.
+- **Tap for the menu.** Tapping anywhere on the bar (outside the transport buttons)
+  opens the action menu. It flies up from the bar, or down when the card sits near
+  the top of the screen.
 - **Height.** In a one-row card everything sits on a single line. When the card is
   two rows tall (or an auto-height card ends up tall enough), the controls drop to a
   row below the title/artist for more breathing room.
+- **Now playing.** While audio is playing, an animated equalizer shows at the right
+  of the bar (in the controls row, or the title row when the controls are stacked).
 
 The thumbnail auto-sizes to the card height in every case.
 

@@ -324,7 +324,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
       if (w && !path.includes(w)) this._shuffleMenuOpen = false;
     }
     if (this._miniMenuOpen || this._miniVolOpen) {
-      const w = this.renderRoot?.querySelector?.(".mini-more-wrap");
+      const w = this.renderRoot?.querySelector?.(".mini");
       if (w && !path.includes(w)) {
         this._miniMenuOpen = false;
         this._miniVolOpen = false;
@@ -427,14 +427,6 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
       const above = t.top - cardRect.top;
       return popup.offsetHeight + gap > below && above > below;
     };
-    // The mini bar is only one row tall, so card-relative space is ~0 both ways —
-    // measure against the viewport instead so a bottom-pinned bar opens upward.
-    const wantsUpViewport = (trigger: HTMLElement, popup: HTMLElement, gap: number): boolean => {
-      const t = trigger.getBoundingClientRect();
-      const below = window.innerHeight - t.bottom;
-      const above = t.top;
-      return popup.offsetHeight + gap > below && above > below;
-    };
     if (this._castOpen) {
       const fly = root?.querySelector(".cast-flyout") as HTMLElement | null;
       const wrap = root?.querySelector(".cast-wrap") as HTMLElement | null;
@@ -451,19 +443,21 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
         if (up !== this._shuffleMenuUp) this._shuffleMenuUp = up;
       }
     }
+    // Mini popups anchor to the right side of the bar and fly up when there's room
+    // above it; when the card sits near the top of the screen they fly down instead.
+    const bar = root?.querySelector(".mini") as HTMLElement | null;
+    const barTop = bar?.getBoundingClientRect().top ?? 0;
     if (this._miniMenuOpen) {
       const menu = root?.querySelector(".mini-menu") as HTMLElement | null;
-      const wrap = menu?.closest(".mini-more-wrap") as HTMLElement | null;
-      if (menu && wrap) {
-        const up = wantsUpViewport(wrap, menu, 6);
+      if (menu && bar) {
+        const up = barTop >= menu.offsetHeight + 12;
         if (up !== this._miniMenuUp) this._miniMenuUp = up;
       }
     }
     if (this._miniVolOpen) {
       const fly = root?.querySelector(".mini-vol-flyout") as HTMLElement | null;
-      const wrap = fly?.closest(".mini-more-wrap") as HTMLElement | null;
-      if (fly && wrap) {
-        const up = wantsUpViewport(wrap, fly, 6);
+      if (fly && bar) {
+        const up = barTop >= fly.offsetHeight + 12;
         if (up !== this._miniVolUp) this._miniVolUp = up;
       }
     }
@@ -1662,20 +1656,24 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
     const volLevel = this._attr<number>("volume_level");
     const volPct = typeof volLevel === "number" ? Math.round(volLevel * 100) : 0;
     const muted = !!this._attr<boolean>("is_volume_muted");
+    const stacked = this._miniStacked;
     return html`
-      <div class="mini ${this._miniStacked ? "stacked" : ""}">
+      <div class="mini ${stacked ? "stacked" : ""}" @click=${this._onMiniSurfaceTap}>
         <div class="mini-art-wrap">
           ${art
             ? html`<img class="mini-art" src=${art} alt="" />`
             : html`<div class="mini-art ph"><ha-icon icon=${ic(IC.music)}></ha-icon></div>`}
         </div>
         <div class="mini-body">
-          <div class="mini-meta">
-            <div class="mini-title one">${title}</div>
-            <div class="mini-artist one">${artist}</div>
+          <div class="mini-meta-wrap">
+            <div class="mini-meta">
+              <div class="mini-title one">${title}</div>
+              <div class="mini-artist one">${artist}</div>
+            </div>
+            ${stacked && playing ? this._renderEq() : nothing}
           </div>
           <div class="mini-actions">
-            <div class="mini-controls">
+            <div class="mini-controls" @click=${this._stopEvt}>
               <span class="mini-tp mini-tp-extra">
                 ${this._renderShuffleControl(shuffle)}
                 ${this._ctrl(ic(IC.previous), "Previous", this._onPrev)}
@@ -1700,19 +1698,29 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
                 )}
               </span>
             </div>
-            <div class="mini-right">
-              ${this._renderMiniMore(volPct, muted, playing, shuffle, repeat)}
-            </div>
+            ${!stacked && playing
+              ? html`<div class="mini-right">${this._renderEq()}</div>`
+              : nothing}
           </div>
         </div>
+        ${this._renderMiniPopups(volPct, muted, playing, shuffle, repeat)}
       </div>
     `;
   }
 
-  /** The mini bar's "…" button. The menu always carries the full transport set
-   *  (Play/Pause + Previous/Next/Shuffle/Repeat), but CSS container queries only
-   *  reveal each item when its inline counterpart has been collapsed away. */
-  private _renderMiniMore(
+  /** Animated equalizer shown at the right of the bar while audio is playing. */
+  private _renderEq(): TemplateResult {
+    return html`<div class="mini-eq" aria-hidden="true">
+      <span></span><span></span><span></span><span></span>
+    </div>`;
+  }
+
+  /** The mini bar's popups: the action menu and the volume flyout. Both anchor to
+   *  the right side of the bar and fly up or down (see `_positionPopups`). The menu
+   *  always carries the full transport set (Play/Pause + Previous/Next/Shuffle/
+   *  Repeat), but CSS container queries only reveal each item when its inline
+   *  counterpart has been collapsed away. */
+  private _renderMiniPopups(
     volPct: number,
     muted: boolean,
     playing = false,
@@ -1721,19 +1729,9 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
   ): TemplateResult {
     const menuDir = this._miniMenuUp ? "up" : "down";
     const volDir = this._miniVolUp ? "up" : "down";
-    return html`<div class="mini-more-wrap">
-      <button
-        type="button"
-        class="ctrl mini-more ${this._miniMenuOpen ? "active" : ""}"
-        title="More"
-        aria-label="More"
-        aria-haspopup="menu"
-        @click=${this._toggleMiniMenu}
-      >
-        <ha-icon icon=${ic(IC.more)}></ha-icon>
-      </button>
+    return html`
       ${this._miniMenuOpen
-        ? html`<div class="mini-menu ${menuDir}" role="menu">
+        ? html`<div class="mini-menu ${menuDir}" role="menu" @click=${this._stopEvt}>
             <button
               type="button"
               class="mini-menu-item menu-tp menu-tp-play"
@@ -1780,7 +1778,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
           </div>`
         : nothing}
       ${this._miniVolOpen
-        ? html`<div class="mini-vol-flyout ${volDir}" role="group">
+        ? html`<div class="mini-vol-flyout ${volDir}" role="group" @click=${this._stopEvt}>
             <span class="mini-vol-num">${volPct}</span>
             <span class="mini-vol-range-wrap">
               <input
@@ -1815,13 +1813,22 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
             </button>
           </div>`
         : nothing}
-    </div>`;
+    `;
   }
 
-  private _toggleMiniMenu = (e: Event): void => {
+  /** Tap anywhere on the bar surface (outside the transport controls) toggles the
+   *  action menu. */
+  private _onMiniSurfaceTap = (): void => {
+    if (this._miniMenuOpen || this._miniVolOpen) {
+      this._miniMenuOpen = false;
+      this._miniVolOpen = false;
+    } else {
+      this._miniMenuOpen = true;
+    }
+  };
+
+  private _stopEvt = (e: Event): void => {
     e.stopPropagation();
-    this._miniVolOpen = false;
-    this._miniMenuOpen = !this._miniMenuOpen;
   };
 
   private _openMiniPopup(which: "media" | "queue"): void {
@@ -1946,7 +1953,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
   private _renderMiniProgress(): TemplateResult {
     const dur = this._duration();
     const pct = dur ? Math.min(100, Math.max(0, (this._elapsed() / dur) * 100)) : 0;
-    return html`<div class="mini-progress" aria-hidden="true">
+    return html`<div class="mini-progress ${this._miniStacked ? "tall" : ""}" aria-hidden="true">
       <div class="mini-progress-fill" style="width:${pct}%"></div>
     </div>`;
   }
@@ -3608,10 +3615,12 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
         padding: 10px 16px;
       }
       .mini {
+        position: relative;
         display: flex;
         align-items: center;
         gap: 14px;
         height: 100%;
+        cursor: pointer;
       }
       .mini-art-wrap {
         flex: 0 0 auto;
@@ -3640,6 +3649,13 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
       }
       .mini-art.ph ha-icon {
         --mdc-icon-size: 24px;
+      }
+      .mini-meta-wrap {
+        flex: 1 1 auto;
+        min-width: 0;
+        display: flex;
+        align-items: center;
+        gap: 10px;
       }
       .mini-meta {
         flex: 1 1 0;
@@ -3672,6 +3688,9 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
         align-items: center;
         gap: 4px;
       }
+      .mini-controls {
+        cursor: default;
+      }
       /* Transport groups collapse individually via the container queries below. */
       .mini-tp {
         display: contents;
@@ -3689,11 +3708,12 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
         justify-content: center;
         gap: 6px;
       }
-      .mini.stacked .mini-meta {
+      .mini.stacked .mini-meta-wrap {
         flex: 0 0 auto;
       }
+      /* Controls get their own centered row; the equalizer sits in the meta row. */
       .mini.stacked .mini-actions {
-        justify-content: space-between;
+        justify-content: center;
       }
       /* Menu transport items stay hidden until their inline counterpart collapses.
          Compound selectors so they beat the later .mini-menu-item display rule. */
@@ -3728,29 +3748,72 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
         margin-top: 8px;
         height: 3px;
       }
-      /* Playback progress: a thin, non-interactive strip along the card's bottom edge. */
+      /* Playback progress: a thin, non-interactive strip along the card's bottom edge
+         (2px on short cards, a touch taller once the controls get their own row). */
       .mini-progress {
         position: absolute;
         left: 0;
         right: 0;
         bottom: 0;
-        height: 3px;
+        height: 2px;
         z-index: 2;
         pointer-events: none;
         background: rgba(127, 127, 127, 0.35);
         border-radius: 0 0 var(--ha-card-border-radius, 12px) var(--ha-card-border-radius, 12px);
         overflow: hidden;
       }
+      .mini-progress.tall {
+        height: 3px;
+      }
       .mini-progress-fill {
         height: 100%;
         background: var(--ted-style-accent);
       }
 
-      /* Mini "..." menu + anchored volume flyout */
-      .mini-more-wrap {
-        position: relative;
+      /* "Now playing" equalizer, shown at the right of the bar while playing. */
+      .mini-eq {
+        flex: 0 0 auto;
         display: inline-flex;
+        align-items: flex-end;
+        gap: 3px;
+        height: 20px;
       }
+      .mini-eq span {
+        width: 3px;
+        height: 40%;
+        border-radius: 1px;
+        background: var(--ted-style-accent);
+        animation: mini-eq-bounce 0.9s ease-in-out infinite;
+      }
+      .mini-eq span:nth-child(1) {
+        animation-delay: -0.25s;
+      }
+      .mini-eq span:nth-child(2) {
+        animation-delay: -0.6s;
+      }
+      .mini-eq span:nth-child(3) {
+        animation-delay: -0.1s;
+      }
+      .mini-eq span:nth-child(4) {
+        animation-delay: -0.45s;
+      }
+      @keyframes mini-eq-bounce {
+        0%,
+        100% {
+          height: 30%;
+        }
+        50% {
+          height: 100%;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .mini-eq span {
+          animation: none;
+          height: 60%;
+        }
+      }
+
+      /* Mini action menu + anchored volume flyout (fly above/below the bar). */
       .mini-menu,
       .mini-vol-flyout {
         position: absolute;
