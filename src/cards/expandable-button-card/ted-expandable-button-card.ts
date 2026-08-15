@@ -294,6 +294,7 @@ export class TedExpandableButtonCard extends LitElement implements LovelaceCard 
           "flip-icon": flip,
           grouped: this._config.group_indicator === true,
           "grouped-hl": this._config.group_indicator === true && !!this._config.ring,
+          "grouped-transparent": this._config.group_indicator === true && this._config.transparency === 100,
         })}
         popovertarget=${this._quickLaunch ? nothing : POPOVER_ID}
         aria-haspopup="true"
@@ -417,6 +418,11 @@ export class TedExpandableButtonCard extends LitElement implements LovelaceCard 
       }
       /* Hide the stacked-card shadow while the group is the current view (highlighted). */
       .ebc-trigger.grouped-hl {
+        box-shadow: none;
+      }
+      /* Hide the stacked-card shadow when the button surface is fully transparent — with no
+         visible tile the floating shadow would read as a stray mark. */
+      .ebc-trigger.grouped-transparent {
         box-shadow: none;
       }
       /* Dot indicators (one per view, max 4) along the bottom of a group button. */

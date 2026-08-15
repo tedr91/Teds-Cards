@@ -942,6 +942,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.142
+
+- **Grouped launcher buttons: the multi-view hint shadow hides at full transparency.** When a launcher button's background Transparency is set to 100%, the "card behind" stacked-card shadow on a combined multi-view button is now hidden too, so it doesn't read as a stray mark over the transparent tile.
+
 ### v0.9.141
 
 - **Camera Card: the primary tile now starts live.** The first (primary) camera in any layout defaults to **live** — one always-on feed with audio for Frigate cameras — while the other tiles stay on lightweight **auto** thumbnails. Per-camera `camera_view` settings and in-session view toggles still take precedence.
