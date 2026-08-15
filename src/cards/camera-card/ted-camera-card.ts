@@ -20,6 +20,12 @@ import {
   type MsePlayerErrorKind,
   type MsePlayerHandle,
 } from "../../shared/mse-player";
+import {
+  createWebRtcPlayer,
+  isWebRtcSupported,
+  type WebRtcPlayerErrorKind,
+  type WebRtcPlayerHandle,
+} from "../../shared/webrtc-player";
 import { pendingCameraFocus, subscribeCameraFocus } from "../../shared/camera-focus";
 import { registerCustomCard } from "../../shared/register-card";
 import { appearanceStyle, cssColor } from "../../shared/appearance";
@@ -123,6 +129,13 @@ export class TedCameraCard extends LitElement implements LovelaceCard {
   /** Cameras whose MSE failed this session — they stick to `<hui-image>`. */
   private _mseFailed = new Set<string>();
 
+  /** Live WebRTC players keyed by `${entity}|${stream}|${muted}`. */
+  private _webrtcPlayers = new Map<string, WebRtcPlayerHandle>();
+  /** Stable Lit ref callbacks per WebRTC key. */
+  private _webrtcRefCbs = new Map<string, (el: Element | undefined) => void>();
+  /** Cameras whose WebRTC failed this session — they fall back to MSE. */
+  private _webrtcFailed = new Set<string>();
+
   private _helpers?: CardHelpers;
   /** The empty-state messagebox child (built once via loadCardHelpers, json-guarded). */
   private _emptyCard?: LovelaceCard;
@@ -209,6 +222,9 @@ export class TedCameraCard extends LitElement implements LovelaceCard {
     for (const player of this._msePlayers.values()) player.destroy();
     this._msePlayers.clear();
     this._mseRefCbs.clear();
+    for (const player of this._webrtcPlayers.values()) player.destroy();
+    this._webrtcPlayers.clear();
+    this._webrtcRefCbs.clear();
   }
 
   /** Focus a camera on request: make it primary and switch it to a live stream. */
@@ -392,17 +408,119 @@ export class TedCameraCard extends LitElement implements LovelaceCard {
     return reg?.[entityId]?.device_id ?? undefined;
   }
 
-  /** Whether this tile should use the native MSE live player instead of `<hui-image>`.
-   *  Only for Frigate cameras (with backend metadata) explicitly set to `live`, when
-   *  the browser supports MSE and it hasn't already failed for this camera. */
-  private _useMse(cam: CameraItemConfig): boolean {
-    return (
-      !!cam.frigate?.instance_id &&
-      !!cam.frigate?.camera_name &&
-      this._effectiveView(cam) === "live" &&
-      isMseSupported() &&
-      !this._mseFailed.has(cam.entity)
-    );
+  /** Render a tile's stream: for a live Frigate camera prefer go2rtc **WebRTC**
+   *  (carries Opus audio + H.265), fall back to **MSE** (video-only), then to
+   *  `<hui-image>` for everything else / after failures. */
+  private _renderStream(
+    cam: CameraItemConfig,
+    quality: StreamQuality,
+    aspectRatio: string | undefined,
+  ): TemplateResult {
+    const transport = this._frigateLiveTransport(cam);
+    if (transport === "webrtc") return this._renderWebRtcVideo(cam, quality);
+    if (transport === "mse") return this._renderMseVideo(cam, quality);
+    return html`<hui-image
+      .hass=${this.hass}
+      .cameraImage=${this._streamEntity(cam, quality)}
+      .cameraView=${this._effectiveView(cam)}
+      .fitMode=${this._config?.fit_mode ?? "cover"}
+      .aspectRatio=${aspectRatio}
+    ></hui-image>`;
+  }
+
+  /** Which live transport a Frigate camera should use right now: WebRTC first, MSE
+   *  after WebRTC fails, else none (falls back to `<hui-image>`). Only for cameras
+   *  with backend Frigate metadata explicitly set to `live`. */
+  private _frigateLiveTransport(cam: CameraItemConfig): "webrtc" | "mse" | null {
+    if (!cam.frigate?.camera_name || this._effectiveView(cam) !== "live") return null;
+    if (!this._webrtcFailed.has(cam.entity) && isWebRtcSupported()) return "webrtc";
+    if (!this._mseFailed.has(cam.entity) && isMseSupported()) return "mse";
+    return null;
+  }
+
+  /** The primary camera is the first enabled tile; only it carries audio. */
+  private _isPrimaryCamera(entity: string): boolean {
+    return this._enabledCameras()[0]?.entity === entity;
+  }
+
+  /** A `<video>` bound to a go2rtc WebRTC player. Only the primary tile is unmuted. */
+  private _renderWebRtcVideo(cam: CameraItemConfig, quality: StreamQuality): TemplateResult {
+    const stream = cam.frigate!.camera_name + MSE_STREAM_SUFFIX[quality];
+    const muted = !this._isPrimaryCamera(cam.entity);
+    const key = `${cam.entity}|${stream}|${muted ? "m" : "u"}`;
+    const poster = this.hass?.states[cam.entity]?.attributes?.entity_picture as string | undefined;
+    const fit = this._config?.fit_mode ?? "cover";
+    return html`<video
+      class=${classMap({ mse: true, [fit]: true })}
+      ?muted=${muted}
+      playsinline
+      autoplay
+      poster=${poster ?? nothing}
+      ${ref(this._webrtcRef(cam, stream, key, muted))}
+    ></video>`;
+  }
+
+  private _webrtcRef(
+    cam: CameraItemConfig,
+    stream: string,
+    key: string,
+    muted: boolean,
+  ): (el: Element | undefined) => void {
+    let cb = this._webrtcRefCbs.get(key);
+    if (!cb) {
+      cb = (el: Element | undefined): void => {
+        if (el instanceof HTMLVideoElement) {
+          this._attachWebRtc(cam, stream, key, muted, el);
+        } else {
+          this._destroyWebRtc(key);
+          this._webrtcRefCbs.delete(key);
+        }
+      };
+      this._webrtcRefCbs.set(key, cb);
+    }
+    return cb;
+  }
+
+  private _attachWebRtc(
+    cam: CameraItemConfig,
+    stream: string,
+    key: string,
+    muted: boolean,
+    video: HTMLVideoElement,
+  ): void {
+    if (this._webrtcPlayers.has(key) || !cam.frigate || !this.hass) return;
+    const player = createWebRtcPlayer({
+      hass: this.hass,
+      instanceId: cam.frigate.instance_id,
+      stream,
+      muted,
+      onError: (kind, detail) => this._onWebRtcError(cam.entity, kind, detail),
+    });
+    this._webrtcPlayers.set(key, player);
+    player.attach(video);
+  }
+
+  private _destroyWebRtc(key: string): void {
+    const player = this._webrtcPlayers.get(key);
+    if (player) {
+      player.destroy();
+      this._webrtcPlayers.delete(key);
+    }
+  }
+
+  /** On WebRTC failure, mark the camera WebRTC-ineligible and re-render it through the
+   *  MSE fallback. Silent to the user; logged for diagnostics only. */
+  private _onWebRtcError(entity: string, kind: WebRtcPlayerErrorKind, detail: string): void {
+    // eslint-disable-next-line no-console
+    console.warn(`[ted-camera-card] WebRTC ${kind} for ${entity}: ${detail}; falling back to MSE`);
+    this._webrtcFailed.add(entity);
+    for (const [key, player] of this._webrtcPlayers) {
+      if (key.startsWith(`${entity}|`)) {
+        player.destroy();
+        this._webrtcPlayers.delete(key);
+      }
+    }
+    this.requestUpdate();
   }
 
   /** A `<video>` bound to an MSE player, with the current still as its poster so the
@@ -576,15 +694,7 @@ export class TedCameraCard extends LitElement implements LovelaceCard {
         tabindex="0"
       >
         ${this._streamsActive()
-          ? this._useMse(cam)
-            ? this._renderMseVideo(cam, quality)
-            : html`<hui-image
-                .hass=${this.hass}
-                .cameraImage=${this._streamEntity(cam, quality)}
-                .cameraView=${this._effectiveView(cam)}
-                .fitMode=${this._config?.fit_mode ?? "cover"}
-                .aspectRatio=${aspectRatio}
-              ></hui-image>`
+          ? this._renderStream(cam, quality, aspectRatio)
           : html`<div class="placeholder" aria-hidden="true"></div>`}
         ${showName
           ? html`<div class="box">

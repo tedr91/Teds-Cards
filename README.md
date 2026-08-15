@@ -942,6 +942,11 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.140
+
+- **Camera Card: live audio for Frigate cameras (go2rtc WebRTC).** Frigate cameras set to **live** now stream over go2rtc's WebRTC, which carries **audio** (go2rtc transcodes the camera's AAC to Opus) alongside **H.265** video at sub-second latency. In multi-camera layouts only the **primary** tile is unmuted. If WebRTC can't connect it falls back to the MSE player (video-only), then to the thumbnail — so a tile is never left dead.
+- **Camera Card: the Frigate live player now actually plays.** Fixed three issues that stopped the previous MSE player: it used the wrong Frigate instance id (the proxy returned 404), it stalled at the live edge without ever starting, and Chromium couldn't decode audio muxed with H.265. The MSE fallback now trims to the live edge and drops audio only where the browser requires it.
+
 ### v0.9.139
 
 - **Camera Card: native live video for Frigate cameras.** Cameras set to **live** now play through a built-in MSE player over Frigate's WebSocket, so **H.265** cameras stream in real time (~1-2 s) where the browser's WebRTC/HLS transports couldn't. Quality tiers request the matching go2rtc stream (base / `_med` / `_high`). Non-Frigate cameras, unsupported browsers, and any playback failure fall back to the existing thumbnail/stream automatically.

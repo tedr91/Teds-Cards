@@ -30,7 +30,8 @@ export interface MsePlayerHandle {
 
 export interface MsePlayerOptions {
   hass: HassLike;
-  /** Frigate config-entry id, used in the proxy path `/api/frigate/{id}/mse/...`. */
+  /** Frigate instance id (MQTT client_id) for `/api/frigate/{id}/mse/...`; when empty,
+   *  the no-instance proxy path is used (serves the single configured instance). */
   instanceId: string;
   /** go2rtc stream name, e.g. `front_yard` / `front_yard_med` / `front_yard_high`. */
   stream: string;
@@ -38,7 +39,8 @@ export interface MsePlayerOptions {
   onPlaying?: () => void;
 }
 
-/** Codecs offered to the server, filtered to what this browser can actually play. */
+/** Codecs offered to the server, filtered to what this browser can actually play.
+ *  Video codecs contain `vc1` (avc1/hvc1); the rest are audio (mirrors go2rtc). */
 const CODECS = [
   "avc1.640029", // H.264 high 4.1
   "avc1.64002A", // H.264 high 4.2
@@ -54,17 +56,14 @@ const CODECS = [
 const STARTUP_TIMEOUT_MS = 5000;
 /** Network reconnect backoff (ms) — three attempts, then give up. */
 const RECONNECT_BACKOFF_MS = [1000, 2000, 4000];
-/** Trim the SourceBuffer once it holds more than this many seconds. */
-const MAX_BUFFER_SECONDS = 30;
-/** Jump to the live edge when playback drifts more than this far behind it. */
-const LIVE_EDGE_LAG_SECONDS = 5;
-/** Don't perform live-edge jumps more often than this. */
-const LIVE_EDGE_JUMP_INTERVAL_MS = 10000;
+/** Keep roughly this many seconds buffered behind the live edge. */
+const LIVE_WINDOW_SECONDS = 5;
 
 interface MediaSourceLike extends EventTarget {
   readyState: string;
   addSourceBuffer(type: string): SourceBuffer;
   endOfStream(reason?: string): void;
+  setLiveSeekableRange?(start: number, end: number): void;
 }
 
 type MediaSourceConstructor = new () => MediaSourceLike;
@@ -87,11 +86,13 @@ export function isMseSupported(): boolean {
   return typeof isTypeSupported === "function";
 }
 
-function supportedCodecs(ctor: MediaSourceConstructor): string {
+function supportedCodecs(ctor: MediaSourceConstructor, videoOnly: boolean): string {
   const isTypeSupported = (
     ctor as unknown as { isTypeSupported: (t: string) => boolean }
   ).isTypeSupported;
-  return CODECS.filter((c) => isTypeSupported(`video/mp4; codecs="${c}"`)).join(",");
+  return CODECS.filter((c) => !videoOnly || c.includes("vc1"))
+    .filter((c) => isTypeSupported(`video/mp4; codecs="${c}"`))
+    .join(",");
 }
 
 class MsePlayer implements MsePlayerHandle {
@@ -106,9 +107,12 @@ class MsePlayer implements MsePlayerHandle {
   private _startupTimer?: number;
   private _reconnectTimer?: number;
   private _reconnects = 0;
-  private _lastJump = 0;
   private _destroyed = false;
   private _reachedPlaying = false;
+  /** Chrome MSE can't decode HEVC muxed with audio; when set we re-offer video-only. */
+  private _videoOnly = false;
+  /** True while (re)connecting, to ignore transient media errors from swapping src. */
+  private _swapping = false;
 
   public constructor(private readonly _opts: MsePlayerOptions) {}
 
@@ -122,7 +126,7 @@ class MsePlayer implements MsePlayerHandle {
       (video as unknown as { disableRemotePlayback?: boolean }).disableRemotePlayback = true;
     }
     video.addEventListener("playing", this._onPlaying);
-    video.addEventListener("timeupdate", this._onTimeUpdate);
+    video.addEventListener("error", this._onVideoError);
     this._connect();
   }
 
@@ -131,7 +135,7 @@ class MsePlayer implements MsePlayerHandle {
     this._teardownConnection();
     if (this._video) {
       this._video.removeEventListener("playing", this._onPlaying);
-      this._video.removeEventListener("timeupdate", this._onTimeUpdate);
+      this._video.removeEventListener("error", this._onVideoError);
     }
     this._video = undefined;
     if (this.state !== "failed") this.state = "idle";
@@ -147,6 +151,7 @@ class MsePlayer implements MsePlayerHandle {
   private async _connect(): Promise<void> {
     if (this._destroyed) return;
     this.state = "connecting";
+    this._swapping = true;
     this._clearTimer("_startupTimer");
     this._startupTimer = window.setTimeout(() => {
       if (this.state !== "playing") this._fail("startup", "no codec answer within 5s");
@@ -175,9 +180,12 @@ class MsePlayer implements MsePlayerHandle {
   }
 
   private async _signedWsUrl(): Promise<string> {
-    const path = `/api/frigate/${this._opts.instanceId}/mse/api/ws?src=${encodeURIComponent(
-      this._opts.stream,
-    )}`;
+    // Frigate's proxy matches its own instance id (MQTT client_id); when we don't
+    // have it, the no-instance form serves the single configured instance.
+    const base = this._opts.instanceId
+      ? `/api/frigate/${this._opts.instanceId}/mse/api/ws`
+      : `/api/frigate/mse/api/ws`;
+    const path = `${base}?src=${encodeURIComponent(this._opts.stream)}`;
     const signed = await this._opts.hass.callWS<{ path: string }>({
       type: "auth/sign_path",
       path,
@@ -205,7 +213,7 @@ class MsePlayer implements MsePlayerHandle {
   private readonly _onSourceOpen = (): void => {
     const ctor = mediaSourceCtor();
     if (!ctor || !this._ws || this._ws.readyState !== WebSocket.OPEN) return;
-    const supported = supportedCodecs(ctor);
+    const supported = supportedCodecs(ctor, this._videoOnly);
     this._ws.send(JSON.stringify({ type: "mse", value: supported }));
   };
 
@@ -217,7 +225,21 @@ class MsePlayer implements MsePlayerHandle {
       } catch {
         return;
       }
-      if (msg.type === "mse" && msg.value) this._startSourceBuffer(msg.value);
+      if (msg.type === "mse" && msg.value) {
+        // Chrome-family MSE can't decode HEVC muxed with audio (MEDIA_ERR_SRC_NOT_
+        // SUPPORTED). Safari's ManagedMediaSource can, so only downgrade elsewhere.
+        if (
+          !this._videoOnly &&
+          !("ManagedMediaSource" in window) &&
+          /hvc1|hev1/i.test(msg.value) &&
+          /mp4a|opus|flac|ac-3|ec-3/i.test(msg.value)
+        ) {
+          this._videoOnly = true;
+          this._reconnectVideoOnly();
+          return;
+        }
+        this._startSourceBuffer(msg.value);
+      }
       return;
     }
     if (ev.data instanceof ArrayBuffer) this._appendSegment(ev.data);
@@ -232,6 +254,7 @@ class MsePlayer implements MsePlayerHandle {
       sb.addEventListener("updateend", this._onUpdateEnd);
       sb.addEventListener("error", this._onSourceBufferError);
       this._sourceBuffer = sb;
+      this._swapping = false;
     } catch (err) {
       // Safari can throw InvalidStateError here; treat as an unplayable stream.
       this._fail("mse-decode", `addSourceBuffer failed: ${String(err)}`);
@@ -266,39 +289,32 @@ class MsePlayer implements MsePlayerHandle {
         return;
       }
     }
-    this._trimBuffer();
+    this._trackLiveEdge();
   };
 
-  private _trimBuffer(): void {
+  /** Trim to a short live window and glide playback to the live edge. Runs on
+   *  `updateend` (not `timeupdate`) so it also unsticks a stream whose segments
+   *  start at a large timestamp — there `currentTime` is 0, outside the buffer,
+   *  and the element never fires `timeupdate` to seek itself. Mirrors go2rtc. */
+  private _trackLiveEdge(): void {
     const sb = this._sourceBuffer;
     const video = this._video;
     if (!sb || !video || sb.updating || sb.buffered.length === 0) return;
-    const start = sb.buffered.start(0);
-    const end = sb.buffered.end(0);
-    if (end - start > MAX_BUFFER_SECONDS) {
-      const removeTo = video.currentTime - 10;
-      if (removeTo > start) {
-        try {
-          sb.remove(start, removeTo);
-        } catch {
-          // Non-fatal: a failed trim just means we retry on the next updateend.
-        }
+    const end = sb.buffered.end(sb.buffered.length - 1);
+    const start = end - LIVE_WINDOW_SECONDS;
+    const start0 = sb.buffered.start(0);
+    if (start > start0) {
+      try {
+        sb.remove(start0, start);
+        this._mediaSource?.setLiveSeekableRange?.(start, end);
+      } catch {
+        // Non-fatal: retried on the next updateend.
       }
     }
+    if (video.currentTime < start) video.currentTime = start;
+    const gap = end - video.currentTime;
+    video.playbackRate = gap > 0.1 ? gap : 0.1;
   }
-
-  private readonly _onTimeUpdate = (): void => {
-    const sb = this._sourceBuffer;
-    const video = this._video;
-    if (!sb || !video || sb.buffered.length === 0) return;
-    const end = sb.buffered.end(0);
-    if (end - video.currentTime > LIVE_EDGE_LAG_SECONDS) {
-      const now = Date.now();
-      if (now - this._lastJump < LIVE_EDGE_JUMP_INTERVAL_MS) return;
-      this._lastJump = now;
-      video.currentTime = end - 0.5;
-    }
-  };
 
   private readonly _onPlaying = (): void => {
     this._reachedPlaying = true;
@@ -311,6 +327,26 @@ class MsePlayer implements MsePlayerHandle {
   private readonly _onSourceBufferError = (): void => {
     this._fail("mse-decode", "SourceBuffer error");
   };
+
+  /** A media decode/support error: retry once video-only (fixes muxed HEVC+audio on
+   *  Chrome), otherwise give up so the tile falls back to `<hui-image>`. */
+  private readonly _onVideoError = (): void => {
+    if (this._swapping) return;
+    const code = this._video?.error?.code;
+    if ((code === 3 || code === 4) && !this._videoOnly) {
+      this._videoOnly = true;
+      this._reconnectVideoOnly();
+      return;
+    }
+    this._fail("mse-decode", `video error code=${code ?? "?"}`);
+  };
+
+  /** Reconnect immediately to re-offer a video-only codec set (not a network retry). */
+  private _reconnectVideoOnly(): void {
+    if (this._destroyed) return;
+    this._teardownConnection();
+    void this._connect();
+  }
 
   private readonly _onWsError = (): void => {
     if (this.state === "playing" || this._reachedPlaying) {
