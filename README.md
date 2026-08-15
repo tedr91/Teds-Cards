@@ -942,6 +942,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.138
+
+- **Launcher button icons follow the theme.** Launcher button icons now default to the theme's text color (matching the navbar's weather/clock/date font) instead of always white, so they read correctly on light themes. A Button color you set explicitly still applies.
+
 ### v0.9.137
 
 - **Grouped launcher buttons: the stacked-card shadow follows the theme radius.** The "card behind" shadow on a combined multi-view launcher button no longer uses a fixed corner radius — it matches the button's own theme-driven radius so the two corners line up.

@@ -234,20 +234,22 @@ export function effectiveLauncherPaths(list: string[], discovered: LauncherViewI
   return discovered.filter((v) => !v.subview).map((v) => v.path);
 }
 
-/** Base styling for every launcher button: a tinted surface + matching icon in the
- *  configured button color (defaults to white), at the configured transparency (default
- *  75%) and optional background blur, following the navbar theme. */
+/** Base styling for every launcher button: a tinted surface + matching icon. The
+ *  surface tint uses `color` (default white); the icon uses `iconColor` (defaults to
+ *  `color`), at the configured transparency (default 75%) and optional background blur,
+ *  following the navbar theme. */
 function launcherButtonBase(
   color: string,
   theme: string,
   transparency?: number,
   blur?: number,
+  iconColor?: string,
 ): Partial<NavButtonConfig> {
   const t = typeof transparency === "number" ? Math.min(100, Math.max(0, transparency)) : 75;
   const b = typeof blur === "number" ? Math.min(100, Math.max(0, blur)) : 0;
   const base: Partial<NavButtonConfig> = {
     icon_scale: 140,
-    icon_color: color,
+    icon_color: iconColor ?? color,
     theme: theme === "ted-style" ? "ted-style" : "ha",
     background: color,
     transparency: t,
@@ -329,10 +331,11 @@ function plainButton(view: LauncherViewInfo, p: BuildLauncherParams, showName: b
   const opt = p.options[view.path] ?? {};
   const active = p.highlightActive && view.path === p.currentViewPath;
   const color = p.buttonColor || "white";
+  const iconColor = p.buttonColor || "var(--ted-style-text)";
   const iconOpt = typeof opt.icon === "string" ? opt.icon : undefined;
   const tap_action = viewTapAction(view, p);
   const btn: NavButtonConfig = {
-    ...launcherButtonBase(color, p.navTheme || "ha", p.buttonTransparency, p.buttonBlur),
+    ...launcherButtonBase(color, p.navTheme || "ha", p.buttonTransparency, p.buttonBlur, iconColor),
     ...opt,
     type: `custom:${BUTTON_CARD_TYPE}`,
     icon: resolveViewIcon(iconOpt || view.icon) || DEFAULT_BUTTON_ICON,
@@ -357,6 +360,7 @@ export function buildLauncherButtons(p: BuildLauncherParams): NavButtonConfig[] 
   const primaryPaths = new Set(Object.keys(p.dashboardKeyByPath));
   const groups = groupLauncherViews(p.views, p.combine, primaryPaths);
   const color = p.buttonColor || "white";
+  const iconColor = p.buttonColor || "var(--ted-style-text)";
   const popupStyle = launcherPopupStyle(p.navBackground, p.navTransparency, p.navBlur);
   return groups.map((group) => {
     if (!group.isGroup) return plainButton(group.primary, p, false);
@@ -368,7 +372,7 @@ export function buildLauncherButtons(p: BuildLauncherParams): NavButtonConfig[] 
     const groupActive =
       p.highlightActive && group.members.some((m) => m.path === p.currentViewPath);
     const trigger: NavButtonConfig = {
-      ...launcherButtonBase(color, p.navTheme || "ha", p.buttonTransparency, p.buttonBlur),
+      ...launcherButtonBase(color, p.navTheme || "ha", p.buttonTransparency, p.buttonBlur, iconColor),
       ...primaryOpt,
       type: `custom:${EXPANDABLE_BUTTON_CARD_TYPE}`,
       icon: resolveViewIcon(primaryIcon || group.primary.icon) || DEFAULT_BUTTON_ICON,
