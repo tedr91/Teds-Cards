@@ -942,6 +942,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.141
+
+- **Camera Card: the primary tile now starts live.** The first (primary) camera in any layout defaults to **live** — one always-on feed with audio for Frigate cameras — while the other tiles stay on lightweight **auto** thumbnails. Per-camera `camera_view` settings and in-session view toggles still take precedence.
+
 ### v0.9.140
 
 - **Camera Card: live audio for Frigate cameras (go2rtc WebRTC).** Frigate cameras set to **live** now stream over go2rtc's WebRTC, which carries **audio** (go2rtc transcodes the camera's AAC to Opus) alongside **H.265** video at sub-second latency. In multi-camera layouts only the **primary** tile is unmuted. If WebRTC can't connect it falls back to the MSE player (video-only), then to the thumbnail — so a tile is never left dead.

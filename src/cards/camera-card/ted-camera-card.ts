@@ -371,9 +371,12 @@ export class TedCameraCard extends LitElement implements LovelaceCard {
     return cameras;
   }
 
-  /** The view for a camera: session override, else its config, else auto. */
+  /** The view for a camera: session override, else its config, else `live` for the
+   *  primary tile (one always-on feed) and `auto` (thumbnail) for the rest. */
   private _effectiveView(cam: CameraItemConfig): CameraView {
-    return this._viewOverride[cam.entity] ?? cam.camera_view ?? "auto";
+    const explicit = this._viewOverride[cam.entity] ?? cam.camera_view;
+    if (explicit) return explicit;
+    return this._isPrimaryCamera(cam.entity) ? "live" : "auto";
   }
 
   /** The camera entity to render for a given quality tier. Explicit config wins,
