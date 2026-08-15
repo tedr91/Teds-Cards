@@ -25,7 +25,12 @@ import {
   VISION_SEVERITIES,
   type VisionSeverity,
 } from "./const";
-import type { VisionAnalysisPass, VisionCardConfig, VisionEvent } from "./types";
+import type {
+  VisionAnalysisPass,
+  VisionCardConfig,
+  VisionEvent,
+  VisionLayout,
+} from "./types";
 
 const DOMAIN = "teds_dashboard_system";
 
@@ -214,6 +219,10 @@ export class TedVisionCard extends LitElement implements LovelaceCard {
     return list.slice(0, max);
   }
 
+  private _layout(): VisionLayout {
+    return this._config?.layout ?? "list";
+  }
+
   /** Human labels for the severity / false-alarm pills currently engaged. */
   private _activeFilterLabels(): string[] {
     const out: string[] = [];
@@ -254,7 +263,7 @@ export class TedVisionCard extends LitElement implements LovelaceCard {
 
     let body: TemplateResult;
     if (events.length) {
-      body = this._renderList(events);
+      body = this._layout() === "tiles" ? this._renderTiles(events) : this._renderList(events);
     } else if (this._aiTaskOk === false && this._events.length === 0) {
       body = this._renderMessage(this._onboardingConfig());
     } else {
@@ -411,6 +420,32 @@ export class TedVisionCard extends LitElement implements LovelaceCard {
             </div>
             <div class="summary">${e.short_summary || "(no summary)"}</div>
           </div>
+        </button>`,
+      )}
+    </div>`;
+  }
+
+  private _renderTiles(events: VisionEvent[]): TemplateResult {
+    return html`<div class="vision-tiles">
+      ${repeat(
+        events,
+        (e) => e.id,
+        (e) => html`<button
+          class="tile ${e.reviewed ? "reviewed" : ""} ${e.status && e.status !== "complete" ? "analyzing" : ""}"
+          @click=${() => (this._detailId = e.id)}
+        >
+          <div class="tile-thumb" style="--sev: ${SEVERITY_COLOR[e.severity]}">
+            ${this._previewSrc(e)
+              ? html`<img src=${this._previewSrc(e)} alt="" loading="lazy" />`
+              : html`<ha-icon icon=${themedIcon("camera")}></ha-icon>`}
+            ${e.clip_url ? html`<ha-icon class="play" icon="mdi:play-circle"></ha-icon>` : nothing}
+          </div>
+          <div class="tile-row">
+            <span class="tile-sev" style="--sev: ${SEVERITY_COLOR[e.severity]}"></span>
+            <span class="tile-cam">${e.camera_name}</span>
+            <span class="tile-time">${this._relTime(e.ts_start)}</span>
+          </div>
+          <div class="tile-summary">${e.short_summary || "(no summary)"}</div>
         </button>`,
       )}
     </div>`;
@@ -701,6 +736,10 @@ export class TedVisionCard extends LitElement implements LovelaceCard {
     modalStyles,
     css`
       :host {
+        --vision-thumbnail-width: 184px;
+        --vision-thumbnail-height: 120px;
+      }
+      :host {
         display: block;
         height: 100%;
       }
@@ -767,10 +806,17 @@ export class TedVisionCard extends LitElement implements LovelaceCard {
         padding: 4px 8px 10px;
         gap: 6px;
       }
-      .row {
+      .vision-tiles {
+        flex: 1;
+        overflow-y: auto;
         display: flex;
-        gap: 12px;
-        align-items: center;
+        flex-wrap: wrap;
+        align-content: flex-start;
+        gap: 10px;
+        padding: 4px 8px 10px;
+      }
+      .row,
+      .tile {
         text-align: left;
         font: inherit;
         color: inherit;
@@ -778,12 +824,26 @@ export class TedVisionCard extends LitElement implements LovelaceCard {
         background: var(--ted-style-surface-2, rgba(120, 120, 120, 0.08));
         border: 1px solid var(--ted-style-divider, rgba(120, 120, 120, 0.16));
         border-radius: var(--ted-style-radius, 12px);
+      }
+      .row {
+        display: flex;
+        gap: 12px;
+        align-items: center;
         padding: 8px;
       }
-      .row.reviewed {
+      .tile {
+        display: flex;
+        flex-direction: column;
+        width: 184px;
+        overflow: hidden;
+        padding: 0;
+      }
+      .row.reviewed,
+      .tile.reviewed {
         opacity: 0.6;
       }
-      .thumb {
+      .thumb,
+      .tile-thumb {
         position: relative;
         flex: 0 0 auto;
         width: 92px;
@@ -796,12 +856,20 @@ export class TedVisionCard extends LitElement implements LovelaceCard {
         justify-content: center;
         box-shadow: inset 0 0 0 2px var(--sev, transparent);
       }
-      .thumb img {
+      .tile-thumb {
+        width: 184px;
+        height: 120px;
+        border-radius: 10px 10px 0 0;
+        box-shadow: inset 0 0 0 2px var(--sev, transparent);
+      }
+      .thumb img,
+      .tile-thumb img {
         width: 100%;
         height: 100%;
         object-fit: cover;
       }
-      .thumb .play {
+      .thumb .play,
+      .tile-thumb .play {
         position: absolute;
         color: #fff;
         --mdc-icon-size: 28px;
@@ -877,13 +945,50 @@ export class TedVisionCard extends LitElement implements LovelaceCard {
         color: var(--ted-style-muted, var(--secondary-text-color));
         flex: 0 0 auto;
       }
-      .summary {
+      .tile-row {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 8px 0;
+        min-width: 0;
+      }
+      .tile-sev {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        border-radius: 999px;
+        background: var(--sev, var(--primary-color));
+        box-shadow: 0 0 0 2px color-mix(in srgb, var(--sev, var(--primary-color)) 22%, transparent);
+      }
+      .tile-cam {
+        min-width: 0;
+        font-weight: 600;
+        font-size: 0.82rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .tile-time {
+        justify-self: end;
+        font-size: 0.68rem;
+        color: var(--ted-style-muted, var(--secondary-text-color));
+        white-space: nowrap;
+      }
+      .summary,
+      .tile-summary {
         font-size: 0.82rem;
         color: var(--ted-style-muted, var(--secondary-text-color));
         display: -webkit-box;
         -webkit-line-clamp: 2;
         -webkit-box-orient: vertical;
         overflow: hidden;
+      }
+      .summary {
+        margin-top: 0;
+      }
+      .tile-summary {
+        padding: 6px 8px 8px;
       }
       .msg-wrap {
         flex: 1;

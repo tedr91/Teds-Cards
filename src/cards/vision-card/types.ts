@@ -55,9 +55,13 @@ export interface VisionEvent {
   analysis_passes?: VisionAnalysisPass[] | null;
 }
 
+export type VisionLayout = "list" | "tiles";
+
 export interface VisionCardConfig extends LovelaceCardConfig {
   type: string;
   theme?: TedStyleTheme;
+  /** Display mode for the event list. */
+  layout?: VisionLayout;
   /** Only show events from these cameras (unset = all). */
   cameras?: string[];
   /** Max events to display (default 50). */

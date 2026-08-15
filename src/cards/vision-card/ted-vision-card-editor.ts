@@ -10,6 +10,11 @@ const THEME_OPTIONS = [
   { value: "ha", label: "Home Assistant" },
 ];
 
+const LAYOUT_OPTIONS = [
+  { value: "list", label: "List" },
+  { value: "tiles", label: "Tiles" },
+];
+
 @customElement(VISION_CARD_EDITOR_TYPE)
 export class TedVisionCardEditor extends LitElement implements LovelaceCardEditor {
   @property({ attribute: false }) public hass?: HomeAssistant;
@@ -24,12 +29,14 @@ export class TedVisionCardEditor extends LitElement implements LovelaceCardEdito
     const data = {
       title: this._config.title ?? "",
       theme: this._config.theme ?? "ha",
+      layout: this._config.layout ?? "list",
       max_events: this._config.max_events ?? 50,
       cameras: this._config.cameras ?? [],
     };
     const schema = [
       { name: "title", selector: { text: { placeholder: "Vision Events" } } },
       { name: "theme", selector: { select: { mode: "dropdown", options: THEME_OPTIONS } } },
+      { name: "layout", selector: { select: { mode: "dropdown", options: LAYOUT_OPTIONS } } },
       { name: "max_events", selector: { number: { min: 1, max: 500, mode: "box" } } },
       {
         name: "cameras",
@@ -52,6 +59,7 @@ export class TedVisionCardEditor extends LitElement implements LovelaceCardEdito
     ({
       title: "Title",
       theme: "Theme",
+      layout: "Layout",
       max_events: "Max events shown",
       cameras: "Filter to cameras (optional)",
     })[s.name] ?? s.name;

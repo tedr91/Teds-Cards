@@ -942,6 +942,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.148
+
+- **Vision tab: new tile layout.** The Cameras → Vision timeline now supports a larger tile view that keeps the same metadata as the list view but renders the severity as a color dot, keeps the name/time on one row, and places the summary beneath the thumbnail.
+
 ### v0.9.147
 
 - **Room Card: bundled header photos no longer briefly load from the jsDelivr CDN.** With Ted's Dashboard System installed the photos are served locally, but on first paint the card could momentarily request the CDN copy (tripping browser tracking-prevention warnings) before the local cache resolved. It now waits for the local lookup before falling back to the CDN, and fetches any un-cached bundled photo into local storage.
