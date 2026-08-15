@@ -53,6 +53,19 @@ export function isWebRtcSupported(): boolean {
   return typeof RTCPeerConnection === "function";
 }
 
+/** Whether this browser can actually receive H.265 (HEVC) over WebRTC. Chromium
+ *  builds without platform HEVC for WebRTC (e.g. stable Edge) advertise no H265
+ *  receive codec, so go2rtc sends no video and the tile would freeze — those must
+ *  use the MSE transport (which decodes HEVC via the platform) instead. */
+export function isH265WebRtcSupported(): boolean {
+  try {
+    const caps = RTCRtpReceiver.getCapabilities?.("video");
+    return !!caps?.codecs.some((c) => /h265|hevc/i.test(c.mimeType));
+  } catch {
+    return false;
+  }
+}
+
 class WebRtcPlayer implements WebRtcPlayerHandle {
   public state: WebRtcPlayerState = "idle";
 

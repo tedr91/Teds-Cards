@@ -22,6 +22,7 @@ import {
 } from "../../shared/mse-player";
 import {
   createWebRtcPlayer,
+  isH265WebRtcSupported,
   isWebRtcSupported,
   type WebRtcPlayerErrorKind,
   type WebRtcPlayerHandle,
@@ -444,7 +445,10 @@ export class TedCameraCard extends LitElement implements LovelaceCard {
    *  with backend Frigate metadata explicitly set to `live`. */
   private _frigateLiveTransport(cam: CameraItemConfig): "webrtc" | "mse" | null {
     if (!cam.frigate?.camera_name || this._effectiveView(cam) !== "live") return null;
-    if (!this._webrtcFailed.has(cam.entity) && isWebRtcSupported()) return "webrtc";
+    // WebRTC only where the browser can actually decode H.265 over it (Chrome/Electron);
+    // browsers that can't (e.g. Edge) would receive no video, so they use MSE instead.
+    if (!this._webrtcFailed.has(cam.entity) && isWebRtcSupported() && isH265WebRtcSupported())
+      return "webrtc";
     if (!this._mseFailed.has(cam.entity) && isMseSupported()) return "mse";
     return null;
   }
