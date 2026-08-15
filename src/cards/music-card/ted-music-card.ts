@@ -207,16 +207,15 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
   /** Optimistic favorite state for the current track (instant heart feedback). */
   @state() private _favOptimistic?: boolean;
   private _favOptKey?: string;
-  /** Volume slider flyout open state. */
-  @state() private _volOpen = false;
+  /** Volume modal (native <dialog>) open state, shared by both modes. */
+  @state() private _volDialogOpen = false;
+  /** Live volume % while dragging the modal slider (before hass echoes it back). */
+  @state() private _volLive: number | null = null;
   private _volHoldTimer?: number;
   private _volHeld = false;
   /** Mini bar "..." menu open state. */
   @state() private _miniMenuOpen = false;
   @state() private _miniMenuUp = true;
-  /** Mini bar volume flyout open state. */
-  @state() private _miniVolOpen = false;
-  @state() private _miniVolUp = true;
   /** Which tab body (if any) the mini modal window is showing. */
   @state() private _miniPopup: "media" | "queue" | null = null;
   /** Mini bar: controls drop to a row below the title/artist when the card is tall. */
@@ -303,10 +302,8 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
   private _onDocDown = (e: Event): void => {
     if (
       !this._castOpen &&
-      !this._volOpen &&
       !this._shuffleMenuOpen &&
-      !this._miniMenuOpen &&
-      !this._miniVolOpen
+      !this._miniMenuOpen
     )
       return;
     const path = e.composedPath();
@@ -314,19 +311,14 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
       const w = this.renderRoot?.querySelector?.(".cast-wrap");
       if (w && !path.includes(w)) this._castOpen = false;
     }
-    if (this._volOpen) {
-      const w = this.renderRoot?.querySelector?.(".vol-wrap");
-      if (w && !path.includes(w)) this._volOpen = false;
-    }
     if (this._shuffleMenuOpen) {
       const w = this.renderRoot?.querySelector?.(".shuffle-wrap");
       if (w && !path.includes(w)) this._shuffleMenuOpen = false;
     }
-    if (this._miniMenuOpen || this._miniVolOpen) {
+    if (this._miniMenuOpen) {
       const w = this.renderRoot?.querySelector?.(".mini");
       if (w && !path.includes(w)) {
         this._miniMenuOpen = false;
-        this._miniVolOpen = false;
       }
     }
   };
@@ -401,6 +393,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
     this._positionPopups();
     this._syncQueueMenuPopover();
     this._syncMiniModal();
+    this._syncVolDialog();
   }
 
   /** Open/close the native <dialog> to match `_miniPopup` (top-layer modal). */
@@ -411,6 +404,16 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
     if (!dlg) return;
     if (this._miniPopup && !dlg.open) dlg.showModal?.();
     else if (!this._miniPopup && dlg.open) dlg.close?.();
+  }
+
+  /** Open/close the native volume <dialog> to match `_volDialogOpen`. */
+  private _syncVolDialog(): void {
+    const dlg = this.renderRoot?.querySelector?.(".vol-modal") as
+      | (HTMLDialogElement & { showModal?: () => void; close?: () => void })
+      | null;
+    if (!dlg) return;
+    if (this._volDialogOpen && !dlg.open) dlg.showModal?.();
+    else if (!this._volDialogOpen && dlg.open) dlg.close?.();
   }
 
   /** Flip the open popups above/below their trigger, whichever side has room, so
@@ -451,13 +454,6 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
       if (menu && bar) {
         const up = barTop >= menu.offsetHeight + 12;
         if (up !== this._miniMenuUp) this._miniMenuUp = up;
-      }
-    }
-    if (this._miniVolOpen) {
-      const fly = root?.querySelector(".mini-vol-flyout") as HTMLElement | null;
-      if (fly && bar) {
-        const up = barTop >= fly.offsetHeight + 12;
-        if (up !== this._miniVolUp) this._miniVolUp = up;
       }
     }
   }
@@ -679,10 +675,16 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
   };
 
   private _onVolume = (e: Event): void => {
-    const v = Number((e.target as HTMLInputElement).value);
-    this._call("volume_set", { volume_level: Math.max(0, Math.min(1, v / 100)) });
-    this._persistMusicVolume(v);
+    this._setVolume(Number((e.target as HTMLInputElement).value));
   };
+
+  /** Set the player volume (0–100) and remember it as this device's Music volume. */
+  private _setVolume(percent: number): void {
+    const v = Math.max(0, Math.min(100, percent));
+    this._volLive = Math.round(v);
+    this._call("volume_set", { volume_level: v / 100 });
+    this._persistMusicVolume(v);
+  }
 
   /** Remember a user volume change as this device's "Music volume" setting. Writing
    *  a device-scoped value stops the device inheriting the global value. Debounced
@@ -720,7 +722,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
     if (this._volClickTimer) return; // second click of a double — let dblclick handle it
     this._volClickTimer = window.setTimeout(() => {
       this._volClickTimer = undefined;
-      this._volOpen = !this._volOpen;
+      this._openVolDialog();
     }, 220);
   };
 
@@ -735,6 +737,120 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
   private _toggleMute(): void {
     const muted = !!this._attr<boolean>("is_volume_muted");
     this._call("volume_mute", { is_volume_muted: !muted });
+  }
+
+  private _openVolDialog(): void {
+    this._miniMenuOpen = false;
+    this._volLive = null;
+    this._volDialogOpen = true;
+  }
+
+  private _closeVolDialog = (): void => {
+    this._volDialogOpen = false;
+    this._volLive = null;
+  };
+
+  private _onVolModalClick = (e: MouseEvent): void => {
+    // Tap on the dialog element itself (the backdrop area) closes.
+    if (e.target === e.currentTarget) this._closeVolDialog();
+  };
+
+  private _onVolModalCancel = (e: Event): void => {
+    e.preventDefault();
+    this._closeVolDialog();
+  };
+
+  private _onVolModalClose = (): void => {
+    if (this._volDialogOpen) this._volDialogOpen = false;
+  };
+
+  /** ha-control-slider live drag: update the readout only (the slider owns its
+   *  drag position; volume is committed on `value-changed`). */
+  private _onVolSliderMoved = (e: CustomEvent): void => {
+    const v = Number((e.detail as { value?: number } | null)?.value);
+    if (!Number.isNaN(v)) this._volLive = Math.round(v);
+  };
+
+  private _onVolSliderChanged = (e: CustomEvent): void => {
+    const v = Number((e.detail as { value?: number } | null)?.value);
+    if (!Number.isNaN(v)) this._setVolume(v);
+  };
+
+  /** Volume control as a native modal <dialog> (top layer), shared by both modes.
+   *  Prefers HA's touch-optimized `ha-control-slider`; falls back to a native
+   *  range input when that element isn't registered on the dashboard. */
+  private _renderVolumeDialog(): TemplateResult | typeof nothing {
+    if (!this._volDialogOpen) return nothing;
+    const volLevel = this._attr<number>("volume_level");
+    const hassPct = typeof volLevel === "number" ? Math.round(volLevel * 100) : 0;
+    const shownPct = this._volLive ?? hassPct;
+    const muted = !!this._attr<boolean>("is_volume_muted");
+    const icon =
+      muted || shownPct === 0
+        ? ic(IC.volOff)
+        : shownPct < 10
+          ? ic(IC.volLow)
+          : shownPct < 50
+            ? ic(IC.volMed)
+            : ic(IC.volHigh);
+    const hasCtrl = customElements.get("ha-control-slider") !== undefined;
+    const slider = hasCtrl
+      ? html`<ha-control-slider
+          class="vol-modal-slider"
+          vertical
+          mode="start"
+          unit="%"
+          .min=${0}
+          .max=${100}
+          .step=${1}
+          .value=${hassPct}
+          @slider-moved=${this._onVolSliderMoved}
+          @value-changed=${this._onVolSliderChanged}
+        ></ha-control-slider>`
+      : html`<input
+          class="vol-modal-range"
+          type="range"
+          min="0"
+          max="100"
+          .value=${String(hassPct)}
+          @input=${this._onVolume}
+          @change=${this._onVolume}
+          aria-label="Volume"
+        />`;
+    return html`<dialog
+      class="vol-modal"
+      @click=${this._onVolModalClick}
+      @cancel=${this._onVolModalCancel}
+      @close=${this._onVolModalClose}
+    >
+      <div class="vol-sheet">
+        <div class="vol-sheet-head">
+          <span class="vol-sheet-title">Volume</span>
+          <button
+            type="button"
+            class="vol-sheet-close"
+            title="Close"
+            aria-label="Close"
+            @click=${this._closeVolDialog}
+          >
+            <ha-icon icon=${ic(IC.close)}></ha-icon>
+          </button>
+        </div>
+        <div class="vol-sheet-body">
+          <span class="vol-sheet-num">${shownPct}%</span>
+          <div class="vol-slider-wrap">${slider}</div>
+          <button
+            type="button"
+            class="vol-sheet-mute ${muted ? "active" : ""}"
+            title=${muted ? "Unmute" : "Mute"}
+            aria-label=${muted ? "Unmute" : "Mute"}
+            @click=${() => this._toggleMute()}
+          >
+            <ha-icon icon=${icon}></ha-icon>
+          </button>
+        </div>
+      </div>
+    </dialog>`;
   }
 
   // Shuffle button gestures: tap = toggle shuffle; hold or double-tap = open the
@@ -1468,6 +1584,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
           ${this._renderMiniProgress()}
         </ha-card>
         ${this._renderMiniModal()}
+        ${this._renderVolumeDialog()}
       `;
     }
 
@@ -1486,6 +1603,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
           <div class="tabs">${this._renderTabs()}</div>
         </div>
       </ha-card>
+      ${this._renderVolumeDialog()}
     `;
   }
 
@@ -1620,20 +1738,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
             ? ic(IC.volMed)
             : ic(IC.volHigh);
     const tip = muted ? "Volume - Muted" : `Volume - ${volPct}%`;
-    return html`<div class="vol-wrap ${this._volOpen ? "open" : ""}">
-      <span class="vol-slide">
-        <input
-          class="vol"
-          type="range"
-          min="0"
-          max="100"
-          .value=${String(volPct)}
-          @input=${this._onVolume}
-          @change=${this._onVolume}
-          aria-label="Volume"
-        />
-        <span class="vol-num">${volPct}</span>
-      </span>
+    return html`<div class="vol-wrap">
       <button
         type="button"
         class="ctrl vol-btn ${muted ? "active" : ""}"
@@ -1735,7 +1840,6 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
     repeat = "off",
   ): TemplateResult {
     const menuDir = this._miniMenuUp ? "up" : "down";
-    const volDir = this._miniVolUp ? "up" : "down";
     return html`
       ${this._miniMenuOpen
         ? html`<div class="mini-menu ${menuDir}" role="menu" @click=${this._stopEvt}>
@@ -1784,54 +1888,13 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
             </button>
           </div>`
         : nothing}
-      ${this._miniVolOpen
-        ? html`<div class="mini-vol-flyout ${volDir}" role="group" @click=${this._stopEvt}>
-            <span class="mini-vol-num">${volPct}</span>
-            <span class="mini-vol-range-wrap">
-              <input
-                class="mini-vol-range"
-                type="range"
-                min="0"
-                max="100"
-                .value=${String(volPct)}
-                @input=${this._onVolume}
-                @change=${this._onVolume}
-                aria-label="Volume"
-              />
-            </span>
-            <button
-              type="button"
-              class="mini-vol-mute ${muted ? "active" : ""}"
-              title=${muted ? "Unmute" : "Mute"}
-              aria-label=${muted ? "Unmute" : "Mute"}
-              @click=${this._onMiniMute}
-            >
-              <ha-icon
-                icon=${ic(
-                  muted || volPct === 0
-                    ? IC.volOff
-                    : volPct < 10
-                      ? IC.volLow
-                      : volPct < 50
-                        ? IC.volMed
-                        : IC.volHigh,
-                )}
-              ></ha-icon>
-            </button>
-          </div>`
-        : nothing}
     `;
   }
 
   /** Tap anywhere on the bar surface (outside the transport controls) toggles the
    *  action menu. */
   private _onMiniSurfaceTap = (): void => {
-    if (this._miniMenuOpen || this._miniVolOpen) {
-      this._miniMenuOpen = false;
-      this._miniVolOpen = false;
-    } else {
-      this._miniMenuOpen = true;
-    }
+    this._miniMenuOpen = !this._miniMenuOpen;
   };
 
   private _stopEvt = (e: Event): void => {
@@ -1840,13 +1903,11 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
 
   private _openMiniPopup(which: "media" | "queue"): void {
     this._miniMenuOpen = false;
-    this._miniVolOpen = false;
     this._miniPopup = which;
   }
 
   private _openMiniVol = (): void => {
-    this._miniMenuOpen = false;
-    this._miniVolOpen = true;
+    this._openVolDialog();
   };
 
   private _onMiniPlayPause = (): void => {
@@ -1880,7 +1941,6 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
    *  plain http (an iframe would be blocked as mixed content). */
   private _startParty = (): void => {
     this._miniMenuOpen = false;
-    this._miniVolOpen = false;
     const entity = this._entityId();
     if (!entity) return;
     const base = (
@@ -1904,10 +1964,6 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
 
   private _closeMiniPopup = (): void => {
     this._miniPopup = null;
-  };
-
-  private _onMiniMute = (): void => {
-    this._toggleMute();
   };
 
   private _onMiniModalClick = (e: MouseEvent): void => {
@@ -2752,33 +2808,11 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
         text-align: right;
       }
 
-      /* Volume: icon that expands a slider inline on hover (or tap). */
+      /* Volume: icon button that opens the native volume modal. */
       .vol-wrap {
         position: relative;
         display: inline-flex;
         align-items: center;
-      }
-      .vol-slide {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        max-width: 0;
-        opacity: 0;
-        margin-right: 0;
-        overflow: hidden;
-        transition:
-          max-width 0.2s ease,
-          opacity 0.2s ease,
-          margin-right 0.2s ease;
-      }
-      .vol-wrap:hover .vol-slide,
-      .vol-wrap.open .vol-slide {
-        max-width: 170px;
-        opacity: 1;
-        margin-right: 8px;
-      }
-      .vol-slide .vol {
-        width: 110px;
       }
 
       /* Range inputs */
@@ -3789,9 +3823,8 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
         background: var(--ted-style-accent);
       }
 
-      /* Mini action menu + anchored volume flyout (fly above/below the bar). */
-      .mini-menu,
-      .mini-vol-flyout {
+      /* Mini action menu (flies above/below the bar). */
+      .mini-menu {
         position: absolute;
         right: 0;
         z-index: 12;
@@ -3807,13 +3840,11 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
         border: 1px solid var(--ted-style-divider, rgba(255, 255, 255, 0.12));
         box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
       }
-      .mini-menu.down,
-      .mini-vol-flyout.down {
+      .mini-menu.down {
         top: calc(100% + 6px);
         bottom: auto;
       }
-      .mini-menu.up,
-      .mini-vol-flyout.up {
+      .mini-menu.up {
         bottom: calc(100% + 6px);
         top: auto;
       }
@@ -3852,58 +3883,117 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
         margin: 4px 6px;
         background: rgba(127, 127, 127, 0.3);
       }
-      .mini-vol-flyout {
+      /* Volume modal (native <dialog>, top layer): native HA slider + mute. */
+      .vol-modal {
+        border: none;
+        padding: 0;
+        margin: auto;
+        background: transparent;
+        max-width: none;
+        max-height: none;
+        color: var(--ted-style-text, #fff);
+      }
+      .vol-modal::backdrop {
+        background: rgba(0, 0, 0, 0.5);
+      }
+      .vol-sheet {
         display: flex;
         flex-direction: column;
+        width: min(300px, 88vw);
+        border-radius: 14px;
+        overflow: hidden;
+        background-color: var(--card-background-color, #1c1c1c);
+        background-image: linear-gradient(
+          var(--ted-style-surface, #2b2b2b),
+          var(--ted-style-surface, #2b2b2b)
+        );
+        border: 1px solid var(--ted-style-divider, rgba(255, 255, 255, 0.12));
+        box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
+      }
+      .vol-sheet-head {
+        flex: 0 0 auto;
+        display: flex;
         align-items: center;
         gap: 8px;
-        padding: 12px 10px;
-        height: 200px;
-        box-sizing: border-box;
-        width: auto;
+        padding: 12px 8px 12px 16px;
+        border-bottom: 1px solid var(--ted-style-divider, rgba(255, 255, 255, 0.12));
       }
-      .mini-vol-mute {
+      .vol-sheet-title {
+        flex: 1 1 auto;
+        font-weight: 700;
+        font-size: 1.05em;
+      }
+      .vol-sheet-close {
         flex: 0 0 auto;
         display: inline-flex;
         border: none;
         background: none;
         color: inherit;
         cursor: pointer;
-        opacity: 0.9;
+        opacity: 0.8;
+        border-radius: 8px;
+        padding: 4px;
       }
-      .mini-vol-mute.active {
-        color: var(--ted-style-accent);
+      .vol-sheet-close:hover {
         opacity: 1;
+        background: rgba(127, 127, 127, 0.16);
       }
-      .mini-vol-mute ha-icon {
+      .vol-sheet-close ha-icon {
         --mdc-icon-size: 22px;
       }
-      /* Native vertical slider that fills the popup height between the level + speaker.
-         writing-mode covers modern Chromium; -webkit-appearance the older webviews. */
-      .mini-vol-range-wrap {
+      .vol-sheet-body {
         flex: 1 1 auto;
-        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 14px;
+        padding: 18px 16px 20px;
+      }
+      .vol-sheet-num {
+        font-size: 1.4em;
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
+      }
+      .vol-slider-wrap {
+        height: 240px;
+        width: 72px;
         display: flex;
         align-items: stretch;
         justify-content: center;
       }
-      .mini-vol-range {
+      .vol-modal-slider {
+        width: 100%;
+        height: 100%;
+        --control-slider-color: var(--ted-style-accent);
+        --control-slider-thickness: 72px;
+      }
+      .vol-modal-range {
         writing-mode: vertical-lr;
         direction: rtl;
-        -webkit-appearance: slider-vertical;
-        width: 8px;
+        width: 24px;
         height: 100%;
         margin: 0;
         cursor: pointer;
         accent-color: var(--ted-style-accent);
       }
-      .mini-vol-num {
-        flex: 0 0 auto;
-        min-width: 2.4ch;
-        text-align: center;
-        font-size: 0.82em;
-        opacity: 0.75;
-        font-variant-numeric: tabular-nums;
+      .vol-sheet-mute {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border: none;
+        background: rgba(127, 127, 127, 0.16);
+        color: inherit;
+        cursor: pointer;
+        opacity: 0.9;
+        border-radius: 10px;
+        padding: 8px 14px;
+      }
+      .vol-sheet-mute.active {
+        color: var(--ted-style-accent);
+        opacity: 1;
+      }
+      .vol-sheet-mute ha-icon {
+        --mdc-icon-size: 24px;
       }
 
       /* Mini modal window (native <dialog>, top layer) reusing the Media/Queue tabs */

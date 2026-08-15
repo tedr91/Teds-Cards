@@ -942,6 +942,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.146
+
+- **Music Card: the volume control now opens a native Home Assistant slider dialog.** Tapping volume (in both the full player and the mini bar) opens a modal with HA's touch-optimized slider plus a mute toggle, replacing the inline slider that was awkward on touch wall panels. This also clears a `slider-vertical` deprecation warning from the browser console.
+
 ### v0.9.145
 
 - **Camera Card: smooth Frigate live on the MSE path (Edge and other H.265-via-MSE browsers).** The live-edge tracker no longer fast-forwards playback to catch up — which was overloading the decoder, dropping frames, and lurching the video up to 5× — it now jumps to the live edge and plays at normal speed. The MSE path also serves the low-res detect stream (like ACC) so the decoder keeps up. WebRTC browsers are unaffected.
