@@ -33,6 +33,16 @@ export interface CameraItemConfig {
   stream_low?: string;
   /** Optional medium-res substream entity, used for primary/grid feeds. */
   stream_medium?: string;
+  /** Frigate MSE metadata (from the TDS backend), enabling the native live player. */
+  frigate?: FrigateCameraMeta;
+}
+
+/** Per-camera Frigate details the card needs to open a go2rtc MSE stream. */
+export interface FrigateCameraMeta {
+  /** Frigate config-entry id, used in the HA MSE proxy path. */
+  instance_id: string;
+  /** go2rtc stream base name (tiers append `_med` / `_high`). */
+  camera_name: string;
 }
 
 export interface CameraCardConfig extends LovelaceCardConfig {

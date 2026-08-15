@@ -942,6 +942,11 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.139
+
+- **Camera Card: native live video for Frigate cameras.** Cameras set to **live** now play through a built-in MSE player over Frigate's WebSocket, so **H.265** cameras stream in real time (~1-2 s) where the browser's WebRTC/HLS transports couldn't. Quality tiers request the matching go2rtc stream (base / `_med` / `_high`). Non-Frigate cameras, unsupported browsers, and any playback failure fall back to the existing thumbnail/stream automatically.
+- **Camera Card: streams survive a quick tab switch.** Briefly switching tabs no longer tears every feed down and forces a full reconnect — teardown now waits a short grace period and cancels if you return.
+
 ### v0.9.138
 
 - **Launcher button icons follow the theme.** Launcher button icons now default to the theme's text color (matching the navbar's weather/clock/date font) instead of always white, so they read correctly on light themes. A Button color you set explicitly still applies.

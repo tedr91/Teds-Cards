@@ -2,6 +2,7 @@ import { LitElement, css, html, nothing, type TemplateResult } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { classMap } from "lit/directives/class-map.js";
 import { styleMap } from "lit/directives/style-map.js";
+import { ref } from "lit/directives/ref.js";
 import {
   type HomeAssistant,
   type LovelaceCard,
@@ -13,6 +14,12 @@ import {
 
 import { ensureHuiImage, detectSubstream } from "../../shared/camera";
 import type { CameraView, StreamQuality } from "../../shared/camera";
+import {
+  createMsePlayer,
+  isMseSupported,
+  type MsePlayerErrorKind,
+  type MsePlayerHandle,
+} from "../../shared/mse-player";
 import { pendingCameraFocus, subscribeCameraFocus } from "../../shared/camera-focus";
 import { registerCustomCard } from "../../shared/register-card";
 import { appearanceStyle, cssColor } from "../../shared/appearance";
@@ -26,7 +33,7 @@ import {
   CAMERA_CARD_NAME,
   CAMERA_CARD_TYPE,
 } from "./const";
-import type { CameraCardConfig, CameraItemConfig, CameraLayout } from "./types";
+import type { CameraCardConfig, CameraItemConfig, CameraLayout, FrigateCameraMeta } from "./types";
 
 /** Home Assistant's `loadCardHelpers()` return shape (only what this card uses). */
 interface CardHelpers {
@@ -35,6 +42,13 @@ interface CardHelpers {
 
 const DOUBLE_CLICK_MS = 250;
 const LONG_PRESS_MS = 500;
+
+/** go2rtc stream-name suffix per quality tier; `low` uses the base (detect) stream. */
+const MSE_STREAM_SUFFIX: Record<StreamQuality, string> = { low: "", medium: "_med", high: "_high" };
+
+/** Grace period before a hidden tab tears down its streams, so a quick alt-tab
+ *  doesn't force a full reconnect on return. */
+const HIDE_GRACE_MS = 10000;
 
 // mdi:check — marks the active view in the long-press popover.
 const CHECK_ICON = "M21,7L9,19L3.5,13.5L4.91,12.09L9,16.17L19.59,5.59L21,7Z";
@@ -99,6 +113,15 @@ export class TedCameraCard extends LitElement implements LovelaceCard {
   private _longPressFired = false;
   private _io?: IntersectionObserver;
   private _unsubFocus?: () => void;
+  /** Pending "tab hidden" teardown timer (grace period before going inactive). */
+  private _hideTimer?: number;
+
+  /** Live MSE players keyed by `${entity}|${stream}`. */
+  private _msePlayers = new Map<string, MsePlayerHandle>();
+  /** Stable Lit ref callbacks per key, so re-renders don't thrash the players. */
+  private _mseRefCbs = new Map<string, (el: Element | undefined) => void>();
+  /** Cameras whose MSE failed this session — they stick to `<hui-image>`. */
+  private _mseFailed = new Set<string>();
 
   private _helpers?: CardHelpers;
   /** The empty-state messagebox child (built once via loadCardHelpers, json-guarded). */
@@ -179,6 +202,13 @@ export class TedCameraCard extends LitElement implements LovelaceCard {
     document.removeEventListener("visibilitychange", this._onVisibilityChange);
     this._unsubFocus?.();
     this._unsubFocus = undefined;
+    if (this._hideTimer !== undefined) {
+      window.clearTimeout(this._hideTimer);
+      this._hideTimer = undefined;
+    }
+    for (const player of this._msePlayers.values()) player.destroy();
+    this._msePlayers.clear();
+    this._mseRefCbs.clear();
   }
 
   /** Focus a camera on request: make it primary and switch it to a live stream. */
@@ -188,7 +218,22 @@ export class TedCameraCard extends LitElement implements LovelaceCard {
   };
 
   private _onVisibilityChange = (): void => {
-    this._tabVisible = document.visibilityState !== "hidden";
+    if (document.visibilityState === "hidden") {
+      // Grace period: a brief alt-tab shouldn't tear down every stream and force a
+      // full reconnect on return. Only go inactive if still hidden when it fires.
+      if (this._hideTimer === undefined) {
+        this._hideTimer = window.setTimeout(() => {
+          this._hideTimer = undefined;
+          this._tabVisible = false;
+        }, HIDE_GRACE_MS);
+      }
+    } else {
+      if (this._hideTimer !== undefined) {
+        window.clearTimeout(this._hideTimer);
+        this._hideTimer = undefined;
+      }
+      this._tabVisible = true;
+    }
   };
 
   /** Feeds should only stream when the card is on-screen and the tab is visible. */
@@ -259,10 +304,32 @@ export class TedCameraCard extends LitElement implements LovelaceCard {
     `;
   }
 
-  /** The raw camera list — from config, or resolved from this device's settings. */
+  /** The raw camera list — from config, or resolved from this device's settings.
+   *  Both paths are enriched with Frigate MSE metadata from the TDS backend. */
   private _sourceCameras(): CameraItemConfig[] {
-    if (this._config?.cameras_source === "settings") return this._settingsCameras();
-    return this._config?.cameras ?? [];
+    const cams =
+      this._config?.cameras_source === "settings"
+        ? this._settingsCameras()
+        : this._config?.cameras ?? [];
+    return this._withFrigate(cams);
+  }
+
+  /** The global entity->Frigate metadata map surfaced by the TDS backend, if any. */
+  private _frigateCameraMap(): Record<string, FrigateCameraMeta> | undefined {
+    const raw = settingsStore.globalSettings().frigate_cameras;
+    return raw && typeof raw === "object" ? (raw as Record<string, FrigateCameraMeta>) : undefined;
+  }
+
+  /** Attach `frigate` metadata to any camera the backend knows about (both config-
+   *  and settings-sourced), so YAML-configured Frigate cameras get MSE too. */
+  private _withFrigate(cams: CameraItemConfig[]): CameraItemConfig[] {
+    const map = this._frigateCameraMap();
+    if (!map) return cams;
+    return cams.map((cam) => {
+      if (cam.frigate || !cam.entity) return cam;
+      const meta = map[cam.entity];
+      return meta ? { ...cam, frigate: meta } : cam;
+    });
   }
 
   /** Resolve this device's cameras from settings: the device's curated subset (else
@@ -323,6 +390,97 @@ export class TedCameraCard extends LitElement implements LovelaceCard {
     const reg = (this.hass as unknown as { entities?: Record<string, { device_id?: string | null }> })
       .entities;
     return reg?.[entityId]?.device_id ?? undefined;
+  }
+
+  /** Whether this tile should use the native MSE live player instead of `<hui-image>`.
+   *  Only for Frigate cameras (with backend metadata) explicitly set to `live`, when
+   *  the browser supports MSE and it hasn't already failed for this camera. */
+  private _useMse(cam: CameraItemConfig): boolean {
+    return (
+      !!cam.frigate?.instance_id &&
+      !!cam.frigate?.camera_name &&
+      this._effectiveView(cam) === "live" &&
+      isMseSupported() &&
+      !this._mseFailed.has(cam.entity)
+    );
+  }
+
+  /** A `<video>` bound to an MSE player, with the current still as its poster so the
+   *  tile shows a frame during the ~1 s connect instead of going black. */
+  private _renderMseVideo(cam: CameraItemConfig, quality: StreamQuality): TemplateResult {
+    const stream = cam.frigate!.camera_name + MSE_STREAM_SUFFIX[quality];
+    const key = `${cam.entity}|${stream}`;
+    const poster = this.hass?.states[cam.entity]?.attributes?.entity_picture as string | undefined;
+    const fit = this._config?.fit_mode ?? "cover";
+    return html`<video
+      class=${classMap({ mse: true, [fit]: true })}
+      muted
+      playsinline
+      autoplay
+      poster=${poster ?? nothing}
+      ${ref(this._mseRef(cam, stream, key))}
+    ></video>`;
+  }
+
+  /** A stable ref callback per stream key: attach a player on mount, destroy on unmount. */
+  private _mseRef(
+    cam: CameraItemConfig,
+    stream: string,
+    key: string,
+  ): (el: Element | undefined) => void {
+    let cb = this._mseRefCbs.get(key);
+    if (!cb) {
+      cb = (el: Element | undefined): void => {
+        if (el instanceof HTMLVideoElement) {
+          this._attachMse(cam, stream, key, el);
+        } else {
+          this._destroyMse(key);
+          this._mseRefCbs.delete(key);
+        }
+      };
+      this._mseRefCbs.set(key, cb);
+    }
+    return cb;
+  }
+
+  private _attachMse(
+    cam: CameraItemConfig,
+    stream: string,
+    key: string,
+    video: HTMLVideoElement,
+  ): void {
+    if (this._msePlayers.has(key) || !cam.frigate || !this.hass) return;
+    const player = createMsePlayer({
+      hass: this.hass,
+      instanceId: cam.frigate.instance_id,
+      stream,
+      onError: (kind, detail) => this._onMseError(cam.entity, kind, detail),
+    });
+    this._msePlayers.set(key, player);
+    player.attach(video);
+  }
+
+  private _destroyMse(key: string): void {
+    const player = this._msePlayers.get(key);
+    if (player) {
+      player.destroy();
+      this._msePlayers.delete(key);
+    }
+  }
+
+  /** On any MSE failure, mark the camera ineligible for the session and re-render it
+   *  through `<hui-image>`. Silent to the user; logged for diagnostics only. */
+  private _onMseError(entity: string, kind: MsePlayerErrorKind, detail: string): void {
+    // eslint-disable-next-line no-console
+    console.warn(`[ted-camera-card] MSE ${kind} for ${entity}: ${detail}; using hui-image`);
+    this._mseFailed.add(entity);
+    for (const [key, player] of this._msePlayers) {
+      if (key.startsWith(`${entity}|`)) {
+        player.destroy();
+        this._msePlayers.delete(key);
+      }
+    }
+    this.requestUpdate();
   }
 
   /** The effective layout. In settings mode (and when the card doesn't pin `layout`),
@@ -418,13 +576,15 @@ export class TedCameraCard extends LitElement implements LovelaceCard {
         tabindex="0"
       >
         ${this._streamsActive()
-          ? html`<hui-image
-              .hass=${this.hass}
-              .cameraImage=${this._streamEntity(cam, quality)}
-              .cameraView=${this._effectiveView(cam)}
-              .fitMode=${this._config?.fit_mode ?? "cover"}
-              .aspectRatio=${aspectRatio}
-            ></hui-image>`
+          ? this._useMse(cam)
+            ? this._renderMseVideo(cam, quality)
+            : html`<hui-image
+                .hass=${this.hass}
+                .cameraImage=${this._streamEntity(cam, quality)}
+                .cameraView=${this._effectiveView(cam)}
+                .fitMode=${this._config?.fit_mode ?? "cover"}
+                .aspectRatio=${aspectRatio}
+              ></hui-image>`
           : html`<div class="placeholder" aria-hidden="true"></div>`}
         ${showName
           ? html`<div class="box">
@@ -776,6 +936,18 @@ export class TedCameraCard extends LitElement implements LovelaceCard {
         display: block;
         width: 100%;
         height: 100%;
+      }
+      video.mse {
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+      video.mse.contain {
+        object-fit: contain;
+      }
+      video.mse.fill {
+        object-fit: fill;
       }
       .placeholder {
         width: 100%;
