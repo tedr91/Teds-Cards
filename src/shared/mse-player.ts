@@ -311,9 +311,17 @@ class MsePlayer implements MsePlayerHandle {
         // Non-fatal: retried on the next updateend.
       }
     }
-    if (video.currentTime < start) video.currentTime = start;
+    // Recover toward the live edge without fast-forwarding: scaling playbackRate up to
+    // the gap overloads a weak HEVC decoder, which then drops frames and drifts further
+    // behind (a runaway toward 5x). If we've fallen outside the window (or never started,
+    // currentTime 0), jump to just behind live; otherwise a gentle nudge, else play at 1x.
     const gap = end - video.currentTime;
-    video.playbackRate = gap > 0.1 ? gap : 0.1;
+    if (video.currentTime < start || gap > LIVE_WINDOW_SECONDS) {
+      video.currentTime = end - 0.5;
+      video.playbackRate = 1;
+    } else {
+      video.playbackRate = gap > 1.5 ? 1.1 : 1;
+    }
   }
 
   private readonly _onPlaying = (): void => {

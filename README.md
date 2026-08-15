@@ -942,6 +942,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.145
+
+- **Camera Card: smooth Frigate live on the MSE path (Edge and other H.265-via-MSE browsers).** The live-edge tracker no longer fast-forwards playback to catch up — which was overloading the decoder, dropping frames, and lurching the video up to 5× — it now jumps to the live edge and plays at normal speed. The MSE path also serves the low-res detect stream (like ACC) so the decoder keeps up. WebRTC browsers are unaffected.
+
 ### v0.9.144
 
 - **Camera Card: Frigate live now works on browsers without H.265-over-WebRTC (e.g. Microsoft Edge).** The card now picks its live transport by browser capability — WebRTC (with audio) where H.265 can be decoded over it, otherwise the MSE player, which decodes H.265 via the platform. Previously such browsers connected over WebRTC but received no video and showed a frozen frame.

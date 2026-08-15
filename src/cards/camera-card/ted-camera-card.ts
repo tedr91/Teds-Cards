@@ -566,8 +566,11 @@ export class TedCameraCard extends LitElement implements LovelaceCard {
 
   /** A `<video>` bound to an MSE player, with the current still as its poster so the
    *  tile shows a frame during the ~1 s connect instead of going black. */
-  private _renderMseVideo(cam: CameraItemConfig, quality: StreamQuality): TemplateResult {
-    const stream = cam.frigate!.camera_name + MSE_STREAM_SUFFIX[quality];
+  private _renderMseVideo(cam: CameraItemConfig, _quality: StreamQuality): TemplateResult {
+    // MSE serves browsers without H.265-over-WebRTC (weaker decoders); request the
+    // low-res detect stream so decode keeps up at the live edge — matching ACC, which
+    // also plays the detect substream. Higher tiers are reserved for the WebRTC path.
+    const stream = cam.frigate!.camera_name;
     const key = `${cam.entity}|${stream}`;
     const poster = this.hass?.states[cam.entity]?.attributes?.entity_picture as string | undefined;
     const fit = this._config?.fit_mode ?? "cover";
