@@ -942,6 +942,12 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.150
+
+- **Vision tab: tiles is now the default view**, with four selectable tile sizes (Small 1.5x, Medium 2x, Large 2.5x — new default, X-Large 3x) via the card's editor.
+- The layout toggle button moved into the same row as "Mark all reviewed" / "Clear all", to their left.
+- **"Hide viewed" is now "Show viewed events"** and defaults off, so reviewed events are hidden until you turn it on.
+
 ### v0.9.149
 
 - **Vision tab: a layout toggle button.** The card header now has a button (top-right, next to the title) to switch between list and tile view instantly, without editing the card's YAML config.

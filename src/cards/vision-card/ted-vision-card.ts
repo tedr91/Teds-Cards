@@ -30,6 +30,7 @@ import type {
   VisionCardConfig,
   VisionEvent,
   VisionLayout,
+  VisionTileSize,
 } from "./types";
 
 const DOMAIN = "teds_dashboard_system";
@@ -72,8 +73,8 @@ export class TedVisionCard extends LitElement implements LovelaceCard {
   @state() private _severityFilter?: VisionSeverity;
   /** When on, show only events the AI flagged as false alarms. */
   @state() private _falseAlarmOnly = false;
-  /** Hide events already marked reviewed (on by default). */
-  @state() private _hideViewed = true;
+  /** Show events already marked reviewed (off by default, i.e. reviewed events are hidden). */
+  @state() private _showViewed = false;
   @state() private _detailId?: string;
   /** Runtime layout switch (top-right button); overrides the config's `layout` until reload. */
   @state() private _layoutOverride?: VisionLayout;
@@ -207,7 +208,7 @@ export class TedVisionCard extends LitElement implements LovelaceCard {
       : this._events;
   }
 
-  /** Severity + false-alarm pills only — deliberately excludes "Hide viewed". */
+  /** Severity + false-alarm pills only — deliberately excludes "Show viewed events". */
   private _matchesPills(e: VisionEvent): boolean {
     if (this._severityFilter && e.severity !== this._severityFilter) return false;
     if (this._falseAlarmOnly && !e.false_alarm) return false;
@@ -217,12 +218,16 @@ export class TedVisionCard extends LitElement implements LovelaceCard {
   private _filtered(): VisionEvent[] {
     const max = this._config?.max_events ?? 50;
     let list = this._scoped().filter((e) => this._matchesPills(e));
-    if (this._hideViewed) list = list.filter((e) => !e.reviewed);
+    if (!this._showViewed) list = list.filter((e) => !e.reviewed);
     return list.slice(0, max);
   }
 
   private _layout(): VisionLayout {
-    return this._layoutOverride ?? this._config?.layout ?? "list";
+    return this._layoutOverride ?? this._config?.layout ?? "tiles";
+  }
+
+  private _tileSize(): VisionTileSize {
+    return this._config?.tile_size ?? "large";
   }
 
   private _toggleLayout = (): void => {
@@ -255,7 +260,7 @@ export class TedVisionCard extends LitElement implements LovelaceCard {
   private _resetFilters = (): void => {
     this._severityFilter = undefined;
     this._falseAlarmOnly = false;
-    this._hideViewed = false;
+    this._showViewed = true;
   };
 
   protected render(): TemplateResult | typeof nothing {
@@ -289,15 +294,6 @@ export class TedVisionCard extends LitElement implements LovelaceCard {
           <div class="vision-title">
             <ha-icon icon=${themedIcon("camera")}></ha-icon>
             <span>${this._config.title ?? "Vision Events"}</span>
-            <ha-icon-button
-              class="layout-toggle"
-              title=${this._layout() === "tiles" ? "Switch to list view" : "Switch to tile view"}
-              @click=${this._toggleLayout}
-            >
-              <ha-icon
-                icon=${this._layout() === "tiles" ? "mdi:view-list" : "mdi:view-grid"}
-              ></ha-icon>
-            </ha-icon-button>
           </div>
           ${this._renderFilter()}
         </div>
@@ -335,13 +331,22 @@ export class TedVisionCard extends LitElement implements LovelaceCard {
         ${FALSE_ALARM_LABEL}
       </button>
       <button
-        class="chip ${this._hideViewed ? "on" : ""}"
-        title="Hide events you've already reviewed"
-        @click=${() => (this._hideViewed = !this._hideViewed)}
+        class="chip ${this._showViewed ? "on" : ""}"
+        title="Show events you've already reviewed"
+        @click=${() => (this._showViewed = !this._showViewed)}
       >
-        Hide viewed
+        Show viewed events
       </button>
       <div class="filter-actions">
+        <ha-icon-button
+          class="filter-act"
+          title=${this._layout() === "tiles" ? "Switch to list view" : "Switch to tile view"}
+          @click=${this._toggleLayout}
+        >
+          <ha-icon
+            icon=${this._layout() === "tiles" ? "mdi:view-list" : "mdi:view-grid"}
+          ></ha-icon>
+        </ha-icon-button>
         <ha-icon-button class="filter-act" title="Mark all reviewed" @click=${this._markAllReviewed}>
           <ha-icon icon="mdi:check-all"></ha-icon>
         </ha-icon-button>
@@ -441,7 +446,7 @@ export class TedVisionCard extends LitElement implements LovelaceCard {
   }
 
   private _renderTiles(events: VisionEvent[]): TemplateResult {
-    return html`<div class="vision-tiles">
+    return html`<div class="vision-tiles size-${this._tileSize()}">
       ${repeat(
         events,
         (e) => e.id,
@@ -684,7 +689,7 @@ export class TedVisionCard extends LitElement implements LovelaceCard {
     const matching = scoped.filter((e) => this._matchesPills(e));
     const labels = this._activeFilterLabels();
 
-    // B1 — the pills match events, so "Hide viewed" is what emptied the list.
+    // B1 — the pills match events, so "Show viewed events" being off is what emptied the list.
     if (matching.length) {
       const n = matching.length;
       const what = labels.length
@@ -694,7 +699,7 @@ export class TedVisionCard extends LitElement implements LovelaceCard {
         "success",
         "mdi:check-all",
         "You're all caught up",
-        `${what} Turn off "Hide viewed" to see them again.`,
+        `${what} Turn on "Show viewed events" to see them again.`,
       );
     }
 
@@ -779,15 +784,6 @@ export class TedVisionCard extends LitElement implements LovelaceCard {
         font-size: 1.1rem;
         font-weight: 600;
       }
-      .vision-title .layout-toggle {
-        margin-left: auto;
-        --ha-icon-button-size: 32px;
-        --mdc-icon-size: 20px;
-        color: var(--ted-style-muted, var(--secondary-text-color));
-      }
-      .vision-title .layout-toggle:hover {
-        color: var(--ted-style-text, var(--primary-text-color));
-      }
       .vision-filter {
         display: flex;
         flex-wrap: wrap;
@@ -839,6 +835,22 @@ export class TedVisionCard extends LitElement implements LovelaceCard {
         gap: 10px;
         padding: 4px 8px 10px;
       }
+      .vision-tiles.size-small {
+        --tile-thumb-w: 138px;
+        --tile-thumb-h: 90px;
+      }
+      .vision-tiles.size-medium {
+        --tile-thumb-w: 184px;
+        --tile-thumb-h: 120px;
+      }
+      .vision-tiles.size-large {
+        --tile-thumb-w: 230px;
+        --tile-thumb-h: 150px;
+      }
+      .vision-tiles.size-x-large {
+        --tile-thumb-w: 276px;
+        --tile-thumb-h: 180px;
+      }
       .row,
       .tile {
         text-align: left;
@@ -858,7 +870,7 @@ export class TedVisionCard extends LitElement implements LovelaceCard {
       .tile {
         display: flex;
         flex-direction: column;
-        width: 184px;
+        width: var(--tile-thumb-w, 230px);
         overflow: hidden;
         padding: 0;
       }
@@ -881,8 +893,8 @@ export class TedVisionCard extends LitElement implements LovelaceCard {
         box-shadow: inset 0 0 0 2px var(--sev, transparent);
       }
       .tile-thumb {
-        width: 184px;
-        height: 120px;
+        width: var(--tile-thumb-w, 230px);
+        height: var(--tile-thumb-h, 150px);
         border-radius: 10px 10px 0 0;
         box-shadow: inset 0 0 0 2px var(--sev, transparent);
       }

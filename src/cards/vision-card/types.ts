@@ -57,11 +57,16 @@ export interface VisionEvent {
 
 export type VisionLayout = "list" | "tiles";
 
+/** Tile size multiplier relative to the list thumbnail (92x60): 1.5x / 2x / 2.5x / 3x. */
+export type VisionTileSize = "small" | "medium" | "large" | "x-large";
+
 export interface VisionCardConfig extends LovelaceCardConfig {
   type: string;
   theme?: TedStyleTheme;
   /** Display mode for the event list. */
   layout?: VisionLayout;
+  /** Tile size when `layout` is "tiles" (default "large"). */
+  tile_size?: VisionTileSize;
   /** Only show events from these cameras (unset = all). */
   cameras?: string[];
   /** Max events to display (default 50). */
