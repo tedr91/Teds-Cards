@@ -22,6 +22,8 @@ export type WebRtcPlayerErrorKind = "network" | "startup";
 export interface WebRtcPlayerHandle {
   attach(video: HTMLVideoElement): void;
   destroy(): void;
+  /** Mute/unmute the live element at runtime (call from a user gesture to unmute). */
+  setMuted(muted: boolean): void;
   readonly state: WebRtcPlayerState;
 }
 
@@ -61,8 +63,11 @@ class WebRtcPlayer implements WebRtcPlayerHandle {
   private _startupTimer?: number;
   private _destroyed = false;
   private _reachedPlaying = false;
+  private _muted: boolean;
 
-  public constructor(private readonly _opts: WebRtcPlayerOptions) {}
+  public constructor(private readonly _opts: WebRtcPlayerOptions) {
+    this._muted = _opts.muted ?? false;
+  }
 
   public attach(video: HTMLVideoElement): void {
     this._video = video;
@@ -78,6 +83,15 @@ class WebRtcPlayer implements WebRtcPlayerHandle {
     if (this._video) this._video.removeEventListener("playing", this._onPlaying);
     this._video = undefined;
     if (this.state !== "failed") this.state = "idle";
+  }
+
+  public setMuted(muted: boolean): void {
+    this._muted = muted;
+    const video = this._video;
+    if (!video) return;
+    video.muted = muted;
+    // Unmuting arrives from a user gesture, so playback with audio is now allowed.
+    if (!muted) void video.play().catch(() => {});
   }
 
   private _fail(kind: WebRtcPlayerErrorKind, detail: string): void {
@@ -168,7 +182,15 @@ class WebRtcPlayer implements WebRtcPlayerHandle {
 
   private readonly _onConnectionStateChange = (): void => {
     const s = this._pc?.connectionState;
-    if (s === "failed" || s === "disconnected") {
+    if (s === "connected") {
+      // Media is flowing. A slow or autoplay-blocked <video>.play() must not let the
+      // startup timer (or a signalling-socket close) tear the connection down: clear
+      // the guard, mark the player live, and (re)try playback.
+      this._reachedPlaying = true;
+      this._clearStartupTimer();
+      if (this.state !== "failed") this.state = "playing";
+      this._play();
+    } else if (s === "failed" || s === "disconnected") {
       this._fail(this._reachedPlaying ? "network" : "startup", `connection ${s}`);
     }
   };
@@ -202,7 +224,7 @@ class WebRtcPlayer implements WebRtcPlayerHandle {
   private _play(): void {
     const video = this._video;
     if (!video) return;
-    if (this._opts.muted) {
+    if (this._muted) {
       video.muted = true;
       video.play().catch(() => {
         /* Muted playback can still be deferred until the element is interactable. */

@@ -64,6 +64,12 @@ const CROWN_ICON =
 // mdi:filmstrip — "Recordings" (opens the Frigate web UI).
 const FILMSTRIP_ICON =
   "M18,4L20,8H17L15,4H13L15,8H12L10,4H8L10,8H7L5,4H4A2,2 0 0,0 2,6V18A2,2 0 0,0 4,20H20A2,2 0 0,0 22,18V4H18Z";
+// mdi:volume-high — primary tile audio is on.
+const VOLUME_HIGH_ICON =
+  "M14,3.23V5.29C16.89,6.15 19,8.83 19,12C19,15.17 16.89,17.84 14,18.7V20.77C18,19.86 21,16.28 21,12C21,7.72 18,4.14 14,3.23M16.5,12C16.5,10.23 15.5,8.71 14,7.97V16C15.5,15.29 16.5,13.76 16.5,12M3,9V15H7L12,20V4L7,9H3Z";
+// mdi:volume-off — primary tile audio is muted.
+const VOLUME_OFF_ICON =
+  "M12,4L9.91,6.09L12,8.18M4.27,3L3,4.27L7.73,9H3V15H7L12,20V13.27L16.25,17.53C15.58,18.04 14.83,18.46 14,18.7V20.77C15.38,20.45 16.63,19.82 17.68,18.96L19.73,21L21,19.73L12,10.73M19,12C19,12.94 18.8,13.82 18.46,14.64L19.97,16.15C20.62,14.91 21,13.5 21,12C21,7.72 18,4.14 14,3.23V5.29C16.89,6.15 19,8.83 19,12M16.5,12C16.5,10.23 15.5,8.71 14,7.97V10.18L16.45,12.63C16.5,12.43 16.5,12.21 16.5,12Z";
 
 /** Subset of Home Assistant's LovelaceGridOptions for the Sections grid layout. */
 interface GridOptions {
@@ -113,6 +119,8 @@ export class TedCameraCard extends LitElement implements LovelaceCard {
   @state() private _primaryEntity?: string;
   /** The long-press popover, if open. */
   @state() private _popup?: { entity: string; x: number; y: number };
+  /** Session-only: whether the primary tile's audio is muted (starts muted). */
+  @state() private _primaryMuted = true;
 
   private _clickTimer?: number;
   private _longPressTimer?: number;
@@ -129,7 +137,7 @@ export class TedCameraCard extends LitElement implements LovelaceCard {
   /** Cameras whose MSE failed this session — they stick to `<hui-image>`. */
   private _mseFailed = new Set<string>();
 
-  /** Live WebRTC players keyed by `${entity}|${stream}|${muted}`. */
+  /** Live WebRTC players keyed by `${entity}|${stream}`. */
   private _webrtcPlayers = new Map<string, WebRtcPlayerHandle>();
   /** Stable Lit ref callbacks per WebRTC key. */
   private _webrtcRefCbs = new Map<string, (el: Element | undefined) => void>();
@@ -446,11 +454,37 @@ export class TedCameraCard extends LitElement implements LovelaceCard {
     return this._enabledCameras()[0]?.entity === entity;
   }
 
+  /** Speaker toggle shown on the primary live WebRTC tile to mute/unmute its audio. */
+  private _renderAudioToggle(): TemplateResult {
+    const muted = this._primaryMuted;
+    return html`<button
+      class="cam-audio"
+      @click=${this._toggleAudio}
+      @pointerdown=${(ev: Event) => ev.stopPropagation()}
+      title=${muted ? "Unmute" : "Mute"}
+      aria-label=${muted ? "Unmute" : "Mute"}
+    >
+      <ha-svg-icon .path=${muted ? VOLUME_OFF_ICON : VOLUME_HIGH_ICON}></ha-svg-icon>
+    </button>`;
+  }
+
+  private _toggleAudio = (ev: Event): void => {
+    ev.stopPropagation();
+    this._primaryMuted = !this._primaryMuted;
+    const primary = this._enabledCameras()[0];
+    if (!primary) return;
+    for (const [key, player] of this._webrtcPlayers) {
+      if (key.startsWith(`${primary.entity}|`)) player.setMuted(this._primaryMuted);
+    }
+  };
+
   /** A `<video>` bound to a go2rtc WebRTC player. Only the primary tile is unmuted. */
   private _renderWebRtcVideo(cam: CameraItemConfig, quality: StreamQuality): TemplateResult {
     const stream = cam.frigate!.camera_name + MSE_STREAM_SUFFIX[quality];
-    const muted = !this._isPrimaryCamera(cam.entity);
-    const key = `${cam.entity}|${stream}|${muted ? "m" : "u"}`;
+    // Every tile starts muted so it always autoplays; the primary tile carries a
+    // speaker toggle to unmute (a user gesture the browser then allows).
+    const muted = this._isPrimaryCamera(cam.entity) ? this._primaryMuted : true;
+    const key = `${cam.entity}|${stream}`;
     const poster = this.hass?.states[cam.entity]?.attributes?.entity_picture as string | undefined;
     const fit = this._config?.fit_mode ?? "cover";
     return html`<video
@@ -699,6 +733,9 @@ export class TedCameraCard extends LitElement implements LovelaceCard {
         ${this._streamsActive()
           ? this._renderStream(cam, quality, aspectRatio)
           : html`<div class="placeholder" aria-hidden="true"></div>`}
+        ${this._isPrimaryCamera(cam.entity) && this._frigateLiveTransport(cam) === "webrtc"
+          ? this._renderAudioToggle()
+          : nothing}
         ${showName
           ? html`<div class="box">
               <div class="title" style=${styleMap({ fontSize: `${nameSize}px` })}>${caption}</div>
@@ -1081,6 +1118,27 @@ export class TedCameraCard extends LitElement implements LovelaceCard {
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
+      }
+      .cam-audio {
+        position: absolute;
+        top: 6px;
+        right: 6px;
+        z-index: 2;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 34px;
+        height: 34px;
+        padding: 0;
+        border: none;
+        border-radius: 50%;
+        cursor: pointer;
+        color: #fff;
+        background: rgba(0, 0, 0, 0.55);
+        --mdc-icon-size: 20px;
+      }
+      .cam-audio:hover {
+        background: rgba(0, 0, 0, 0.75);
       }
       .cam-fchips {
         position: absolute;

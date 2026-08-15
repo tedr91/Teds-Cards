@@ -942,6 +942,11 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.143
+
+- **Camera Card: the primary live tile no longer freezes on load.** A WebRTC connection that took a moment to start rendering could trip an 8-second timer and fall back to a frozen still; the player now treats a connected peer as live, so slow or autoplay-deferred video keeps streaming instead of dropping.
+- **Camera Card: primary tile starts muted with a speaker toggle.** Every tile now starts muted so it always plays, and the primary live tile shows a **mute/unmute speaker button** in its corner — tap it to turn audio on or off without reconnecting.
+
 ### v0.9.142
 
 - **Grouped launcher buttons: the multi-view hint shadow hides at full transparency.** When a launcher button's background Transparency is set to 100%, the "card behind" stacked-card shadow on a combined multi-view button is now hidden too, so it doesn't read as a stray mark over the transparent tile.
