@@ -33,7 +33,7 @@ import {
   ROOM_CARD_TYPE,
 } from "./const";
 import { autoPopulateRoom, type AutoPopulateResult } from "./auto-populate";
-import { onRoomPhotosChanged, primeRoomPhotos, roomPhotoUrl } from "../../shared/room-photos";
+import { onRoomPhotosChanged, primeRoomPhotos, roomPhotoUrl, roomPhotosPrimed, roomPhotosBackendAvailable, downloadRoomPhotos } from "../../shared/room-photos";
 import type {
   ButtonSize,
   RoomButtonConfig,
@@ -262,6 +262,8 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
   @state() private _photoError = false;
   /** Unsubscribe from the shared room-photo cache (primed once per page load). */
   private _roomPhotosUnsub?: () => void;
+  /** Bundled photos we've already asked the backend to fetch (once per file). */
+  private _photoFetchTried = new Set<string>();
   /** True once HA's `<hui-image>` is registered (for a camera room photo). */
   @state() private _huiImageReady = false;
   /** Measured y (px) of the header's bottom edge, for the "below header" photo. */
@@ -403,6 +405,7 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
   protected updated(): void {
     this.toggleAttribute("hidden", this._shouldHide());
     if (!this._layoutObserver) this._observeHeader();
+    this._ensureLocalPhoto();
   }
 
   /** Track the header + photo sizes so dependent layout (below-header, shift) can react. */
@@ -866,6 +869,17 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
     return p === "fill" || p === "below_header" ? p : "top";
   }
 
+  /** Bundled photo filename for the current config, or undefined when the source
+   *  is custom/camera or no bundled photo matches. */
+  private _bundledPhotoFile(): string | undefined {
+    const c = this._config;
+    if (!c || c.photo_source === "custom" || c.photo_source === "camera") return undefined;
+    const key =
+      !c.photo || c.photo === "auto" ? autoMatchPhotoKey(c.name || this._areaName()) : c.photo;
+    if (!key) return undefined;
+    return BUNDLED_PHOTOS[key];
+  }
+
   /** Resolve the configured photo to a URL (bundled CDN, custom, or auto-match). */
   private _resolvePhotoUrl(): string | undefined {
     const c = this._config;
@@ -873,13 +887,26 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
     if (c.photo_source === "custom") {
       return c.photo_url || undefined;
     }
-    const key =
-      !c.photo || c.photo === "auto" ? autoMatchPhotoKey(c.name || this._areaName()) : c.photo;
-    if (!key) return undefined;
-    const file = BUNDLED_PHOTOS[key];
+    const file = this._bundledPhotoFile();
     if (!file) return undefined;
-    // Prefer the locally-served (TDS-bundled) copy; fall back to the CDN when no backend.
-    return roomPhotoUrl(file) ?? bundledPhotoUrl(file);
+    const local = roomPhotoUrl(file);
+    if (local) return local;
+    // Before the local cache is primed, don't flash the third-party CDN: on a TDS
+    // system the photo is served locally, so wait until we know before falling back.
+    if (!roomPhotosPrimed()) return undefined;
+    return bundledPhotoUrl(file);
+  }
+
+  /** When TDS is installed but the bundled photo isn't cached locally yet, fetch it
+   *  once so it serves same-origin (the CDN fallback otherwise trips browser tracking
+   *  prevention on every view). The cache notifies subscribers, re-rendering to the
+   *  local URL. */
+  private _ensureLocalPhoto(): void {
+    if (!roomPhotosBackendAvailable()) return;
+    const file = this._bundledPhotoFile();
+    if (!file || roomPhotoUrl(file) || this._photoFetchTried.has(file)) return;
+    this._photoFetchTried.add(file);
+    void downloadRoomPhotos(this.hass, [file]);
   }
 
   /** Build the comma-separated CSS gradients for the selected scrim edges. */

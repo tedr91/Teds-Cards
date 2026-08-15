@@ -14,6 +14,7 @@ interface HassLike {
 
 let _photos: Record<string, string> = {};
 let _primed: Promise<void> | undefined;
+let _primeResolved = false;
 let _backendOk = false;
 const _subs = new Set<() => void>();
 
@@ -38,6 +39,12 @@ export function roomPhotosBackendAvailable(): boolean {
   return _backendOk;
 }
 
+/** True once the initial prime has resolved (success or failure), so callers know
+ *  whether a missing local photo means "no backend" vs "not primed yet". */
+export function roomPhotosPrimed(): boolean {
+  return _primeResolved;
+}
+
 /** Locally-served URL for a photo filename, or undefined if unavailable. */
 export function roomPhotoUrl(file: string): string | undefined {
   return _photos[file];
@@ -60,6 +67,7 @@ async function _load(hass: HassLike): Promise<void> {
     _photos = {};
     _backendOk = false;
   }
+  _primeResolved = true;
   _notify();
 }
 
