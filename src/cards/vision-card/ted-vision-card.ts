@@ -75,6 +75,8 @@ export class TedVisionCard extends LitElement implements LovelaceCard {
   /** Hide events already marked reviewed (on by default). */
   @state() private _hideViewed = true;
   @state() private _detailId?: string;
+  /** Runtime layout switch (top-right button); overrides the config's `layout` until reload. */
+  @state() private _layoutOverride?: VisionLayout;
   /** ai_task availability: undefined = not checked, true/false once known. */
   @state() private _aiTaskOk?: boolean;
   /** Advances the looping preview thumbnails (Frigate-style) across all rows. */
@@ -220,8 +222,12 @@ export class TedVisionCard extends LitElement implements LovelaceCard {
   }
 
   private _layout(): VisionLayout {
-    return this._config?.layout ?? "list";
+    return this._layoutOverride ?? this._config?.layout ?? "list";
   }
+
+  private _toggleLayout = (): void => {
+    this._layoutOverride = this._layout() === "tiles" ? "list" : "tiles";
+  };
 
   /** Human labels for the severity / false-alarm pills currently engaged. */
   private _activeFilterLabels(): string[] {
@@ -283,6 +289,15 @@ export class TedVisionCard extends LitElement implements LovelaceCard {
           <div class="vision-title">
             <ha-icon icon=${themedIcon("camera")}></ha-icon>
             <span>${this._config.title ?? "Vision Events"}</span>
+            <ha-icon-button
+              class="layout-toggle"
+              title=${this._layout() === "tiles" ? "Switch to list view" : "Switch to tile view"}
+              @click=${this._toggleLayout}
+            >
+              <ha-icon
+                icon=${this._layout() === "tiles" ? "mdi:view-list" : "mdi:view-grid"}
+              ></ha-icon>
+            </ha-icon-button>
           </div>
           ${this._renderFilter()}
         </div>
@@ -763,6 +778,15 @@ export class TedVisionCard extends LitElement implements LovelaceCard {
         gap: 8px;
         font-size: 1.1rem;
         font-weight: 600;
+      }
+      .vision-title .layout-toggle {
+        margin-left: auto;
+        --ha-icon-button-size: 32px;
+        --mdc-icon-size: 20px;
+        color: var(--ted-style-muted, var(--secondary-text-color));
+      }
+      .vision-title .layout-toggle:hover {
+        color: var(--ted-style-text, var(--primary-text-color));
       }
       .vision-filter {
         display: flex;

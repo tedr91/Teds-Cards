@@ -942,6 +942,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.149
+
+- **Vision tab: a layout toggle button.** The card header now has a button (top-right, next to the title) to switch between list and tile view instantly, without editing the card's YAML config.
+
 ### v0.9.148
 
 - **Vision tab: new tile layout.** The Cameras → Vision timeline now supports a larger tile view that keeps the same metadata as the list view but renders the severity as a color dot, keeps the name/time on one row, and places the summary beneath the thumbnail.
