@@ -942,6 +942,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.137
+
+- **Grouped launcher buttons: the stacked-card shadow follows the theme radius.** The "card behind" shadow on a combined multi-view launcher button no longer uses a fixed corner radius — it matches the button's own theme-driven radius so the two corners line up.
+
 ### v0.9.136
 
 - **Launcher Buttons: Transparency & Blur.** Settings → Navbar → Launcher Buttons gains **Transparency** and **Blur** controls for the buttons' backgrounds, side by side below Button/Highlight color.

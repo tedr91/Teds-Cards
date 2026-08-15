@@ -408,9 +408,11 @@ export class TedExpandableButtonCard extends LitElement implements LovelaceCard 
         cursor: pointer;
         -webkit-tap-highlight-color: transparent;
       }
-      /* Combined-group trigger: a subtle single "card behind" shadow. */
+      /* Combined-group trigger: a subtle single "card behind" shadow. Match the radius
+         the embedded button actually renders with (--ha-card-border-radius, which the HA
+         theme drives) so the stacked-card corners follow the button, not a fixed radius. */
       .ebc-trigger.grouped {
-        border-radius: var(--ted-style-radius, 12px);
+        border-radius: var(--ha-card-border-radius, var(--ted-style-radius, 12px));
         box-shadow: 3px -3px 0 -1px rgba(255, 255, 255, 0.16);
       }
       /* Hide the stacked-card shadow while the group is the current view (highlighted). */
