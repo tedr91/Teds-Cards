@@ -235,17 +235,27 @@ export function effectiveLauncherPaths(list: string[], discovered: LauncherViewI
 }
 
 /** Base styling for every launcher button: a tinted surface + matching icon in the
- *  configured button color (defaults to white), at 25% opacity, following the navbar theme. */
-function launcherButtonBase(color: string, theme: string): Partial<NavButtonConfig> {
-  return {
+ *  configured button color (defaults to white), at the configured transparency (default
+ *  75%) and optional background blur, following the navbar theme. */
+function launcherButtonBase(
+  color: string,
+  theme: string,
+  transparency?: number,
+  blur?: number,
+): Partial<NavButtonConfig> {
+  const t = typeof transparency === "number" ? Math.min(100, Math.max(0, transparency)) : 75;
+  const b = typeof blur === "number" ? Math.min(100, Math.max(0, blur)) : 0;
+  const base: Partial<NavButtonConfig> = {
     icon_scale: 140,
     icon_color: color,
     theme: theme === "ted-style" ? "ted-style" : "ha",
     background: color,
-    transparency: 75,
+    transparency: t,
     show_name: false,
     show_state: false,
   };
+  if (b > 0) base.blur = b;
+  return base;
 }
 
 interface BuildLauncherParams {
@@ -261,6 +271,10 @@ interface BuildLauncherParams {
   highlightActive: boolean;
   /** Tint/icon color of every launcher button (default white). */
   buttonColor?: string;
+  /** Launcher button background transparency (0–100, default 75). */
+  buttonTransparency?: number;
+  /** Launcher button background blur (0–100, default 0 = none). */
+  buttonBlur?: number;
   /** Ring color marking the current view's button (default accent). */
   highlightColor?: string;
   /** The navbar's own surface appearance, mirrored onto a combined group's popup so it
@@ -318,7 +332,7 @@ function plainButton(view: LauncherViewInfo, p: BuildLauncherParams, showName: b
   const iconOpt = typeof opt.icon === "string" ? opt.icon : undefined;
   const tap_action = viewTapAction(view, p);
   const btn: NavButtonConfig = {
-    ...launcherButtonBase(color, p.navTheme || "ha"),
+    ...launcherButtonBase(color, p.navTheme || "ha", p.buttonTransparency, p.buttonBlur),
     ...opt,
     type: `custom:${BUTTON_CARD_TYPE}`,
     icon: resolveViewIcon(iconOpt || view.icon) || DEFAULT_BUTTON_ICON,
@@ -327,9 +341,9 @@ function plainButton(view: LauncherViewInfo, p: BuildLauncherParams, showName: b
   };
   if (showName) btn.show_name = opt.show_name ?? true;
   if (active) {
-    // The current-view button: a highlight ring + a slightly more solid (40%) tint.
+    // The current-view button: a highlight ring + a slightly more solid tint than the base.
     btn.ring = p.highlightColor || "accent";
-    btn.transparency = 60;
+    btn.transparency = Math.max(0, (typeof p.buttonTransparency === "number" ? p.buttonTransparency : 75) - 15);
   }
   return btn;
 }
@@ -354,7 +368,7 @@ export function buildLauncherButtons(p: BuildLauncherParams): NavButtonConfig[] 
     const groupActive =
       p.highlightActive && group.members.some((m) => m.path === p.currentViewPath);
     const trigger: NavButtonConfig = {
-      ...launcherButtonBase(color, p.navTheme || "ha"),
+      ...launcherButtonBase(color, p.navTheme || "ha", p.buttonTransparency, p.buttonBlur),
       ...primaryOpt,
       type: `custom:${EXPANDABLE_BUTTON_CARD_TYPE}`,
       icon: resolveViewIcon(primaryIcon || group.primary.icon) || DEFAULT_BUTTON_ICON,

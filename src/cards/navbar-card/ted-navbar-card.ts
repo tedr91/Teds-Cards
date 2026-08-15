@@ -972,6 +972,8 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
     const views = resolveLauncherViews(visiblePaths, discovered);
     const buttonColorRaw = this._settingOverride("launcher_button_color");
     const highlightColorRaw = this._settingOverride("launcher_highlight_color");
+    const buttonTransparencyRaw = this._settingOverride("launcher_button_transparency");
+    const buttonBlurRaw = this._settingOverride("launcher_button_blur");
     const eff = settingsStore.effective();
     const root = String(eff.dashboard_root || readDashboardUrlPath() || "ted-dashboard");
     this._launcherCache = buildLauncherButtons({
@@ -987,6 +989,8 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
       highlightActive: this._settingOverride("launcher_highlight_active") !== false,
       buttonColor: typeof buttonColorRaw === "string" && buttonColorRaw ? buttonColorRaw : undefined,
       highlightColor: typeof highlightColorRaw === "string" && highlightColorRaw ? highlightColorRaw : undefined,
+      buttonTransparency: typeof buttonTransparencyRaw === "number" ? buttonTransparencyRaw : undefined,
+      buttonBlur: typeof buttonBlurRaw === "number" ? buttonBlurRaw : undefined,
       navBackground: typeof this._config?.background === "string" ? this._config.background : undefined,
       navTransparency: typeof this._config?.transparency === "number" ? this._config.transparency : undefined,
       navBlur: typeof this._config?.blur === "number" ? this._config.blur : undefined,

@@ -211,6 +211,8 @@ export const SETTINGS_DEFAULTS: SettingsMap = {
   launcher_highlight_active: true,
   launcher_button_color: "white",
   launcher_highlight_color: "accent",
+  launcher_button_transparency: 75,
+  launcher_button_blur: 0,
   do_not_disturb: false,
   debug_mode: false,
   allow_device_area_self_assign: true,

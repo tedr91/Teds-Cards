@@ -942,6 +942,12 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.136
+
+- **Launcher Buttons: Transparency & Blur.** Settings → Navbar → Launcher Buttons gains **Transparency** and **Blur** controls for the buttons' backgrounds, side by side below Button/Highlight color.
+- **Button Card: entity default icons.** A bound entity with no custom icon now shows Home Assistant's own default (e.g. scenes → `mdi:palette`) instead of the generic tap glyph.
+- **Calendar (Agenda): a touch more breathing room** — 1px between events and slightly more day-row padding.
+
 ### v0.9.135
 
 - **Room Card auto-populate: brushed tiles.** Auto-populated light, cover, button, and scene tiles now enable the brushed-metal effect.

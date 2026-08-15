@@ -1077,7 +1077,7 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
       gap: 1px; /* tighter spacing between days */
     }
     .calendar .agenda-day-events {
-      gap: 0; /* no spacing between an event and the next */
+      gap: 1px; /* small spacing between an event and the next */
     }
     /* Group DAY / DATE / WEATHER tightly and center them vertically, so the weekday sits
        just above the date and the forecast just below it (instead of daylight spreading
@@ -1125,8 +1125,8 @@ export class TedCalendarCard extends LitElement implements LovelaceCard {
     /* Breathing room around each Agenda day row (daylight defaults to an 8px top strip
        and no bottom padding). */
     .calendar .agenda-day-row {
-      padding-top: 5px;
-      padding-bottom: 4px;
+      padding-top: 6px;
+      padding-bottom: 5px;
     }
     /* Turn daylight's under-date underline into a vertical divider on the RIGHT of the
        date column, at 50% opacity. Keeps daylight's today-vs-other coloring (today = blue,

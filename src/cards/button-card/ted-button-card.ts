@@ -242,11 +242,6 @@ export class TedButtonCard extends LitElement implements LovelaceCard {
     return this._config?.name ?? stateObj?.attributes?.friendly_name ?? this._config?.entity ?? "";
   }
 
-  private _icon(): string {
-    const stateObj = this._stateObj();
-    return resolveIcon(this._config?.icon) ?? stateObj?.attributes?.icon ?? DEFAULT_BUTTON_ICON;
-  }
-
   private _stateLabel(): string {
     const stateObj = this._stateObj();
     if (!stateObj) return "";
@@ -387,9 +382,22 @@ export class TedButtonCard extends LitElement implements LovelaceCard {
     const visible = order.filter((el) => showFlags[el]);
     const slotClass = (el: CardElement): string =>
       (["slot-top", "slot-mid", "slot-bot"] as const)[order.indexOf(el)];
+    // A bound entity with no explicit/custom icon uses Home Assistant's own default
+    // for that entity (e.g. scenes → mdi:palette) via ha-state-icon; label-only
+    // buttons fall back to the generic button glyph.
+    const explicitIcon = resolveIcon(this._config?.icon);
+    const iconClassObj = { icon: true, [slotClass("icon")]: true };
+    const iconStyleObj = {
+      color: iconColor,
+      "--mdc-icon-size": `calc(var(--lbc-icon-base, 32px) * ${iconScale} / 100)`,
+    };
+    const iconTpl =
+      !explicitIcon && stateObj
+        ? html`<ha-state-icon class=${classMap(iconClassObj)} style=${styleMap(iconStyleObj)} .hass=${this.hass} .stateObj=${stateObj}></ha-state-icon>`
+        : html`<ha-icon class=${classMap(iconClassObj)} style=${styleMap(iconStyleObj)} .icon=${explicitIcon ?? DEFAULT_BUTTON_ICON}></ha-icon>`;
     const tpls: Record<CardElement, TemplateResult> = {
       name: html`<span class=${classMap({ name: true, [slotClass("name")]: true })} style=${styleMap({ fontSize: `${(16 * nameScale) / 100}px`, ...(nameColor ? { color: nameColor } : {}) })}>${this._name()}</span>`,
-      icon: html`<ha-icon class=${classMap({ icon: true, [slotClass("icon")]: true })} style=${styleMap({ color: iconColor, "--mdc-icon-size": `calc(var(--lbc-icon-base, 32px) * ${iconScale} / 100)` })} .icon=${this._icon()}></ha-icon>`,
+      icon: iconTpl,
       state: html`<span class=${classMap({ state: true, [slotClass("state")]: true })} style=${styleMap({ fontSize: `${(13.6 * stateScale) / 100}px`, ...(stateColor ? { color: stateColor } : {}) })}>${this._stateLabel()}</span>`,
     };
 

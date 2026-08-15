@@ -230,6 +230,25 @@ const LAUNCHER_HIGHLIGHT_COLOR_SCHEMA = [
   { name: "launcher_highlight_color", selector: { ui_color: { default_color: "accent" } } },
 ];
 
+/** Transparency + Background blur for the launcher buttons' backgrounds, side by side. */
+const LAUNCHER_APPEARANCE_SCHEMA = [
+  {
+    type: "grid",
+    name: "",
+    column_min_width: "100px",
+    schema: [
+      {
+        name: "launcher_button_transparency",
+        selector: { number: { min: 0, max: 100, step: 1, mode: "box", unit_of_measurement: "%" } },
+      },
+      {
+        name: "launcher_button_blur",
+        selector: { number: { min: 0, max: 100, step: 1, mode: "box", unit_of_measurement: "%" } },
+      },
+    ],
+  },
+];
+
 const LAUNCHER_LABELS: Record<string, string> = {
   launcher_enabled: "Enabled",
   launcher_section: "Section",
@@ -238,6 +257,8 @@ const LAUNCHER_LABELS: Record<string, string> = {
   launcher_button_color: "Button color",
   launcher_highlight_active: "Highlight current view",
   launcher_highlight_color: "Highlight color",
+  launcher_button_transparency: "Transparency",
+  launcher_button_blur: "Blur",
   nav_button_size: "Button size",
 };
 
@@ -250,6 +271,8 @@ const LAUNCHER_SETTING_KEYS = [
   "launcher_button_color",
   "launcher_highlight_active",
   "launcher_highlight_color",
+  "launcher_button_transparency",
+  "launcher_button_blur",
 ] as const;
 
 /** ha-form schema pieces for the Automatic Night Mode composite. */
@@ -4029,6 +4052,17 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
         ${this._renderLauncherColor(scope, "launcher_button_color", LAUNCHER_BUTTON_COLOR_SCHEMA, disabled)}
         ${this._renderLauncherColor(scope, "launcher_highlight_color", LAUNCHER_HIGHLIGHT_COLOR_SCHEMA, disabled)}
       </div>
+      <ha-form
+        .hass=${this.hass}
+        .data=${{
+          launcher_button_transparency: (val("launcher_button_transparency") as number | undefined) ?? 75,
+          launcher_button_blur: (val("launcher_button_blur") as number | undefined) ?? 0,
+        }}
+        .schema=${LAUNCHER_APPEARANCE_SCHEMA}
+        .disabled=${disabled}
+        .computeLabel=${this._launcherLabel}
+        @value-changed=${(ev: CustomEvent) => this._onLauncherSettingsChanged(ev, scope)}
+      ></ha-form>
       <ha-form
         .hass=${this.hass}
         .data=${{ launcher_highlight_active: val("launcher_highlight_active") !== false }}
