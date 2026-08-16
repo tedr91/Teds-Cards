@@ -875,7 +875,7 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
     const c = this._config;
     if (!c || c.photo_source === "custom" || c.photo_source === "camera") return undefined;
     const key =
-      !c.photo || c.photo === "auto" ? autoMatchPhotoKey(c.name || this._areaName()) : c.photo;
+      !c.photo || c.photo === "auto" ? autoMatchPhotoKey(c.name, this._areaName()) : c.photo;
     if (!key) return undefined;
     return BUNDLED_PHOTOS[key];
   }

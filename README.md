@@ -695,8 +695,11 @@ header, status, and buttons). In the editor's **Room Photo** section:
   stay readable. Sensible defaults per placement (Top→top edge, Fill→top+bottom, Below header→none).
 - **Photo opacity** (default 100%).
 
-The default (Show photo on, Auto) silently shows nothing when the room name doesn't match a bundled
-photo or the image can't be loaded.
+With the default (Show photo on, Auto), the room name is matched to a bundled photo — bathroom,
+bedroom, kitchen, living room, office, and so on, including synonyms (e.g. "Master Suite" → bedroom,
+"Den" → office) and possessive names ("Bill's Room" → bedroom). Rooms of the same type get different
+photos where alternates exist. A room that matches no specific type falls back to a **generic** photo,
+so no card is left blank by default (it only shows nothing if the image can't be loaded).
 
 **Status bar** — a small strip of items pinned to the top edge of the card, managed in the editor's
 **Status items** section (add, reorder, delete). Each item is one of:
@@ -941,6 +944,10 @@ options as the Alarm card apply.
 
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
+
+### v0.9.152
+
+- **Room Card photo auto-selection is smarter, and no room is left blank.** Auto now matches many more room names (synonyms like "Master Suite"/"Guest Room" → bedroom, "Den"/"Study" → office, "Great Room" → living room, "Powder Room" → bathroom, plus possessive names like "Bill's Room" → bedroom), matches whole words, prefers the most specific match, and falls back to the room's area name. Rooms of the same type now get different photos where alternates exist, and any room that matches no type falls back to a **generic** photo so a card is no longer left blank. Adds new Bedroom and generic photos.
 
 ### v0.9.151
 

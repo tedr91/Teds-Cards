@@ -43,7 +43,7 @@ export const DEFAULT_PHOTO_HEIGHT = 132;
  * whenever the photo filenames change (the pinned tag must already contain them).
  */
 export const PHOTO_CDN_BASE =
-  "https://cdn.jsdelivr.net/gh/tedr91/Teds-Cards@v0.9.147/images/room-header-photos/";
+  "https://cdn.jsdelivr.net/gh/tedr91/Teds-Cards@v0.9.152/images/room-header-photos/";
 
 /** Curated bundled photos: dropdown key → source filename. */
 export const BUNDLED_PHOTOS: Record<string, string> = {
@@ -53,6 +53,9 @@ export const BUNDLED_PHOTOS: Record<string, string> = {
   bathroom_alt3: "Bathroom Alt 3.webp",
   bathroom_alt4: "Bathroom Alt 4.webp",
   bedroom: "Bedroom.webp",
+  bedroom_alt: "Bedroom Alt.webp",
+  bedroom_alt2: "Bedroom Alt 2.webp",
+  bedroom_alt3: "Bedroom Alt 3.webp",
   bonus_room: "Bonus Room.webp",
   dining_room: "Dining Room.webp",
   family_room: "Family Room.webp",
@@ -63,6 +66,9 @@ export const BUNDLED_PHOTOS: Record<string, string> = {
   media_room_alt: "Media Room Alt.webp",
   office: "Office.webp",
   office_alt: "Office Alt.webp",
+  // Generic fallback for rooms whose name doesn't match any specific type.
+  unknown: "Unknown.webp",
+  unknown_alt: "Unknown Alt.webp",
 };
 
 /** Every bundled photo filename — the manifest handed to the backend downloader. */
@@ -77,6 +83,9 @@ export const BUNDLED_PHOTO_OPTIONS: Array<{ value: string; label: string }> = [
   { value: "bathroom_alt3", label: "Bathroom (Alt 3)" },
   { value: "bathroom_alt4", label: "Bathroom (Alt 4)" },
   { value: "bedroom", label: "Bedroom" },
+  { value: "bedroom_alt", label: "Bedroom (Alt 1)" },
+  { value: "bedroom_alt2", label: "Bedroom (Alt 2)" },
+  { value: "bedroom_alt3", label: "Bedroom (Alt 3)" },
   { value: "bonus_room", label: "Bonus Room" },
   { value: "dining_room", label: "Dining Room" },
   { value: "family_room", label: "Family Room" },
@@ -87,6 +96,8 @@ export const BUNDLED_PHOTO_OPTIONS: Array<{ value: string; label: string }> = [
   { value: "media_room_alt", label: "Media Room (Alt)" },
   { value: "office", label: "Office" },
   { value: "office_alt", label: "Office (Alt)" },
+  { value: "unknown", label: "Generic" },
+  { value: "unknown_alt", label: "Generic (Alt)" },
 ];
 
 /** Build a full CDN URL for a bundled photo filename. */
@@ -94,21 +105,97 @@ export function bundledPhotoUrl(file: string): string {
   return PHOTO_CDN_BASE + encodeURIComponent(file);
 }
 
-/** Best-guess bundled photo key from a room/area name (undefined when no match). */
-export function autoMatchPhotoKey(name?: string): string | undefined {
-  if (!name) return undefined;
+/** Keyword → photo type rules for Auto matching. Each type lists the room-name
+ *  keywords that map to it; the LONGEST matched keyword wins (most specific), so
+ *  e.g. "master bathroom" → bathroom (not bedroom via "master"). Matched on whole
+ *  words (word boundaries), case-insensitive. Order breaks ties. */
+const PHOTO_MATCH_RULES: { type: string; keywords: string[] }[] = [
+  {
+    type: "bathroom",
+    keywords: ["bathroom", "bath", "powder room", "powder", "ensuite", "en-suite", "en suite", "washroom", "restroom", "lavatory", "half bath"],
+  },
+  {
+    type: "bedroom",
+    keywords: ["bedroom", "bed", "master", "primary suite", "primary", "guest room", "guest", "nursery", "kids", "kid", "children", "bunk", "dorm"],
+  },
+  { type: "kitchen", keywords: ["kitchenette", "kitchen", "pantry"] },
+  { type: "dining_room", keywords: ["dining room", "dining", "dinette"] },
+  {
+    type: "living_room",
+    keywords: ["living room", "living", "lounge", "sitting room", "sitting", "great room", "parlor", "parlour"],
+  },
+  { type: "office", keywords: ["office", "study", "den", "library", "workspace"] },
+  {
+    type: "media_room",
+    keywords: ["home theater", "home theatre", "media room", "media", "theater", "theatre", "cinema", "screening"],
+  },
+  {
+    type: "family_room",
+    keywords: ["family room", "family", "rec room", "recreation", "playroom", "play room"],
+  },
+  { type: "bonus_room", keywords: ["bonus room", "bonus", "loft", "flex room", "flex"] },
+];
+
+function escapeRe(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/** Best photo TYPE (e.g. "bedroom") for a single name via the keyword rules, or
+ *  undefined when nothing matches. Most-specific (longest) keyword wins; a possessive
+ *  name with no other keyword ("Bill's Room") is treated as a bedroom. */
+function matchPhotoType(name: string): string | undefined {
   const n = name.toLowerCase();
-  if (n.includes("bath")) return "bathroom";
-  if (n.includes("bed")) return "bedroom";
-  if (n.includes("kitchen")) return "kitchen";
-  if (n.includes("living")) return "living_room";
-  if (n.includes("dining")) return "dining_room";
-  if (n.includes("office")) return "office";
-  if (n.includes("media") || n.includes("theater") || n.includes("theatre") || n.includes("cinema"))
-    return "media_room";
-  if (n.includes("family")) return "family_room";
-  if (n.includes("bonus")) return "bonus_room";
+  let best: { type: string; weight: number } | undefined;
+  for (const rule of PHOTO_MATCH_RULES) {
+    for (const kw of rule.keywords) {
+      if (new RegExp(`\\b${escapeRe(kw)}\\b`, "i").test(n) && (!best || kw.length > best.weight)) {
+        best = { type: rule.type, weight: kw.length };
+      }
+    }
+  }
+  if (best) return best.type;
+  if (/['’]s\b/.test(n) && /\broom\b/.test(n)) return "bedroom";
   return undefined;
+}
+
+/** All bundled photo keys for a type (base first, then its alts sorted), for rotation. */
+function variantKeysForType(type: string): string[] {
+  const alts = Object.keys(BUNDLED_PHOTOS)
+    .filter((k) => k.startsWith(`${type}_alt`))
+    .sort();
+  return [type, ...alts].filter((k) => k in BUNDLED_PHOTOS);
+}
+
+/** Stable small string hash (djb2) so a room name always maps to the same alternate. */
+function hashName(s: string): number {
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0;
+  return h;
+}
+
+/** Best-guess bundled photo key from a room/area name. Tries the room name first,
+ *  then the area name; when the matched type has alternates it rotates deterministically
+ *  by name so multiple same-type rooms don't all show the identical photo. A room that
+ *  matches no specific type falls back to a generic "unknown" photo so no card is left
+ *  blank by default. */
+export function autoMatchPhotoKey(name?: string, areaName?: string): string | undefined {
+  const candidates = [name, areaName].filter((s): s is string => !!s && !!s.trim());
+  let type: string | undefined;
+  let seed = "";
+  for (const c of candidates) {
+    const t = matchPhotoType(c);
+    if (t) {
+      type = t;
+      seed = c.toLowerCase().trim();
+      break;
+    }
+  }
+  if (!type) {
+    type = "unknown";
+    seed = (candidates[0] ?? "").toLowerCase().trim();
+  }
+  const variants = variantKeysForType(type);
+  return variants.length <= 1 ? type : variants[hashName(seed) % variants.length];
 }
 
 /** Edge-gradient set applied by default per placement (when not explicitly set). */
