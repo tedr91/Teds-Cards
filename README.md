@@ -945,6 +945,12 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.154
+
+- **Room Card buttons scale better across screen sizes.** Buttons now aim for 5 across but flex between 2 and however-many fit, keeping each button within a sensible size range instead of getting huge on wide wall panels or tiny on narrow ones.
+- **Room Card tile shadows no longer clip.** On themes with a card drop shadow (e.g. Material 3), the button area now leaves just enough room so tiles' shadows aren't sliced off at the edges — sized automatically to the theme's shadow.
+- **Indicator bars follow rounded corners.** The Light and Cover cards' brightness/position bars (and hint stripes) and the Music mini-player's progress strip now sit within the card's rounded corners with rounded ends, instead of square edges poking past or being cut on themes with a large corner radius.
+
 ### v0.9.153
 
 - **Room Card photos are now assigned across rooms, not per-card.** A shared assigner is seeded from every Home Assistant area name, so within a type the best-fitting room always gets the **main** photo (e.g. "Primary Bedroom" wins Bedroom.webp over "Steve's Room") and the remaining rooms fall back to the alternates — deterministically, and updating automatically as areas are added, renamed, or removed.

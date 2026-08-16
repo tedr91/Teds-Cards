@@ -939,14 +939,19 @@ export class TedCoverCard extends LitElement implements LovelaceCard {
       white-space: nowrap;
     }
     .position {
+      /* Inset by the card's corner radius so the bar sits in the straight edge and
+         never fights the rounded corners on any theme radius. */
+      --ted-bar-inset: var(--ha-card-border-radius, var(--ted-style-radius, 12px));
       position: absolute;
       left: 0;
-      top: 0;
-      bottom: 0;
+      top: var(--ted-bar-inset);
+      bottom: var(--ted-bar-inset);
       z-index: 0;
       width: var(--ted-indicator-width, 4px);
       opacity: 1;
       background-color: color-mix(in srgb, var(--ted-style-surface-2) 10%, transparent);
+      border-radius: 999px;
+      overflow: hidden;
       pointer-events: none;
     }
     .position-fill {
@@ -958,14 +963,16 @@ export class TedCoverCard extends LitElement implements LovelaceCard {
     }
     /* Right-edge stripe mirroring the position bar, with up/down chevron hints. */
     .stripe {
+      --ted-bar-inset: var(--ha-card-border-radius, var(--ted-style-radius, 12px));
       position: absolute;
       right: 0;
-      top: 0;
-      bottom: 0;
+      top: var(--ted-bar-inset);
+      bottom: var(--ted-bar-inset);
       z-index: 0;
       width: var(--ted-hint-width, 8px);
       opacity: 1;
       background-color: color-mix(in srgb, var(--ted-style-surface-2) 10%, transparent);
+      border-radius: 999px;
       pointer-events: none;
     }
     .stripe-symbol {
@@ -1027,8 +1034,8 @@ export class TedCoverCard extends LitElement implements LovelaceCard {
     }
     /* Indicator bar: horizontal across the bottom, fills left → right. */
     ha-card.horizontal .position {
-      left: 0;
-      right: 0;
+      left: var(--ted-bar-inset);
+      right: var(--ted-bar-inset);
       top: auto;
       bottom: 0;
       width: auto;
@@ -1042,8 +1049,8 @@ export class TedCoverCard extends LitElement implements LovelaceCard {
     }
     /* Hint bar: horizontal across the top; chevrons stay UP (right half) / DOWN (left half). */
     ha-card.horizontal .stripe {
-      left: 0;
-      right: 0;
+      left: var(--ted-bar-inset);
+      right: var(--ted-bar-inset);
       top: 0;
       bottom: auto;
       width: auto;

@@ -3809,11 +3809,15 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
       }
       .mini-progress {
         position: absolute;
-        left: 0;
-        right: 0;
+        /* Inset by the card's corner radius + rounded ends so the strip stays in the
+           straight bottom edge instead of being cut by the rounded corners. */
+        left: var(--ha-card-border-radius, var(--ted-style-radius, 12px));
+        right: var(--ha-card-border-radius, var(--ted-style-radius, 12px));
         bottom: 0;
         height: 2px;
         background: rgba(127, 127, 127, 0.35);
+        border-radius: 999px;
+        overflow: hidden;
       }
       .mini-progress.tall {
         height: 3px;

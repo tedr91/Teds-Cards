@@ -118,6 +118,12 @@ function num(value: unknown, fallback: number): number {
 const SIZE_SPAN: Record<ButtonSize, number> = { half: 1, normal: 2, "1.5x": 3, "2x": 4, "3x": 6, "4x": 8, full: 10 };
 /** Width of the section grid in half-unit columns (5 normal buttons across). */
 const GRID_COLS = 10;
+/** Bounds for a normal button's rendered width (px). The grid picks a column count
+ *  (biased to 5) that keeps normal buttons within these. */
+const BTN_MIN = 58;
+const BTN_MAX = 124;
+/** Fewest normal buttons per row. */
+const MIN_COLS = 2;
 
 /** Resolve a button's width/height footprint in half-unit grid spans. */
 function buttonSpans(button: RoomButtonConfig | undefined): { w: number; h: number } {
@@ -307,6 +313,8 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
   @state() private _photoHeight = 0;
   /** Auto-computed overflow budget in half-unit grid rows (0 = not measured yet). */
   @state() private _autoRowBudget = 0;
+  /** Half-unit column count for the button grid (2× the normal buttons per row). */
+  @state() private _cols2 = GRID_COLS;
   /** Index of the active section in the tabbed layout. */
   @state() private _activeTab = 0;
   private _layoutObserver?: ResizeObserver;
@@ -473,16 +481,28 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
     const grid = root?.querySelector?.(".button-grid:not(.overflow-grid)") as HTMLElement | null;
     if (grid && grid.clientWidth > 0) {
       const gap = 8;
-      const unit = (grid.clientWidth - gap * (GRID_COLS - 1)) / GRID_COLS;
-      if (unit > 0) this.style.setProperty("--rc-btn-unit", `${unit}px`);
+      const W = grid.clientWidth;
+      // Normal-button width at a given number of buttons-per-row (filling the width).
+      const at = (c: number): number => (W - gap * (c - 1)) / c;
+      // Bias to 5 across; step out only far enough to keep a normal button in range.
+      let cols = 5;
+      if (at(5) > BTN_MAX) cols = Math.ceil((W + gap) / (BTN_MAX + gap));
+      else if (at(5) < BTN_MIN) cols = Math.max(MIN_COLS, Math.floor((W + gap) / (BTN_MIN + gap)));
+      const half = (at(cols) - gap) / 2; // half-unit column width (rows stay square)
+      const cols2 = cols * 2;
+      if (half > 0) {
+        this.style.setProperty("--rc-btn-unit", `${half}px`);
+        this.style.setProperty("--rc-cols", `${cols2}`);
+        if (cols2 !== this._cols2) this._cols2 = cols2;
+      }
       // Auto max-rows: how many rows of 1.5x-height tiles (3 half-unit rows each) fit in
       // the space from the grid's top to the bounded sections container's bottom.
-      if (this._config?.auto_max_rows && unit > 0) {
+      if (this._config?.auto_max_rows && half > 0) {
         const sectionsEl = root?.querySelector?.(".sections") as HTMLElement | null;
         const bottom = (sectionsEl ?? grid).getBoundingClientRect().bottom;
         const avail = bottom - grid.getBoundingClientRect().top;
         if (avail > 0) {
-          const halfRows = Math.floor((avail + gap) / (unit + gap));
+          const halfRows = Math.floor((avail + gap) / (half + gap));
           const budget = Math.max(1, Math.floor(halfRows / 3)) * 3;
           if (budget !== this._autoRowBudget) this._autoRowBudget = budget;
         }
@@ -868,7 +888,7 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
     let visibleCount = buttons.length;
     let overflow = false;
     let overflowH = 2;
-    if (budgetHalf > 0 && packButtons(sizes).rows > budgetHalf) {
+    if (budgetHalf > 0 && packButtons(sizes, this._cols2).rows > budgetHalf) {
       overflow = true;
       const budget = budgetHalf;
       // Reserve a normal-height "…" cell when choosing the visible set so the
@@ -876,7 +896,7 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
       const overflowCell: PlacedButton = { bIdx: -1, w: 2, h: 2 };
       visibleCount = 0;
       for (let v = buttons.length - 1; v >= 0; v -= 1) {
-        if (packButtons([...sizes.slice(0, v), overflowCell]).rows <= budget) {
+        if (packButtons([...sizes.slice(0, v), overflowCell], this._cols2).rows <= budget) {
           visibleCount = v;
           break;
         }
@@ -893,7 +913,7 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
     // into vertical gaps instead of leaving holes — preserving the editor order.
     const layout: PlacedButton[] = sizes.slice(0, visibleCount);
     if (overflow) layout.push({ bIdx: -1, w: 2, h: overflowH });
-    const { placements } = packButtons(layout);
+    const { placements } = packButtons(layout, this._cols2);
 
     return html`
       <div class="button-section">
@@ -903,7 +923,7 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
         <div class="button-grid">
           ${buttons
             .slice(0, visibleCount)
-            .map((_button, bIdx) => this._renderButtonCell(sIdx, bIdx, placements[bIdx]))}
+            .map((_button, bIdx) => this._renderButtonCell(sIdx, bIdx, placements[bIdx], this._cols2))}
           ${overflow ? this._renderOverflowCell(sIdx, buttons.length, visibleCount, overflowH, placements[visibleCount]) : nothing}
         </div>
       </div>
@@ -1490,10 +1510,11 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
       }
       .button-grid {
         display: grid;
-        grid-template-columns: repeat(10, 1fr);
+        grid-template-columns: repeat(var(--rc-cols, 10), var(--rc-btn-unit, 1fr));
         grid-auto-rows: var(--rc-btn-unit, 36px);
         grid-auto-flow: row dense;
         gap: 8px;
+        justify-content: start;
       }
       .button-cell {
         position: relative;
