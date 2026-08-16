@@ -942,6 +942,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.151
+
+- **Fixed: re-overriding a device's Navbar sections could silently lose that device's type-specific layout.** Toggling a device's "Navbar sections" from Inheriting back to Overriding always reseeded from the Global bar, so a Nightstand (whose whole point is a bar with weather and date/time stripped out) could have those items reappear after an inherit/override cycle. Re-overriding now reseeds from the device's own type preset when it has one.
+
 ### v0.9.150
 
 - **Vision tab: tiles is now the default view**, with four selectable tile sizes (Small 1.5x, Medium 2x, Large 2.5x — new default, X-Large 3x) via the card's editor.

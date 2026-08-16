@@ -49,6 +49,7 @@ import {
   asDeviceType,
   deviceTypeLabel,
   DEVICE_TYPE_OPTIONS,
+  DEVICE_TYPE_PRESETS,
   suggestDeviceType,
 } from "../../shared/device-types";
 import { getMediaFolder, isMediaSourceUri, pickMedia, resolveMediaSource, uploadImage, uploadToMediaFolder, listSounds, type BundledSound } from "../../shared/media";
@@ -1709,11 +1710,18 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     `;
   }
 
-  /** Seed the device override from the inherited value (so the editor starts populated),
-   *  or clear it to inherit the Global bar again. */
+  /** Seed the device override from this device's type preset if it has one (so a
+   *  Nightstand re-overriding doesn't lose its weather/datetime-stripped layout to the
+   *  Global bar), else from the inherited Global value; or clear it to inherit again. */
   private _toggleNavbarSectionsOverride(on: boolean): void {
-    if (on) this._setDevice("navbar_sections", this._globalValue("navbar_sections"));
-    else settingsStore.clearValue("device", "navbar_sections");
+    if (on) {
+      const type = asDeviceType(settingsStore.deviceSettings().device_type);
+      const presetSections = type ? DEVICE_TYPE_PRESETS[type].navbar_sections : undefined;
+      this._setDevice(
+        "navbar_sections",
+        (presetSections ?? this._globalValue("navbar_sections")) as unknown as SettingsValue,
+      );
+    } else settingsStore.clearValue("device", "navbar_sections");
   }
 
   private _renderNavbarMenuItems(scope: "global" | "device"): TemplateResult {
