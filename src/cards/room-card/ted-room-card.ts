@@ -130,6 +130,36 @@ function buttonSpans(button: RoomButtonConfig | undefined): { w: number; h: numb
 /** Width of the overflow popover grid in half-unit columns (matches the CSS). */
 const OVERFLOW_COLS = 8;
 
+/** Cap for the theme-derived scroll gutter (px), so a heavy-shadow theme can't inset
+ *  the buttons absurdly. */
+const SHADOW_GUTTER_MAX = 12;
+
+/** Max distance (px) a CSS `box-shadow` value paints outside the element's box, across
+ *  all its (non-inset) layers = max(|offset| + blur + spread) over x and y. Used to size
+ *  the scroll gutter so the current theme's card shadow isn't clipped. Returns 0 for
+ *  `none`/empty (flat themes) so they get no wasted inset. */
+function shadowExtentPx(boxShadow: string): number {
+  const bs = (boxShadow || "").trim();
+  if (!bs || bs === "none") return 0;
+  // Split into layers on commas that aren't inside a color function.
+  const layers = bs.match(/(?:[^,(]|\([^)]*\))+/g) ?? [];
+  let max = 0;
+  for (const layer of layers) {
+    if (/\binset\b/.test(layer)) continue; // inset shadows don't paint outside
+    // Drop colors (functions / hex / names / units), leaving only the length numbers:
+    // offsetX offsetY [blur] [spread].
+    const nums = layer
+      .replace(/(?:rgba?|hsla?|color|var)\([^)]*\)/gi, " ")
+      .replace(/#[0-9a-f]+/gi, " ")
+      .replace(/[a-z%]+/gi, " ")
+      .match(/-?\d*\.?\d+/g);
+    if (!nums || nums.length < 2) continue;
+    const [ox = 0, oy = 0, blur = 0, spread = 0] = nums.map(Number);
+    max = Math.max(max, Math.abs(ox) + blur + spread, Math.abs(oy) + blur + spread);
+  }
+  return Math.ceil(max);
+}
+
 interface PlacedButton {
   bIdx: number;
   w: number;
@@ -265,6 +295,8 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
   private _roomPhotosUnsub?: () => void;
   /** Unsubscribe from the cross-room photo assigner (re-renders on reassignment). */
   private _photoAssignUnsub?: () => void;
+  /** The theme card-shadow string the scroll gutter was last sized from. */
+  private _lastShadow?: string;
   /** Bundled photos we've already asked the backend to fetch (once per file). */
   private _photoFetchTried = new Set<string>();
   /** True once HA's `<hui-image>` is registered (for a camera room photo). */
@@ -416,6 +448,7 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
     this._ensureLocalPhoto();
     // Keep the shared assigner seeded from the live area registry (adds new rooms).
     roomPhotoAssigner.syncAreas(this.hass);
+    this._syncShadowGutter();
   }
 
   /** Track the header + photo sizes so dependent layout (below-header, shift) can react. */
@@ -683,6 +716,16 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
       keyPrefix: "rc",
       resolveAreaEntity: (kind: "temperature" | "occupancy") => this._resolveAreaEntity(kind),
     };
+  }
+
+  /** Size the button-scroll gutter to the ACTIVE theme's card shadow so it's never
+   *  clipped, without hardcoding to one theme (flat themes get 0 = no wasted inset). */
+  private _syncShadowGutter(): void {
+    const shadow = getComputedStyle(this).getPropertyValue("--ha-card-box-shadow").trim();
+    if (shadow === this._lastShadow) return;
+    this._lastShadow = shadow;
+    const gutter = Math.min(shadowExtentPx(shadow), SHADOW_GUTTER_MAX);
+    this.style.setProperty("--rc-shadow-gutter", `${gutter}px`);
   }
 
   /** Reposition a popover (button overflow menu) against its anchor when it opens. */
@@ -1372,9 +1415,12 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
         min-height: 0;
         scrollbar-width: thin;
       }
-      /* Stacked: the whole list of sections scrolls. */
+      /* Stacked: the whole list of sections scrolls. The padding gives embedded tiles'
+         outset elevation shadow (Material-3-style themes) room so the scroll box doesn't
+         clip it on the top/bottom/side edges. */
       .sections:not(.tabbed) {
         overflow-y: auto;
+        padding: var(--rc-shadow-gutter, 4px);
       }
       /* Tabbed: the tab bar stays put; only the active section's buttons scroll. */
       .sections.tabbed {
@@ -1388,6 +1434,8 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
         min-height: 0;
         overflow-y: auto;
         scrollbar-width: thin;
+        /* Room for the tiles' outset shadow so the scroll box doesn't clip it (see above). */
+        padding: var(--rc-shadow-gutter, 4px);
       }
       .button-section {
         display: flex;
