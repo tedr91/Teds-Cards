@@ -33,6 +33,7 @@ import {
   ROOM_CARD_TYPE,
 } from "./const";
 import { autoPopulateRoom, type AutoPopulateResult } from "./auto-populate";
+import { roomPhotoAssigner } from "./photo-assign";
 import { onRoomPhotosChanged, primeRoomPhotos, roomPhotoUrl, roomPhotosPrimed, roomPhotosBackendAvailable, downloadRoomPhotos } from "../../shared/room-photos";
 import type {
   ButtonSize,
@@ -262,6 +263,8 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
   @state() private _photoError = false;
   /** Unsubscribe from the shared room-photo cache (primed once per page load). */
   private _roomPhotosUnsub?: () => void;
+  /** Unsubscribe from the cross-room photo assigner (re-renders on reassignment). */
+  private _photoAssignUnsub?: () => void;
   /** Bundled photos we've already asked the backend to fetch (once per file). */
   private _photoFetchTried = new Set<string>();
   /** True once HA's `<hui-image>` is registered (for a camera room photo). */
@@ -345,6 +348,8 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
     this._layoutObserver = undefined;
     this._roomPhotosUnsub?.();
     this._roomPhotosUnsub = undefined;
+    this._photoAssignUnsub?.();
+    this._photoAssignUnsub = undefined;
   }
 
   public connectedCallback(): void {
@@ -362,6 +367,9 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
       this._photoError = false;
       this.requestUpdate();
     });
+    // Re-render when the cross-room photo assignment for our area changes.
+    this._photoAssignUnsub ??= roomPhotoAssigner.subscribe(() => this.requestUpdate());
+    roomPhotoAssigner.syncAreas(this.hass);
     // Re-attach the size observer when the card returns to the DOM (e.g. after
     // leaving the dashboard editor) so the layout recomputes for the restored
     // width instead of waiting for the next reactive update.
@@ -406,6 +414,8 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
     this.toggleAttribute("hidden", this._shouldHide());
     if (!this._layoutObserver) this._observeHeader();
     this._ensureLocalPhoto();
+    // Keep the shared assigner seeded from the live area registry (adds new rooms).
+    roomPhotoAssigner.syncAreas(this.hass);
   }
 
   /** Track the header + photo sizes so dependent layout (below-header, shift) can react. */
@@ -874,8 +884,16 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
   private _bundledPhotoFile(): string | undefined {
     const c = this._config;
     if (!c || c.photo_source === "custom" || c.photo_source === "camera") return undefined;
-    const key =
-      !c.photo || c.photo === "auto" ? autoMatchPhotoKey(c.name, this._areaName()) : c.photo;
+    let key: string | undefined;
+    if (c.photo && c.photo !== "auto") {
+      key = c.photo;
+    } else {
+      // Prefer the cross-room assignment for this area (main photo to the best-fit room,
+      // alts to the rest); fall back to a standalone match when the area isn't known.
+      key =
+        roomPhotoAssigner.keyForArea(this._effectiveArea()) ??
+        autoMatchPhotoKey(c.name, this._areaName());
+    }
     if (!key) return undefined;
     return BUNDLED_PHOTOS[key];
   }

@@ -43,7 +43,7 @@ export const DEFAULT_PHOTO_HEIGHT = 132;
  * whenever the photo filenames change (the pinned tag must already contain them).
  */
 export const PHOTO_CDN_BASE =
-  "https://cdn.jsdelivr.net/gh/tedr91/Teds-Cards@v0.9.152/images/room-header-photos/";
+  "https://cdn.jsdelivr.net/gh/tedr91/Teds-Cards@v0.9.153/images/room-header-photos/";
 
 /** Curated bundled photos: dropdown key → source filename. */
 export const BUNDLED_PHOTOS: Record<string, string> = {
@@ -140,10 +140,12 @@ function escapeRe(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-/** Best photo TYPE (e.g. "bedroom") for a single name via the keyword rules, or
- *  undefined when nothing matches. Most-specific (longest) keyword wins; a possessive
- *  name with no other keyword ("Bill's Room") is treated as a bedroom. */
-function matchPhotoType(name: string): string | undefined {
+/** The photo TYPE + fit weight for a single name via the keyword rules, or undefined
+ *  when nothing matches. Most-specific (longest) keyword wins, and its LENGTH is the
+ *  weight so a stronger name (e.g. "Primary Bedroom") outranks a weaker one for the
+ *  main photo. A possessive name with no other keyword ("Bill's Room") is a low-weight
+ *  bedroom. */
+export function scorePhotoType(name: string): { type: string; weight: number } | undefined {
   const n = name.toLowerCase();
   let best: { type: string; weight: number } | undefined;
   for (const rule of PHOTO_MATCH_RULES) {
@@ -153,49 +155,36 @@ function matchPhotoType(name: string): string | undefined {
       }
     }
   }
-  if (best) return best.type;
-  if (/['’]s\b/.test(n) && /\broom\b/.test(n)) return "bedroom";
+  if (best) return best;
+  if (/['’]s\b/.test(n) && /\broom\b/.test(n)) return { type: "bedroom", weight: 1 };
   return undefined;
 }
 
-/** All bundled photo keys for a type (base first, then its alts sorted), for rotation. */
-function variantKeysForType(type: string): string[] {
+/** The photo type + fit weight for a name, falling back to the generic "unknown" type
+ *  (weight 0) so every room resolves to a category. */
+export function photoTypeFor(name: string): { type: string; weight: number } {
+  return scorePhotoType(name) ?? { type: "unknown", weight: 0 };
+}
+
+/** All bundled photo keys for a type: the main (base) key first, then its alts sorted. */
+export function variantKeysForType(type: string): string[] {
   const alts = Object.keys(BUNDLED_PHOTOS)
     .filter((k) => k.startsWith(`${type}_alt`))
     .sort();
   return [type, ...alts].filter((k) => k in BUNDLED_PHOTOS);
 }
 
-/** Stable small string hash (djb2) so a room name always maps to the same alternate. */
-function hashName(s: string): number {
-  let h = 5381;
-  for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0;
-  return h;
-}
-
-/** Best-guess bundled photo key from a room/area name. Tries the room name first,
- *  then the area name; when the matched type has alternates it rotates deterministically
- *  by name so multiple same-type rooms don't all show the identical photo. A room that
- *  matches no specific type falls back to a generic "unknown" photo so no card is left
- *  blank by default. */
+/** Standalone best-guess bundled photo key for a room/area name (no cross-room
+ *  coordination): always the category's MAIN photo, falling back to the generic
+ *  "unknown" photo so no card is left blank. Used before/without the shared assigner;
+ *  the assigner (see photo-assign.ts) handles main-vs-alt distribution across rooms. */
 export function autoMatchPhotoKey(name?: string, areaName?: string): string | undefined {
   const candidates = [name, areaName].filter((s): s is string => !!s && !!s.trim());
-  let type: string | undefined;
-  let seed = "";
   for (const c of candidates) {
-    const t = matchPhotoType(c);
-    if (t) {
-      type = t;
-      seed = c.toLowerCase().trim();
-      break;
-    }
+    const s = scorePhotoType(c);
+    if (s) return s.type;
   }
-  if (!type) {
-    type = "unknown";
-    seed = (candidates[0] ?? "").toLowerCase().trim();
-  }
-  const variants = variantKeysForType(type);
-  return variants.length <= 1 ? type : variants[hashName(seed) % variants.length];
+  return "unknown";
 }
 
 /** Edge-gradient set applied by default per placement (when not explicitly set). */

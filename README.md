@@ -945,6 +945,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.153
+
+- **Room Card photos are now assigned across rooms, not per-card.** A shared assigner is seeded from every Home Assistant area name, so within a type the best-fitting room always gets the **main** photo (e.g. "Primary Bedroom" wins Bedroom.webp over "Steve's Room") and the remaining rooms fall back to the alternates — deterministically, and updating automatically as areas are added, renamed, or removed.
+
 ### v0.9.152
 
 - **Room Card photo auto-selection is smarter, and no room is left blank.** Auto now matches many more room names (synonyms like "Master Suite"/"Guest Room" → bedroom, "Den"/"Study" → office, "Great Room" → living room, "Powder Room" → bathroom, plus possessive names like "Bill's Room" → bedroom), matches whole words, prefers the most specific match, and falls back to the room's area name. Rooms of the same type now get different photos where alternates exist, and any room that matches no type falls back to a **generic** photo so a card is no longer left blank. Adds new Bedroom and generic photos.
