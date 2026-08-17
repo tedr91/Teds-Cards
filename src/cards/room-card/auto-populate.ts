@@ -193,12 +193,13 @@ function buttonFor(entityId: string): RoomButtonConfig {
   };
 }
 
-/** Scene buttons: icon + name (no state), so they read as tappable actions. */
+/** Scene buttons: name at top and icon at bottom, with the middle state slot hidden. */
 function sceneButtonFor(entityId: string): RoomButtonConfig {
   return {
     type: `custom:${BUTTON_CARD_TYPE}`,
     entity: entityId,
     brushed: true,
+    element_order: ["name", "state", "icon"],
     show_icon: true,
     icon_scale: 75,
     show_state: false,

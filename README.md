@@ -945,6 +945,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.160
+
+- **Room Card auto-populate: scene element order.** Scene buttons now explicitly use Name → State → Icon ordering, with Name shown at the top, State hidden in the middle slot, and Icon shown at the bottom.
+
 ### v0.9.159
 
 - **Room Card buttons: larger minimum size.** Responsive Room Card layouts now keep a normal button at least 68px wide (up from 58px), reducing cramped buttons before stepping down to fewer buttons per row.
