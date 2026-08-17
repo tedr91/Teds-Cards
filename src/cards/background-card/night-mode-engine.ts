@@ -224,25 +224,25 @@ class NightModeEngine {
     );
 
     // Dark mode.
-    this._applyDark(s.night_dark_mode === true && isNightNow, durMs);
+    this._applyDark(s.night_dark_mode === true, isNightNow, durMs);
   }
 
   /** Switch HA's user-scoped Dark Mode on (or restore the prior preference). Turning on happens
    *  5s after the transition finishes. Unlike a local override this drives Home Assistant's own
    *  per-user dark setting, so it cascades to every session signed in as this account. */
-  private _applyDark(on: boolean, durMs: number): void {
+  private _applyDark(featureOn: boolean, isNightNow: boolean, durMs: number): void {
     if (this.darkTimer !== undefined) {
       clearTimeout(this.darkTimer);
       this.darkTimer = undefined;
     }
-    if (!on) {
-      this._setNativeDark(false);
+    if (!(featureOn && isNightNow)) {
+      this._setNativeDark(false, featureOn);
       return;
     }
     const delay = durMs > 0 ? durMs + DARK_AFTER_TRANSITION_MS : 0;
     this.darkTimer = window.setTimeout(() => {
       this.darkTimer = undefined;
-      this._setNativeDark(true);
+      this._setNativeDark(true, featureOn);
     }, delay);
   }
 
@@ -255,7 +255,7 @@ class NightModeEngine {
   /** Toggle HA's user dark mode by firing `settheme` on the <home-assistant> root (which HA persists
    *  user-scoped). The prior preference is snapshotted once, globally, so any panel can restore it
    *  and a panel that came up after dark cascaded can't overwrite it with the already-dark value. */
-  private _setNativeDark(on: boolean): void {
+  private _setNativeDark(on: boolean, featureOn: boolean): void {
     const root = document.querySelector("home-assistant") as HTMLElement | null;
     if (!root) return;
     const glob = settingsStore.globalSettings();
@@ -273,6 +273,11 @@ class NightModeEngine {
       // and no-ops, leaving exactly one effective restore for the whole account.
       settingsStore.clearValue("global", NIGHT_DARK_PREV_KEY);
       if (this._currentDark() !== restore) this._fireSetTheme(root, restore);
+    } else if (featureOn && this._currentDark() === true) {
+      // No snapshot was ever recorded (the account was already dark when night began) — which
+      // would otherwise leave it stuck dark forever. night_dark_mode owns dark here, so at day
+      // the day value is light: turn it off.
+      this._fireSetTheme(root, false);
     }
   }
 

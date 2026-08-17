@@ -945,6 +945,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.156
+
+- **Automatic Night Mode: no longer gets stuck in dark.** When a device's account was already in dark mode as night began, night mode couldn't record a "day" value to restore, so it never switched back to light at dawn (and every following night reinforced it). Now, when Dark Mode is enabled in Night Mode, dawn always restores light even if no snapshot was taken — so panels reliably return to light in the morning.
+
 ### v0.9.155
 
 - **Navbar launcher: no jump on fully-transparent buttons.** When the launcher buttons are set to 100% transparency, the "highlight current view" now draws a static ring instead of lifting/scaling the active tile — so it no longer resizes and shifts. Below 100% transparency the lift/scale look is unchanged.
