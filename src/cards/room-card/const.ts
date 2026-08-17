@@ -43,7 +43,7 @@ export const DEFAULT_PHOTO_HEIGHT = 132;
  * whenever the photo filenames change (the pinned tag must already contain them).
  */
 export const PHOTO_CDN_BASE =
-  "https://cdn.jsdelivr.net/gh/tedr91/Teds-Cards@v0.9.158/images/room-header-photos/";
+  "https://cdn.jsdelivr.net/gh/tedr91/Teds-Cards@v0.9.159/images/room-header-photos/";
 
 /** Curated bundled photos: dropdown key → source filename. */
 export const BUNDLED_PHOTOS: Record<string, string> = {

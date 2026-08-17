@@ -120,7 +120,7 @@ const SIZE_SPAN: Record<ButtonSize, number> = { half: 1, normal: 2, "1.5x": 3, "
 const GRID_COLS = 10;
 /** Bounds for a normal button's rendered width (px). The grid picks a column count
  *  (biased to 5) that keeps normal buttons within these. */
-const BTN_MIN = 58;
+const BTN_MIN = 68;
 const BTN_MAX = 124;
 /** Fewest normal buttons per row. */
 const MIN_COLS = 2;
