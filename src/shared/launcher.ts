@@ -347,6 +347,8 @@ function plainButton(view: LauncherViewInfo, p: BuildLauncherParams, showName: b
     // The current-view button: a highlight ring + a slightly more solid tint than the base.
     btn.ring = p.highlightColor || "accent";
     btn.transparency = Math.max(0, (typeof p.buttonTransparency === "number" ? p.buttonTransparency : 75) - 15);
+    // Fully-transparent buttons: keep the ring static so the active tile doesn't resize/shift.
+    if (p.buttonTransparency === 100) btn.ring_static = true;
   }
   return btn;
 }
@@ -394,6 +396,7 @@ export function buildLauncherButtons(p: BuildLauncherParams): NavButtonConfig[] 
     if (groupActive) {
       trigger.ring = p.highlightColor || "accent";
       trigger.transparency = 60;
+      if (p.buttonTransparency === 100) trigger.ring_static = true;
     }
     return trigger;
   });

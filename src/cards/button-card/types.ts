@@ -70,6 +70,9 @@ export interface ButtonCardConfig extends LovelaceCardConfig {
   /** A colored ring (outline glow) drawn around the card — e.g. to mark an active/selected
    *  button. A `ui_color` value; unset = no ring. */
   ring?: string;
+  /** Draw the `ring` as a static outline only — no lift/scale transform or drop shadow — so
+   *  the tile never resizes or shifts. Used by the launcher for fully-transparent buttons. */
+  ring_static?: boolean;
   transparency?: number;
   blur?: number;
   brushed?: boolean;

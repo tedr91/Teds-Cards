@@ -945,6 +945,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.155
+
+- **Navbar launcher: no jump on fully-transparent buttons.** When the launcher buttons are set to 100% transparency, the "highlight current view" now draws a static ring instead of lifting/scaling the active tile — so it no longer resizes and shifts. Below 100% transparency the lift/scale look is unchanged.
+
 ### v0.9.154
 
 - **Room Card buttons scale better across screen sizes.** Buttons now aim for 5 across but flex between 2 and however-many fit, keeping each button within a sensible size range instead of getting huge on wide wall panels or tiny on narrow ones.
