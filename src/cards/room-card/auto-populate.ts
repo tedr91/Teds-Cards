@@ -280,24 +280,24 @@ export function autoPopulateRoom(
   const tempSensor = firstByDeviceClass(h, sensors, ["temperature"]);
   if (climates.length === 1) {
     // A single thermostat: show + adjust it right from the header.
-    status.push({ type: "temperature", entity: climates[0], tap_action: { action: "more-info" } });
+    status.push({ type: "temperature", entity: climates[0], display: "state", tap_action: { action: "more-info" } });
   } else if (climates.length >= 2) {
     status.push(
       tempSensor
-        ? { type: "temperature", entity: tempSensor }
-        : { type: "temperature", entity: climates[0], tap_action: { action: "more-info" } },
+        ? { type: "temperature", entity: tempSensor, display: "state" }
+        : { type: "temperature", entity: climates[0], display: "state", tap_action: { action: "more-info" } },
     );
   } else if (tempSensor) {
-    status.push({ type: "temperature", entity: tempSensor });
+    status.push({ type: "temperature", entity: tempSensor, display: "state" });
   }
 
   const occupancy = firstByDeviceClass(h, binarySensors, ["occupancy", "motion", "presence"]);
-  if (occupancy) status.push({ type: "occupancy", entity: occupancy });
+  if (occupancy) status.push({ type: "occupancy", entity: occupancy, display: "icon" });
 
   const mainLight = pickMainLight(h, roomLights, areaName);
-  if (mainLight) status.push({ type: "brightness", entity: mainLight });
+  if (mainLight) status.push({ type: "brightness", entity: mainLight, display: "both" });
 
-  if (deviceMediaPlayer) status.push({ type: "volume", entity: deviceMediaPlayer });
+  if (deviceMediaPlayer) status.push({ type: "volume", entity: deviceMediaPlayer, display: "both" });
 
   // --- Sections -------------------------------------------------------------
   const sections: RoomButtonSection[] = [];

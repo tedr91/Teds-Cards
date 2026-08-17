@@ -219,12 +219,22 @@ function showVoiceUnavailable(): void {
   });
 }
 
+/** Icon color for an occupancy item: accent when occupied, muted when unknown/unavailable,
+ *  otherwise the normal text color. */
+function occupancyIconColor(state: string | undefined): string {
+  if (!state || state === "unavailable" || state === "unknown") return "var(--ted-style-muted)";
+  return state === "on" ? "var(--ted-style-accent)" : "var(--ted-style-text)";
+}
+
 function renderSensorItem(item: SensorStatusItem, ctx: StatusItemContext): TemplateResult {
   const entityId = item.entity ?? ctx.resolveAreaEntity?.(item.type);
   const stateObj = entityId ? ctx.hass.states[entityId] : undefined;
   const icon = item.icon ?? STATUS_ITEM_DEFAULT_ICON[item.type];
   const label = String(item.name ?? stateObj?.attributes?.friendly_name ?? entityId ?? "");
   const show = itemDisplay(item);
+  // Presence icon color reflects state: accent = occupied, muted = unknown/unavailable, else text.
+  const iconStyle =
+    item.type === "occupancy" ? { color: occupancyIconColor(stateObj?.state) } : {};
   // A temperature item pointing at a thermostat opens its more-info by default (to adjust the temp).
   const climate = item.type === "temperature" && !!entityId && entityId.startsWith("climate.");
   const builtins: Gestures | undefined =
@@ -252,7 +262,7 @@ function renderSensorItem(item: SensorStatusItem, ctx: StatusItemContext): Templ
       @pointerleave=${h.up}
       @click=${h.click}
     >
-      ${show.icon ? html`<ha-icon class="status-icon" .icon=${icon}></ha-icon>` : nothing}
+      ${show.icon ? html`<ha-icon class="status-icon" style=${styleMap(iconStyle)} .icon=${icon}></ha-icon>` : nothing}
       ${show.state
         ? html`<span class="status-text">${formatSensor(stateObj, item.type, ctx.hass)}</span>`
         : nothing}

@@ -315,6 +315,10 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
   @state() private _autoRowBudget = 0;
   /** Half-unit column count for the button grid (2× the normal buttons per row). */
   @state() private _cols2 = GRID_COLS;
+  /** True when brightness/volume drop to icon-only to keep the room name from clipping. */
+  @state() private _statusCompact = false;
+  /** Last measured status-bar width, so we only re-attempt icon+state when it changes. */
+  private _statusBarWidth = 0;
   /** Index of the active section in the tabbed layout. */
   @state() private _activeTab = 0;
   private _layoutObserver?: ResizeObserver;
@@ -457,6 +461,7 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
     // Keep the shared assigner seeded from the live area registry (adds new rooms).
     roomPhotoAssigner.syncAreas(this.hass);
     this._syncShadowGutter();
+    this._measureStatusFit();
   }
 
   /** Track the header + photo sizes so dependent layout (below-header, shift) can react. */
@@ -464,7 +469,10 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
     this._measureLayout();
     if (typeof ResizeObserver === "undefined") return;
     if (this._layoutObserver) return;
-    this._layoutObserver = new ResizeObserver(() => this._measureLayout());
+    this._layoutObserver = new ResizeObserver(() => {
+      this._measureLayout();
+      this._measureStatusFit();
+    });
     this._layoutObserver.observe(this);
   }
 
@@ -507,6 +515,26 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
           if (budget !== this._autoRowBudget) this._autoRowBudget = budget;
         }
       }
+    }
+  }
+
+  /** Drop brightness/volume status items to icon-only when showing their value would clip
+   *  the room name; re-attempt icon+state whenever the status bar's width changes. */
+  private _measureStatusFit(): void {
+    const root = this.renderRoot as ShadowRoot | undefined;
+    const bar = root?.querySelector?.(".status-bar") as HTMLElement | null;
+    if (!bar) return;
+    const w = bar.clientWidth;
+    if (w > 0 && w !== this._statusBarWidth) {
+      this._statusBarWidth = w;
+      if (this._statusCompact) {
+        this._statusCompact = false; // width changed → re-attempt icon+state (re-measured next update)
+        return;
+      }
+    }
+    const title = root?.querySelector?.(".status-title") as HTMLElement | null;
+    if (!this._statusCompact && title && title.scrollWidth > title.clientWidth + 1) {
+      this._statusCompact = true;
     }
   }
 
@@ -645,6 +673,19 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
 
   private _effectiveStatusItems(): RoomStatusItem[] {
     return this._config?.status_items ?? this._autoResult?.status_items ?? [];
+  }
+
+  /** In compact mode, a brightness/volume item showing icon+state falls back to icon-only
+   *  so the room name isn't clipped. */
+  private _statusDisplayItem(item: RoomStatusItem): RoomStatusItem {
+    if (
+      this._statusCompact &&
+      (item.type === "brightness" || item.type === "volume") &&
+      item.display === "both"
+    ) {
+      return { ...item, display: "icon" };
+    }
+    return item;
   }
 
   private _effectiveSections(): RoomButtonSection[] {
@@ -1262,7 +1303,9 @@ export class TedRoomCard extends LitElement implements LovelaceCard {
               : nothing}
           </div>
           <div class="status-items">
-            ${statusItems.map((item, index) => renderStatusItem(item, this._statusCtx(), index))}
+            ${statusItems.map((item, index) =>
+              renderStatusItem(this._statusDisplayItem(item), this._statusCtx(), index),
+            )}
           </div>
         </div>
         ${hasBody
