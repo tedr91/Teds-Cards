@@ -945,6 +945,11 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.157
+
+- **Brightness status item: the icon now shows the level.** With no manual icon set, a brightness item uses the `mdi:lightbulb-on-XX` range matching the current brightness (and `lightbulb-off-outline` when off) instead of a static icon. A number/input_number maps by its min–max range; a manual `icon:` still wins.
+- **Room Card auto-populate: smarter status bar.** Auto-populated presence is now icon-only and color-coded (accent when occupied, muted when unknown/unavailable), temperature shows just its value, and brightness/volume show icon + value — dropping to icon-only automatically when the value would otherwise clip the room name.
+
 ### v0.9.156
 
 - **Automatic Night Mode: no longer gets stuck in dark.** When a device's account was already in dark mode as night began, night mode couldn't record a "day" value to restore, so it never switched back to light at dawn (and every following night reinforced it). Now, when Dark Mode is enabled in Night Mode, dawn always restores light even if no snapshot was taken — so panels reliably return to light in the morning.

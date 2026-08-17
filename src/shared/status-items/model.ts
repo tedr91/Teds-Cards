@@ -100,6 +100,20 @@ export function sliderStateText(model: SliderModel): string {
   return model.kind === "number" ? `${Math.round(model.value)}${model.unit}` : `${Math.round(model.value)}%`;
 }
 
+/** Default brightness-item icon: an mdi:lightbulb-on-XX matching the level (off/unavailable
+ *  → lightbulb-off-outline). Numbers/input_numbers map by their min–max range. */
+export function brightnessIcon(model: SliderModel): string {
+  const pct =
+    model.kind === "light"
+      ? model.value
+      : model.max > model.min
+        ? ((model.value - model.min) / (model.max - model.min)) * 100
+        : 0;
+  if (!model.available || pct <= 0) return "mdi:lightbulb-off-outline";
+  const level = Math.min(100, Math.max(10, Math.round(pct / 10) * 10));
+  return level >= 100 ? "mdi:lightbulb-on" : `mdi:lightbulb-on-${level}`;
+}
+
 /** Resolve the dot color for a status LED from its on/off/colors config + entity state. */
 export function ledColor(item: LedStatusItem, stateObj: StateObj): string {
   const rawState = stateObj?.state ?? "unavailable";

@@ -18,6 +18,7 @@ import { startPushToTalk } from "../voice-controller";
 import { showMessageBox } from "../messagebox-popup";
 import { formatDate, formatTime } from "./datetime";
 import {
+  brightnessIcon,
   brightnessModel,
   capitalize,
   firstWeatherEntity,
@@ -307,7 +308,7 @@ function renderLedItem(item: LedStatusItem, ctx: StatusItemContext): TemplateRes
 
 function renderBrightnessItem(item: BrightnessStatusItem, ctx: StatusItemContext, index: number): TemplateResult {
   const model = brightnessModel(ctx.hass, item.entity);
-  const icon = item.icon ?? STATUS_ITEM_DEFAULT_ICON.brightness;
+  const icon = item.icon ?? brightnessIcon(model);
   const anchorId = `${ctx.keyPrefix}-bri-anchor-${index}`;
   const popId = `${ctx.keyPrefix}-bri-pop-${index}`;
   const key = `${ctx.keyPrefix}-bri-${index}`;
