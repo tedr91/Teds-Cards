@@ -945,6 +945,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.158
+
+- **Room Card auto-populate: brightness & volume are icon-only.** Auto-populated brightness and volume status items now show just their icon (no value text), for a cleaner status bar.
+
 ### v0.9.157
 
 - **Brightness status item: the icon now shows the level.** With no manual icon set, a brightness item uses the `mdi:lightbulb-on-XX` range matching the current brightness (and `lightbulb-off-outline` when off) instead of a static icon. A number/input_number maps by its min–max range; a manual `icon:` still wins.

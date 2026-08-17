@@ -295,9 +295,9 @@ export function autoPopulateRoom(
   if (occupancy) status.push({ type: "occupancy", entity: occupancy, display: "icon" });
 
   const mainLight = pickMainLight(h, roomLights, areaName);
-  if (mainLight) status.push({ type: "brightness", entity: mainLight, display: "both" });
+  if (mainLight) status.push({ type: "brightness", entity: mainLight });
 
-  if (deviceMediaPlayer) status.push({ type: "volume", entity: deviceMediaPlayer, display: "both" });
+  if (deviceMediaPlayer) status.push({ type: "volume", entity: deviceMediaPlayer });
 
   // --- Sections -------------------------------------------------------------
   const sections: RoomButtonSection[] = [];
