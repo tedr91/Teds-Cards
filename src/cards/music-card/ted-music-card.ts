@@ -385,9 +385,15 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
     }
     this._orchestrateTabData();
     this._scrollActiveLyric();
-    this._measureLayout();
-    this._measureTabs();
-    this._measureMini();
+    // Layout/tab/mini measurements only need to re-run when something that can actually
+    // affect them changed (a new track's title/artist height, or a config/mode switch) —
+    // not on every unrelated internal-state update (queue drag, lyrics scroll, menu
+    // open/close, etc.), each of which forces several synchronous layout reads.
+    if (changed.has("hass") || changed.has("_config")) {
+      this._measureLayout();
+      this._measureTabs();
+      this._measureMini();
+    }
     this._positionPopups();
     this._syncQueueMenuPopover();
     this._syncMiniModal();

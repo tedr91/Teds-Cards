@@ -945,6 +945,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.167
+
+- **Performance: Music Card no longer re-measures layout on every update.** `_measureLayout()`/`_measureTabs()`/`_measureMini()` (each forcing several synchronous layout reads) now only re-run when `hass` or the config actually changed, instead of on every internal-state update (queue drag, lyrics scroll, menu open/close, etc.).
+
 ### v0.9.166
 
 - **Performance: Music Card progress no longer re-renders the whole card every second.** While playing, the progress bar/elapsed time now patch directly instead of triggering a full re-render (tabs, queue, lyrics, media grid, and layout re-measurement) each tick.
