@@ -945,6 +945,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.161
+
+- **Navbar Card: liquid sliding active-view indicator.** The launcher's active-view ring now slides and stretches/morphs from the previously active button to the newly tapped one instead of instantly jumping, on both the horizontal and vertical (auto-hide) bars. At-rest appearance (color, thickness, lift) is unchanged.
+
 ### v0.9.160
 
 - **Room Card auto-populate: scene element order.** Scene buttons now explicitly use Name → State → Icon ordering, with Name shown at the top, State hidden in the middle slot, and Icon shown at the bottom.

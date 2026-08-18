@@ -146,6 +146,11 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
   /** Bounded retries while the card geometry hasn't settled into the current orientation
    *  (e.g. right after a bottom→side flip) so overflow never measures the wrong axis. */
   private _overflowRetries = 0;
+  /** The active launcher button's rect (relative to `.navbar-card`), driving the sliding
+   *  ring indicator; `undefined` when no launcher button is currently active/visible. */
+  @state() private _indicatorRect?: { left: number; top: number; width: number; height: number };
+  /** Ring color/style for the current active button, read off its `data-ring-*` attrs. */
+  @state() private _indicatorRing?: { color: string; isStatic: boolean };
   private _resizeRaf?: number;
   /** Observes the bar's own box so overflow re-measures when its size settles (e.g. a
    *  side bar growing from a thin strip to full height as the content area finishes
@@ -801,7 +806,40 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
     this._measureContentInset();
     this._measureMidInset();
     this._measureOverflow();
+    this._updateActiveIndicator();
     navigationSignal.setHass(this.hass);
+  }
+
+  /** Track the active launcher button's rect so the sliding ring indicator can follow it —
+   *  a CSS transition on the indicator's inline left/top/width/height does the actual
+   *  animating whenever these values change (real navigation, or a bar resize/reflow). */
+  private _updateActiveIndicator(): void {
+    const root = this.renderRoot as ShadowRoot | undefined;
+    const bar = root?.querySelector(".navbar-card") as HTMLElement | null;
+    const active = root?.querySelector(".nav-button[data-active]") as HTMLElement | null;
+    if (!bar || !active) {
+      if (this._indicatorRect) this._indicatorRect = undefined;
+      return;
+    }
+    const barRect = bar.getBoundingClientRect();
+    const activeRect = active.getBoundingClientRect();
+    const next = {
+      left: Math.round(activeRect.left - barRect.left),
+      top: Math.round(activeRect.top - barRect.top),
+      width: Math.round(activeRect.width),
+      height: Math.round(activeRect.height),
+    };
+    const prev = this._indicatorRect;
+    if (prev && prev.left === next.left && prev.top === next.top && prev.width === next.width && prev.height === next.height) {
+      // Unchanged geometry — still refresh the ring color/style in case settings changed.
+    } else {
+      this._indicatorRect = next;
+    }
+    const color = active.dataset.ringColor || "";
+    const isStatic = active.dataset.ringStatic === "1";
+    if (!this._indicatorRing || this._indicatorRing.color !== color || this._indicatorRing.isStatic !== isStatic) {
+      this._indicatorRing = { color, isStatic };
+    }
   }
 
   /** Start observing the bar's box once it exists (idempotent; re-observes after a
@@ -1260,6 +1298,18 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
               </div>
             `,
           )}
+          ${this._indicatorRect
+            ? html`<div
+                class="nav-active-indicator ${this._indicatorRing?.isStatic ? "static" : ""}"
+                style=${styleMap({
+                  left: `${this._indicatorRect.left}px`,
+                  top: `${this._indicatorRect.top}px`,
+                  width: `${this._indicatorRect.width}px`,
+                  height: `${this._indicatorRect.height}px`,
+                  "--ted-ring-color": this._indicatorRing?.color || "transparent",
+                })}
+              ></div>`
+            : nothing}
         </ha-card>
         ${this._holdMenuEnabled() ? this._renderHoldMenu() : nothing}
         ${this._renderLiveOverlay()}
@@ -1565,10 +1615,16 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
     const wide = button.nav_button_size === "wide";
     // Native hover tooltip + a11y label from the button's name (bar buttons are usually icon-only).
     const label = typeof button.name === "string" ? button.name.trim() : "";
+    // `ring_hidden` marks the current-view button — its own ring is suppressed in favor of
+    // the navbar's sliding indicator, which reads these data attrs to find + style it.
+    const isActive = button.ring_hidden === true && !!button.ring;
     return html`<div
       class="nav-button ${wide ? "wide" : ""}"
       title=${label || nothing}
       aria-label=${label || nothing}
+      data-active=${isActive ? "" : nothing}
+      data-ring-color=${isActive ? (cssColor(button.ring) ?? "") : nothing}
+      data-ring-static=${isActive && button.ring_static ? "1" : nothing}
     >
       ${entry ? entry.el : nothing}
     </div>`;
@@ -2105,6 +2161,31 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
       }
       .nav-button.wide {
         width: calc((var(--nav-size) - 12px) * 2 + 8px);
+      }
+
+      /* Sliding active-view ring: one shared element (not each button) draws the ring, so
+         it can visibly travel between buttons instead of instantly jumping. left/top
+         transition immediately while width/height lag slightly behind (delay + a longer,
+         "back"-eased duration) — the leading edge reaches the new button first and the box
+         stretches across the gap before its trailing edge catches up and settles. */
+      .nav-active-indicator {
+        position: absolute;
+        z-index: 1;
+        pointer-events: none;
+        border-radius: var(--ted-style-radius, 12px);
+        box-shadow: 0 0 0 1px var(--ted-ring-color, transparent), 0 5px 12px rgba(0, 0, 0, 0.35);
+        transform: var(--ted-ring-lift, translateY(-2px)) scale(1.06);
+        transition: left 0.26s cubic-bezier(0.22, 1, 0.36, 1), top 0.26s cubic-bezier(0.22, 1, 0.36, 1),
+          width 0.4s cubic-bezier(0.61, 0.2, 0.35, 1.15) 0.03s, height 0.4s cubic-bezier(0.61, 0.2, 0.35, 1.15) 0.03s;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .nav-active-indicator {
+          transition: none;
+        }
+      }
+      .nav-active-indicator.static {
+        box-shadow: 0 0 0 1px var(--ted-ring-color, transparent);
+        transform: none;
       }
       .nav-status {
         display: inline-flex;

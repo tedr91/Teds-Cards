@@ -345,7 +345,7 @@ export class TedButtonCard extends LitElement implements LovelaceCard {
     // slightly with a hairline ring + drop shadow (matches the launcher's current-view look).
     // The lift direction follows `--ted-ring-lift` (set by the navbar per its edge); a
     // bottom bar lifts up by default.
-    const ringC = cssColor(this._config.ring);
+    const ringC = this._config.ring_hidden ? undefined : cssColor(this._config.ring);
     if (ringC) {
       if (this._config.ring_static === true) {
         // Static highlight: outline only, no lift/scale/drop-shadow, so the active tile
