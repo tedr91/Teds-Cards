@@ -5,6 +5,7 @@ import { type HomeAssistant, type LovelaceCard } from "custom-card-helpers";
 import { tedCardThemeClass, tedStyleTheme } from "../../shared/theme";
 import { browserModId, browserModDeviceId, isDeviceRegistered, registerBrowserMod, resolveDeviceMediaPlayer, resolveDeviceName } from "../../shared/device-id";
 import { areaName, resolveDeviceArea } from "../../shared/device-area";
+import { showAreaSetup } from "../../shared/area-setup";
 import { themedIcon } from "../../shared/icons";
 import { resolveMusicPlayer, warmMassProviders, isMassIntegrationLoaded } from "../../shared/music-player";
 import { SettingsController, settingsStore } from "../../shared/settings";
@@ -193,9 +194,15 @@ export class TedStatusCard extends LitElement implements LovelaceCard {
     }
   }
 
-  /** Open this device's page (rename + area) — falls back to the integration. */
+  /** Open the admin device page or the kiosk-safe name/room dialog. */
   private _openDeviceSettings(): void {
-    const id = browserModDeviceId(this.hass);
+    const hass = this.hass;
+    if (!hass) return;
+    if (!hass.user?.is_admin) {
+      void showAreaSetup(hass, { mode: "manage" });
+      return;
+    }
+    const id = browserModDeviceId(hass);
     this._navigate(id ? `/config/devices/device/${id}` : "/config/integrations/integration/browser_mod");
   }
 
@@ -216,12 +223,13 @@ export class TedStatusCard extends LitElement implements LovelaceCard {
         },
       };
     }
-    // Renaming a device / changing its area happens in Settings → Devices, which is
-    // admin-only — so offer the action to admins and explain the limitation to others.
-    if (!this.hass?.user?.is_admin) {
+    // The backend permits kiosk-safe self-management when the shared setting is on.
+    if (!this.hass?.user?.is_admin && settingsStore.effective().allow_device_area_self_assign === false) {
       return {
         title: "Device name & area",
-        note: "Renaming this device or changing its area can only be done by an administrator.",
+        note:
+          "A Home Assistant admin must enable “Allow un-scoped devices to set their own " +
+          "Name / Area” in Ted's settings before this device can update its name or room.",
       };
     }
     return {

@@ -945,6 +945,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.163
+
+- **Device name and room self-management.** Non-admin wall-panel users can now update their own Browser Mod or Companion app device name from the Status Card without opening Home Assistant's admin-only device page. The same dialog manages room assignment independently, disables room changes once a non-admin device is scoped, and reports name and room failures separately.
+
 ### v0.9.162
 
 - **Navbar Card: fixed sliding active-view ring misalignment.** The v0.9.161 sliding indicator could drift a few pixels from the actual button because the button's own lift/scale was suppressed along with its ring color. The lift/scale now stays on the button (the indicator measures its rect after that transform), and the indicator re-measures itself if a late layout shift lands after the triggering render.
