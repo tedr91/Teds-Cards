@@ -945,6 +945,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.168
+
+- **Fixed: navbar hold-menu toggles (auto-hide/float) stopped responding.** The v0.9.166 "patch the DOM directly" optimizations for the navbar clock and Music Card progress bar mutated text nodes that lit-html also binds reactively, corrupting its internal tracking and crashing the next unrelated re-render partway through — which is what silently broke the toggle switches. Both now tick via a normal `requestUpdate()` again (the earlier navbar-clock correctness fix and the Music Card layout-measurement gating are unaffected and stay).
+
 ### v0.9.167
 
 - **Performance: Music Card no longer re-measures layout on every update.** `_measureLayout()`/`_measureTabs()`/`_measureMini()` (each forcing several synchronous layout reads) now only re-run when `hass` or the config actually changed, instead of on every internal-state update (queue drag, lyrics scroll, menu open/close, etc.).

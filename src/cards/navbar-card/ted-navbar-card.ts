@@ -32,8 +32,7 @@ import { tedCardThemeClass, tedStyleTheme } from "../../shared/theme";
 import { renderStatusItem, type StatusItemContext } from "../../shared/status-items/render";
 import { StatusSliderController } from "../../shared/status-items/slider-controller";
 import { statusItemStyles } from "../../shared/status-items/styles";
-import type { DateTimeStatusItem, StatusItem } from "../../shared/status-items/types";
-import { formatDate, formatTime } from "../../shared/status-items/datetime";
+import type { StatusItem } from "../../shared/status-items/types";
 import {
   DEFAULT_NAVBAR_AUTOHIDE_DELAY,
   DEFAULT_NAVBAR_MAX_WIDTH,
@@ -783,42 +782,11 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
       .flatMap((s) => this._sectionItems(s))
       .some((i) => i.type === "datetime");
     if (ticking && this._clockTimer === undefined) {
-      this._clockTimer = window.setInterval(() => this._patchClockDom(), 1000);
+      this._clockTimer = window.setInterval(() => this.requestUpdate(), 1000);
     } else if (!ticking && this._clockTimer !== undefined) {
       window.clearInterval(this._clockTimer);
       this._clockTimer = undefined;
     }
-  }
-
-  /** Live-patch the datetime status item's text directly on each 1s tick instead of a
-   *  `requestUpdate()`, which would re-render the whole bar (sections/launcher/buttons)
-   *  just to advance a clock. Mirrors `renderDateTimeItem`'s text/order exactly. */
-  private _patchClockDom(): void {
-    const item = this._configuredSections()
-      .flatMap((s) => this._sectionItems(s))
-      .find((i): i is DateTimeStatusItem => i.type === "datetime");
-    if (!item) return;
-    const el = (this.renderRoot as ShadowRoot).querySelector(".status-datetime");
-    const spans = el?.querySelectorAll(".status-text");
-    if (!spans || !spans.length) return;
-    const now = new Date();
-    const lang = this.hass?.locale?.language || "en";
-    const mode = item.display ?? "both";
-    const showDate = mode !== "time";
-    const showTime = mode !== "date";
-    const dateText = showDate ? formatDate(now, item.date_format ?? "", lang) : "";
-    const timeText = showTime ? formatTime(now, item.time_format ?? "") : "";
-    const shown: string[] = [];
-    if (mode === "both-stacked") {
-      if (showTime) shown.push(timeText);
-      if (showDate) shown.push(dateText);
-    } else {
-      if (showDate) shown.push(dateText);
-      if (showTime) shown.push(timeText);
-    }
-    spans.forEach((s, i) => {
-      if (shown[i] !== undefined) s.textContent = shown[i];
-    });
   }
 
   private _lastPropagatedHass?: HomeAssistant;

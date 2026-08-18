@@ -444,7 +444,7 @@ function renderDateTimeItem(item: DateTimeStatusItem, ctx: StatusItemContext): T
   const timeSpan = showTime ? html`<span class="status-text">${timeText}</span>` : nothing;
   return html`
     <div
-      class=${classMap({ "status-item": true, "status-datetime": true, "datetime-stacked": stacked, clickable: gesturesActive(g) })}
+      class=${classMap({ "status-item": true, "datetime-stacked": stacked, clickable: gesturesActive(g) })}
       title=${label}
       @pointerdown=${h.down}
       @pointerup=${h.up}
