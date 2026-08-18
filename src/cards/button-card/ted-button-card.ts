@@ -350,12 +350,9 @@ export class TedButtonCard extends LitElement implements LovelaceCard {
       if (this._config.ring_static === true) {
         // Static highlight: outline only, no lift/scale/drop-shadow, so the active tile
         // never resizes or shifts (used by the launcher for fully-transparent buttons).
-        if (!this._config.ring_hidden) cardStyle["box-shadow"] = `0 0 0 1px ${ringC}`;
+        cardStyle["box-shadow"] = `0 0 0 1px ${ringC}`;
       } else {
-        // `ring_hidden`: the navbar's floating indicator draws the box-shadow instead, but
-        // the lift/scale transform stays HERE — the indicator measures this button's rect
-        // via getBoundingClientRect() *after* the transform, so it must actually move.
-        if (!this._config.ring_hidden) cardStyle["box-shadow"] = `0 0 0 1px ${ringC}, 0 5px 12px rgba(0, 0, 0, 0.35)`;
+        cardStyle["box-shadow"] = `0 0 0 1px ${ringC}, 0 5px 12px rgba(0, 0, 0, 0.35)`;
         cardStyle.transform = "var(--ted-ring-lift, translateY(-2px)) scale(1.06)";
       }
     }

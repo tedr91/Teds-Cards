@@ -146,21 +146,6 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
   /** Bounded retries while the card geometry hasn't settled into the current orientation
    *  (e.g. right after a bottom→side flip) so overflow never measures the wrong axis. */
   private _overflowRetries = 0;
-  /** The active launcher button's rect (relative to `.navbar-card`), driving the sliding
-   *  ring indicator; `undefined` when no launcher button is currently active/visible. */
-  @state() private _indicatorRect?: { left: number; top: number; width: number; height: number };
-  /** The active button's true rect as of the last measurement — unlike `_indicatorRect`
-   *  (which may currently be a mid-travel bridging rect), this is never a bridge, so it's
-   *  used to tell a real move (different button) from a same-button re-measure (resize). */
-  private _indicatorTarget?: { left: number; top: number; width: number; height: number };
-  /** Ring color/style for the current active button, read off its `data-ring-*` attrs. */
-  @state() private _indicatorRing?: { color: string; isStatic: boolean };
-  /** Follow-up re-measure timer/RAF so a late layout shift (e.g. an icon font finishing
-   *  load after the triggering render) doesn't leave the indicator's rect stale. */
-  private _indicatorSettleRaf?: number;
-  private _indicatorSettleTimer?: number;
-  /** Pending "contract onto the real target" step of the bridge-then-settle travel below. */
-  private _indicatorBridgeTimer?: number;
   private _resizeRaf?: number;
   /** Observes the bar's own box so overflow re-measures when its size settles (e.g. a
    *  side bar growing from a thin strip to full height as the content area finishes
@@ -323,9 +308,6 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
     if (this._resizeRaf) cancelAnimationFrame(this._resizeRaf);
     if (this._activeViewRaf) cancelAnimationFrame(this._activeViewRaf);
     if (this._activeViewTimer) clearTimeout(this._activeViewTimer);
-    if (this._indicatorSettleRaf) cancelAnimationFrame(this._indicatorSettleRaf);
-    if (this._indicatorSettleTimer) window.clearTimeout(this._indicatorSettleTimer);
-    if (this._indicatorBridgeTimer) window.clearTimeout(this._indicatorBridgeTimer);
     if (this._clockTimer !== undefined) {
       window.clearInterval(this._clockTimer);
       this._clockTimer = undefined;
@@ -819,82 +801,7 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
     this._measureContentInset();
     this._measureMidInset();
     this._measureOverflow();
-    this._updateActiveIndicator();
     navigationSignal.setHass(this.hass);
-  }
-
-  /** Track the active launcher button's rect so the sliding ring indicator can follow it —
-   *  a CSS transition on the indicator's inline left/top/width/height does the actual
-   *  animating whenever these values change (real navigation, or a bar resize/reflow).
-   *  Schedules a couple of follow-up re-measures (rAF + a short delay), same idiom as
-   *  `_scheduleActiveViewSettle()`, so a layout shift that lands after this render (e.g. an
-   *  icon font finishing load) still gets picked up instead of leaving a stale rect. */
-  private _updateActiveIndicator(): void {
-    this._measureActiveIndicator();
-    if (this._indicatorSettleRaf) cancelAnimationFrame(this._indicatorSettleRaf);
-    this._indicatorSettleRaf = requestAnimationFrame(() => {
-      this._indicatorSettleRaf = undefined;
-      this._measureActiveIndicator();
-    });
-    if (this._indicatorSettleTimer) window.clearTimeout(this._indicatorSettleTimer);
-    this._indicatorSettleTimer = window.setTimeout(() => {
-      this._indicatorSettleTimer = undefined;
-      this._measureActiveIndicator();
-    }, 150);
-  }
-
-  private _measureActiveIndicator(): void {
-    const root = this.renderRoot as ShadowRoot | undefined;
-    const bar = root?.querySelector(".navbar-card") as HTMLElement | null;
-    const active = root?.querySelector(".nav-button[data-active]") as HTMLElement | null;
-    if (!bar || !active) {
-      if (this._indicatorRect) this._indicatorRect = undefined;
-      this._indicatorTarget = undefined;
-      if (this._indicatorBridgeTimer) {
-        window.clearTimeout(this._indicatorBridgeTimer);
-        this._indicatorBridgeTimer = undefined;
-      }
-      return;
-    }
-    const barRect = bar.getBoundingClientRect();
-    const activeRect = active.getBoundingClientRect();
-    const next = {
-      left: Math.round(activeRect.left - barRect.left),
-      top: Math.round(activeRect.top - barRect.top),
-      width: Math.round(activeRect.width),
-      height: Math.round(activeRect.height),
-    };
-    const target = this._indicatorTarget;
-    const sameTarget =
-      target && target.left === next.left && target.top === next.top && target.width === next.width && target.height === next.height;
-    if (!sameTarget) {
-      const from = this._indicatorRect;
-      this._indicatorTarget = next;
-      if (this._indicatorBridgeTimer) window.clearTimeout(this._indicatorBridgeTimer);
-      if (!from) {
-        // First appearance — nothing to travel from, just show it in place.
-        this._indicatorRect = next;
-      } else {
-        // Same-size icon buttons never differ in width/height, so a plain move-and-resize
-        // transition never visibly stretches. Instead, bridge to a rect that spans BOTH the
-        // current and new positions (so it visibly reaches across the gap), then contract
-        // onto the new button — a real two-phase liquid travel.
-        const left = Math.min(from.left, next.left);
-        const top = Math.min(from.top, next.top);
-        const right = Math.max(from.left + from.width, next.left + next.width);
-        const bottom = Math.max(from.top + from.height, next.top + next.height);
-        this._indicatorRect = { left, top, width: right - left, height: bottom - top };
-        this._indicatorBridgeTimer = window.setTimeout(() => {
-          this._indicatorBridgeTimer = undefined;
-          this._indicatorRect = next;
-        }, 160);
-      }
-    }
-    const color = active.dataset.ringColor || "";
-    const isStatic = active.dataset.ringStatic === "1";
-    if (!this._indicatorRing || this._indicatorRing.color !== color || this._indicatorRing.isStatic !== isStatic) {
-      this._indicatorRing = { color, isStatic };
-    }
   }
 
   /** Start observing the bar's box once it exists (idempotent; re-observes after a
@@ -1353,18 +1260,6 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
               </div>
             `,
           )}
-          ${this._indicatorRect
-            ? html`<div
-                class="nav-active-indicator ${this._indicatorRing?.isStatic ? "static" : ""}"
-                style=${styleMap({
-                  left: `${this._indicatorRect.left}px`,
-                  top: `${this._indicatorRect.top}px`,
-                  width: `${this._indicatorRect.width}px`,
-                  height: `${this._indicatorRect.height}px`,
-                  "--ted-ring-color": this._indicatorRing?.color || "transparent",
-                })}
-              ></div>`
-            : nothing}
         </ha-card>
         ${this._holdMenuEnabled() ? this._renderHoldMenu() : nothing}
         ${this._renderLiveOverlay()}
@@ -1670,16 +1565,10 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
     const wide = button.nav_button_size === "wide";
     // Native hover tooltip + a11y label from the button's name (bar buttons are usually icon-only).
     const label = typeof button.name === "string" ? button.name.trim() : "";
-    // `ring_hidden` marks the current-view button — its own ring is suppressed in favor of
-    // the navbar's sliding indicator, which reads these data attrs to find + style it.
-    const isActive = button.ring_hidden === true && !!button.ring;
     return html`<div
       class="nav-button ${wide ? "wide" : ""}"
       title=${label || nothing}
       aria-label=${label || nothing}
-      data-active=${isActive ? "" : nothing}
-      data-ring-color=${isActive ? (cssColor(button.ring) ?? "") : nothing}
-      data-ring-static=${isActive && button.ring_static ? "1" : nothing}
     >
       ${entry ? entry.el : nothing}
     </div>`;
@@ -2217,33 +2106,6 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
       .nav-button.wide {
         width: calc((var(--nav-size) - 12px) * 2 + 8px);
       }
-
-      /* Sliding active-view ring: one shared element (not each button) draws the ring, so
-         it can visibly travel between buttons instead of instantly jumping. Same-size icon
-         buttons never differ in width/height, so the actual "stretch" is produced in JS
-         (measureActiveIndicator bridges to a rect spanning both the old and new button, then
-         contracts onto the new one) — this transition just animates each of those two hops
-         with a springy, slightly-overshooting ease. No transform here: the rect is measured
-         off the button AFTER its own lift/scale transform, so the indicator's box already
-         matches its lifted/scaled position. */
-      .nav-active-indicator {
-        position: absolute;
-        z-index: 1;
-        pointer-events: none;
-        border-radius: var(--ted-style-radius, 12px);
-        box-shadow: 0 0 0 1px var(--ted-ring-color, transparent), 0 5px 12px rgba(0, 0, 0, 0.35);
-        transition: left 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), top 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
-          width 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), height 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-      }
-      @media (prefers-reduced-motion: reduce) {
-        .nav-active-indicator {
-          transition: none;
-        }
-      }
-      .nav-active-indicator.static {
-        box-shadow: 0 0 0 1px var(--ted-ring-color, transparent);
-      }
-
       .nav-status {
         display: inline-flex;
         align-items: center;

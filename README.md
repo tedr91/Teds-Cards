@@ -945,6 +945,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.165
+
+- **Reverted the Navbar Card sliding active-view indicator** (introduced in v0.9.161, adjusted in v0.9.162/v0.9.164). Each dashboard view mounts its own separate Navbar Card instance, so a real navigation destroys the old bar and creates a fresh one with no memory of the previous position — there is nothing to visibly slide or stretch between. The active-view ring is back to its original per-button instant highlight.
+
 ### v0.9.164
 
 - **Navbar Card: the sliding active-view ring now actually stretches.** Same-size icon buttons never differ in width/height, so the previous move-and-resize transition never visibly stretched — it now bridges to a rect spanning both the old and new button before contracting onto the new one, with a springy overshoot ease, for a genuine liquid stretch/morph between taps.

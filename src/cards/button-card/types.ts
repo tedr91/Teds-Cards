@@ -73,9 +73,6 @@ export interface ButtonCardConfig extends LovelaceCardConfig {
   /** Draw the `ring` as a static outline only — no lift/scale transform or drop shadow — so
    *  the tile never resizes or shifts. Used by the launcher for fully-transparent buttons. */
   ring_static?: boolean;
-  /** Keep `ring`/`ring_static` in config (as data) but don't render them on this card — an
-   *  external element (the navbar's sliding active indicator) draws the ring instead. */
-  ring_hidden?: boolean;
   transparency?: number;
   blur?: number;
   brushed?: boolean;

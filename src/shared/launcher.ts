@@ -345,9 +345,7 @@ function plainButton(view: LauncherViewInfo, p: BuildLauncherParams, showName: b
   if (showName) btn.show_name = opt.show_name ?? true;
   if (active) {
     // The current-view button: a highlight ring + a slightly more solid tint than the base.
-    // The ring itself is drawn by the navbar's sliding active indicator, not this button.
     btn.ring = p.highlightColor || "accent";
-    btn.ring_hidden = true;
     btn.transparency = Math.max(0, (typeof p.buttonTransparency === "number" ? p.buttonTransparency : 75) - 15);
     // Fully-transparent buttons: keep the ring static so the active tile doesn't resize/shift.
     if (p.buttonTransparency === 100) btn.ring_static = true;
@@ -397,7 +395,6 @@ export function buildLauncherButtons(p: BuildLauncherParams): NavButtonConfig[] 
     }
     if (groupActive) {
       trigger.ring = p.highlightColor || "accent";
-      trigger.ring_hidden = true;
       trigger.transparency = 60;
       if (p.buttonTransparency === 100) trigger.ring_static = true;
     }
