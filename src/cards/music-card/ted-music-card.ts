@@ -187,8 +187,6 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
   @state() private _avgFg?: string;
   private _artColorUrl?: string;
 
-  /** Ticks the progress bar while playing (bumped by a 1s interval). */
-  @state() private _tick = 0;
   private _progressTimer?: number;
 
   /** When the vertical album art would be no taller than the title/artist rows,
@@ -273,7 +271,7 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
     super.connectedCallback();
     this._progressTimer ??= window.setInterval(() => {
       const s = this._stateObj();
-      if (s?.state === "playing") this._tick++;
+      if (s?.state === "playing") this._patchProgressDom();
     }, 1000);
     this._ro ??= new ResizeObserver(() => {
       this._measureLayout();
@@ -565,6 +563,30 @@ export class TedMusicCard extends LitElement implements LovelaceCard {
 
   private _duration(): number {
     return Number(this._attr<number>("media_duration") ?? 0);
+  }
+
+  /** Live-patch the seek input/times/mini fill directly on each 1s tick instead of
+   *  triggering a full card re-render (this card is large — tabs, queue, lyrics, grid —
+   *  and a full re-render also re-runs the ResizeObserver layout measurements). The
+   *  normal `render()` still computes these from scratch for any real state change. */
+  private _patchProgressDom(): void {
+    const dur = this._duration();
+    if (!dur) return;
+    const elapsed = this._elapsed();
+    const pct = Math.min(100, Math.max(0, (elapsed / dur) * 100));
+    const root = this.renderRoot as ShadowRoot;
+    const seek = root.querySelector(".seek") as HTMLInputElement | null;
+    if (seek) {
+      seek.style.setProperty("--seek-fill", `${pct}%`);
+      seek.value = String(pct);
+    }
+    const times = root.querySelector(".times") as HTMLElement | null;
+    if (times && times.children.length >= 2) {
+      times.children[0].textContent = fmtTime(elapsed);
+      times.children[1].textContent = fmtTime(dur);
+    }
+    const miniFill = root.querySelector(".mini-progress-fill") as HTMLElement | null;
+    if (miniFill) miniFill.style.width = `${pct}%`;
   }
 
   // --- Volume-on-play --------------------------------------------------------

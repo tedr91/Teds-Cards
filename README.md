@@ -945,6 +945,11 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.166
+
+- **Performance: Music Card progress no longer re-renders the whole card every second.** While playing, the progress bar/elapsed time now patch directly instead of triggering a full re-render (tabs, queue, lyrics, media grid, and layout re-measurement) each tick.
+- **Performance + fix: Navbar clock.** The clock's per-second tick never actually activated (a stale type check), so it only refreshed on incidental re-renders and could go stale on a quiet screen. It now ticks reliably every second, patching just its own text instead of re-rendering the whole bar.
+
 ### v0.9.165
 
 - **Reverted the Navbar Card sliding active-view indicator** (introduced in v0.9.161, adjusted in v0.9.162/v0.9.164). Each dashboard view mounts its own separate Navbar Card instance, so a real navigation destroys the old bar and creates a fresh one with no memory of the previous position — there is nothing to visibly slide or stretch between. The active-view ring is back to its original per-button instant highlight.
