@@ -151,6 +151,10 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
   @state() private _indicatorRect?: { left: number; top: number; width: number; height: number };
   /** Ring color/style for the current active button, read off its `data-ring-*` attrs. */
   @state() private _indicatorRing?: { color: string; isStatic: boolean };
+  /** Follow-up re-measure timer/RAF so a late layout shift (e.g. an icon font finishing
+   *  load after the triggering render) doesn't leave the indicator's rect stale. */
+  private _indicatorSettleRaf?: number;
+  private _indicatorSettleTimer?: number;
   private _resizeRaf?: number;
   /** Observes the bar's own box so overflow re-measures when its size settles (e.g. a
    *  side bar growing from a thin strip to full height as the content area finishes
@@ -313,6 +317,8 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
     if (this._resizeRaf) cancelAnimationFrame(this._resizeRaf);
     if (this._activeViewRaf) cancelAnimationFrame(this._activeViewRaf);
     if (this._activeViewTimer) clearTimeout(this._activeViewTimer);
+    if (this._indicatorSettleRaf) cancelAnimationFrame(this._indicatorSettleRaf);
+    if (this._indicatorSettleTimer) window.clearTimeout(this._indicatorSettleTimer);
     if (this._clockTimer !== undefined) {
       window.clearInterval(this._clockTimer);
       this._clockTimer = undefined;
@@ -812,8 +818,25 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
 
   /** Track the active launcher button's rect so the sliding ring indicator can follow it —
    *  a CSS transition on the indicator's inline left/top/width/height does the actual
-   *  animating whenever these values change (real navigation, or a bar resize/reflow). */
+   *  animating whenever these values change (real navigation, or a bar resize/reflow).
+   *  Schedules a couple of follow-up re-measures (rAF + a short delay), same idiom as
+   *  `_scheduleActiveViewSettle()`, so a layout shift that lands after this render (e.g. an
+   *  icon font finishing load) still gets picked up instead of leaving a stale rect. */
   private _updateActiveIndicator(): void {
+    this._measureActiveIndicator();
+    if (this._indicatorSettleRaf) cancelAnimationFrame(this._indicatorSettleRaf);
+    this._indicatorSettleRaf = requestAnimationFrame(() => {
+      this._indicatorSettleRaf = undefined;
+      this._measureActiveIndicator();
+    });
+    if (this._indicatorSettleTimer) window.clearTimeout(this._indicatorSettleTimer);
+    this._indicatorSettleTimer = window.setTimeout(() => {
+      this._indicatorSettleTimer = undefined;
+      this._measureActiveIndicator();
+    }, 150);
+  }
+
+  private _measureActiveIndicator(): void {
     const root = this.renderRoot as ShadowRoot | undefined;
     const bar = root?.querySelector(".navbar-card") as HTMLElement | null;
     const active = root?.querySelector(".nav-button[data-active]") as HTMLElement | null;
@@ -2167,14 +2190,15 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
          it can visibly travel between buttons instead of instantly jumping. left/top
          transition immediately while width/height lag slightly behind (delay + a longer,
          "back"-eased duration) — the leading edge reaches the new button first and the box
-         stretches across the gap before its trailing edge catches up and settles. */
+         stretches across the gap before its trailing edge catches up and settles. No
+         transform here: the rect is measured off the button AFTER its own lift/scale
+         transform, so the indicator's box already matches its lifted/scaled position. */
       .nav-active-indicator {
         position: absolute;
         z-index: 1;
         pointer-events: none;
         border-radius: var(--ted-style-radius, 12px);
         box-shadow: 0 0 0 1px var(--ted-ring-color, transparent), 0 5px 12px rgba(0, 0, 0, 0.35);
-        transform: var(--ted-ring-lift, translateY(-2px)) scale(1.06);
         transition: left 0.26s cubic-bezier(0.22, 1, 0.36, 1), top 0.26s cubic-bezier(0.22, 1, 0.36, 1),
           width 0.4s cubic-bezier(0.61, 0.2, 0.35, 1.15) 0.03s, height 0.4s cubic-bezier(0.61, 0.2, 0.35, 1.15) 0.03s;
       }
@@ -2185,8 +2209,8 @@ export class TedNavbarCard extends LitElement implements LovelaceCard {
       }
       .nav-active-indicator.static {
         box-shadow: 0 0 0 1px var(--ted-ring-color, transparent);
-        transform: none;
       }
+
       .nav-status {
         display: inline-flex;
         align-items: center;

@@ -268,7 +268,7 @@ export class TedExpandableButtonCard extends LitElement implements LovelaceCard 
   private _renderGroupDots(): TemplateResult | typeof nothing {
     const count = Math.min(4, (this._config?.items ?? []).length);
     if (count < 2) return nothing;
-    const active = !!this._config?.ring && !this._config?.ring_hidden;
+    const active = !!this._config?.ring;
     return html`<span class="ebc-dots ${active ? (this._config?.ring_static === true ? "active" : "active lift") : ""}">
       ${Array.from({ length: count }, () => html`<i></i>`)}
     </span>`;

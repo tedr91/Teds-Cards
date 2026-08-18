@@ -345,14 +345,17 @@ export class TedButtonCard extends LitElement implements LovelaceCard {
     // slightly with a hairline ring + drop shadow (matches the launcher's current-view look).
     // The lift direction follows `--ted-ring-lift` (set by the navbar per its edge); a
     // bottom bar lifts up by default.
-    const ringC = this._config.ring_hidden ? undefined : cssColor(this._config.ring);
+    const ringC = cssColor(this._config.ring);
     if (ringC) {
       if (this._config.ring_static === true) {
         // Static highlight: outline only, no lift/scale/drop-shadow, so the active tile
         // never resizes or shifts (used by the launcher for fully-transparent buttons).
-        cardStyle["box-shadow"] = `0 0 0 1px ${ringC}`;
+        if (!this._config.ring_hidden) cardStyle["box-shadow"] = `0 0 0 1px ${ringC}`;
       } else {
-        cardStyle["box-shadow"] = `0 0 0 1px ${ringC}, 0 5px 12px rgba(0, 0, 0, 0.35)`;
+        // `ring_hidden`: the navbar's floating indicator draws the box-shadow instead, but
+        // the lift/scale transform stays HERE — the indicator measures this button's rect
+        // via getBoundingClientRect() *after* the transform, so it must actually move.
+        if (!this._config.ring_hidden) cardStyle["box-shadow"] = `0 0 0 1px ${ringC}, 0 5px 12px rgba(0, 0, 0, 0.35)`;
         cardStyle.transform = "var(--ted-ring-lift, translateY(-2px)) scale(1.06)";
       }
     }
