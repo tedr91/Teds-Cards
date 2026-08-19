@@ -15,6 +15,7 @@ import type { RoomButtonConfig, RoomButtonSection, RoomStatusItem } from "./type
 interface RegEntity {
   area_id?: string | null;
   device_id?: string | null;
+  hidden?: boolean;
   hidden_by?: string | null;
   disabled_by?: string | null;
   entity_category?: string | null;
@@ -77,7 +78,7 @@ function entityArea(hass: HassReg, entityId: string): string | undefined {
 /** True when the entity should be excluded (hidden, disabled, or config/diagnostic). */
 function isExcluded(reg: RegEntity | undefined): boolean {
   if (!reg) return true;
-  if (reg.hidden_by || reg.disabled_by) return true;
+  if (reg.hidden || reg.hidden_by || reg.disabled_by) return true;
   return reg.entity_category === "config" || reg.entity_category === "diagnostic";
 }
 

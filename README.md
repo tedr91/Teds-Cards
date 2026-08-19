@@ -945,6 +945,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.172
+
+- **Fixed: hidden Home Assistant entities no longer appear in Room Card auto-population.** The card now honors the `hidden` flag exposed by Home Assistant's compact entity registry, so controls marked **Visible off** (such as smart-outlet relay lights) stay out of auto-populated Room Cards.
+
 ### v0.9.171
 
 - **Fixed: Dynamic Night Mode no longer raises an Unauthorized error on non-admin wall panels and nightstands.** Theme snapshots now use a dedicated authenticated-user service instead of the admin-only global settings service. The backend derives the user ID from the Home Assistant service-call context, so each non-admin user can save or clear only their own Auto/Light/Dark restoration entry without weakening global-settings security.
