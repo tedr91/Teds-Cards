@@ -945,6 +945,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.170
+
+- **Fixed: Dynamic Night Mode now restores Auto, Light, and Dark exactly.** Theme preferences are stored as explicit mode names per Home Assistant user instead of using `null` for Auto, which the backend treated as a deletion. Explicit Dark is captured rather than mistaken for an already-forced state, and sessions that did not participate in the night override can no longer consume another device's snapshot.
+
 ### v0.9.169
 
 - **Music playback now defaults to the room's preferred speaker.** When a dashboard device has no explicit music-player setting, same-room providers are prioritized before matching the tablet or phone by name (Sonos first, then Chromecast, AirPlay, and DLNA). Room matching now honors device-inherited areas as well as entity-level assignments, while explicit music and system-sound choices still win.

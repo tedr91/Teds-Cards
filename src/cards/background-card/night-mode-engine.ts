@@ -33,10 +33,13 @@ interface HassLike {
   callService?(domain: string, service: string, data?: Record<string, unknown>): Promise<unknown> | void;
   entities?: Record<string, { device_id?: string | null } | undefined>;
   devices?: Record<string, { identifiers?: [string, string][] } | undefined>;
+  user?: { id?: string };
   // HA's runtime `selectedTheme` is an object; the custom-card-helpers type still calls it a
   // string, so accept both to stay assignable from HomeAssistant.
   selectedTheme?: { theme?: string; dark?: boolean } | string | null;
 }
+
+type ThemeMode = "auto" | "light" | "dark";
 
 const NIGHT_FONT_STYLE_ID = "ted-night-mode-font";
 /** The `ted-style` theme's default text color — the day-start of the font fade for ted-style cards
@@ -44,10 +47,8 @@ const NIGHT_FONT_STYLE_ID = "ted-night-mode-font";
 const TED_STYLE_DAY_TEXT = "#ffffff";
 /** Per-device marker mirroring whether night mode is currently applied (survives a reload). */
 const NIGHT_ACTIVE_KEY = "night_active";
-/** Global (user-scoped) snapshot of the dark-theme preference before night mode forced it on, so
- *  the morning can restore it. Global — not per-device — because HA's dark toggle is user-scoped and
- *  cascades to every session; a per-device copy lets a panel that booted after dark cascaded snapshot
- *  the already-dark value and "restore" the account back to dark at dawn. Absent = not overriding. */
+/** Global map of HA user IDs to their preference before night mode forced Dark. It is shared across
+ *  devices because HA's theme preference is user-scoped and cascades to every session for that user. */
 const NIGHT_DARK_PREV_KEY = "night_dark_prev";
 /** Switch to Dark mode this long AFTER the night transition finishes. */
 const DARK_AFTER_TRANSITION_MS = 5_000;
@@ -67,6 +68,8 @@ class NightModeEngine {
   private brightTimer?: number;
   private fontCleanupTimer?: number;
   private darkTimer?: number;
+  /** This page joined the current user-scoped Dark override and may restore it. */
+  private darkParticipating = false;
   /** Whether night mode is currently applied (in-memory; the backend marker mirrors it across reloads). */
   private active = false;
   /** First evaluate after mount — always repaints the page-local look (instant when unchanged). */
@@ -236,13 +239,13 @@ class NightModeEngine {
       this.darkTimer = undefined;
     }
     if (!(featureOn && isNightNow)) {
-      this._setNativeDark(false, featureOn);
+      this._setNativeDark(false);
       return;
     }
     const delay = durMs > 0 ? durMs + DARK_AFTER_TRANSITION_MS : 0;
     this.darkTimer = window.setTimeout(() => {
       this.darkTimer = undefined;
-      this._setNativeDark(true, featureOn);
+      this._setNativeDark(true);
     }, delay);
   }
 
@@ -252,32 +255,46 @@ class NightModeEngine {
     return sel && typeof sel === "object" && typeof sel.dark === "boolean" ? sel.dark : undefined;
   }
 
+  private _currentThemeMode(): ThemeMode {
+    const dark = this._currentDark();
+    return dark === true ? "dark" : dark === false ? "light" : "auto";
+  }
+
+  private _darkSnapshots(): Record<string, ThemeMode> {
+    const value = settingsStore.globalSettings()[NIGHT_DARK_PREV_KEY];
+    if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+    const snapshots: Record<string, ThemeMode> = {};
+    for (const [userId, mode] of Object.entries(value)) {
+      if (mode === "auto" || mode === "light" || mode === "dark") snapshots[userId] = mode;
+    }
+    return snapshots;
+  }
+
   /** Toggle HA's user dark mode by firing `settheme` on the <home-assistant> root (which HA persists
-   *  user-scoped). The prior preference is snapshotted once, globally, so any panel can restore it
-   *  and a panel that came up after dark cascaded can't overwrite it with the already-dark value. */
-  private _setNativeDark(on: boolean, featureOn: boolean): void {
+   *  user-scoped). Each user's prior preference is captured once so another session for that user
+   *  cannot overwrite it after Dark has cascaded. */
+  private _setNativeDark(on: boolean): void {
     const root = document.querySelector("home-assistant") as HTMLElement | null;
-    if (!root) return;
-    const glob = settingsStore.globalSettings();
-    const applied = NIGHT_DARK_PREV_KEY in glob;
+    const userId = this.hass?.user?.id;
+    if (!root || !userId) return;
+    const snapshots = this._darkSnapshots();
     if (on) {
-      // Record the pre-night preference exactly once, and only while dark is still off, so a
-      // dark theme cascaded from another panel can never poison the snapshot.
-      if (!applied && this._currentDark() !== true)
-        settingsStore.setValue("global", NIGHT_DARK_PREV_KEY, (this._currentDark() ?? null) as SettingsValue);
+      this.darkParticipating = true;
+      if (!(userId in snapshots)) {
+        snapshots[userId] = this._currentThemeMode();
+        settingsStore.setValue("global", NIGHT_DARK_PREV_KEY, snapshots as SettingsValue);
+      }
       if (this._currentDark() !== true) this._fireSetTheme(root, true);
-    } else if (applied) {
-      const prev = glob[NIGHT_DARK_PREV_KEY];
-      const restore = prev === true ? true : prev === false ? false : undefined;
-      // Clear first so any other panel evaluating dawn concurrently sees it as already-restored
-      // and no-ops, leaving exactly one effective restore for the whole account.
-      settingsStore.clearValue("global", NIGHT_DARK_PREV_KEY);
+    } else if (this.darkParticipating) {
+      this.darkParticipating = false;
+      if (!(userId in snapshots)) return;
+      const mode = snapshots[userId];
+      const restore = mode === "dark" ? true : mode === "light" ? false : undefined;
+      delete snapshots[userId];
+      if (Object.keys(snapshots).length)
+        settingsStore.setValue("global", NIGHT_DARK_PREV_KEY, snapshots as SettingsValue);
+      else settingsStore.clearValue("global", NIGHT_DARK_PREV_KEY);
       if (this._currentDark() !== restore) this._fireSetTheme(root, restore);
-    } else if (featureOn && this._currentDark() === true) {
-      // No snapshot was ever recorded (the account was already dark when night began) — which
-      // would otherwise leave it stuck dark forever. night_dark_mode owns dark here, so at day
-      // the day value is light: turn it off.
-      this._fireSetTheme(root, false);
     }
   }
 
