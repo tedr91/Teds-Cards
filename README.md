@@ -945,6 +945,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.169
+
+- **Music playback now defaults to the room's preferred speaker.** When a dashboard device has no explicit music-player setting, same-room providers are prioritized before matching the tablet or phone by name (Sonos first, then Chromecast, AirPlay, and DLNA). Room matching now honors device-inherited areas as well as entity-level assignments, while explicit music and system-sound choices still win.
+
 ### v0.9.168
 
 - **Fixed: navbar hold-menu toggles (auto-hide/float) stopped responding.** The v0.9.166 "patch the DOM directly" optimizations for the navbar clock and Music Card progress bar mutated text nodes that lit-html also binds reactively, corrupting its internal tracking and crashing the next unrelated re-render partway through — which is what silently broke the toggle switches. Both now tick via a normal `requestUpdate()` again (the earlier navbar-clock correctness fix and the Music Card layout-measurement gating are unaffected and stay).

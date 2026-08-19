@@ -41,6 +41,7 @@ interface RegistryDevice {
   manufacturer?: string | null;
   model?: string | null;
   name?: string | null;
+  area_id?: string | null;
 }
 type RegistryHass = HomeAssistant & {
   entities?: Record<string, RegistryEntity | undefined>;
@@ -71,6 +72,14 @@ const devices = (hass?: HomeAssistant): Record<string, RegistryDevice | undefine
 const entityName = (hass: HomeAssistant | undefined, id: string): string => {
   const fn = hass?.states[id]?.attributes?.friendly_name;
   return typeof fn === "string" ? fn : id;
+};
+
+const entityArea = (hass: HomeAssistant | undefined, id: string): string | null => {
+  const reg = registry(hass);
+  const entity = reg[id];
+  if (entity?.area_id) return entity.area_id;
+  const deviceId = entity?.device_id ?? undefined;
+  return (deviceId ? devices(hass)[deviceId]?.area_id : null) ?? null;
 };
 
 export function isMassPlayer(hass: HomeAssistant | undefined, id: string): boolean {
@@ -116,8 +125,13 @@ function providerRank(hass: HomeAssistant | undefined, id: string): number {
 }
 
 /** Best-effort: find the Music Assistant player matching a physical speaker.
- *  Tiers: same HA device → exact name → best name-token overlap → same area (by provider). */
-function matchMassPlayer(hass: HomeAssistant | undefined, base: string): string | undefined {
+ *  Explicit speaker choices prioritize identity/name matching. The device's own
+ *  fallback prioritizes the room's preferred provider before matching its name. */
+function matchMassPlayer(
+  hass: HomeAssistant | undefined,
+  base: string,
+  preferAreaProvider: boolean,
+): string | undefined {
   const reg = registry(hass);
   const candidates = massPlayers(hass);
   if (candidates.length === 0) return undefined;
@@ -132,7 +146,20 @@ function matchMassPlayer(hass: HomeAssistant | undefined, base: string): string 
   const tokenize = (s: string): string[] => s.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
   const baseTokens = tokenize(entityName(hass, base));
   const baseJoined = baseTokens.join("");
-  const baseArea = reg[base]?.area_id ?? null;
+  const baseArea = entityArea(hass, base);
+
+  const bestInArea = (): string | undefined => {
+    if (!baseArea) return undefined;
+    const inArea = candidates.filter((id) => entityArea(hass, id) === baseArea);
+    if (inArea.length === 0) return undefined;
+    inArea.sort((a, b) => providerRank(hass, a) - providerRank(hass, b));
+    return inArea[0];
+  };
+
+  if (preferAreaProvider) {
+    const preferred = bestInArea();
+    if (preferred) return preferred;
+  }
 
   // 2) Exact normalized name.
   if (baseJoined) {
@@ -159,7 +186,7 @@ function matchMassPlayer(hass: HomeAssistant | undefined, base: string): string 
         if (shared === 0) continue;
         score = 20 + shared * 5 - lenGap * 3;
       }
-      if (baseArea && reg[id]?.area_id === baseArea) score += 15;
+      if (baseArea && entityArea(hass, id) === baseArea) score += 15;
       if (!best || score > best.score) best = { id, score };
     }
     if (best && best.score >= 25) return best.id;
@@ -167,14 +194,7 @@ function matchMassPlayer(hass: HomeAssistant | undefined, base: string): string 
 
   // 4) No name match — a Music Assistant player in the same area, preferring
   //    providers in order (Sonos → Chromecast → AirPlay → DLNA).
-  if (baseArea) {
-    const inArea = candidates.filter((id) => reg[id]?.area_id === baseArea);
-    if (inArea.length) {
-      inArea.sort((a, b) => providerRank(hass, a) - providerRank(hass, b));
-      return inArea[0];
-    }
-  }
-  return undefined;
+  return bestInArea();
 }
 
 /** The starting player before Music Assistant matching. */
@@ -201,7 +221,13 @@ export function resolveMusicPlayer(
   if (isMassPlayer(hass, base)) return { state: "ok", entity: base, base, matched: false };
   // Trust an explicit entity / disabled auto-resolve as-is.
   if (opts.autoResolve === false) return { state: "ok", entity: base, base, matched: false };
-  const matched = matchMassPlayer(hass, base);
+  const hasConfiguredBase =
+    !!opts.entity ||
+    (opts.useSettings !== false &&
+      [settingsStore.get("music_player"), settingsStore.get("system_sound_player")].some(
+        (value) => typeof value === "string" && value.length > 0,
+      ));
+  const matched = matchMassPlayer(hass, base, !hasConfiguredBase);
   return matched
     ? { state: "ok", entity: matched, base, matched: true }
     : { state: "unmatched", base };
@@ -221,11 +247,10 @@ export async function warmMassProviders(hass: HomeAssistant | undefined): Promis
   if (massQueueUnavailable) return false;
   const conn = (hass as WsConnHass | undefined)?.connection;
   if (!conn?.sendMessagePromise) return false;
-  const reg = registry(hass);
   const base = baseEntity(hass, {});
-  const baseArea = base ? (reg[base]?.area_id ?? null) : null;
+  const baseArea = base ? entityArea(hass, base) : null;
   if (!baseArea) return false;
-  const sameArea = massPlayers(hass).filter((id) => reg[id]?.area_id === baseArea);
+  const sameArea = massPlayers(hass).filter((id) => entityArea(hass, id) === baseArea);
   if (sameArea.length < 2) return false;
   const ids = sameArea.filter((id) => !providerCache.has(id) && !providerInflight.has(id));
   if (ids.length === 0) return false;
