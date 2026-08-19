@@ -945,6 +945,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.171
+
+- **Fixed: Dynamic Night Mode no longer raises an Unauthorized error on non-admin wall panels and nightstands.** Theme snapshots now use a dedicated authenticated-user service instead of the admin-only global settings service. The backend derives the user ID from the Home Assistant service-call context, so each non-admin user can save or clear only their own Auto/Light/Dark restoration entry without weakening global-settings security.
+
 ### v0.9.170
 
 - **Fixed: Dynamic Night Mode now restores Auto, Light, and Dark exactly.** Theme preferences are stored as explicit mode names per Home Assistant user instead of using `null` for Auto, which the backend treated as a deletion. Explicit Dark is captured rather than mistaken for an already-forced state, and sessions that did not participate in the night override can no longer consume another device's snapshot.

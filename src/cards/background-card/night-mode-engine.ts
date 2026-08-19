@@ -282,7 +282,7 @@ class NightModeEngine {
       this.darkParticipating = true;
       if (!(userId in snapshots)) {
         snapshots[userId] = this._currentThemeMode();
-        settingsStore.setValue("global", NIGHT_DARK_PREV_KEY, snapshots as SettingsValue);
+        settingsStore.setNightThemeSnapshot(userId, snapshots[userId]);
       }
       if (this._currentDark() !== true) this._fireSetTheme(root, true);
     } else if (this.darkParticipating) {
@@ -290,10 +290,7 @@ class NightModeEngine {
       if (!(userId in snapshots)) return;
       const mode = snapshots[userId];
       const restore = mode === "dark" ? true : mode === "light" ? false : undefined;
-      delete snapshots[userId];
-      if (Object.keys(snapshots).length)
-        settingsStore.setValue("global", NIGHT_DARK_PREV_KEY, snapshots as SettingsValue);
-      else settingsStore.clearValue("global", NIGHT_DARK_PREV_KEY);
+      settingsStore.setNightThemeSnapshot(userId, null);
       if (this._currentDark() !== restore) this._fireSetTheme(root, restore);
     }
   }

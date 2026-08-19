@@ -48,6 +48,7 @@ export interface DeviceRegistryEntry {
 }
 
 export type SettingsScope = "global" | "device";
+export type NightThemeMode = "auto" | "light" | "dark";
 
 class SettingsStore {
   readonly deviceId = resolveDeviceId();
@@ -160,6 +161,21 @@ class SettingsStore {
     const data: Record<string, unknown> = { key, scope };
     if (scope === "device") data.device_id = this.deviceId;
     this._hass?.callService?.(DOMAIN, "clear_setting", data);
+  }
+
+  /** Save or clear this authenticated HA user's pre-night theme mode. The backend derives the
+   *  user ID from the service-call context, so non-admin clients cannot write another user's entry. */
+  setNightThemeSnapshot(userId: string, mode: NightThemeMode | null): void {
+    const global = { ...(this._snapshot.global ?? {}) };
+    const raw = global.night_dark_prev;
+    const snapshots = raw && typeof raw === "object" && !Array.isArray(raw) ? { ...raw } : {};
+    if (mode === null) delete snapshots[userId];
+    else snapshots[userId] = mode;
+    if (Object.keys(snapshots).length) global.night_dark_prev = snapshots;
+    else delete global.night_dark_prev;
+    this._snapshot.global = global;
+    this._emit();
+    this._hass?.callService?.(DOMAIN, "set_night_theme_snapshot", { mode });
   }
 
   private _emit(): void {
