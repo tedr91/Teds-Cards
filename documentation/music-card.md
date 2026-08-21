@@ -105,8 +105,11 @@ mode: mini
 3. The resolved entity is then mapped to a **Music Assistant** player:
    - If it's already a Music Assistant `media_player`, it's used as-is.
    - Otherwise (a physical speaker) and `auto_resolve_mass_player` is on, the card
-     looks for a Music Assistant player on the **same device**, then one with a
-     **matching name**.
+     looks for a Music Assistant player on the **same device**, then — when nothing is
+     configured for this device — the best player in the **same room**, then one with a
+     **matching name**. Room preference goes HomePod → Sonos → Chromecast → AirPlay →
+     DLNA, and a stereo pair's combined player is chosen over its left/right channels
+     so playback is never mono.
    - If no Music Assistant player is found, the card shows a short "No Music
      Assistant player" note with a **Settings** button and a **Music Assistant**
      button. Enabling Music Assistant's **Home Assistant** player provider (so your

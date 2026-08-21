@@ -15,19 +15,32 @@ import { settingsStore } from "./settings";
 /** Entity-registry platform of Music Assistant media_player entities. */
 export const MASS_PLAYER_PLATFORM = "music_assistant";
 
-/** When several Music Assistant players share an area, prefer these providers in
- *  order. Each entry lists keywords looked for in the player's device
- *  manufacturer / model / name (Music Assistant sets the device manufacturer to the
- *  real manufacturer, or the provider name when unknown). */
+/** When several Music Assistant players share an area, prefer these tiers in order
+ *  (first match wins). Each entry lists keywords looked for in the player's exact
+ *  provider *and* its device manufacturer / model / name (Music Assistant sets the
+ *  device manufacturer to the real manufacturer, or the provider name when unknown).
+ *
+ *  `homepod` is a **name-derived** tier, not a provider: Music Assistant has no
+ *  `homepod` provider — it reports HomePods as `airplay` (a single speaker) or
+ *  `sync_group` (a stereo pair). "HomePod" only ever appears in the player's name,
+ *  which is why {@link providerRank} must keep consulting the name text even once
+ *  the exact provider is known. */
 const PROVIDER_ORDER: string[][] = [
+  ["homepod"],
   ["sonos"],
   ["chromecast", "google cast", "google", "cast", "nest"],
   ["airplay", "apple"],
   ["dlna", "upnp"],
 ];
 
+/** A trailing, bracketed channel marker — "Kitchen HomePod (L)", "Desk Speaker [Right]".
+ *  Deliberately anchored and bracket-bound so legitimately-named players such as
+ *  "Left Porch Speaker" or "Right Bedroom" are never mistaken for one half of a pair. */
+const CHANNEL_SUFFIX = /[([]\s*(?:l|r|left|right)\s*[)\]]\s*$/i;
+
 /** Cache of each Music Assistant player's true provider (from `mass_queue/get_info`),
- *  used for exact provider-priority ranking. Falls back to device metadata until warmed. */
+ *  used for exact provider-priority ranking. Combined with — not a replacement for —
+ *  the player's device metadata; see {@link providerRank}. */
 const providerCache = new Map<string, string>();
 const providerInflight = new Set<string>();
 let massQueueUnavailable = false;
@@ -104,24 +117,61 @@ function massPlayers(hass: HomeAssistant | undefined): string[] {
   );
 }
 
+/** Lower-cased device manufacturer / model / name plus the entity's friendly name and
+ *  id — the cache-independent half of a player's ranking text. */
+function metadataText(hass: HomeAssistant | undefined, id: string): string {
+  const deviceId = registry(hass)[id]?.device_id ?? undefined;
+  const dev = deviceId ? devices(hass)[deviceId] : undefined;
+  return [dev?.manufacturer, dev?.model, dev?.name, entityName(hass, id), id]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+}
+
 /** Priority rank of a Music Assistant player by its provider (lower = preferred);
- *  unknown providers rank last. Uses the exact provider (from `mass_queue/get_info`)
- *  once warmed, else best-effort keywords in the device manufacturer/model/name. */
+ *  unknown providers rank last.
+ *
+ *  The exact provider (from `mass_queue/get_info`, once {@link warmMassProviders} has
+ *  run) is **concatenated with** — never substituted for — the device metadata text.
+ *  That is load-bearing: HomePods report provider `airplay` or `sync_group`, so the
+ *  `homepod` tier lives purely in the player's *name*. Replacing the text with the
+ *  exact provider would make that tier match while the cache is cold and silently
+ *  stop matching once it warms — an intermittent, near-undebuggable race.
+ *
+ *  Concatenating instead keeps the rank deterministic: tiers are scanned in order and
+ *  the first keyword hit wins, so the metadata half alone already yields the cold
+ *  rank, and warming can only *append* text — never remove a keyword, never demote a
+ *  player. Exact-provider matching stays authoritative for the genuine provider tiers,
+ *  ranking players whose metadata gives nothing away. */
 function providerRank(hass: HomeAssistant | undefined, id: string): number {
   const exact = providerCache.get(id);
-  let text: string;
-  if (exact !== undefined) {
-    text = exact;
-  } else {
-    const deviceId = registry(hass)[id]?.device_id ?? undefined;
-    const dev = deviceId ? devices(hass)[deviceId] : undefined;
-    text = [dev?.manufacturer, dev?.model, dev?.name, entityName(hass, id), id]
-      .filter(Boolean)
-      .join(" ")
-      .toLowerCase();
-  }
+  const meta = metadataText(hass, id);
+  const text = exact ? `${exact} ${meta}` : meta;
   const idx = PROVIDER_ORDER.findIndex((keys) => keys.some((k) => text.includes(k)));
   return idx === -1 ? PROVIDER_ORDER.length : idx;
+}
+
+/** Tie-break weight within one provider tier (lower = preferred): a combined player
+ *  beats a single channel of a stereo pair.
+ *
+ *  A HomePod pair exposes all three of "Kitchen HomePod (L)", "Kitchen HomePod (R)" and
+ *  the "Kitchen HomePods" sync group, and all three land in the `homepod` tier — without
+ *  this the sort is arbitrary and the card can auto-select one half and play **mono**.
+ *  Cache-independent by construction: the group scores 0 cold and -1 warm while the
+ *  channels always score +1, so the group wins either way. */
+function channelRank(hass: HomeAssistant | undefined, id: string): number {
+  if (providerCache.get(id)?.includes("group")) return -1;
+  return CHANNEL_SUFFIX.test(entityName(hass, id)) ? 1 : 0;
+}
+
+/** Preference order between two Music Assistant players: provider tier, then combined
+ *  players over single channels, then entity id so the sort is never arbitrary. */
+function compareMassPlayers(hass: HomeAssistant | undefined, a: string, b: string): number {
+  return (
+    providerRank(hass, a) - providerRank(hass, b) ||
+    channelRank(hass, a) - channelRank(hass, b) ||
+    a.localeCompare(b)
+  );
 }
 
 /** Best-effort: find the Music Assistant player matching a physical speaker.
@@ -152,7 +202,7 @@ function matchMassPlayer(
     if (!baseArea) return undefined;
     const inArea = candidates.filter((id) => entityArea(hass, id) === baseArea);
     if (inArea.length === 0) return undefined;
-    inArea.sort((a, b) => providerRank(hass, a) - providerRank(hass, b));
+    inArea.sort((a, b) => compareMassPlayers(hass, a, b));
     return inArea[0];
   };
 
@@ -193,7 +243,8 @@ function matchMassPlayer(
   }
 
   // 4) No name match — a Music Assistant player in the same area, preferring
-  //    providers in order (Sonos → Chromecast → AirPlay → DLNA).
+  //    providers in order (HomePod → Sonos → Chromecast → AirPlay → DLNA) and a
+  //    stereo pair's combined player over one of its channels.
   return bestInArea();
 }
 
