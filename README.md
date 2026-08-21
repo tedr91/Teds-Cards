@@ -945,6 +945,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.173
+
+- **HomePods are now the top-priority speaker for auto-selected music playback.** When a dashboard device has no explicit music-player setting, a HomePod in the same room now outranks Sonos, Chromecast, AirPlay and DLNA players. Stereo pairs are handled properly too: the combined pair (a Music Assistant sync group) is preferred over one of its own left/right channels, so the card can no longer pick a single speaker and play in mono. Provider ranking is also consistent now — a player ranks the same whether or not Music Assistant's exact-provider lookup has finished, which previously could make the choice change moments after the card loaded.
+
 ### v0.9.172
 
 - **Fixed: hidden Home Assistant entities no longer appear in Room Card auto-population.** The card now honors the `hidden` flag exposed by Home Assistant's compact entity registry, so controls marked **Visible off** (such as smart-outlet relay lights) stay out of auto-populated Room Cards.
