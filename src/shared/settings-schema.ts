@@ -102,6 +102,7 @@ export const SETTINGS_GROUP_ICONS: Record<string, { fluent: string; mdi: string 
   Thermostats: { fluent: "fluent:temperature-24-regular", mdi: "mdi:thermometer" },
   Calendars: { fluent: "fluent:calendar-ltr-24-regular", mdi: "mdi:calendar" },
   Photos: { fluent: "fluent:image-24-regular", mdi: "mdi:image-multiple" },
+  About: { fluent: "fluent:info-24-regular", mdi: "mdi:information-outline" },
 };
 
 /** The default five navbar sections (matches the bar Ted's Dashboard ships with):

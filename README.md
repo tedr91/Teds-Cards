@@ -945,6 +945,10 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.176
+
+- **Settings now includes an About tab with system status.** It shows the existing device, dependency, integration, and playback diagnostics without Global or This device controls, remains available when the TDS backend is unavailable, and supports direct links with `?tab=about`.
+
 ### v0.9.175
 
 - **TDS Voice rich-result dialogs now support click-outside dismissal.** The transparent light-dismiss layer consumes the completed click so it cannot activate the dashboard underneath.

@@ -41,8 +41,10 @@ The simplest setup is a single **all-in-one** card that renders a category tab s
   title: Ted's Cards Settings
 ```
 
-This honours a `?tab=<category>` deep link (e.g. the Climate card's "Settings" button
-navigates to `?tab=temperatures`).
+This honors a `?tab=<category>` deep link (e.g. the Climate card's "Settings" button
+navigates to `?tab=temperatures`). The complete tabbed card also includes an **About**
+tab with system and device status; link directly to it with `?tab=about`. About remains
+available when the backend is unavailable so installation problems can be diagnosed.
 
 Otherwise you can either let each card show its own Global/This-device tabs (`scope: tabs`,
 the default), or drive several cards from **one shared switch**:
@@ -65,7 +67,7 @@ the default), or drive several cards from **one shared switch**:
 | Option | Type | Default | Description |
 | --- | --- | --- | --- |
 | `title` | string | `Settings` | Header text. |
-| `section_tabs` | boolean | true | Render a built-in category tab strip (one tab per settings group) plus its own Global / This device toggle. Honours a `?tab=<category>` deep link. Set `false` for the plain stacked/filtered layout. |
+| `section_tabs` | boolean | true | Render a built-in category tab strip (one tab per settings group) plus its own Global / This device toggle and, on the unfiltered card, an About tab. Honors a `?tab=<category>` deep link. Set `false` for the plain stacked/filtered layout. |
 | `tab_header` | `both` \| `icon` \| `name` | `both` | What each category tab shows: icon + name, icon only, or name only. |
 | `auto_shrink` | boolean | true | When the category tabs don't fit, automatically show only their icons. If they still don't fit, the extras move into a "…" overflow menu. |
 | `url_param` | string | `tab` | URL query parameter that deep-links the active section tab (when `section_tabs` is on). |

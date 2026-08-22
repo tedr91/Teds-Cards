@@ -71,6 +71,8 @@ import {
 import { matchPerson } from "../calendar-card/const";
 import type { CalendarItemConfig, HiddenEventRule } from "../calendar-card/types";
 import { BUTTON_CARD_TYPE } from "../button-card/const";
+import { STATUS_CARD_TYPE } from "../status-card/const";
+import "../status-card/ted-status-card";
 import "../navbar-card/navbar-sections-editor";
 import type { NavButtonSize, NavSection } from "../navbar-card/types";
 import {
@@ -395,6 +397,8 @@ const navItemLabel = (s: { name: string }): string =>
   (({ name: "Name", icon: "Icon", tap_action: "Action" }) as Record<string, string>)[s.name] ??
   s.name;
 
+const ABOUT_SECTION = "About";
+
 @customElement(SETTINGS_CARD_TYPE)
 export class TedSettingsCard extends LitElement implements LovelaceCard {
   public static async getConfigElement(): Promise<LovelaceCardEditor> {
@@ -426,6 +430,8 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
   /** Embedded (controlled) Button Card editors for launcher options, by view path. */
   private _launcherEditors = new Map<string, { el: LovelaceCardEditor; json: string }>();
   private _launcherCreating = new Set<string>();
+  /** Retained status card rendered by the About tab. */
+  private _aboutCard?: LovelaceCard & HTMLElement;
   /** The anchor calendar id whose "Link a calendar" chooser is open (or none). */
   @state() private _linkFor?: string;
   /** Search query in the "Link a calendar" chooser. */
@@ -662,7 +668,14 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
       : fieldsByGroup();
   }
 
-  /** The section named by the current URL's `?tab=` param, if it matches a group. */
+  /** Section names shown by the full tabbed card, including its non-settings About page. */
+  private _sectionNames(): string[] {
+    const names = this._sectionGroups().map((g) => g.group);
+    if (!this._config?.sections?.length) names.push(ABOUT_SECTION);
+    return names;
+  }
+
+  /** The section named by the current URL's `?tab=` param, if it matches a tab. */
   private _sectionFromUrl(): string | undefined {
     let raw: string | null = null;
     try {
@@ -671,14 +684,13 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
       raw = null;
     }
     if (!raw) return undefined;
-    const match = this._sectionGroups().find((g) => g.group.toLowerCase() === raw!.toLowerCase());
-    return match?.group;
+    return this._sectionNames().find((name) => name.toLowerCase() === raw!.toLowerCase());
   }
 
   /** Resolve the active section: explicit selection, else a deep link, else the first. */
-  private _activeSection(groups: ReturnType<typeof fieldsByGroup>): string {
-    if (this._section && groups.some((g) => g.group === this._section)) return this._section;
-    return this._sectionFromUrl() ?? groups[0]?.group ?? "";
+  private _activeSection(names: string[]): string {
+    if (this._section && names.includes(this._section)) return this._section;
+    return this._sectionFromUrl() ?? names[0] ?? "";
   }
 
   private _selectSection(name: string): void {
@@ -787,6 +799,16 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
 
   public getCardSize(): number {
     return 12;
+  }
+
+  /** Render the retained status card used by the scope-independent About tab. */
+  private _renderAbout(): HTMLElement {
+    if (!this._aboutCard) {
+      this._aboutCard = document.createElement(STATUS_CARD_TYPE) as LovelaceCard & HTMLElement;
+      this._aboutCard.setConfig({ type: `custom:${STATUS_CARD_TYPE}` });
+    }
+    this._aboutCard.hass = this.hass;
+    return this._aboutCard;
   }
 
   // --- value helpers --------------------------------------------------------
@@ -4457,13 +4479,15 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
     if (cfg.section_tabs !== false) {
       const scope = canGlobal ? getUiScope() : "device";
       const groups = this._sectionGroups();
-      const active = this._activeSection(groups);
+      const sections = this._sectionNames();
+      const active = this._activeSection(sections);
       const activeGroup = groups.find((g) => g.group === active);
-      const activeIdx = groups.findIndex((g) => g.group === active);
+      const activeIdx = sections.indexOf(active);
+      const isAbout = active === ABOUT_SECTION;
 
       // Work out which section tabs fit inline vs. move into the "…" overflow menu. The
       // active section is always kept visible (it displaces the last inline slot if needed).
-      const total = groups.length;
+      const total = sections.length;
       const visibleCount = Math.min(this._sectionVisibleCount, total);
       const overflow = visibleCount < total;
       const visible: number[] = [];
@@ -4478,10 +4502,7 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
       return html`
         <ha-card class=${classMap(cardClasses)} style=${styleMap(cardStyle)}>
           ${cfg.brushed ? brushedOverlay : nothing} ${header}
-          ${missing
-            ? html`<div class="warn">Install the <b>Ted's Dashboard System</b> integration to use settings.</div>`
-            : html`
-                ${canGlobal
+          ${canGlobal && !isAbout
                   ? html`<div class="tabs" role="tablist">
                       <button class="tab ${scope === "global" ? "active" : ""}" @click=${() => setUiScope("global")}>
                         Global
@@ -4491,13 +4512,13 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
                       </button>
                     </div>`
                   : nothing}
-                ${scope === "device"
+                ${scope === "device" && !isAbout
                   ? html`<div class="device-note">
                       Overrides apply to <b>this device only</b>. Un-overridden settings inherit the Global value.
                     </div>`
                   : nothing}
                 <div class="section-strip" role="tablist">
-                  ${visible.map((idx) => this._renderSectionTab(groups[idx].group, active, this._sectionMode))}
+                  ${visible.map((idx) => this._renderSectionTab(sections[idx], active, this._sectionMode))}
                   ${overflow
                     ? html`<button
                         id="section-overflow-btn"
@@ -4521,33 +4542,36 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
                       ${overflowList.map(
                         (idx) => html`<button
                           type="button"
-                          class="section-overflow-item${groups[idx].group === active ? " active" : ""}"
-                          @click=${() => this._selectSectionFromOverflow(groups[idx].group)}
+                          class="section-overflow-item${sections[idx] === active ? " active" : ""}"
+                          @click=${() => this._selectSectionFromOverflow(sections[idx])}
                         >
-                          ${this._groupIcon(groups[idx].group)
-                            ? html`<ha-icon .icon=${this._groupIcon(groups[idx].group)}></ha-icon>`
+                          ${this._groupIcon(sections[idx])
+                            ? html`<ha-icon .icon=${this._groupIcon(sections[idx])}></ha-icon>`
                             : nothing}
-                          <span>${groups[idx].group}</span>
+                          <span>${sections[idx]}</span>
                         </button>`,
                       )}
                     </div>`
                   : nothing}
                 <div class="section-measure" aria-hidden="true">
                   <div class="section-measure-row section-measure-full">
-                    ${groups.map((g) => this._renderSectionTab(g.group, active, cfg.tab_header ?? "both"))}
+                    ${sections.map((name) => this._renderSectionTab(name, active, cfg.tab_header ?? "both"))}
                   </div>
                   <div class="section-measure-row section-measure-icon">
-                    ${groups.map((g) => this._renderSectionTab(g.group, active, "icon"))}
+                    ${sections.map((name) => this._renderSectionTab(name, active, "icon"))}
                   </div>
                 </div>
                 <div class="groups">
-                  ${activeGroup
+                  ${isAbout
+                    ? html`<div class="about-content">${this._renderAbout()}</div>`
+                    : missing
+                      ? html`<div class="warn">Install the <b>Ted's Dashboard System</b> integration to use settings.</div>`
+                      : activeGroup
                     ? html`<div class="group">
                         ${this._renderFrigateBanner(activeGroup.group)}${this._renderFields(activeGroup.fields, scope)}
                       </div>`
                     : nothing}
                 </div>
-              `}
         </ha-card>
         ${this._renderAddListModal()}${this._renderLinkModal()}${this._renderTypePickerModal()}
       `;
@@ -4796,6 +4820,9 @@ export class TedSettingsCard extends LitElement implements LovelaceCard {
         flex: 1 1 auto;
         min-height: 0;
         overflow-y: auto;
+      }
+      .about-content {
+        width: 100%;
       }
       .group-title {
         font-size: 0.8rem;
