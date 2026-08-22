@@ -12,6 +12,9 @@ import { customElement, property } from "lit/decorators.js";
 
 import { assistSurfaceStyles } from "./assist-surface";
 import { tedStyleTheme } from "./theme";
+import type { HomeAssistant } from "custom-card-helpers";
+import type { VoiceRichResult } from "./voice-results";
+import "./voice-result-panel";
 
 export interface VoiceTurn {
   role: "user" | "assistant";
@@ -29,6 +32,14 @@ export interface VoiceOverlayView {
   accent?: string;
   /** True while the mic is actively listening (drives the pulse animation). */
   pulsing?: boolean;
+  /** Incremental assistant response while the intent is still running. */
+  streamingText?: string;
+  /** Current tool activity labels and completion state. */
+  tools?: Array<{ id: string; label: string; status: "running" | "complete" | "error" }>;
+  /** Smoothed microphone input level normalized to 0..1. */
+  audioLevel?: number;
+  hass?: HomeAssistant;
+  results?: VoiceRichResult[];
 }
 
 const OVERLAY_TAG = "ted-voice-overlay";
@@ -42,7 +53,7 @@ export class TedVoiceOverlay extends LitElement {
     const v = this.view;
     if (!this.visible || !v) return nothing;
     const turns = v.turns ?? [];
-    if (!turns.length && !v.status) return nothing;
+    if (!turns.length && !v.status && !v.streamingText) return nothing;
     const boxStyle = `${v.accent ? `--ar-accent:${v.accent};` : ""}--ar-msg-size:clamp(15px,1.8vw,21px);`;
     return html`
       <div class="vo-root${v.pulsing ? " pulsing" : ""}">
@@ -57,6 +68,40 @@ export class TedVoiceOverlay extends LitElement {
                 </div>
               `,
             )}
+            ${v.streamingText
+              ? html`
+                  <div class="vo-turn vo-assistant vo-streaming">
+                    <span class="vo-role">Assistant</span>
+                    <span class="vo-text">${v.streamingText}</span>
+                  </div>
+                `
+              : nothing}
+            ${v.tools?.length
+              ? html`<div class="vo-tools">
+                  ${v.tools.map(
+                    (tool) => html`<div class="vo-tool ${tool.status}">
+                      <ha-icon .icon=${tool.status === "running" ? "mdi:progress-wrench" : "mdi:check-circle-outline"}></ha-icon>
+                      <span>${tool.label}</span>
+                    </div>`,
+                  )}
+                </div>`
+              : nothing}
+            ${v.results?.length
+              ? html`<ted-voice-result-panel
+                  .hass=${v.hass}
+                  .results=${v.results}
+                  .compact=${true}
+                ></ted-voice-result-panel>`
+              : nothing}
+            ${v.audioLevel !== undefined
+              ? html`<div class="vo-wave" aria-label="Microphone input level">
+                  ${Array.from({ length: 10 }, (_, index) => {
+                    const profile = [0.58, 0.72, 0.88, 1, 0.82, 0.94, 0.76, 1, 0.68, 0.54][index];
+                    const scale = 0.18 + Math.max(0, Math.min(1, v.audioLevel ?? 0)) * profile * 0.82;
+                    return html`<span style=${`--vo-level:${scale}`}></span>`;
+                  })}
+                </div>`
+              : nothing}
             ${v.status ? html`<div class="vo-status">${v.status}</div>` : nothing}
           </div>
         </div>
@@ -97,6 +142,7 @@ export class TedVoiceOverlay extends LitElement {
         gap: 8px;
         max-height: 42vh;
         overflow-y: auto;
+        pointer-events: auto;
       }
       .vo-turn {
         display: flex;
@@ -124,6 +170,53 @@ export class TedVoiceOverlay extends LitElement {
         font-style: italic;
         opacity: 0.7;
       }
+      .vo-streaming {
+        opacity: 0.92;
+      }
+      .vo-tools {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+      .vo-tool {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        width: fit-content;
+        padding: 4px 8px;
+        border: 1px solid color-mix(in srgb, var(--ar-accent) 42%, transparent);
+        border-radius: 6px;
+        background: color-mix(in srgb, var(--ar-accent) 14%, transparent);
+        font-size: 0.76em;
+      }
+      .vo-tool ha-icon {
+        --mdc-icon-size: 16px;
+      }
+      .vo-tool.complete {
+        opacity: 0.72;
+      }
+      .vo-wave {
+        display: grid;
+        grid-template-columns: repeat(10, 7px);
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
+        height: 44px;
+        overflow: visible;
+      }
+      .vo-wave span {
+        width: 7px;
+        height: 36px;
+        border-radius: 4px;
+        transform: scaleY(var(--vo-level));
+        transition: transform 80ms linear;
+        transform-origin: center;
+      }
+      .vo-wave span:nth-child(5n + 1) { background: #48cae4; box-shadow: 0 0 12px #48cae499; }
+      .vo-wave span:nth-child(5n + 2) { background: #80ed99; box-shadow: 0 0 12px #80ed9999; }
+      .vo-wave span:nth-child(5n + 3) { background: #ffd166; box-shadow: 0 0 12px #ffd16699; }
+      .vo-wave span:nth-child(5n + 4) { background: #ff7096; box-shadow: 0 0 12px #ff709699; }
+      .vo-wave span:nth-child(5n + 5) { background: #b892ff; box-shadow: 0 0 12px #b892ff99; }
       .vo-root.pulsing .ar-icon {
         animation: vo-pulse 1.4s ease-in-out infinite;
       }
@@ -150,6 +243,10 @@ export class TedVoiceOverlay extends LitElement {
         .vo-root,
         .vo-root.pulsing .ar-icon {
           animation: none;
+        }
+        .vo-wave span {
+          transition: none;
+          box-shadow: none;
         }
       }
     `,

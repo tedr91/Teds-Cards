@@ -10,6 +10,7 @@ import { tedCardThemeClass, tedStyleTheme } from "../../shared/theme";
 import { SettingsController, settingsStore } from "../../shared/settings";
 import { announcementTargetsDevice, resolveDeviceArea } from "../../shared/device-area";
 import { resolveDeviceId } from "../../shared/device-id";
+import "../../shared/voice-result-panel";
 import {
   ASSIST_RESPONSES_SENSOR,
   ASSIST_RESPONSE_CARD_EDITOR_TYPE,
@@ -230,6 +231,12 @@ export class TedAssistResponseCard extends LitElement implements LovelaceCard {
           ${image ? html`<img class="ar-image" src=${image} alt="" />` : nothing}
           <div class="ar-message">${e.message}</div>
         </div>
+        ${latest && e.results?.length
+          ? html`<ted-voice-result-panel
+              .hass=${this.hass}
+              .results=${e.results}
+            ></ted-voice-result-panel>`
+          : nothing}
       </div>
     `;
   }

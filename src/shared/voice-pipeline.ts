@@ -14,13 +14,16 @@
  * On a plain-http panel it is undefined and {@link isVoiceSupported} returns false.
  */
 import type { HomeAssistant } from "custom-card-helpers";
+import { parseVoiceToolResult, type VoiceRichResult } from "./voice-results";
 
 /** Coarse pipeline state surfaced to the overlay. */
 export type VoiceState =
   | "idle"
   | "wake" // waiting for the wake word (continuous mode only)
   | "listening" // mic open, capturing the user's speech
+  | "transcribing" // speech ended, waiting for recognized text
   | "thinking" // speech recognized, intent/LLM running
+  | "using_tool" // the conversation agent is running a tool
   | "responding" // TTS answer playing
   | "error";
 
@@ -34,6 +37,14 @@ export interface VoiceSnapshot {
   sttText?: string;
   /** Assistant answer text (set at intent-end). */
   answer?: string;
+  /** Incremental assistant text emitted while the intent is running. */
+  streamingAnswer?: string;
+  /** Tool calls observed during the current intent, in first-seen order. */
+  tools?: VoiceToolActivity[];
+  /** Smoothed microphone input level normalized to 0..1. */
+  audioLevel?: number;
+  /** Supported structured tool results, in completion order. */
+  results?: VoiceRichResult[];
   /** Optional answer title. */
   answerTitle?: string;
   /** Human-readable error, when state === "error". */
@@ -44,6 +55,12 @@ export interface VoiceSnapshot {
   ttsActive?: boolean;
   /** True on the emit where the user interrupted the spoken answer ("stop" / tap). */
   interrupted?: boolean;
+}
+
+export interface VoiceToolActivity {
+  id: string;
+  name: string;
+  status: "running" | "complete" | "error";
 }
 
 export interface VoiceStartOptions {
@@ -66,6 +83,20 @@ interface ConnLike {
   subscribeMessage<T>(cb: (msg: T) => void, sub: Record<string, unknown>): Promise<() => void>;
 }
 
+interface ChatLogDelta {
+  role?: string;
+  content?: string;
+  tool_call_id?: string;
+  tool_name?: string;
+  tool_result?: unknown;
+  tool_calls?: Array<{
+    id?: string;
+    tool_call_id?: string;
+    tool_name?: string;
+    name?: string;
+  }>;
+}
+
 /** A single Assist pipeline run event (loosely typed — we only read a few fields). */
 interface PipelineEvent {
   type: string;
@@ -76,6 +107,7 @@ interface PipelineEvent {
     intent_output?: {
       response?: { speech?: { plain?: { speech?: string } } };
     };
+    chat_log_delta?: ChatLogDelta;
     tts_output?: { url?: string };
     code?: string;
     message?: string;
@@ -141,6 +173,9 @@ export class VoicePipeline {
   private _node?: ScriptProcessorNode;
   private _sink?: GainNode;
   private _handlerId: number | null = null;
+  private _audioLevel = 0;
+  private _pendingAudioLevel = 0;
+  private _audioLevelFrame?: number;
   private _audio?: HTMLAudioElement;
   private _starting = false;
   private _conversationId?: string;
@@ -232,6 +267,10 @@ export class VoicePipeline {
         stage: opts.stage,
         sttText: undefined,
         answer: undefined,
+        streamingAnswer: undefined,
+        tools: undefined,
+        audioLevel: 0,
+        results: undefined,
         answerTitle: undefined,
         error: undefined,
       });
@@ -391,16 +430,29 @@ export class VoicePipeline {
       case "stt-start":
         this._set({ ...this._snap, state: "listening" });
         break;
+      case "stt-vad-end":
+        this._set({ ...this._snap, state: "transcribing" });
+        break;
       case "stt-end": {
         const text = ev.data?.stt_output?.text?.trim();
         this._set({ ...this._snap, state: "thinking", sttText: text || this._snap.sttText });
         break;
       }
+      case "intent-start":
+        this._set({ ...this._snap, state: "thinking" });
+        break;
+      case "intent-progress":
+        this._applyIntentProgress(ev.data?.chat_log_delta);
+        break;
       case "intent-end": {
         const speech = ev.data?.intent_output?.response?.speech?.plain?.speech?.trim();
-        if (speech) this._set({ ...this._snap, answer: speech });
+        const answer = speech || this._snap.streamingAnswer?.trim();
+        if (answer) this._set({ ...this._snap, answer });
         break;
       }
+      case "tts-start":
+        this._set({ ...this._snap, state: "responding" });
+        break;
       case "tts-end": {
         const url = ev.data?.tts_output?.url;
         this._set({ ...this._snap, state: "responding" });
@@ -431,13 +483,45 @@ export class VoicePipeline {
     }
   }
 
+  private _applyIntentProgress(delta: ChatLogDelta | undefined): void {
+    if (!delta) return;
+    if (typeof delta.content === "string" && delta.content) {
+      this._set({
+        ...this._snap,
+        state: "thinking",
+        streamingAnswer: `${this._snap.streamingAnswer ?? ""}${delta.content}`,
+      });
+    }
+
+    for (const call of delta.tool_calls ?? []) {
+      const name = call.tool_name ?? call.name;
+      if (!name) continue;
+      const id = call.id ?? call.tool_call_id ?? name;
+      const tools = [...(this._snap.tools ?? [])];
+      if (!tools.some((tool) => tool.id === id)) tools.push({ id, name, status: "running" });
+      this._set({ ...this._snap, state: "using_tool", tools });
+    }
+
+    if (delta.role === "tool_result" && delta.tool_name) {
+      const id = delta.tool_call_id ?? delta.tool_name;
+      const tools = [...(this._snap.tools ?? [])];
+      const existing = tools.find((tool) => tool.id === id);
+      if (existing) existing.status = "complete";
+      else tools.push({ id, name: delta.tool_name, status: "complete" });
+      const parsed = parseVoiceToolResult(delta.tool_name, delta.tool_result);
+      const results = parsed ? [...(this._snap.results ?? []), parsed] : this._snap.results;
+      this._set({ ...this._snap, state: "thinking", tools, results });
+    }
+  }
+
   // --- Audio capture ---------------------------------------------------------
 
   private _onAudio(e: AudioProcessingEvent, srcRate: number): void {
+    const input = e.inputBuffer.getChannelData(0);
+    this._updateAudioLevel(input);
     if (this._handlerId == null) return;
     const socket = (this._hass?.connection as unknown as ConnLike | undefined)?.socket;
     if (!socket || socket.readyState !== 1) return;
-    const input = e.inputBuffer.getChannelData(0);
     const pcm = downsampleTo16k(input, srcRate);
     if (!pcm.length) return;
     const frame = new Uint8Array(pcm.byteLength + 1);
@@ -467,6 +551,26 @@ export class VoicePipeline {
     this._ctx = undefined;
     this._stream?.getTracks().forEach((t) => t.stop());
     this._stream = undefined;
+    if (this._audioLevelFrame) cancelAnimationFrame(this._audioLevelFrame);
+    this._audioLevelFrame = undefined;
+    this._audioLevel = 0;
+    this._pendingAudioLevel = 0;
+    if (this._snap.audioLevel) this._set({ ...this._snap, audioLevel: 0 });
+  }
+
+  private _updateAudioLevel(input: Float32Array): void {
+    let sum = 0;
+    for (const sample of input) sum += sample * sample;
+    const rms = Math.sqrt(sum / Math.max(1, input.length));
+    const normalized = Math.max(0, Math.min(1, (rms - 0.008) / 0.12));
+    const smoothing = normalized > this._audioLevel ? 0.55 : 0.18;
+    this._pendingAudioLevel = this._audioLevel + (normalized - this._audioLevel) * smoothing;
+    if (this._audioLevelFrame) return;
+    this._audioLevelFrame = requestAnimationFrame(() => {
+      this._audioLevelFrame = undefined;
+      this._audioLevel = this._pendingAudioLevel;
+      this._set({ ...this._snap, audioLevel: this._audioLevel });
+    });
   }
 
   private _play(url: string): void {

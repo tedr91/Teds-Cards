@@ -20,8 +20,9 @@ view.
 3. Unless `navigate: false` is passed, the backend also navigates the targeted
    screens to the Assist-Response view (reusing the same per-device navigation
    signal as the rest of Ted's Cards).
-4. The content stays until it's replaced — there is **no auto-revert timer** yet
-   (a dashboard-wide "return home after idle" feature will cover that separately).
+4. Responses sent by TDS Voice with a rich Weather or Entity Card result return to
+   the originating view after 30 seconds of inactivity. General service calls remain
+   stored until replaced; the dashboard-wide Auto-return Home behavior is separate.
 
 On load the card restores the current answer from `sensor.teds_assist_responses`,
 so a reloaded or freshly-navigated screen shows the latest content immediately.
@@ -46,7 +47,9 @@ so a reloaded or freshly-navigated screen shows the latest content immediately.
 | --- | --- | --- | --- |
 | `message` | string | yes | The answer text (main body). |
 | `title` | string | no | Title shown at the top-left. |
+| `question` | string | no | Recognized user question shown above the answer. |
 | `image` | string | no | Image URL shown **inline** with the answer — beside the text on landscape screens, above it on portrait/narrow ones. |
+| `results` | list | no | Normalized Weather or read-only Entity Card result payloads. Unsupported or malformed entries are ignored. |
 | `areas` | list of area ids | no | Target these areas. |
 | `devices` | list of device ids | no | Target these devices (Ted device ids, e.g. `bm:…`). |
 | `navigate` | boolean | no (default `true`) | Also switch the targeted screens to the view. |

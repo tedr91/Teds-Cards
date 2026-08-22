@@ -16,12 +16,14 @@ import type { HomeAssistant } from "custom-card-helpers";
 
 import { voicePipeline, isVoiceSupported, type VoiceSnapshot } from "./voice-pipeline";
 import { voiceOverlay, type VoiceOverlayView, type VoiceTurn } from "./assist-overlay";
-import { settingsStore } from "./settings";
+import { resolveDashboardPath, settingsStore } from "./settings";
 import { resolveDeviceId } from "./device-id";
 import { resolveDeviceHaId } from "./device-area";
 import { asDeviceType, DEVICE_TYPE_PRESETS } from "./device-types";
+import type { VoiceRichResult } from "./voice-results";
 
 const DOMAIN = "teds_dashboard_system";
+const RICH_RESULT_LINGER_MS = 30_000;
 
 /** State → accent color (matches the messagebox severity palette). */
 const ACCENT: Record<string, string> = {
@@ -40,6 +42,14 @@ const ICON: Record<string, string> = {
   responding: "mdi:message-reply-text",
   error: "mdi:microphone-off",
 };
+
+function toolLabel(name: string): string {
+  const short = name.includes("__") ? name.slice(name.lastIndexOf("__") + 2) : name;
+  return short
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .replace(/[_-]+/g, " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
 
 /** True when this device should show the full-screen Assist-Response view for answers
  *  (a device-scoped `fullscreen_default` override wins over the device-type preset). */
@@ -66,6 +76,9 @@ class VoiceManager {
   private _wasActive = false;
   private _answerRouted = false;
   private _lingerTimer?: number;
+  private _hasRichResult = false;
+  private _richResultFullscreen = false;
+  private _originPath?: string;
   private _redraw = new Set<() => void>();
   /** The running conversation transcript shown in the single overlay box. */
   private _turns: VoiceTurn[] = [];
@@ -80,6 +93,7 @@ class VoiceManager {
     // Autoplay + AudioContext both need a prior user gesture; unlock on the first tap
     // so continuous wake word (and its TTS) can run without an explicit mic press.
     if (typeof window !== "undefined") {
+      window.addEventListener("ted-voice-result-activity", () => this._resetRichResultLifetime());
       window.addEventListener(
         "pointerdown",
         () => {
@@ -189,6 +203,7 @@ class VoiceManager {
       // New run — reset per-run routing; start a fresh transcript unless we're
       // continuing an open conversation (a quick follow-up).
       this._answerRouted = false;
+      this._hasRichResult = false;
       this._clearLinger();
       if (!this._conversationActive) {
         this._turns = [];
@@ -207,8 +222,10 @@ class VoiceManager {
     // Append the assistant answer once + reflect it onto the Assist-Response view.
     if (s.answer && !this._answerRouted) {
       this._answerRouted = true;
+      this._hasRichResult = !!s.results?.length;
+      this._richResultFullscreen = fs;
       this._turns.push({ role: "assistant", text: s.answer });
-      this._pushResponse(s.answer, fs);
+      this._pushResponse(s.answer, fs, s.results);
     }
 
     if (fs && this._answerRouted) {
@@ -234,6 +251,7 @@ class VoiceManager {
         });
         this._endConversation(1400);
       } else if (s.state === "error") this._endConversation(2600);
+      else if (this._hasRichResult) this._scheduleRichResultExpiry();
       else if (fs && this._answerRouted) this._endConversation(0);
       else if (this._turns.length) this._endConversation(3500);
       else this._endConversation(0);
@@ -247,37 +265,85 @@ class VoiceManager {
   /** Build the overlay view (transcript + live status), or null when nothing shows. */
   private _viewFor(s: VoiceSnapshot): VoiceOverlayView | null {
     const turns = this._turns;
+    const live = {
+      turns,
+      streamingText: s.answer ? undefined : s.streamingAnswer,
+      tools: s.tools?.map((tool) => ({ ...tool, label: toolLabel(tool.name) })),
+      audioLevel: s.state === "listening" ? s.audioLevel ?? 0 : undefined,
+      hass: this._hass,
+      results: s.results,
+    };
     switch (s.state) {
       case "wake":
-        return { turns, status: "Say the wake word…", icon: ICON.wake, accent: ACCENT.wake, pulsing: true };
+        return { ...live, status: "Say the wake word…", icon: ICON.wake, accent: ACCENT.wake, pulsing: true };
       case "listening":
-        return { turns, status: "Listening…", icon: ICON.listening, accent: ACCENT.listening, pulsing: true };
+        return { ...live, status: "Listening…", icon: ICON.listening, accent: ACCENT.listening, pulsing: true };
+      case "transcribing":
+        return { ...live, status: "Transcribing…", icon: ICON.thinking, accent: ACCENT.thinking };
       case "thinking":
-        return { turns, status: "Thinking…", icon: ICON.thinking, accent: ACCENT.thinking };
+        return { ...live, status: "Thinking…", icon: ICON.thinking, accent: ACCENT.thinking };
+      case "using_tool":
+        return { ...live, status: "Using tools…", icon: ICON.thinking, accent: ACCENT.thinking, pulsing: true };
       case "responding":
-        return { turns, icon: ICON.responding, accent: ACCENT.responding };
+        return { ...live, icon: ICON.responding, accent: ACCENT.responding };
       case "error":
-        return { turns, status: s.error || "Voice error", icon: ICON.error, accent: ACCENT.error };
+        return { ...live, status: s.error || "Voice error", icon: ICON.error, accent: ACCENT.error };
       case "idle":
-        return turns.length ? { turns, icon: ICON.responding, accent: ACCENT.responding } : null;
+        return turns.length ? { ...live, icon: ICON.responding, accent: ACCENT.responding } : null;
     }
   }
 
   /** Reflect the answer onto the Assist-Response view (targets this device precisely).
    *  Full-screen devices navigate there; compact devices update it silently so a manual
    *  visit shows the latest answer. Includes the recognized question for the transcript. */
-  private _pushResponse(answer: string, fullscreen: boolean): void {
+  private _pushResponse(
+    answer: string,
+    fullscreen: boolean,
+    results?: VoiceRichResult[],
+  ): void {
     try {
+      if (fullscreen && results?.length) {
+        const current = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+        const assistPath = resolveDashboardPath("assist_response_dashboard");
+        if (!assistPath || !current.startsWith(assistPath)) this._originPath = current;
+      }
       const data: Record<string, unknown> = {
         message: answer,
         devices: [resolveDeviceId()],
         navigate: fullscreen,
       };
       if (this._lastStt) data.question = this._lastStt;
+      if (results?.length) data.results = results;
       this._hass?.callService?.(DOMAIN, "assist_response", data);
     } catch {
       /* the overlay still shows the answer */
     }
+  }
+
+  private _scheduleRichResultExpiry(): void {
+    this._clearLinger();
+    this._lingerTimer = window.setTimeout(() => {
+      this._lingerTimer = undefined;
+      if (this._richResultFullscreen && this._originPath) {
+        const assistPath = resolveDashboardPath("assist_response_dashboard");
+        const current = `${window.location.pathname}${window.location.search}`;
+        if (assistPath && current === assistPath) {
+          window.history.pushState(null, "", this._originPath);
+          window.dispatchEvent(new CustomEvent("location-changed", { bubbles: true, composed: true }));
+        }
+      }
+      voiceOverlay.hide();
+      this._turns = [];
+      this._lastStt = undefined;
+      this._conversationActive = false;
+      this._hasRichResult = false;
+      this._originPath = undefined;
+      voicePipeline.resetConversation();
+    }, RICH_RESULT_LINGER_MS);
+  }
+
+  private _resetRichResultLifetime(): void {
+    if (this._hasRichResult && this._lingerTimer) this._scheduleRichResultExpiry();
   }
 
   /** Dismiss the overlay after `ms` and end the conversation thread. */
@@ -289,6 +355,8 @@ class VoiceManager {
       this._turns = [];
       this._lastStt = undefined;
       this._conversationActive = false;
+      this._hasRichResult = false;
+      this._originPath = undefined;
       voicePipeline.resetConversation();
     };
     if (ms <= 0) finish();

@@ -141,10 +141,32 @@ The overlay adapts to the device using its **device type's "fullscreen default"*
   toast over the current view, then dismisses itself.
 
 During a request the overlay shows the live state — *Listening…*, then what you
-said, then the spoken answer — using the same look as the
+said, then *Transcribing…*, *Thinking…*, named tool activity, streamed response
+text, and the spoken answer — using the same look as the
 [Assist-Response card](./assist-response-card.md). The spoken response plays through
 the device's own speaker. The full-screen Assist-Response view keeps a scroll-back
 history of the conversation, so a long answer can be scrolled through.
+
+While listening, a fixed 10-bar colorful waveform responds to microphone input.
+Reduced-motion mode keeps the level information but removes decorative transitions
+and glow animation.
+
+Weather and Entity Card tool results receive richer visual treatment:
+
+- **Weather** shows current conditions when available and responsive forecast rows.
+- **Entity Card** shows the Lovelace card returned by the conversation tool as a
+  read-only preview. Its controls cannot be activated from the voice result.
+
+Rich results remain visible for 30 seconds after the response finishes. Pointer,
+touch, wheel, or keyboard interaction with the result restarts that timer. Compact
+results then dismiss; fullscreen results return to the exact view that was open
+before Assist navigated away. Manual navigation is never overridden by a stale
+voice-return timer.
+
+This prior-view behavior is intentionally limited to temporary voice results. The
+broader **Auto-return home after** setting still needs a unified TDS idle/navigation
+policy covering temporary views, Home fallback, route exclusions, and competing
+timers.
 
 ---
 

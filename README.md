@@ -945,6 +945,11 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.174
+
+- **TDS Voice now has a responsive, tool-aware interface.** Assist responses stream into the overlay while the pipeline runs, named tool activity remains visible, and a fixed 10-bar colorful waveform responds to microphone input without shifting the layout.
+- **Weather and Entity Card tool results now render as rich responses.** Forecasts use responsive rows, while returned Lovelace entity cards are mounted as read-only previews. Rich results remain for 30 seconds of inactivity, reset their timer on interaction, and fullscreen responses return to the exact originating view without overriding later manual navigation.
+
 ### v0.9.173
 
 - **HomePods are now the top-priority speaker for auto-selected music playback.** When a dashboard device has no explicit music-player setting, a HomePod in the same room now outranks Sonos, Chromecast, AirPlay and DLNA players. Stereo pairs are handled properly too: the combined pair (a Music Assistant sync group) is preferred over one of its own left/right channels, so the card can no longer pick a single speaker and play in mono. Provider ranking is also consistent now — a player ranks the same whether or not Music Assistant's exact-provider lookup has finished, which previously could make the choice change moments after the card loaded.

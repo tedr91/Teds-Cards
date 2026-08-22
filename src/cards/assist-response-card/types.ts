@@ -1,5 +1,6 @@
 import type { LovelaceCardConfig } from "custom-card-helpers";
 import type { TedStyleTheme } from "../../shared/types";
+import type { VoiceRichResult } from "../../shared/voice-results";
 
 /** Config for the Assist-Response card. Content is pushed from the backend; the
  *  card only styles it and shows a placeholder until the first answer arrives. */
@@ -40,4 +41,5 @@ export interface AssistResponse {
   areas?: string[];
   devices?: string[];
   ts?: string;
+  results?: VoiceRichResult[];
 }
