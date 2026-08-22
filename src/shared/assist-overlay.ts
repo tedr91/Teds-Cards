@@ -9,6 +9,7 @@
  */
 import { LitElement, css, html, nothing, type TemplateResult } from "lit";
 import { customElement, property } from "lit/decorators.js";
+import { keyed } from "lit/directives/keyed.js";
 
 import { assistSurfaceStyles } from "./assist-surface";
 import { tedStyleTheme } from "./theme";
@@ -48,6 +49,23 @@ const OVERLAY_TAG = "ted-voice-overlay";
 export class TedVoiceOverlay extends LitElement {
   @property({ attribute: false }) public view?: VoiceOverlayView;
   @property({ type: Boolean, reflect: true }) public visible = false;
+  @property({ type: Boolean, reflect: true }) public dismissible = false;
+  @property({ type: Number, attribute: false }) public autoDismissMs = 0;
+  @property({ type: Number, attribute: false }) public countdownKey = 0;
+  private _onDismiss?: () => void;
+
+  public setAutoDismiss(duration: number, onDismiss: () => void): void {
+    this.dismissible = true;
+    this.autoDismissMs = duration;
+    this.countdownKey += 1;
+    this._onDismiss = onDismiss;
+  }
+
+  public clearAutoDismiss(): void {
+    this.dismissible = false;
+    this.autoDismissMs = 0;
+    this._onDismiss = undefined;
+  }
 
   protected render(): TemplateResult | typeof nothing {
     const v = this.view;
@@ -55,59 +73,76 @@ export class TedVoiceOverlay extends LitElement {
     const turns = v.turns ?? [];
     if (!turns.length && !v.status && !v.streamingText) return nothing;
     const boxStyle = `${v.accent ? `--ar-accent:${v.accent};` : ""}--ar-msg-size:clamp(15px,1.8vw,21px);`;
-    return html`
-      <div class="vo-root${v.pulsing ? " pulsing" : ""}">
-        <div class="ar-box ar-shadow ar-compact" style=${boxStyle} role="log" aria-live="polite">
-          ${v.icon ? html`<ha-icon class="ar-icon" .icon=${v.icon}></ha-icon>` : nothing}
-          <div class="ar-content vo-thread">
-            ${turns.map(
-              (t) => html`
-                <div class="vo-turn vo-${t.role}">
-                  <span class="vo-role">${t.role === "user" ? "You" : "Assistant"}</span>
-                  <span class="vo-text">${t.text}</span>
-                </div>
-              `,
-            )}
-            ${v.streamingText
-              ? html`
-                  <div class="vo-turn vo-assistant vo-streaming">
-                    <span class="vo-role">Assistant</span>
-                    <span class="vo-text">${v.streamingText}</span>
+    const dialog = html`
+      <div class="vo-position" @click=${(event: MouseEvent) => event.stopPropagation()}>
+        <div class="vo-root${v.pulsing ? " pulsing" : ""}">
+          <div class="ar-box ar-shadow ar-compact" style=${boxStyle} role="log" aria-live="polite">
+            ${v.icon ? html`<ha-icon class="ar-icon" .icon=${v.icon}></ha-icon>` : nothing}
+            <div class="ar-content vo-thread">
+              ${turns.map(
+                (t) => html`
+                  <div class="vo-turn vo-${t.role}">
+                    <span class="vo-role">${t.role === "user" ? "You" : "Assistant"}</span>
+                    <span class="vo-text">${t.text}</span>
                   </div>
-                `
+                `,
+              )}
+              ${v.streamingText
+                ? html`
+                    <div class="vo-turn vo-assistant vo-streaming">
+                      <span class="vo-role">Assistant</span>
+                      <span class="vo-text">${v.streamingText}</span>
+                    </div>
+                  `
+                : nothing}
+              ${v.tools?.length
+                ? html`<div class="vo-tools">
+                    ${v.tools.map(
+                      (tool) => html`<div class="vo-tool ${tool.status}">
+                        <ha-icon .icon=${tool.status === "running" ? "mdi:progress-wrench" : "mdi:check-circle-outline"}></ha-icon>
+                        <span>${tool.label}</span>
+                      </div>`,
+                    )}
+                  </div>`
+                : nothing}
+              ${v.results?.length
+                ? html`<ted-voice-result-panel
+                    .hass=${v.hass}
+                    .results=${v.results}
+                    .compact=${true}
+                  ></ted-voice-result-panel>`
+                : nothing}
+              ${v.audioLevel !== undefined
+                ? html`<div class="vo-wave" aria-label="Microphone input level">
+                    ${Array.from({ length: 10 }, (_, index) => {
+                      const profile = [0.58, 0.72, 0.88, 1, 0.82, 0.94, 0.76, 1, 0.68, 0.54][index];
+                      const scale = 0.18 + Math.max(0, Math.min(1, v.audioLevel ?? 0)) * profile * 0.82;
+                      return html`<span style=${`--vo-level:${scale}`}></span>`;
+                    })}
+                  </div>`
+                : nothing}
+              ${v.status ? html`<div class="vo-status">${v.status}</div>` : nothing}
+            </div>
+            ${this.autoDismissMs > 0
+              ? keyed(
+                  this.countdownKey,
+                  html`<div
+                    class="vo-countdown"
+                    style=${`animation-duration:${this.autoDismissMs}ms`}
+                    aria-hidden="true"
+                  ></div>`,
+                )
               : nothing}
-            ${v.tools?.length
-              ? html`<div class="vo-tools">
-                  ${v.tools.map(
-                    (tool) => html`<div class="vo-tool ${tool.status}">
-                      <ha-icon .icon=${tool.status === "running" ? "mdi:progress-wrench" : "mdi:check-circle-outline"}></ha-icon>
-                      <span>${tool.label}</span>
-                    </div>`,
-                  )}
-                </div>`
-              : nothing}
-            ${v.results?.length
-              ? html`<ted-voice-result-panel
-                  .hass=${v.hass}
-                  .results=${v.results}
-                  .compact=${true}
-                ></ted-voice-result-panel>`
-              : nothing}
-            ${v.audioLevel !== undefined
-              ? html`<div class="vo-wave" aria-label="Microphone input level">
-                  ${Array.from({ length: 10 }, (_, index) => {
-                    const profile = [0.58, 0.72, 0.88, 1, 0.82, 0.94, 0.76, 1, 0.68, 0.54][index];
-                    const scale = 0.18 + Math.max(0, Math.min(1, v.audioLevel ?? 0)) * profile * 0.82;
-                    return html`<span style=${`--vo-level:${scale}`}></span>`;
-                  })}
-                </div>`
-              : nothing}
-            ${v.status ? html`<div class="vo-status">${v.status}</div>` : nothing}
           </div>
         </div>
       </div>
     `;
+    return this.dismissible
+      ? html`<div class="vo-dismiss-layer" @click=${this._dismissOutside}>${dialog}</div>`
+      : dialog;
   }
+
+  private _dismissOutside = (): void => this._onDismiss?.();
 
   protected updated(): void {
     // Keep the newest turn in view as the conversation grows.
@@ -121,12 +156,21 @@ export class TedVoiceOverlay extends LitElement {
     css`
       :host {
         position: fixed;
+        inset: 0;
+        z-index: 100001;
+        pointer-events: none;
+      }
+      .vo-dismiss-layer {
+        position: fixed;
+        inset: 0;
+        pointer-events: auto;
+      }
+      .vo-position {
+        position: absolute;
         left: 50%;
         bottom: calc(var(--ted-navbar-bottom-reserve, 0px) + 24px);
         transform: translateX(-50%);
-        z-index: 100001;
         width: min(600px, 94vw);
-        pointer-events: none;
       }
       .vo-root {
         display: flex;
@@ -136,6 +180,7 @@ export class TedVoiceOverlay extends LitElement {
       .ar-box.ar-compact {
         align-items: flex-start;
         gap: 12px;
+        overflow: hidden;
         padding: 12px 16px;
       }
       .vo-thread {
@@ -220,6 +265,20 @@ export class TedVoiceOverlay extends LitElement {
       .vo-root.pulsing .ar-icon {
         animation: vo-pulse 1.4s ease-in-out infinite;
       }
+      .vo-countdown {
+        position: absolute;
+        left: 0;
+        bottom: 0;
+        z-index: 2;
+        width: 100%;
+        height: 3px;
+        transform-origin: left;
+        background: var(--ar-accent);
+        opacity: 0.85;
+        animation-name: vo-countdown;
+        animation-timing-function: linear;
+        animation-fill-mode: forwards;
+      }
       @keyframes vo-in {
         from {
           opacity: 0;
@@ -239,6 +298,14 @@ export class TedVoiceOverlay extends LitElement {
           opacity: 0.45;
         }
       }
+      @keyframes vo-countdown {
+        from {
+          transform: scaleX(1);
+        }
+        to {
+          transform: scaleX(0);
+        }
+      }
       @media (prefers-reduced-motion: reduce) {
         .vo-root,
         .vo-root.pulsing .ar-icon {
@@ -247,6 +314,9 @@ export class TedVoiceOverlay extends LitElement {
         .vo-wave span {
           transition: none;
           box-shadow: none;
+        }
+        .vo-countdown {
+          animation: none;
         }
       }
     `,
@@ -273,6 +343,14 @@ class VoiceOverlayManager {
 
   hide(): void {
     if (this._el) this._el.visible = false;
+  }
+
+  setAutoDismiss(duration: number, onDismiss: () => void): void {
+    this._ensure().setAutoDismiss(duration, onDismiss);
+  }
+
+  clearAutoDismiss(): void {
+    this._el?.clearAutoDismiss();
   }
 }
 

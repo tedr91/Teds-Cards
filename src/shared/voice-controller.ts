@@ -322,28 +322,33 @@ class VoiceManager {
 
   private _scheduleRichResultExpiry(): void {
     this._clearLinger();
-    this._lingerTimer = window.setTimeout(() => {
-      this._lingerTimer = undefined;
-      if (this._richResultFullscreen && this._originPath) {
-        const assistPath = resolveDashboardPath("assist_response_dashboard");
-        const current = `${window.location.pathname}${window.location.search}`;
-        if (assistPath && current === assistPath) {
-          window.history.pushState(null, "", this._originPath);
-          window.dispatchEvent(new CustomEvent("location-changed", { bubbles: true, composed: true }));
-        }
-      }
-      voiceOverlay.hide();
-      this._turns = [];
-      this._lastStt = undefined;
-      this._conversationActive = false;
-      this._hasRichResult = false;
-      this._originPath = undefined;
-      voicePipeline.resetConversation();
-    }, RICH_RESULT_LINGER_MS);
+    if (!this._richResultFullscreen) {
+      voiceOverlay.setAutoDismiss(RICH_RESULT_LINGER_MS, () => this._dismissRichResult());
+    }
+    this._lingerTimer = window.setTimeout(() => this._dismissRichResult(), RICH_RESULT_LINGER_MS);
   }
 
   private _resetRichResultLifetime(): void {
     if (this._hasRichResult && this._lingerTimer) this._scheduleRichResultExpiry();
+  }
+
+  private _dismissRichResult(): void {
+    this._clearLinger();
+    if (this._richResultFullscreen && this._originPath) {
+      const assistPath = resolveDashboardPath("assist_response_dashboard");
+      const current = `${window.location.pathname}${window.location.search}`;
+      if (assistPath && current === assistPath) {
+        window.history.pushState(null, "", this._originPath);
+        window.dispatchEvent(new CustomEvent("location-changed", { bubbles: true, composed: true }));
+      }
+    }
+    voiceOverlay.hide();
+    this._turns = [];
+    this._lastStt = undefined;
+    this._conversationActive = false;
+    this._hasRichResult = false;
+    this._originPath = undefined;
+    voicePipeline.resetConversation();
   }
 
   /** Dismiss the overlay after `ms` and end the conversation thread. */
@@ -364,6 +369,7 @@ class VoiceManager {
   }
 
   private _clearLinger(): void {
+    voiceOverlay.clearAutoDismiss();
     if (this._lingerTimer) {
       window.clearTimeout(this._lingerTimer);
       this._lingerTimer = undefined;

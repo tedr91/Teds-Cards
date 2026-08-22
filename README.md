@@ -945,6 +945,11 @@ options as the Alarm card apply.
 The newest entry below is used as the GitHub Release notes by the release workflow, so it shows in
 the Home Assistant / HACS **update** dialog when you update. Newest first.
 
+### v0.9.175
+
+- **TDS Voice rich-result dialogs now support click-outside dismissal.** The transparent light-dismiss layer consumes the completed click so it cannot activate the dashboard underneath.
+- **The 30-second rich-result lifetime is now visible.** A MessageBox-style accent bar counts down along the bottom edge and restarts whenever interaction inside the result resets its lifetime.
+
 ### v0.9.174
 
 - **TDS Voice now has a responsive, tool-aware interface.** Assist responses stream into the overlay while the pipeline runs, named tool activity remains visible, and a fixed 10-bar colorful waveform responds to microphone input without shifting the layout.
